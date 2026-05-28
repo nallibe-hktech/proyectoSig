@@ -326,16 +326,18 @@ public class DataSeeder : ISeedService
                     var rec = users.Skip(11).Take(4).ToList()[i % 4];
                     var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i).Next(0, 27));
                     if (date > period.FechaFin) date = period.FechaFin;
+                    var action = actions.First(a => a.ProjectId == p.Id);
                     var v = new StagingCeleroVisita
                     {
                         VisitaIdExterno = $"VC-{p.Id:00}{period.Id:00}{i:00}",
-                        UserId = rec.Id, ProjectId = p.Id, ActionId = actions.First(a => a.ProjectId == p.Id).Id,
+                        ResourceNif = rec.NIF,
+                        ServiceName = p.Nombre,
+                        MissionName = action.Nombre,
                         Fecha = date,
-                        TipoVisita = (i % 3 == 0) ? 2 : 1,
-                        PuntoMontado = (i % 2 == 0) ? 1 : 0,
+                        UserId = rec.Id, ProjectId = p.Id, ActionId = action.Id,
                         FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
                     };
-                    v.PayloadJson = JsonSerializer.Serialize(new { v.VisitaIdExterno, v.UserId, v.ProjectId, v.ActionId, v.Fecha, v.TipoVisita, v.PuntoMontado });
+                    v.PayloadJson = JsonSerializer.Serialize(new { v.VisitaIdExterno, v.ResourceNif, v.ServiceName, v.MissionName, v.Fecha });
                     v.Hash = Sha256($"visita-{++hashCounter}");
                     stagingVisitas.Add(v);
                 }

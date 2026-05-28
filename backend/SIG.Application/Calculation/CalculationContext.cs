@@ -159,7 +159,7 @@ public class RowAdapter
     };
     public static RowAdapter FromVisita(StagingCeleroVisita v) => new()
     {
-        Fecha = v.Fecha, UserId = v.UserId, ProjectId = v.ProjectId, ActionId = v.ActionId, TipoVisita = v.TipoVisita, PuntoMontado = v.PuntoMontado
+        Fecha = v.Fecha, UserId = v.UserId, ProjectId = v.ProjectId, ActionId = v.ActionId, TipoVisita = null, PuntoMontado = null
     };
     public static RowAdapter FromHora(StagingBizneoHora h) => new()
     {

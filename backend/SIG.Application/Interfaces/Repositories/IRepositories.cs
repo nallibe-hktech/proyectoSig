@@ -14,6 +14,7 @@ public interface IUserRepository
     Task<User?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
     Task<bool> ExistsByEmailAsync(string email, int? excludeId, CancellationToken ct);
     Task<bool> ExistsByNifAsync(string nif, int? excludeId, CancellationToken ct);
+    Task<IReadOnlyList<User>> ListAsync(CancellationToken ct);
     Task<PagedResult<User>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, string? search, CancellationToken ct);
     Task<IReadOnlyList<int>> ListProjectIdsForUserAsync(int usuarioId, CancellationToken ct);
     Task<IReadOnlyList<string>> ListRoleNamesForUserAsync(int usuarioId, CancellationToken ct);
@@ -44,6 +45,7 @@ public interface IProjectRepository
 {
     Task<Project?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
     Task<Project?> GetByIdAsync(int id, CancellationToken ct);
+    Task<IReadOnlyList<Project>> ListAsync(CancellationToken ct);
     Task<PagedResult<Project>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
     Task AddAsync(Project project, CancellationToken ct);
     Task<bool> IsUserAssignedAsync(int projectId, int usuarioId, CancellationToken ct);
@@ -55,6 +57,7 @@ public interface IActionRepository
 {
     Task<Action?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
     Task<Action?> GetByIdAsync(int id, CancellationToken ct);
+    Task<IReadOnlyList<Action>> ListAsync(CancellationToken ct);
     Task<PagedResult<Action>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? projectId, string? search, CancellationToken ct);
     Task AddAsync(Action action, CancellationToken ct);
     Task<bool> HasClosuresAsync(int actionId, CancellationToken ct);

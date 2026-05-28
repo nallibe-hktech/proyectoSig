@@ -18,8 +18,12 @@ public class SyncServiceTests
     private readonly IStagingRepository<StagingBizneoHora> _horaRepo = Substitute.For<IStagingRepository<StagingBizneoHora>>();
     private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo = Substitute.For<IStagingRepository<StagingIntratimeFichaje>>();
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo = Substitute.For<IStagingRepository<StagingPayHawkGasto>>();
+    private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
+    private readonly IProjectRepository _projectRepo = Substitute.For<IProjectRepository>();
+    private readonly IActionRepository _actionRepo = Substitute.For<IActionRepository>();
+    private readonly ICeleroMappingRepository _mappingRepo = Substitute.For<ICeleroMappingRepository>();
 
-    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _celeroRepo, _empRepo, _horaRepo, _ficRepo, _gastoRepo);
+    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _celeroRepo, _empRepo, _horaRepo, _ficRepo, _gastoRepo, _userRepo, _projectRepo, _actionRepo, _mappingRepo);
 
     [Fact]
     public async Task SyncAsync_SistemaDesconocido_LanzaIntegrationException()
@@ -35,8 +39,8 @@ public class SyncServiceTests
         _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
-                new CeleroVisitaDto("v1", 1, 100, 200, new DateOnly(2026, 3, 1), 1, 0),
-                new CeleroVisitaDto("v2", 1, 100, 200, new DateOnly(2026, 3, 2), 1, 0),
+                new CeleroVisitaDto("v1", "12345678A", "Proyecto1", "Acción1", new DateOnly(2026, 3, 1)),
+                new CeleroVisitaDto("v2", "23456789B", "Proyecto2", "Acción2", new DateOnly(2026, 3, 2)),
             });
         _celeroRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
 
@@ -56,8 +60,8 @@ public class SyncServiceTests
         _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
-                new CeleroVisitaDto("v1", 1, 100, 200, new DateOnly(2026, 3, 1), 1, 0),
-                new CeleroVisitaDto("v2", 1, 100, 200, new DateOnly(2026, 3, 2), 1, 0),
+                new CeleroVisitaDto("v1", "12345678A", "Proyecto1", "Acción1", new DateOnly(2026, 3, 1)),
+                new CeleroVisitaDto("v2", "23456789B", "Proyecto2", "Acción2", new DateOnly(2026, 3, 2)),
             });
         _celeroRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 

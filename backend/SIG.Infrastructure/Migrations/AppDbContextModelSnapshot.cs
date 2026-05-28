@@ -981,6 +981,141 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("roles", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.CeleroMissionMapping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("action_id");
+
+                    b.Property<string>("CeleroMissionName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("celero_mission_name");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_celero_mission_mappings");
+
+                    b.HasIndex("ActionId")
+                        .HasDatabaseName("ix_celero_mission_mappings_action_id");
+
+                    b.HasIndex("CeleroMissionName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_celero_mission_mappings_celero_mission_name");
+
+                    b.ToTable("celero_mission_mappings", (string)null);
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.CeleroResourceMapping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CeleroNif")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("celero_nif");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_celero_resource_mappings");
+
+                    b.HasIndex("CeleroNif")
+                        .IsUnique()
+                        .HasDatabaseName("ix_celero_resource_mappings_celero_nif");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_celero_resource_mappings_user_id");
+
+                    b.ToTable("celero_resource_mappings", (string)null);
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.CeleroServiceMapping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CeleroServiceName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("celero_service_name");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("integer")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_celero_service_mappings");
+
+                    b.HasIndex("CeleroServiceName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_celero_service_mappings_celero_service_name");
+
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("ix_celero_service_mappings_project_id");
+
+                    b.ToTable("celero_service_mappings", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingBizneoEmpleado", b =>
                 {
                     b.Property<int>("Id")
@@ -1125,7 +1260,7 @@ namespace SIG.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ActionId")
+                    b.Property<int?>("ActionId")
                         .HasColumnType("integer")
                         .HasColumnName("action_id");
 
@@ -1152,24 +1287,31 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("hash");
 
+                    b.Property<string>("MissionName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("mission_name");
+
                     b.Property<string>("PayloadJson")
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("payload_json");
 
-                    b.Property<int>("ProjectId")
+                    b.Property<int?>("ProjectId")
                         .HasColumnType("integer")
                         .HasColumnName("project_id");
 
-                    b.Property<int>("PuntoMontado")
-                        .HasColumnType("integer")
-                        .HasColumnName("punto_montado");
+                    b.Property<string>("ResourceNif")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("resource_nif");
 
-                    b.Property<int>("TipoVisita")
-                        .HasColumnType("integer")
-                        .HasColumnName("tipo_visita");
+                    b.Property<string>("ServiceName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("service_name");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("integer")
                         .HasColumnName("user_id");
 
@@ -1759,6 +1901,42 @@ namespace SIG.Infrastructure.Migrations
                         .HasConstraintName("fk_refresh_tokens_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.CeleroMissionMapping", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.Action", "Action")
+                        .WithMany()
+                        .HasForeignKey("ActionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_celero_mission_mappings_actions_action_id");
+
+                    b.Navigation("Action");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.CeleroResourceMapping", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_celero_resource_mappings_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.CeleroServiceMapping", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_celero_service_mappings_projects_project_id");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.User", b =>

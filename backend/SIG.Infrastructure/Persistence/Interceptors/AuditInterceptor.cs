@@ -42,7 +42,12 @@ public class AuditInterceptor : SaveChangesInterceptor
 
         var logs = new List<AuditLog>();
         var ip = _currentUser.Ip;
-        var userId = _currentUser.UserId;
+
+        // Si no hay usuario autenticado (ej: durante login), no auditar
+        int? userId = null;
+        try { userId = _currentUser.UserId; }
+        catch { }
+
         var now = DateTime.UtcNow;
 
         foreach (var entry in entries)

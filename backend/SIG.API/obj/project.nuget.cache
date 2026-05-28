@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "CCqZvDM4Ieg=",
+  "dgSpecHash": "e9O5TmqyQQQ=",
   "success": true,
   "projectFilePath": "C:\\Users\\NallibeRiveraGrisale\\Workspaces\\SIG-es\\backend\\SIG.API\\SIG.API.csproj",
   "expectedPackageFiles": [
@@ -36,7 +36,7 @@
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\microsoft.identitymodel.tokens\\8.4.0\\microsoft.identitymodel.tokens.8.4.0.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\microsoft.openapi\\1.6.22\\microsoft.openapi.1.6.22.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\mono.texttemplating\\3.0.0\\mono.texttemplating.3.0.0.nupkg.sha512",
-    "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\npgsql\\9.0.3\\npgsql.9.0.3.nupkg.sha512",
+    "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\npgsql\\9.0.5\\npgsql.9.0.5.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\npgsql.entityframeworkcore.postgresql\\9.0.4\\npgsql.entityframeworkcore.postgresql.9.0.4.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\swashbuckle.aspnetcore\\7.2.0\\swashbuckle.aspnetcore.7.2.0.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\swashbuckle.aspnetcore.swagger\\7.2.0\\swashbuckle.aspnetcore.swagger.7.2.0.nupkg.sha512",

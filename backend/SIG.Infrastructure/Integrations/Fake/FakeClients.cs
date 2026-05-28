@@ -17,15 +17,45 @@ public class CeleroFakeClient : ICeleroClient
     public Task<IReadOnlyList<CeleroVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
         Randomizer.Seed = new Random(FakeSeed.Seed);
+
+        var servicios = new[]
+        {
+            "Implantación Madrid",
+            "Visitas GPV España",
+            "Formación Equipos",
+            "Implantación Barcelona",
+            "Visitas Premium",
+            "Mensualidad",
+            "Operaciones Campo",
+            "Formación Premium"
+        };
+
+        var misiones = new[]
+        {
+            "Implantación Madrid",
+            "Visitas GPV España",
+            "Formación Equipos",
+            "Implantación Barcelona",
+            "Visitas Premium",
+            "Mensualidad",
+            "Operaciones Campo",
+            "Formación Premium"
+        };
+
+        var nifs = new[]
+        {
+            "12345678A", "23456789B", "34567890C", "45678901D", "56789012E",
+            "67890123F", "78901234G", "89012345H", "90123456J", "01234567K",
+            "11234567L", "21234567M", "31234567N", "41234567P", "51234567Q"
+        };
+
         var faker = new Faker<CeleroVisitaDto>()
             .CustomInstantiator(f => new CeleroVisitaDto(
-                $"VC-{f.Random.AlphaNumeric(8).ToUpper()}",
-                f.Random.Int(1, 15),
-                f.Random.Int(1, 8),
-                f.Random.Int(1, 25),
-                DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue))),
-                f.Random.Int(1, 2),
-                f.Random.Int(0, 1)
+                $"VISIT-{f.Random.AlphaNumeric(8).ToUpper()}",
+                f.PickRandom(nifs),
+                f.PickRandom(servicios),
+                f.PickRandom(misiones),
+                DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue)))
             ));
         var list = faker.Generate(50);
         return Task.FromResult<IReadOnlyList<CeleroVisitaDto>>(list);

@@ -117,6 +117,10 @@ public class SyncService : ISyncService
     private readonly IStagingRepository<StagingBizneoHora> _horaRepo;
     private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo;
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo;
+    private readonly IUserRepository _userRepo;
+    private readonly IProjectRepository _projectRepo;
+    private readonly IActionRepository _actionRepo;
+    private readonly ICeleroMappingRepository _mappingRepo;
 
     public SyncService(
         ICeleroClient celero, IBizneoClient bizneo, IIntratimeClient intratime, IPayHawkClient payhawk,
@@ -124,17 +128,25 @@ public class SyncService : ISyncService
         IStagingRepository<StagingBizneoEmpleado> empRepo,
         IStagingRepository<StagingBizneoHora> horaRepo,
         IStagingRepository<StagingIntratimeFichaje> ficRepo,
-        IStagingRepository<StagingPayHawkGasto> gastoRepo)
+        IStagingRepository<StagingPayHawkGasto> gastoRepo,
+        IUserRepository userRepo,
+        IProjectRepository projectRepo,
+        IActionRepository actionRepo,
+        ICeleroMappingRepository mappingRepo)
     {
         _celero = celero;
         _bizneo = bizneo;
         _intratime = intratime;
         _payhawk = payhawk;
         _celeroRepo = celeroRepo;
+        _userRepo = userRepo;
+        _projectRepo = projectRepo;
+        _actionRepo = actionRepo;
         _empRepo = empRepo;
         _horaRepo = horaRepo;
         _ficRepo = ficRepo;
         _gastoRepo = gastoRepo;
+        _mappingRepo = mappingRepo;
     }
 
     public async Task<SyncResultDto> SyncAsync(string sistema, CancellationToken ct)
@@ -149,17 +161,65 @@ public class SyncService : ISyncService
             {
                 var data = await _celero.GetVisitasAsync(desde, hasta, ct);
                 var nuevas = new List<StagingCeleroVisita>();
+
+                // Cargar mapeos explícitos (alta prioridad)
+                var resourceMappings = await _mappingRepo.GetResourceMappingsAsync(ct);
+                var serviceMappings = await _mappingRepo.GetServiceMappingsAsync(ct);
+                var missionMappings = await _mappingRepo.GetMissionMappingsAsync(ct);
+
+                var nifToUserIdMapping = resourceMappings.ToDictionary(m => m.CeleroNif, m => m.UserId);
+                var serviceNameToProjectIdMapping = serviceMappings.ToDictionary(m => m.CeleroServiceName, m => m.ProjectId);
+                var missionNameToActionIdMapping = missionMappings.ToDictionary(m => m.CeleroMissionName, m => m.ActionId);
+
+                // Cargar lookups de fallback para resolución por nombre/NIF (baja prioridad)
+                var users = await _userRepo.ListAsync(ct);
+                var projects = await _projectRepo.ListAsync(ct);
+                var actions = await _actionRepo.ListAsync(ct);
+
+                var nifToUserId = users.Where(u => !u.IsDeleted).ToDictionary(u => u.NIF, u => u.Id);
+                var serviceNameToProjectId = projects.Where(p => !p.IsDeleted).ToDictionary(p => p.Nombre, p => p.Id);
+                var missionNameToActionId = actions.Where(a => !a.IsDeleted).ToDictionary(a => a.Nombre, a => a.Id);
+
                 foreach (var d in data)
                 {
                     var json = JsonSerializer.Serialize(d);
                     var hash = Sha256(json);
                     if (await _celeroRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+
+                    // Resolver IDs: primero mapeos explícitos, luego fallback a nombre/NIF
+                    int? userId = null;
+                    if (!string.IsNullOrEmpty(d.ResourceNif))
+                    {
+                        if (nifToUserIdMapping.TryGetValue(d.ResourceNif, out var uid)) userId = uid;
+                        else if (nifToUserId.TryGetValue(d.ResourceNif, out uid)) userId = uid;
+                    }
+
+                    int? projectId = null;
+                    if (!string.IsNullOrEmpty(d.ServiceName))
+                    {
+                        if (serviceNameToProjectIdMapping.TryGetValue(d.ServiceName, out var pid)) projectId = pid;
+                        else if (serviceNameToProjectId.TryGetValue(d.ServiceName, out pid)) projectId = pid;
+                    }
+
+                    int? actionId = null;
+                    if (!string.IsNullOrEmpty(d.MissionName))
+                    {
+                        if (missionNameToActionIdMapping.TryGetValue(d.MissionName, out var aid)) actionId = aid;
+                        else if (missionNameToActionId.TryGetValue(d.MissionName, out aid)) actionId = aid;
+                    }
+
                     nuevas.Add(new StagingCeleroVisita
                     {
                         VisitaIdExterno = d.VisitaIdExterno,
-                        UserId = d.UserId, ProjectId = d.ProjectId, ActionId = d.ActionId,
-                        Fecha = d.Fecha, TipoVisita = d.TipoVisita, PuntoMontado = d.PuntoMontado,
-                        PayloadJson = json, Hash = hash,
+                        ResourceNif = d.ResourceNif,
+                        ServiceName = d.ServiceName,
+                        MissionName = d.MissionName,
+                        Fecha = d.Fecha,
+                        UserId = userId,
+                        ProjectId = projectId,
+                        ActionId = actionId,
+                        PayloadJson = json,
+                        Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow,
                         FlagProcesado = true
                     });

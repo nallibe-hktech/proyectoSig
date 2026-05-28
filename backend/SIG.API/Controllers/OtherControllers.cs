@@ -2,8 +2,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using SIG.Application.Interfaces.Services;
+using SIG.Infrastructure.Persistence;
 
 namespace SIG.API.Controllers;
 
@@ -62,11 +64,33 @@ public class AuditController : ControllerBase
 public class SyncController : ControllerBase
 {
     private readonly ISyncService _svc;
-    public SyncController(ISyncService svc) { _svc = svc; }
+    private readonly AppDbContext _db;
+    public SyncController(ISyncService svc, AppDbContext db) { _svc = svc; _db = db; }
 
     [HttpPost("{system}")]
     public async Task<IActionResult> Sync(string system, CancellationToken ct) =>
         Ok(await _svc.SyncAsync(system, ct));
+
+    [HttpGet("celero/stats")]
+    public async Task<IActionResult> GetCeleroStats(CancellationToken ct)
+    {
+        var stats = await _db.StagingCeleroVisitas
+            .AsNoTracking()
+            .GroupBy(v => 1)
+            .Select(g => new
+            {
+                totalVisitas = g.Count(),
+                conUsuario = g.Count(v => v.UserId.HasValue),
+                conProyecto = g.Count(v => v.ProjectId.HasValue),
+                conAccion = g.Count(v => v.ActionId.HasValue),
+                porcentajeResuelto = g.Count() > 0
+                    ? Math.Round(g.Count(v => v.UserId.HasValue) * 100.0 / g.Count(), 1)
+                    : 0
+            })
+            .FirstOrDefaultAsync(ct);
+
+        return Ok(stats ?? new { totalVisitas = 0, conUsuario = 0, conProyecto = 0, conAccion = 0, porcentajeResuelto = 0.0 });
+    }
 }
 
 [ApiController]

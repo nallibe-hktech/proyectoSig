@@ -1388,7 +1388,7 @@
           }
         }
       },
-      "Npgsql/9.0.3": {
+      "Npgsql/9.0.5": {
         "type": "package",
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "8.0.2"
@@ -1737,6 +1737,7 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.4",
           "Microsoft.Extensions.Hosting.Abstractions": "9.0.4",
           "Microsoft.Extensions.Http": "9.0.4",
+          "Npgsql": "9.0.0",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "9.0.4",
           "SIG.Application": "1.0.0",
           "SIG.Domain": "1.0.0",
@@ -3808,10 +3809,10 @@
         "packageIcon.png"
       ]
     },
-    "Npgsql/9.0.3": {
-      "sha512": "tPvY61CxOAWxNsKLEBg+oR646X4Bc8UmyQ/tJszL/7mEmIXQnnBhVJZrZEEUv0Bstu0mEsHZD5At3EO8zQRAYw==",
+    "Npgsql/9.0.5": {
+      "sha512": "NRZkUlTUh06f7f14wriEoO+BrJcyw/agh3xozXLM3ii7C/08SyXqcI89EMfZJuHkOcfDU8W0enGcZ8RGNVOw0w==",
       "type": "package",
-      "path": "npgsql/9.0.3",
+      "path": "npgsql/9.0.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -3820,7 +3821,7 @@
         "lib/net6.0/Npgsql.xml",
         "lib/net8.0/Npgsql.dll",
         "lib/net8.0/Npgsql.xml",
-        "npgsql.9.0.3.nupkg.sha512",
+        "npgsql.9.0.5.nupkg.sha512",
         "npgsql.nuspec",
         "postgresql.png"
       ]

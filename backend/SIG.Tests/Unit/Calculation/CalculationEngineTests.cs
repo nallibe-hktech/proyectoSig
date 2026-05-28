@@ -102,9 +102,9 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.Visitas.AddRange(new[]
         {
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 1, PuntoMontado = 0, VisitaIdExterno = "v1", PayloadJson = "{}", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 1, PuntoMontado = 0, VisitaIdExterno = "v2", PayloadJson = "{}", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 2, PuntoMontado = 1, VisitaIdExterno = "v3", PayloadJson = "{}", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ProjectId = 100, ActionId = 200, VisitaIdExterno = "v1", PayloadJson = "{}", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ProjectId = 100, ActionId = 200, VisitaIdExterno = "v2", PayloadJson = "{}", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ProjectId = 100, ActionId = 200, VisitaIdExterno = "v3", PayloadJson = "{}", Hash = "h" },
         });
         var concept = CreateConcept("""{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[]}}""");
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
@@ -117,12 +117,12 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.Visitas.AddRange(new[]
         {
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 1, PayloadJson = "{}", VisitaIdExterno = "v1", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 1, PayloadJson = "{}", VisitaIdExterno = "v2", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 2, PayloadJson = "{}", VisitaIdExterno = "v3", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v2", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ProjectId = 100, ActionId = 300, PayloadJson = "{}", VisitaIdExterno = "v3", Hash = "h" },
         });
         var concept = CreateConcept("""
-        {"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"TipoVisita","op":"Eq","value":1}]}}
+        {"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"ActionId","op":"Eq","value":200}]}}
         """);
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
         r.Resultado.Should().Be(2m);
@@ -238,22 +238,22 @@ public class CalculationEngineTests
     [Fact]
     public async Task Evaluate_BonusVisitaEstandar_x5_AplicaCalculoCorrectamente()
     {
-        // Cuenta(VisitasCelero TipoVisita=1) × 5
+        // Cuenta(VisitasCelero ActionId=200) × 5
         var (sut, loader) = CreateSut();
         loader.Visitas.AddRange(new[]
         {
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 1, PayloadJson = "{}", VisitaIdExterno = "v1", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 6), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 1, PayloadJson = "{}", VisitaIdExterno = "v2", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 7), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 1, PayloadJson = "{}", VisitaIdExterno = "v3", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 8), UserId = 1, ProjectId = 100, ActionId = 200, TipoVisita = 2, PayloadJson = "{}", VisitaIdExterno = "v4", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 6), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v2", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 7), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v3", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 8), UserId = 1, ProjectId = 100, ActionId = 300, PayloadJson = "{}", VisitaIdExterno = "v4", Hash = "h" },
         });
         var concept = CreateConcept("""
         {"type":"BinaryOp","op":"Mul",
-         "left":{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"TipoVisita","op":"Eq","value":1}]}},
+         "left":{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"ActionId","op":"Eq","value":200}]}},
          "right":{"type":"Number","value":5}}
         """);
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
-        r.Resultado.Should().Be(15m); // 3 visitas TipoVisita=1 × 5
+        r.Resultado.Should().Be(15m); // 3 visitas ActionId=200 × 5
         r.SistemaOrigen.Should().Be("Celero");
     }
 

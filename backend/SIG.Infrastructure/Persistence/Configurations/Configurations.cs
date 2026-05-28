@@ -357,3 +357,36 @@ public class StagingPayHawkGastoConfiguration : IEntityTypeConfiguration<Staging
         b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
     }
 }
+
+public class CeleroResourceMappingConfiguration : IEntityTypeConfiguration<CeleroResourceMapping>
+{
+    public void Configure(EntityTypeBuilder<CeleroResourceMapping> b)
+    {
+        b.HasIndex(m => m.CeleroNif).IsUnique();
+        b.Property(m => m.CeleroNif).HasMaxLength(20).IsRequired();
+        b.Property(m => m.Descripcion).HasMaxLength(500);
+        b.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class CeleroServiceMappingConfiguration : IEntityTypeConfiguration<CeleroServiceMapping>
+{
+    public void Configure(EntityTypeBuilder<CeleroServiceMapping> b)
+    {
+        b.HasIndex(m => m.CeleroServiceName).IsUnique();
+        b.Property(m => m.CeleroServiceName).HasMaxLength(300).IsRequired();
+        b.Property(m => m.Descripcion).HasMaxLength(500);
+        b.HasOne(m => m.Project).WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class CeleroMissionMappingConfiguration : IEntityTypeConfiguration<CeleroMissionMapping>
+{
+    public void Configure(EntityTypeBuilder<CeleroMissionMapping> b)
+    {
+        b.HasIndex(m => m.CeleroMissionName).IsUnique();
+        b.Property(m => m.CeleroMissionName).HasMaxLength(300).IsRequired();
+        b.Property(m => m.Descripcion).HasMaxLength(500);
+        b.HasOne(m => m.Action).WithMany().HasForeignKey(m => m.ActionId).OnDelete(DeleteBehavior.Restrict);
+    }
+}

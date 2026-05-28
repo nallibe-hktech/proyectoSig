@@ -37,6 +37,9 @@ public class AppDbContext : DbContext
     public DbSet<StagingBizneoHora> StagingBizneoHoras => Set<StagingBizneoHora>();
     public DbSet<StagingIntratimeFichaje> StagingIntratimeFichajes => Set<StagingIntratimeFichaje>();
     public DbSet<StagingPayHawkGasto> StagingPayHawkGastos => Set<StagingPayHawkGasto>();
+    public DbSet<CeleroResourceMapping> CeleroResourceMappings => Set<CeleroResourceMapping>();
+    public DbSet<CeleroServiceMapping> CeleroServiceMappings => Set<CeleroServiceMapping>();
+    public DbSet<CeleroMissionMapping> CeleroMissionMappings => Set<CeleroMissionMapping>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

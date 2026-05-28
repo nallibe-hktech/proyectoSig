@@ -42,6 +42,10 @@ public class UserRepository : IUserRepository
     public Task<bool> ExistsByNifAsync(string nif, int? excludeId, CancellationToken ct) =>
         _db.Users.AsNoTracking().AnyAsync(u => u.NIF == nif && (excludeId == null || u.Id != excludeId), ct);
 
+    public async Task<IReadOnlyList<User>> ListAsync(CancellationToken ct) =>
+        await _db.Users.AsNoTracking().Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .OrderBy(u => u.Id).ToListAsync(ct);
+
     public async Task<PagedResult<User>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, string? search, CancellationToken ct)
     {
         var q = _db.Users.AsNoTracking().Include(u => u.UserRoles).ThenInclude(ur => ur.Role).AsQueryable();
@@ -164,6 +168,9 @@ public class ProjectRepository : IProjectRepository
         _db.Projects.Include(p => p.Client).Include(p => p.ProjectCostCenters).Include(p => p.ProjectUsers)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
+    public async Task<IReadOnlyList<Project>> ListAsync(CancellationToken ct) =>
+        await _db.Projects.AsNoTracking().Include(p => p.Client).OrderBy(p => p.Id).ToListAsync(ct);
+
     public async Task<PagedResult<Project>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct)
     {
         var q = _db.Projects.AsNoTracking().Include(p => p.Client).AsQueryable();
@@ -217,6 +224,9 @@ public class ActionRepository : IActionRepository
     public Task<Action?> GetByIdAsync(int id, CancellationToken ct) =>
         _db.Actions.Include(a => a.Project).Include(a => a.ActionConcepts).Include(a => a.ActionUsers)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
+
+    public async Task<IReadOnlyList<Action>> ListAsync(CancellationToken ct) =>
+        await _db.Actions.AsNoTracking().Include(a => a.Project).OrderBy(a => a.Id).ToListAsync(ct);
 
     public async Task<PagedResult<Action>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? projectId, string? search, CancellationToken ct)
     {

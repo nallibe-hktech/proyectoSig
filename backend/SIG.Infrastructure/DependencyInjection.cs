@@ -10,6 +10,7 @@ using SIG.Application.Interfaces.Services;
 using SIG.Application.Services;
 using SIG.Infrastructure.Integrations.Fake;
 using SIG.Infrastructure.Integrations.Http;
+using SIG.Infrastructure.Integrations.Postgres;
 using SIG.Infrastructure.Persistence;
 using SIG.Infrastructure.Persistence.Interceptors;
 using SIG.Infrastructure.Repositories;
@@ -55,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<ICostCenterRepository, CostCenterRepository>();
+        services.AddScoped<ICeleroMappingRepository, CeleroMappingRepository>();
         services.AddScoped(typeof(IStagingRepository<>), typeof(StagingRepository<>));
 
         // Services
@@ -98,7 +100,16 @@ public static class DependencyInjection
         }
         else
         {
-            services.AddHttpClient<ICeleroClient, CeleroClient>();
+            // Celero: use PostgreSQL client
+            var celeroConnStr = config.GetConnectionString("Celero")
+                              ?? throw new InvalidOperationException("ConnectionStrings:Celero no configurada");
+            services.AddScoped<ICeleroClient>(sp =>
+                new CeleroPostgresClient(celeroConnStr,
+                    sp.GetRequiredService<IUserRepository>(),
+                    sp.GetRequiredService<IProjectRepository>(),
+                    sp.GetRequiredService<IActionRepository>()));
+
+            // Other integrations: use HTTP clients
             services.AddHttpClient<IBizneoClient, BizneoClient>();
             services.AddHttpClient<IIntratimeClient, IntratimeClient>();
             services.AddHttpClient<IPayHawkClient, PayHawkClient>();
