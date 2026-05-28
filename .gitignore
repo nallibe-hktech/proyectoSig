@@ -1,0 +1,80 @@
+# ============================================================
+# SECRETS — NUNCA en git
+# ============================================================
+**/appsettings.Development.json
+**/appsettings.Testing.json
+**/appsettings.E2E.json
+**/appsettings.Production.json
+**/appsettings.Local.json
+**/*.local.json
+**/.env
+**/.env.*
+!**/.env.example
+
+# ============================================================
+# .NET Build artifacts
+# ============================================================
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+**/TestResults/
+**/coverage/
+**/*.coverage
+**/*.coveragexml
+
+# ============================================================
+# SonarQube / análisis de código
+# ============================================================
+.sonarqube/
+.sonar/
+**/.scannerwork/
+SONAR_REPORT.md
+SONAR_ISSUES.md
+FINAL_VERIFICATION.md
+SONAR_BLOQUEANTES.md
+resultado-*.md
+docs/BLOQUEANTES.md
+
+# ============================================================
+# Frontend (Angular)
+# ============================================================
+frontend/node_modules/
+frontend/.angular/
+frontend/dist/
+frontend/.cache/
+
+# ============================================================
+# IDEs y editores
+# ============================================================
+.idea/
+.vscode/settings.json
+.vscode/launch.json
+*.swp
+*.swo
+*~
+
+# ============================================================
+# Sistema operativo
+# ============================================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.Spotlight-V100
+.Trashes
+
+# ============================================================
+# Docker
+# ============================================================
+.docker/
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
