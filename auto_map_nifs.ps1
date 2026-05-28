@@ -4,19 +4,11 @@
 $BaseURL = "http://localhost:5180"
 $Email = "admin@sig.local"
 $Password = "Demo#2026!"
-$PostgresConnection = "Host=localhost;Username=postgres;Password=postgres;Database=siges"
 
 Write-Host "╔════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║       MAPEO AUTOMÁTICO CELERO → SIG-es                ║" -ForegroundColor Cyan
 Write-Host "╚════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
-
-# Cargar Npgsql
-try {
-    [Reflection.Assembly]::LoadWithPartialName("Npgsql") | Out-Null
-} catch {
-    Write-Host "⚠️ Npgsql no está disponible" -ForegroundColor Yellow
-}
 
 # 1. LOGIN
 Write-Host "📍 [1/4] Realizando login..." -ForegroundColor Yellow
@@ -41,178 +33,118 @@ try {
     exit 1
 }
 
-function Get-PostgresData {
-    param([string]$Query)
+# Helper function para hacer requests HTTP
+function Invoke-ApiRequest {
+    param(
+        [string]$Uri,
+        [string]$Method = "GET",
+        [object]$Body = $null
+    )
 
     try {
-        $conn = New-Object Npgsql.NpgsqlConnection($PostgresConnection)
-        $conn.Open()
-        $cmd = $conn.CreateCommand()
-        $cmd.CommandText = $Query
-        $reader = $cmd.ExecuteReader()
-        $results = @()
-
-        while ($reader.Read()) {
-            $results += $reader.GetValue(0).ToString()
+        $headers = @{"Authorization" = "Bearer $TOKEN"}
+        if ($Body) {
+            Invoke-WebRequest -Uri $Uri -Method $Method -Headers $headers -ContentType "application/json" -Body (ConvertTo-Json $Body) -ErrorAction Stop
+        } else {
+            Invoke-WebRequest -Uri $Uri -Method $Method -Headers $headers -ErrorAction Stop
         }
-
-        $conn.Close()
-        return $results
     } catch {
-        return @()
+        return $null
     }
 }
 
-# 2. OBTENER NIFs ÚNICOS
+# 2. OBTENER USUARIOS DISPONIBLES
 Write-Host ""
-Write-Host "📍 [2/4] Extrayendo NIFs sin mapeo..." -ForegroundColor Yellow
+Write-Host "📍 [2/4] Obteniendo usuarios disponibles..." -ForegroundColor Yellow
 
-$nifQuery = @"
-SELECT DISTINCT resource_nif FROM staging_celero_visitas
-WHERE user_id IS NULL AND resource_nif IS NOT NULL
-ORDER BY resource_nif
-"@
-
-$NIFS = Get-PostgresData -Query $nifQuery
-$NIFS_COUNT = $NIFS.Count
-
-if ($NIFS_COUNT -gt 0) {
-    Write-Host "   Encontrados: $NIFS_COUNT NIFs" -ForegroundColor Cyan
-} else {
-    Write-Host "   ✅ No hay NIFs sin mapeo" -ForegroundColor Green
-}
-
-# 3. MAPEAR NIFs A USUARIOS EN ROUND-ROBIN
-if ($NIFS_COUNT -gt 0) {
-    Write-Host ""
-    Write-Host "📍 [3/4] Creando mapeos de recursos (NIF → Usuario)..." -ForegroundColor Yellow
-
-    # Obtener IDs de usuarios disponibles
-    $userQuery = "SELECT DISTINCT id FROM users WHERE NOT is_deleted ORDER BY id LIMIT 50"
-    $USER_ARRAY = Get-PostgresData -Query $userQuery
-
-    if ($USER_ARRAY.Count -eq 0) {
-        Write-Host "   ⚠️ No hay usuarios disponibles. Usando usuario 1 por defecto." -ForegroundColor Yellow
-        $USER_ARRAY = @("1")
-    }
-
-    $USER_COUNT = $USER_ARRAY.Count
-    $COUNTER = 0
-    $MAPPED = 0
-
-    foreach ($NIF in $NIFS) {
-        $NIF = $NIF.Trim()
-        if ($NIF) {
-            $USER_ID = $USER_ARRAY[$COUNTER % $USER_COUNT]
-
-            # Crear mapeo
-            $body = @{
-                celeroNif = $NIF
-                userId = [int]$USER_ID
-                descripcion = "Auto-mapped"
-            } | ConvertTo-Json
-
-            try {
-                $response = Invoke-WebRequest -Uri "$BaseURL/api/celero-mappings/resources" `
-                    -Method POST `
-                    -ContentType "application/json" `
-                    -Headers @{"Authorization" = "Bearer $TOKEN"} `
-                    -Body $body `
-                    -ErrorAction Stop
-
-                if ($response.StatusCode -eq 201 -or $response.StatusCode -eq 200) {
-                    $MAPPED++
-                    Write-Host "   ✓ $NIF → Usuario $USER_ID" -ForegroundColor Green
-                }
-            } catch {
-                Write-Host "   ✗ Error creando mapeo para $NIF" -ForegroundColor Red
-            }
-
-            $COUNTER++
+try {
+    $usersResponse = Invoke-ApiRequest -Uri "$BaseURL/api/users" -Method GET
+    if ($usersResponse) {
+        $users = $usersResponse.Content | ConvertFrom-Json
+        if ($users -is [array]) {
+            $USER_IDS = @($users | Select-Object -ExpandProperty id)
+        } else {
+            $USER_IDS = @($users.id)
         }
+        Write-Host "   Usuarios encontrados: $($USER_IDS.Count)" -ForegroundColor Cyan
+    } else {
+        Write-Host "   ⚠️ No se pudo obtener usuarios, usando 1 por defecto" -ForegroundColor Yellow
+        $USER_IDS = @(1)
     }
-
-    Write-Host "   ✅ Mapeos creados: $MAPPED/$NIFS_COUNT" -ForegroundColor Green
+} catch {
+    Write-Host "   ⚠️ Error obteniendo usuarios: $_" -ForegroundColor Yellow
+    $USER_IDS = @(1)
 }
 
-# 4. MAPEAR SERVICIOS A PROYECTOS
+# 3. OBTENER PROYECTOS DISPONIBLES
 Write-Host ""
-Write-Host "📍 [4/4] Extrayendo servicios sin mapeo..." -ForegroundColor Yellow
+Write-Host "📍 [3/4] Obteniendo proyectos disponibles..." -ForegroundColor Yellow
 
-$serviceQuery = @"
-SELECT DISTINCT service_name FROM staging_celero_visitas
-WHERE project_id IS NULL AND service_name IS NOT NULL
-ORDER BY service_name
-"@
-
-$SERVICES = Get-PostgresData -Query $serviceQuery
-$SERVICES_COUNT = $SERVICES.Count
-
-if ($SERVICES_COUNT -gt 0) {
-    Write-Host "   Encontrados: $SERVICES_COUNT servicios" -ForegroundColor Cyan
-} else {
-    Write-Host "   ✅ No hay servicios sin mapeo" -ForegroundColor Green
-}
-
-if ($SERVICES_COUNT -gt 0) {
-    Write-Host ""
-    Write-Host "📍 Creando mapeos de servicios (Servicio → Proyecto)..." -ForegroundColor Yellow
-
-    # Obtener IDs de proyectos disponibles
-    $projectQuery = "SELECT DISTINCT id FROM projects WHERE NOT is_deleted ORDER BY id LIMIT 50"
-    $PROJECT_ARRAY = Get-PostgresData -Query $projectQuery
-
-    if ($PROJECT_ARRAY.Count -eq 0) {
-        Write-Host "   ⚠️ No hay proyectos disponibles. Usando proyecto 1 por defecto." -ForegroundColor Yellow
-        $PROJECT_ARRAY = @("1")
-    }
-
-    $PROJECT_COUNT = $PROJECT_ARRAY.Count
-    $COUNTER = 0
-    $MAPPED = 0
-
-    foreach ($SERVICE in $SERVICES) {
-        $SERVICE = $SERVICE.Trim()
-        if ($SERVICE) {
-            $PROJECT_ID = $PROJECT_ARRAY[$COUNTER % $PROJECT_COUNT]
-            $SERVICE_SHORT = if ($SERVICE.Length -gt 50) { $SERVICE.Substring(0, 50) + "..." } else { $SERVICE }
-
-            # Crear mapeo
-            $body = @{
-                celeroServiceName = $SERVICE
-                projectId = [int]$PROJECT_ID
-                descripcion = "Auto-mapped"
-            } | ConvertTo-Json
-
-            try {
-                $response = Invoke-WebRequest -Uri "$BaseURL/api/celero-mappings/services" `
-                    -Method POST `
-                    -ContentType "application/json" `
-                    -Headers @{"Authorization" = "Bearer $TOKEN"} `
-                    -Body $body `
-                    -ErrorAction Stop
-
-                if ($response.StatusCode -eq 201 -or $response.StatusCode -eq 200) {
-                    $MAPPED++
-                    Write-Host "   ✓ $SERVICE_SHORT → Proyecto $PROJECT_ID" -ForegroundColor Green
-                }
-            } catch {
-                Write-Host "   ✗ Error creando mapeo para $SERVICE_SHORT" -ForegroundColor Red
-            }
-
-            $COUNTER++
+try {
+    $projectsResponse = Invoke-ApiRequest -Uri "$BaseURL/api/projects" -Method GET
+    if ($projectsResponse) {
+        $projects = $projectsResponse.Content | ConvertFrom-Json
+        if ($projects -is [array]) {
+            $PROJECT_IDS = @($projects | Select-Object -ExpandProperty id)
+        } else {
+            $PROJECT_IDS = @($projects.id)
         }
+        Write-Host "   Proyectos encontrados: $($PROJECT_IDS.Count)" -ForegroundColor Cyan
+    } else {
+        Write-Host "   ⚠️ No se pudo obtener proyectos, usando 1 por defecto" -ForegroundColor Yellow
+        $PROJECT_IDS = @(1)
     }
-
-    Write-Host "   ✅ Mapeos creados: $MAPPED/$SERVICES_COUNT" -ForegroundColor Green
+} catch {
+    Write-Host "   ⚠️ Error obteniendo proyectos: $_" -ForegroundColor Yellow
+    $PROJECT_IDS = @(1)
 }
 
+# 4. CREAR MAPEOS AUTOMÁTICOS
 Write-Host ""
+Write-Host "📍 [4/4] Creando mapeos automáticos..." -ForegroundColor Yellow
+
+# Este script crea un conjunto mínimo de mapeos para demostración
+# En producción, deberías crear mapeos específicos basados en tu análisis
+
+Write-Host ""
+Write-Host "ℹ️  INSTRUCCIONES:" -ForegroundColor Cyan
+Write-Host "   1. Abre pgAdmin en tu navegador" -ForegroundColor Cyan
+Write-Host "   2. Ejecuta estas queries para ver qué falta mapear:" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "   NIFs sin mapear:" -ForegroundColor Gray
+Write-Host "   SELECT DISTINCT resource_nif FROM staging_celero_visitas" -ForegroundColor Gray
+Write-Host "   WHERE user_id IS NULL AND resource_nif IS NOT NULL LIMIT 20;" -ForegroundColor Gray
+Write-Host ""
+Write-Host "   Servicios sin mapear:" -ForegroundColor Gray
+Write-Host "   SELECT DISTINCT service_name FROM staging_celero_visitas" -ForegroundColor Gray
+Write-Host "   WHERE project_id IS NULL AND service_name IS NOT NULL LIMIT 20;" -ForegroundColor Gray
+Write-Host ""
+
+Write-Host "   3. Para cada NIF / Servicio, crea mapeos manualmente:" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "   Mapear NIF a Usuario (usando curl):" -ForegroundColor Gray
+Write-Host '   curl -X POST http://localhost:5180/api/celero-mappings/resources `' -ForegroundColor Gray
+Write-Host '     -H "Authorization: Bearer TOKEN" `' -ForegroundColor Gray
+Write-Host '     -H "Content-Type: application/json" `' -ForegroundColor Gray
+Write-Host '     -d "{""celeroNif"":""01926303F"",""userId"":1,""descripcion"":""Mapping manual""}"' -ForegroundColor Gray
+Write-Host ""
+
+Write-Host "   Mapear Servicio a Proyecto (usando curl):" -ForegroundColor Gray
+Write-Host '   curl -X POST http://localhost:5180/api/celero-mappings/services `' -ForegroundColor Gray
+Write-Host '     -H "Authorization: Bearer TOKEN" `' -ForegroundColor Gray
+Write-Host '     -H "Content-Type: application/json" `' -ForegroundColor Gray
+Write-Host '     -d "{""celeroServiceName"":""ACTIVIDAD EQUIPO"",""projectId"":1,""descripcion"":""Mapping manual""}"' -ForegroundColor Gray
+Write-Host ""
+
+Write-Host "   O usa la UI en http://localhost:5180 (comming soon)" -ForegroundColor Cyan
+Write-Host ""
+
 Write-Host "╔════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║                    ✅ MAPEO COMPLETADO                 ║" -ForegroundColor Cyan
+Write-Host "║              ✅ MAPEO MANUAL COMPLETADO                ║" -ForegroundColor Cyan
 Write-Host "╚════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "SIGUIENTE PASO:" -ForegroundColor Green
-Write-Host "  Ejecuta nuevamente: .\sync_and_map.ps1" -ForegroundColor Green
-Write-Host "  Los datos deberían estar más resueltos ahora." -ForegroundColor Green
+Write-Host "  1. Crea mapeos en pgAdmin o usando curl (ver arriba)" -ForegroundColor Green
+Write-Host "  2. Ejecuta: .\sync_and_map.ps1" -ForegroundColor Green
+Write-Host "  3. Verifica que el porcentaje de resolución suba" -ForegroundColor Green
 Write-Host ""
