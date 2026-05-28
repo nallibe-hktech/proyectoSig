@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="SIG.API/SIG.API.csproj" />
+  <Project Path="SIG.Application/SIG.Application.csproj" />
+  <Project Path="SIG.Domain/SIG.Domain.csproj" />
+  <Project Path="SIG.Infrastructure/SIG.Infrastructure.csproj" />
+  <Project Path="SIG.Tests/SIG.Tests.csproj" />
+</Solution>

@@ -1,0 +1,128 @@
+<mat-sidenav-container class="sig-shell-container">
+
+  <!-- SIDENAV -->
+  <mat-sidenav
+    #sidenav
+    class="sig-sidenav"
+    [mode]="isMobile() ? 'over' : 'side'"
+    [opened]="isMobile() ? false : sidenavOpen()"
+    aria-label="Navegación principal"
+    data-testid="sidenav"
+  >
+    <div class="sig-sidenav-logo">
+      <a routerLink="/dashboard" class="sig-logo-mark sig-logo-mark--dark">
+        <span class="sig-logo">SIG</span>
+        <span class="sig-logo-sub">Plataforma de Cierres</span>
+      </a>
+    </div>
+
+    <mat-divider />
+
+    <div class="sig-nav-group-label">Operativo</div>
+    <mat-nav-list>
+      @for (item of operativoNav(); track item.route) {
+        <a
+          mat-list-item
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          [attr.data-testid]="item.testId"
+          [attr.aria-label]="item.label"
+          [matTooltip]="sidenavOpen() ? '' : item.label"
+          matTooltipPosition="right"
+        >
+          <mat-icon matListItemIcon aria-hidden="true">{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+
+    <mat-divider />
+
+    <div class="sig-nav-group-label">Administración</div>
+    <mat-nav-list>
+      @for (item of adminNav(); track item.route) {
+        <a
+          mat-list-item
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          [attr.data-testid]="item.testId"
+          [attr.aria-label]="item.label"
+          [matTooltip]="sidenavOpen() ? '' : item.label"
+          matTooltipPosition="right"
+        >
+          <mat-icon matListItemIcon aria-hidden="true">{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <mat-sidenav-content>
+
+    <!-- APPBAR -->
+    <mat-toolbar class="sig-appbar" role="banner">
+      <button
+        mat-icon-button
+        (click)="isMobile() ? sidenav.toggle() : toggleSidenav()"
+        aria-label="Abrir o cerrar menú de navegación"
+        data-testid="btn-menu"
+      >
+        <mat-icon>{{ sidenavOpen() ? 'menu_open' : 'menu' }}</mat-icon>
+      </button>
+
+      <a routerLink="/dashboard" class="sig-logo-mark" style="margin-left: 8px; margin-right: 16px;">
+        <span class="sig-logo">SIG</span>
+        <span class="sig-logo-sub">Plataforma de Cierres</span>
+      </a>
+
+      <span class="sig-spacer"></span>
+
+      @if (periodos().length > 0) {
+        <mat-select
+          [value]="selectedPeriodo()"
+          (valueChange)="onChangePeriodo($event)"
+          class="sig-periodo-select"
+          aria-label="Seleccionar período activo"
+          data-testid="select-periodo"
+          panelClass="sig-periodo-panel"
+        >
+          @for (p of periodos(); track p.id) {
+            <mat-option [value]="p.id" [attr.data-testid]="'option-periodo-' + p.id">{{ p.nombre }}</mat-option>
+          }
+        </mat-select>
+      }
+
+      <span style="margin-left: 12px; font-size: 13px; color: rgba(255,255,255,0.85); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" data-testid="user-display">
+        {{ userDisplay() }}
+      </span>
+
+      <button
+        mat-icon-button
+        [matMenuTriggerFor]="menuUsuario"
+        aria-label="Menú de usuario"
+        data-testid="btn-menu-usuario"
+        style="margin-left: 8px;"
+      >
+        <mat-icon>account_circle</mat-icon>
+      </button>
+
+      <mat-menu #menuUsuario="matMenu">
+        <button mat-menu-item data-testid="menu-perfil">
+          <mat-icon>person</mat-icon>
+          <span>Perfil</span>
+        </button>
+        <mat-divider />
+        <button mat-menu-item (click)="cerrarSesion()" data-testid="menu-logout">
+          <mat-icon>logout</mat-icon>
+          <span>Cerrar sesión</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <main id="main-content" class="sig-main-content">
+      <router-outlet />
+    </main>
+
+  </mat-sidenav-content>
+</mat-sidenav-container>

@@ -1,0 +1,492 @@
+// ============================================================
+// SIG · Plataforma de Cierres — Global Styles
+// Theme: Material 3 (M3) con paleta corporativa navy
+// ============================================================
+
+@use '@angular/material' as mat;
+
+// ------------------------------------------------------------
+// 1. mat.theme — base M3 con paleta azure (la más cercana a navy)
+//    Tipografía: Inter (cargada en index.html vía Google Fonts)
+//    Density: 0 (estándar M3)
+// ------------------------------------------------------------
+html {
+  height: 100%;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$orange-palette,
+      ),
+      typography: Inter,
+      density: 0,
+    )
+  );
+
+  // ----------------------------------------------------------
+  // 2. Override de tokens M3 con la paleta corporativa SIG
+  //    Basado en diseños Penpot (fuente de verdad visual).
+  //    Colores extraídos de penpot-design-*.svg.
+  // ----------------------------------------------------------
+
+  // PRIMARY — Azul corporativo Penpot #1F4E78
+  --mat-sys-primary:                  #1F4E78;
+  --mat-sys-on-primary:               #FFFFFF;
+  --mat-sys-primary-container:        #D6DFF3;
+  --mat-sys-on-primary-container:     #0D1B30;
+
+  // SECONDARY — Azul claro Penpot #2E5C8A
+  --mat-sys-secondary:                #2E5C8A;
+  --mat-sys-on-secondary:             #FFFFFF;
+  --mat-sys-secondary-container:      #DBEAFE;
+  --mat-sys-on-secondary-container:   #1E3A5F;
+
+  // TERTIARY — Dorado #C9A961
+  --mat-sys-tertiary:                 #C9A961;
+  --mat-sys-on-tertiary:              #3B2800;
+  --mat-sys-tertiary-container:       #F5E8C2;
+  --mat-sys-on-tertiary-container:    #4A3500;
+
+  // ERROR — Rojo Penpot #D32F2F
+  --mat-sys-error:                    #D32F2F;
+  --mat-sys-on-error:                 #FFFFFF;
+  --mat-sys-error-container:          #FFDAD6;
+  --mat-sys-on-error-container:       #410002;
+
+  // SURFACE — Fondo página Penpot #F0F4F8
+  --mat-sys-surface:                  #F0F4F8;
+  --mat-sys-on-surface:               #1A1A1A;
+  --mat-sys-surface-variant:          #E8EDF5;
+  --mat-sys-on-surface-variant:       #44474F;
+  --mat-sys-outline:                  #74777F;
+  --mat-sys-outline-variant:          #C4C7CF;
+
+  // ----------------------------------------------------------
+  // 3. Tokens semánticos propios (Success, Warning, Danger)
+  //    Colores exactos de los diseños Penpot.
+  // ----------------------------------------------------------
+  --sig-success:                      #70AD47;
+  --sig-success-dark:                 #5A9438;
+  --sig-success-container:            #E8F5E9;
+  --sig-on-success:                   #FFFFFF;
+  --sig-on-success-container:         #2E7D32;
+
+  --sig-warning:                      #FFC107;
+  --sig-warning-dark:                 #E65100;
+  --sig-warning-container:            #FFF3E0;
+  --sig-on-warning:                   #FFFFFF;
+  --sig-on-warning-container:         #E65100;
+
+  --sig-danger:                       #D32F2F;
+  --sig-danger-dark:                  #C62828;
+  --sig-danger-container:             #FFEBEE;
+  --sig-on-danger:                    #FFFFFF;
+  --sig-on-danger-container:          #C62828;
+
+  --sig-info:                         #1F4E78;
+  --sig-info-container:               #E8F4F8;
+
+  // Colores adicionales Penpot
+  --sig-primary-light:                #2E5C8A;
+  --sig-primary-dark:                 #163A52;
+  --sig-light:                        #E8F4F8;
+  --sig-lighter:                      #F5F5F5;
+  --sig-border:                       #D0D0D0;
+  --sig-text-muted:                   #666666;
+  --sig-text-light:                   #888888;
+
+  // ----------------------------------------------------------
+  // 4. Espaciado (escala 4px)
+  // ----------------------------------------------------------
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-64: 256px;
+}
+
+// ------------------------------------------------------------
+// 5. Reset y base de body
+// ------------------------------------------------------------
+body {
+  color-scheme: light;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  margin: 0;
+  height: 100%;
+}
+
+// ------------------------------------------------------------
+// 6. Focus visible accesible (WCAG AA)
+// ------------------------------------------------------------
+:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+// ------------------------------------------------------------
+// 7. Tipografía — clase para campos numéricos (Roboto Mono)
+// ------------------------------------------------------------
+.mono-num {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+// ------------------------------------------------------------
+// 8. Badges de estado del flujo de aprobación
+// ------------------------------------------------------------
+.sig-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+
+  &--pending-pm {
+    background: var(--sig-warning-container);
+    color: var(--sig-warning);
+  }
+
+  &--pending-backoffice {
+    background: var(--sig-warning-container);
+    color: var(--sig-warning);
+  }
+
+  &--pending-fico {
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-secondary);
+  }
+
+  &--pending-direction {
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-primary);
+  }
+
+  &--approved {
+    background: var(--sig-success-container);
+    color: var(--sig-success);
+  }
+
+  &--rejected {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-error);
+  }
+
+  &--closed {
+    background: var(--mat-sys-surface-variant);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+// ------------------------------------------------------------
+// 9. Skeleton shimmer animation
+// ------------------------------------------------------------
+@keyframes skeleton-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.sig-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--mat-sys-surface-variant) 25%,
+    var(--mat-sys-primary-container) 50%,
+    var(--mat-sys-surface-variant) 75%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.5s infinite ease-in-out;
+  border-radius: 4px;
+}
+
+.sig-skeleton-row {
+  height: 48px;
+  margin-bottom: 2px;
+  @extend .sig-skeleton;
+}
+
+.sig-skeleton-text {
+  height: 16px;
+  border-radius: 4px;
+  @extend .sig-skeleton;
+}
+
+// ------------------------------------------------------------
+// 10. AppBar (mat-toolbar override para paleta navy)
+// ------------------------------------------------------------
+.sig-appbar.mat-toolbar {
+  background-color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+
+  .sig-logo {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: 0.08em;
+    color: #FFFFFF;
+  }
+
+  .sig-logo-sub {
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 4px;
+    display: none;
+
+    @media (min-width: 960px) {
+      display: inline;
+    }
+  }
+}
+
+// ------------------------------------------------------------
+// 11. Sidenav
+// ------------------------------------------------------------
+.sig-sidenav {
+  width: var(--space-64); // 256px expandido
+  background: var(--mat-sys-surface);
+  border-right: 1px solid var(--mat-sys-outline-variant);
+
+  .sig-nav-group-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mat-sys-on-surface-variant);
+    padding: var(--space-4) var(--space-4) var(--space-2) var(--space-4);
+    margin-top: var(--space-4);
+  }
+
+  mat-nav-list {
+    padding-top: 0;
+  }
+
+  a[mat-list-item] {
+    border-radius: 8px;
+    margin: 2px var(--space-2);
+
+    &.active {
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-primary);
+    }
+  }
+}
+
+// Sidenav colapsado (64px)
+.sig-sidenav-collapsed {
+  width: var(--space-16); // 64px
+}
+
+// ------------------------------------------------------------
+// 12. Breadcrumbs
+// ------------------------------------------------------------
+.sig-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 13px;
+  color: var(--mat-sys-on-surface-variant);
+  padding: var(--space-2) 0 var(--space-4);
+
+  a {
+    color: var(--mat-sys-secondary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .sig-breadcrumb-separator {
+    color: var(--mat-sys-outline);
+    font-size: 16px;
+  }
+
+  .sig-breadcrumb-current {
+    color: var(--mat-sys-on-surface);
+    font-weight: 500;
+  }
+}
+
+// ------------------------------------------------------------
+// 13. Tarjetas KPI
+// ------------------------------------------------------------
+.sig-kpi-card {
+  min-width: 160px;
+
+  .sig-kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mat-sys-on-surface-variant);
+    margin-bottom: var(--space-2);
+  }
+
+  .sig-kpi-value {
+    font-size: 40px;
+    font-weight: 600;
+    color: var(--mat-sys-primary);
+    line-height: 1;
+    font-family: 'Roboto Mono', monospace;
+  }
+
+  .sig-kpi-trend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    margin-top: var(--space-2);
+
+    &--up {
+      color: var(--sig-success);
+    }
+
+    &--down {
+      color: var(--mat-sys-error);
+    }
+  }
+}
+
+// ------------------------------------------------------------
+// 14. Snackbar semánticos
+// ------------------------------------------------------------
+.snack-success .mdc-snackbar__surface {
+  background: var(--sig-success);
+  color: var(--sig-on-success);
+}
+
+.snack-error .mdc-snackbar__surface {
+  background: var(--mat-sys-error);
+  color: var(--mat-sys-on-error);
+}
+
+.snack-warning .mdc-snackbar__surface {
+  background: var(--sig-warning);
+  color: var(--sig-on-warning);
+}
+
+.snack-info .mdc-snackbar__surface {
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+}
+
+// ------------------------------------------------------------
+// 15. Tablas
+// ------------------------------------------------------------
+.sig-table {
+  width: 100%;
+
+  th.mat-header-cell {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--mat-sys-surface);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--mat-sys-on-surface-variant);
+    border-bottom: 2px solid var(--mat-sys-outline-variant);
+  }
+
+  tr.mat-row:hover {
+    background: var(--mat-sys-surface-variant);
+  }
+
+  td.mat-cell {
+    font-size: 14px;
+    color: var(--mat-sys-on-surface);
+  }
+
+  .sig-table-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+}
+
+// ------------------------------------------------------------
+// 16. Contenedor principal de página
+// ------------------------------------------------------------
+.sig-page {
+  padding: var(--space-6);
+  width: 100%;
+  box-sizing: border-box;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-6);
+  }
+
+  &__title {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--mat-sys-primary);
+    margin: 0;
+  }
+}
+
+// ------------------------------------------------------------
+// 17. Logo SIG (implementación CSS — se reemplaza con SVG real)
+// ------------------------------------------------------------
+.sig-logo-mark {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.sig-logo-mark .sig-logo {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+.sig-logo-mark .sig-logo-sub {
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.05em;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+// Versión negativa (login — fondo claro)
+.sig-logo-mark--dark .sig-logo {
+  color: var(--mat-sys-primary);
+}
+
+.sig-logo-mark--dark .sig-logo-sub {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// ------------------------------------------------------------
+// 18. Responsive utilities
+// ------------------------------------------------------------
+@media (max-width: 599px) {
+  .sig-page {
+    padding: var(--space-4);
+  }
+
+  .sig-kpi-card .sig-kpi-value {
+    font-size: 28px;
+  }
+}

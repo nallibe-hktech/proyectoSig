@@ -1,0 +1,6 @@
+@SIG.API_HostAddress = http://localhost:5064
+
+GET {{SIG.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

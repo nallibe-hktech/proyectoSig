@@ -1,0 +1,135 @@
+using SIG.Application.DTOs;
+using SIG.Application.Interfaces.Integrations;
+using SIG.Application.Interfaces.Repositories;
+using SIG.Application.Services;
+using SIG.Domain.Entities.Staging;
+using SIG.Domain.Exceptions;
+
+namespace SIG.Tests.Unit.Services;
+
+public class SyncServiceTests
+{
+    private readonly ICeleroClient _celero = Substitute.For<ICeleroClient>();
+    private readonly IBizneoClient _bizneo = Substitute.For<IBizneoClient>();
+    private readonly IIntratimeClient _intratime = Substitute.For<IIntratimeClient>();
+    private readonly IPayHawkClient _payhawk = Substitute.For<IPayHawkClient>();
+    private readonly IStagingRepository<StagingCeleroVisita> _celeroRepo = Substitute.For<IStagingRepository<StagingCeleroVisita>>();
+    private readonly IStagingRepository<StagingBizneoEmpleado> _empRepo = Substitute.For<IStagingRepository<StagingBizneoEmpleado>>();
+    private readonly IStagingRepository<StagingBizneoHora> _horaRepo = Substitute.For<IStagingRepository<StagingBizneoHora>>();
+    private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo = Substitute.For<IStagingRepository<StagingIntratimeFichaje>>();
+    private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo = Substitute.For<IStagingRepository<StagingPayHawkGasto>>();
+
+    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _celeroRepo, _empRepo, _horaRepo, _ficRepo, _gastoRepo);
+
+    [Fact]
+    public async Task SyncAsync_SistemaDesconocido_LanzaIntegrationException()
+    {
+        var sut = CreateSut();
+        await FluentActions.Awaiting(() => sut.SyncAsync("no-existe", CancellationToken.None))
+            .Should().ThrowAsync<IntegrationException>();
+    }
+
+    [Fact]
+    public async Task SyncAsync_Celero_InsertaVisitasNuevasYRespetaHash()
+    {
+        _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new CeleroVisitaDto("v1", 1, 100, 200, new DateOnly(2026, 3, 1), 1, 0),
+                new CeleroVisitaDto("v2", 1, 100, 200, new DateOnly(2026, 3, 2), 1, 0),
+            });
+        _celeroRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var sut = CreateSut();
+        var result = await sut.SyncAsync("celero", CancellationToken.None);
+
+        result.Sistema.Should().Be("celero");
+        result.FilasInsertadas.Should().Be(2);
+        result.FilasDuplicadasIgnoradas.Should().Be(0);
+        await _celeroRepo.Received(1).AddRangeAsync(Arg.Is<IEnumerable<StagingCeleroVisita>>(r => r.Count() == 2), Arg.Any<CancellationToken>());
+        await _celeroRepo.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SyncAsync_Celero_HashExistente_NoInsertaIncrementaDuplicados()
+    {
+        _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new CeleroVisitaDto("v1", 1, 100, 200, new DateOnly(2026, 3, 1), 1, 0),
+                new CeleroVisitaDto("v2", 1, 100, 200, new DateOnly(2026, 3, 2), 1, 0),
+            });
+        _celeroRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        var sut = CreateSut();
+        var result = await sut.SyncAsync("celero", CancellationToken.None);
+
+        result.FilasInsertadas.Should().Be(0);
+        result.FilasDuplicadasIgnoradas.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task SyncAsync_PayHawk_InsertaGastosNuevos()
+    {
+        _payhawk.GetGastosAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new PayHawkGastoDto("g1", 1, 100, new DateOnly(2026, 3, 1), 50m, "viaje"),
+            });
+        _gastoRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var sut = CreateSut();
+        var result = await sut.SyncAsync("payhawk", CancellationToken.None);
+
+        result.Sistema.Should().Be("payhawk");
+        result.FilasInsertadas.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task SyncAsync_NombreSistemaMayusculas_SeNormalizaALowerCase()
+    {
+        _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<CeleroVisitaDto>());
+
+        var sut = CreateSut();
+        var result = await sut.SyncAsync("CELERO", CancellationToken.None);
+        result.Sistema.Should().Be("celero");
+    }
+
+    [Fact]
+    public async Task SyncAsync_Intratime_PersisteFichajesConKindUtc()
+    {
+        _intratime.GetFichajesAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new IntratimeFichajeDto("f1", 1, new DateTime(2026, 3, 1, 8, 0, 0, DateTimeKind.Unspecified), new DateTime(2026, 3, 1, 17, 0, 0, DateTimeKind.Unspecified)),
+            });
+        _ficRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var sut = CreateSut();
+        var result = await sut.SyncAsync("intratime", CancellationToken.None);
+
+        result.FilasInsertadas.Should().Be(1);
+        // Verifica que los DateTimes guardados tienen Kind=Utc (gotcha Npgsql)
+        await _ficRepo.Received(1).AddRangeAsync(
+            Arg.Is<IEnumerable<StagingIntratimeFichaje>>(rows =>
+                rows.All(r => r.Entrada.Kind == DateTimeKind.Utc && (!r.Salida.HasValue || r.Salida.Value.Kind == DateTimeKind.Utc))),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SyncAsync_Bizneo_SincronizaEmpleadosYHoras()
+    {
+        _bizneo.GetEmpleadosAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { new BizneoEmpleadoDto("e1", "12345678A", "Pepe", "Operaciones") });
+        _bizneo.GetHorasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { new BizneoHoraDto("h1", 1, 100, new DateOnly(2026, 3, 1), 8m) });
+        _empRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+        _horaRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var sut = CreateSut();
+        var result = await sut.SyncAsync("bizneo", CancellationToken.None);
+
+        result.FilasInsertadas.Should().Be(2); // 1 empleado + 1 hora
+    }
+}

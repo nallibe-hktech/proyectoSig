@@ -1,0 +1,18 @@
+  Determinando los proyectos que se van a restaurar...
+  Todos los proyectos están actualizados para la restauración.
+  Sonar: (SIG.Domain.csproj) The analysis targets file not found: C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\.sonarqube\bin\targets\SonarQube.Integration.targets
+  SIG.Domain -> C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Domain\bin\Debug\net10.0\SIG.Domain.dll
+  Sonar: (SIG.Application.csproj) The analysis targets file not found: C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\.sonarqube\bin\targets\SonarQube.Integration.targets
+  SIG.Application -> C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Application\bin\Debug\net10.0\SIG.Application.dll
+  Sonar: (SIG.Infrastructure.csproj) The analysis targets file not found: C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\.sonarqube\bin\targets\SonarQube.Integration.targets
+  SIG.Infrastructure -> C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Infrastructure\bin\Debug\net10.0\SIG.Infrastructure.dll
+  Sonar: (SIG.API.csproj) The analysis targets file not found: C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\.sonarqube\bin\targets\SonarQube.Integration.targets
+  SIG.API -> C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.API\bin\Debug\net10.0\SIG.API.dll
+  Sonar: (SIG.Tests.csproj) The analysis targets file not found: C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\.sonarqube\bin\targets\SonarQube.Integration.targets
+  SIG.Tests -> C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.Tests.dll
+
+Compilación correcta.
+    0 Advertencia(s)
+    0 Errores
+
+Tiempo transcurrido 00:00:02.16

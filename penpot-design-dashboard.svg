@@ -1,0 +1,262 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', system-ui, sans-serif">
+  <defs>
+    <linearGradient id="sidebarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1F4E78"/>
+      <stop offset="100%" stop-color="#163A52"/>
+    </linearGradient>
+    <linearGradient id="kpi1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1F4E78"/>
+      <stop offset="100%" stop-color="#2E5C8A"/>
+    </linearGradient>
+    <linearGradient id="kpi2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#70AD47"/>
+      <stop offset="100%" stop-color="#5A9438"/>
+    </linearGradient>
+    <linearGradient id="kpi3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2E5C8A"/>
+      <stop offset="100%" stop-color="#1F4E78"/>
+    </linearGradient>
+    <linearGradient id="kpi4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#163A52"/>
+      <stop offset="100%" stop-color="#1F4E78"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#1F4E78" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowCard" x="-5%" y="-5%" width="110%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#1F4E78" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1440" height="900" fill="#F0F4F8"/>
+
+  <!-- ─── SIDEBAR ─── -->
+  <rect width="260" height="900" fill="url(#sidebarGrad)"/>
+
+  <!-- Logo area -->
+  <rect x="20" y="20" width="220" height="64" rx="8" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="52" cy="52" r="18" fill="rgba(112,173,71,0.9)"/>
+  <text x="52" y="58" font-size="16" fill="white" text-anchor="middle" font-weight="700">S</text>
+  <text x="80" y="48" font-size="16" fill="white" font-weight="700">SIG</text>
+  <text x="80" y="66" font-size="11" fill="rgba(255,255,255,0.6)">Plataforma Integral</text>
+
+  <!-- Nav label PRINCIPAL -->
+  <text x="20" y="112" font-size="10" fill="rgba(255,255,255,0.5)" font-weight="700" letter-spacing="1.5">PRINCIPAL</text>
+  <line x1="20" y1="118" x2="240" y2="118" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+
+  <!-- Nav items -->
+  <rect x="8" y="126" width="244" height="40" rx="6" fill="rgba(255,255,255,0.18)"/>
+  <rect x="8" y="126" width="3" height="40" rx="2" fill="#70AD47"/>
+  <text x="52" y="151" font-size="13" fill="white" font-weight="600">📊 Dashboard</text>
+
+  <text x="52" y="185" font-size="13" fill="rgba(255,255,255,0.7)">📁 Clientes</text>
+  <text x="52" y="218" font-size="13" fill="rgba(255,255,255,0.7)">🏗️ Proyectos</text>
+  <text x="52" y="251" font-size="13" fill="rgba(255,255,255,0.7)">⚡ Acciones</text>
+  <text x="52" y="284" font-size="13" fill="rgba(255,255,255,0.7)">🧮 Conceptos</text>
+  <text x="52" y="317" font-size="13" fill="rgba(255,255,255,0.7)">📅 Periodos</text>
+  <text x="52" y="350" font-size="13" fill="rgba(255,255,255,0.7)">✅ Aprobaciones</text>
+  <text x="52" y="383" font-size="13" fill="rgba(255,255,255,0.7)">💼 Contabilidad</text>
+  <text x="52" y="416" font-size="13" fill="rgba(255,255,255,0.7)">📈 Informes</text>
+
+  <!-- Nav label ADMINISTRACIÓN -->
+  <text x="20" y="450" font-size="10" fill="rgba(255,255,255,0.5)" font-weight="700" letter-spacing="1.5">ADMINISTRACIÓN</text>
+  <line x1="20" y1="456" x2="240" y2="456" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <text x="52" y="480" font-size="13" fill="rgba(255,255,255,0.7)">👥 Usuarios</text>
+  <text x="52" y="513" font-size="13" fill="rgba(255,255,255,0.7)">🏢 CECOs</text>
+  <text x="52" y="546" font-size="13" fill="rgba(255,255,255,0.7)">🔍 Auditoría</text>
+
+  <!-- User profile at bottom -->
+  <rect x="12" y="820" width="236" height="60" rx="8" fill="rgba(255,255,255,0.06)"/>
+  <circle cx="40" cy="850" r="16" fill="#2E5C8A"/>
+  <text x="40" y="855" font-size="12" fill="white" text-anchor="middle" font-weight="700">ML</text>
+  <text x="64" y="846" font-size="12" fill="white" font-weight="600">María López</text>
+  <text x="64" y="862" font-size="10" fill="rgba(255,255,255,0.5)">FICO · Activo</text>
+
+  <!-- ─── MAIN CONTENT ─── -->
+
+  <!-- Top bar -->
+  <rect x="260" y="0" width="1180" height="60" fill="white" filter="url(#shadow)"/>
+  <text x="290" y="38" font-size="20" fill="#1F4E78" font-weight="700">Dashboard</text>
+  <text x="480" y="38" font-size="13" fill="#999">Mayo 2026</text>
+
+  <!-- Period selector -->
+  <rect x="880" y="15" width="180" height="32" rx="6" fill="#F0F4F8" stroke="#D0D0D0" stroke-width="1"/>
+  <text x="900" y="36" font-size="13" fill="#1F4E78">📅 Mayo 2026 ▾</text>
+
+  <!-- Recalcular button -->
+  <rect x="1075" y="15" width="120" height="32" rx="6" fill="url(#kpi1)"/>
+  <text x="1135" y="36" font-size="12" fill="white" font-weight="600" text-anchor="middle">↻ Recalcular</text>
+
+  <!-- Notifications icon -->
+  <circle cx="1390" cy="30" r="16" fill="#F0F4F8"/>
+  <text x="1390" y="36" font-size="16" text-anchor="middle">🔔</text>
+  <circle cx="1401" cy="21" r="7" fill="#D32F2F"/>
+  <text x="1401" y="25" font-size="8" fill="white" text-anchor="middle" font-weight="700">3</text>
+
+  <!-- ─── KPI CARDS ─── -->
+  <rect x="280" y="80" width="260" height="100" rx="12" fill="white" filter="url(#shadowCard)"/>
+  <rect x="280" y="80" width="5" height="100" rx="2" fill="#1F4E78"/>
+  <text x="302" y="107" font-size="11" fill="#888" font-weight="700" letter-spacing="0.5">CIERRES COMPLETADOS</text>
+  <text x="302" y="145" font-size="36" fill="#1F4E78" font-weight="700">12</text>
+  <text x="302" y="168" font-size="11" fill="#70AD47">▲ +2 vs mes ant.</text>
+  <text x="520" y="145" font-size="28" fill="#E8F4F8">📋</text>
+
+  <rect x="560" y="80" width="260" height="100" rx="12" fill="white" filter="url(#shadowCard)"/>
+  <rect x="560" y="80" width="5" height="100" rx="2" fill="#FFC107"/>
+  <text x="582" y="107" font-size="11" fill="#888" font-weight="700" letter-spacing="0.5">PEND. APROBACIÓN</text>
+  <text x="582" y="145" font-size="36" fill="#E65100" font-weight="700">3</text>
+  <text x="582" y="168" font-size="11" fill="#E65100">⚠ Requieren atención</text>
+  <text x="800" y="145" font-size="28" fill="#FFF3E0">⏳</text>
+
+  <rect x="840" y="80" width="260" height="100" rx="12" fill="white" filter="url(#shadowCard)"/>
+  <rect x="840" y="80" width="5" height="100" rx="2" fill="#70AD47"/>
+  <text x="862" y="107" font-size="11" fill="#888" font-weight="700" letter-spacing="0.5">FACTURACIÓN TOTAL</text>
+  <text x="862" y="145" font-size="30" fill="#1F4E78" font-weight="700">€ 450K</text>
+  <text x="862" y="168" font-size="11" fill="#70AD47">▲ +12% vs objetivo</text>
+  <text x="1080" y="145" font-size="28" fill="#E8F5E9">💰</text>
+
+  <rect x="1120" y="80" width="260" height="100" rx="12" fill="white" filter="url(#shadowCard)"/>
+  <rect x="1120" y="80" width="5" height="100" rx="2" fill="#163A52"/>
+  <text x="1142" y="107" font-size="11" fill="#888" font-weight="700" letter-spacing="0.5">MARGEN PROMEDIO</text>
+  <text x="1142" y="145" font-size="36" fill="#1F4E78" font-weight="700">28%</text>
+  <text x="1142" y="168" font-size="11" fill="#888">Objetivo: 25%</text>
+  <text x="1362" y="145" font-size="28" fill="#E8F4F8">📊</text>
+
+  <!-- ─── ALERTS SECTION ─── -->
+  <rect x="280" y="200" width="500" height="180" rx="12" fill="white" filter="url(#shadow)"/>
+  <text x="302" y="228" font-size="14" fill="#1F4E78" font-weight="700">⚠️  Alertas</text>
+  <line x1="302" y1="238" x2="760" y2="238" stroke="#E8F4F8" stroke-width="2"/>
+
+  <rect x="294" y="248" width="472" height="36" rx="6" fill="#FFF3E0"/>
+  <rect x="294" y="248" width="4" height="36" rx="2" fill="#FFC107"/>
+  <text x="312" y="272" font-size="12" fill="#E65100">⚠  3 proyectos pendientes de aprobación FICO</text>
+
+  <rect x="294" y="292" width="472" height="36" rx="6" fill="#FFEBEE"/>
+  <rect x="294" y="292" width="4" height="36" rx="2" fill="#D32F2F"/>
+  <text x="312" y="316" font-size="12" fill="#C62828">❌  1 período bloqueado — requiere validación contabilidad</text>
+
+  <rect x="294" y="336" width="472" height="36" rx="6" fill="#E8F5E9"/>
+  <rect x="294" y="336" width="4" height="36" rx="2" fill="#70AD47"/>
+  <text x="312" y="360" font-size="12" fill="#2E7D32">✅  Cierre de abril completado y aprobado por FICO</text>
+
+  <!-- ─── CHART SECTION (bar chart visual) ─── -->
+  <rect x="800" y="200" width="580" height="180" rx="12" fill="white" filter="url(#shadow)"/>
+  <text x="822" y="228" font-size="14" fill="#1F4E78" font-weight="700">📊  Margen por Proyecto — Mayo 2026</text>
+  <line x1="822" y1="238" x2="1360" y2="238" stroke="#E8F4F8" stroke-width="2"/>
+
+  <!-- Bar chart -->
+  <rect x="840" y="315" width="60" height="50" rx="4" fill="#1F4E78"/>
+  <text x="870" y="310" font-size="10" fill="#666" text-anchor="middle">32%</text>
+  <text x="870" y="380" font-size="10" fill="#666" text-anchor="middle">Amex SS</text>
+
+  <rect x="930" y="330" width="60" height="35" rx="4" fill="#2E5C8A"/>
+  <text x="960" y="325" font-size="10" fill="#666" text-anchor="middle">25%</text>
+  <text x="960" y="380" font-size="10" fill="#666" text-anchor="middle">Granini</text>
+
+  <rect x="1020" y="320" width="60" height="45" rx="4" fill="#70AD47"/>
+  <text x="1050" y="315" font-size="10" fill="#666" text-anchor="middle">28%</text>
+  <text x="1050" y="380" font-size="10" fill="#666" text-anchor="middle">Amex New</text>
+
+  <rect x="1110" y="340" width="60" height="25" rx="4" fill="#163A52"/>
+  <text x="1140" y="335" font-size="10" fill="#666" text-anchor="middle">21%</text>
+  <text x="1140" y="380" font-size="10" fill="#666" text-anchor="middle">Proj D</text>
+
+  <line x1="830" y1="365" x2="1360" y2="365" stroke="#E8F4F8" stroke-width="1"/>
+  <text x="1340" y="348" font-size="11" fill="#70AD47" font-weight="600">🎯 Obj: 25%</text>
+  <line x1="830" y1="340" x2="1360" y2="340" stroke="#70AD47" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+
+  <!-- ─── PROYECTOS TABLE ─── -->
+  <rect x="280" y="400" width="1100" height="260" rx="12" fill="white" filter="url(#shadow)"/>
+  <text x="302" y="428" font-size="14" fill="#1F4E78" font-weight="700">📋  Proyectos Activos — Período Actual</text>
+  <line x1="302" y1="438" x2="1360" y2="438" stroke="#E8F4F8" stroke-width="2"/>
+
+  <!-- Table header -->
+  <rect x="280" y="446" width="1100" height="36" rx="0" fill="#E8F4F8"/>
+  <text x="302" y="470" font-size="11" fill="#1F4E78" font-weight="700">PROYECTO</text>
+  <text x="520" y="470" font-size="11" fill="#1F4E78" font-weight="700">CLIENTE</text>
+  <text x="700" y="470" font-size="11" fill="#1F4E78" font-weight="700">ESTADO</text>
+  <text x="860" y="470" font-size="11" fill="#1F4E78" font-weight="700">COSTE</text>
+  <text x="990" y="470" font-size="11" fill="#1F4E78" font-weight="700">FACTURACIÓN</text>
+  <text x="1150" y="470" font-size="11" fill="#1F4E78" font-weight="700">MARGEN</text>
+  <text x="1310" y="470" font-size="11" fill="#1F4E78" font-weight="700">ACCIONES</text>
+
+  <!-- Row 1 -->
+  <rect x="280" y="482" width="1100" height="44" fill="white"/>
+  <line x1="302" y1="526" x2="1360" y2="526" stroke="#F0F0F0" stroke-width="1"/>
+  <text x="302" y="509" font-size="13" fill="#1A1A1A" font-weight="600">Amex Shop Small</text>
+  <text x="302" y="524" font-size="11" fill="#888">PRY-001 · CECO-001</text>
+  <text x="520" y="509" font-size="13" fill="#444">American Express</text>
+  <rect x="700" y="497" width="70" height="20" rx="10" fill="#E8F5E9"/>
+  <text x="735" y="512" font-size="11" fill="#2E7D32" text-anchor="middle" font-weight="600">ACTIVO</text>
+  <text x="860" y="509" font-size="13" fill="#444">€ 15.000</text>
+  <text x="990" y="509" font-size="13" fill="#444">€ 20.500</text>
+  <text x="1150" y="509" font-size="13" fill="#70AD47" font-weight="700">32%</text>
+  <text x="1310" y="509" font-size="11" fill="#1F4E78">Ver · Editar</text>
+
+  <!-- Row 2 -->
+  <rect x="280" y="526" width="1100" height="44" fill="#FAFAFA"/>
+  <line x1="302" y1="570" x2="1360" y2="570" stroke="#F0F0F0" stroke-width="1"/>
+  <text x="302" y="553" font-size="13" fill="#1A1A1A" font-weight="600">Granini GPVs</text>
+  <text x="302" y="568" font-size="11" fill="#888">PRY-002 · CECO-002</text>
+  <text x="520" y="553" font-size="13" fill="#444">Granini</text>
+  <rect x="700" y="541" width="70" height="20" rx="10" fill="#E8F5E9"/>
+  <text x="735" y="556" font-size="11" fill="#2E7D32" text-anchor="middle" font-weight="600">ACTIVO</text>
+  <text x="860" y="553" font-size="13" fill="#444">€ 8.500</text>
+  <text x="990" y="553" font-size="13" fill="#444">€ 12.000</text>
+  <text x="1150" y="553" font-size="13" fill="#70AD47" font-weight="700">25%</text>
+  <text x="1310" y="553" font-size="11" fill="#1F4E78">Ver · Editar</text>
+
+  <!-- Row 3 -->
+  <rect x="280" y="570" width="1100" height="44" fill="white"/>
+  <line x1="302" y1="614" x2="1360" y2="614" stroke="#F0F0F0" stroke-width="1"/>
+  <text x="302" y="597" font-size="13" fill="#1A1A1A" font-weight="600">Amex New</text>
+  <text x="302" y="612" font-size="11" fill="#888">PRY-001 · CECO-001</text>
+  <text x="520" y="597" font-size="13" fill="#444">American Express</text>
+  <rect x="700" y="585" width="80" height="20" rx="10" fill="#FFF3E0"/>
+  <text x="740" y="600" font-size="11" fill="#E65100" text-anchor="middle" font-weight="600">REVISIÓN</text>
+  <text x="860" y="597" font-size="13" fill="#444">€ 5.200</text>
+  <text x="990" y="597" font-size="13" fill="#444">€ 7.500</text>
+  <text x="1150" y="597" font-size="13" fill="#1F4E78" font-weight="700">28%</text>
+  <text x="1310" y="597" font-size="11" fill="#1F4E78">Ver · Aprobar</text>
+
+  <!-- Totals row -->
+  <rect x="280" y="614" width="1100" height="46" rx="0" fill="#E8F4F8"/>
+  <text x="302" y="643" font-size="12" fill="#1F4E78" font-weight="700">TOTALES</text>
+  <text x="860" y="643" font-size="13" fill="#1F4E78" font-weight="700">€ 28.700</text>
+  <text x="990" y="643" font-size="13" fill="#1F4E78" font-weight="700">€ 40.000</text>
+  <text x="1150" y="643" font-size="13" fill="#70AD47" font-weight="700">28,3%</text>
+
+  <!-- ─── INTEGRATION STATUS BAR ─── -->
+  <rect x="280" y="680" width="1100" height="60" rx="12" fill="white" filter="url(#shadow)"/>
+  <text x="302" y="705" font-size="12" fill="#1F4E78" font-weight="700">🔗 Estado de Integraciones</text>
+
+  <!-- Integration dots -->
+  <circle cx="430" cy="718" r="6" fill="#70AD47"/>
+  <text x="442" y="722" font-size="11" fill="#444">Celero</text>
+
+  <circle cx="520" cy="718" r="6" fill="#70AD47"/>
+  <text x="532" y="722" font-size="11" fill="#444">Bizneo</text>
+
+  <circle cx="610" cy="718" r="6" fill="#70AD47"/>
+  <text x="622" y="722" font-size="11" fill="#444">Intratime</text>
+
+  <circle cx="710" cy="718" r="6" fill="#FFC107"/>
+  <text x="722" y="722" font-size="11" fill="#444">Payhawk</text>
+
+  <circle cx="800" cy="718" r="6" fill="#70AD47"/>
+  <text x="812" y="722" font-size="11" fill="#444">A3 Innuva</text>
+
+  <circle cx="900" cy="718" r="6" fill="#70AD47"/>
+  <text x="912" y="722" font-size="11" fill="#444">A3 ERP</text>
+
+  <circle cx="990" cy="718" r="6" fill="#D32F2F"/>
+  <text x="1002" y="722" font-size="11" fill="#444">TravelPerk</text>
+
+  <text x="1300" y="722" font-size="11" fill="#888">últ. sync: hace 2min</text>
+
+  <!-- ─── FOOTER ─── -->
+  <rect x="260" y="860" width="1180" height="40" fill="#F8FAFC"/>
+  <text x="290" y="885" font-size="11" fill="#AAA">SIG-ES Plataforma Integral v1.0 · h&amp;k consulting · © 2026</text>
+  <text x="1300" y="885" font-size="11" fill="#AAA" text-anchor="end">Build: 2026.05.25</text>
+</svg>
