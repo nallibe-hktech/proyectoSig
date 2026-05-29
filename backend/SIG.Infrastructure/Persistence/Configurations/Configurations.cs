@@ -150,6 +150,12 @@ public class ConceptConfiguration : IEntityTypeConfiguration<Concept>
         b.Property(c => c.Nombre).HasMaxLength(200).IsRequired();
         b.Property(c => c.Tipo).HasConversion<string>().HasMaxLength(20);
         b.Property(c => c.FormulaJson).HasColumnType("jsonb").IsRequired();
+        b.Property(c => c.ColumnaA3).HasMaxLength(50);
+        b.HasOne(c => c.Project)
+            .WithMany()
+            .HasForeignKey(c => c.ProjectId)
+            .OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(c => c.ProjectId);
         b.HasQueryFilter(c => !c.IsDeleted);
     }
 }

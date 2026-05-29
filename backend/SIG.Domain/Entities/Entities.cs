@@ -167,6 +167,9 @@ public class Concept : ISoftDeletable, IAuditable
     public DateOnly FechaDesde { get; set; }
     public DateOnly? FechaHasta { get; set; }
     public string FormulaJson { get; set; } = null!;
+    public int? ProjectId { get; set; }   // null = global concept applies to all projects
+    public Project? Project { get; set; }
+    public string? ColumnaA3 { get; set; } // Maps to A3 export column: "ImporteBruto", "IRPF", "SSEmpleado", "KM", etc.
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }

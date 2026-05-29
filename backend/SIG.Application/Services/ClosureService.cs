@@ -258,7 +258,8 @@ public class ClosureService : IClosureService
         var conceptList = await _conceptRepo.ListPaginatedForUserAsync(0, 1, int.MaxValue, null, null, ct);
         var aplicables = conceptList.Items.Where(c =>
             c.FechaDesde <= closure.Period.FechaFin &&
-            (c.FechaHasta == null || c.FechaHasta >= closure.Period.FechaInicio)).ToList();
+            (c.FechaHasta == null || c.FechaHasta >= closure.Period.FechaInicio) &&
+            (c.ProjectId == null || c.ProjectId == closure.ProjectId)).ToList();
 
         decimal coste = 0, factura = 0;
         var lines = new List<ClosureLine>();
