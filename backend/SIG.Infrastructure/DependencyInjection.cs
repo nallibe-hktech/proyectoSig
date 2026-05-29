@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -36,7 +37,8 @@ public static class DependencyInjection
                    .UseSnakeCaseNamingConvention()
                    .AddInterceptors(
                         sp.GetRequiredService<TimestampsInterceptor>(),
-                        sp.GetRequiredService<AuditInterceptor>());
+                        sp.GetRequiredService<AuditInterceptor>())
+                   .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
 
         // Repositorios
@@ -80,6 +82,7 @@ public static class DependencyInjection
         services.AddScoped<ICalculationService, CalculationService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<ISyncService, SyncService>();
+        services.AddScoped<ICeleroVisitaService, CeleroVisitaService>();
         services.AddScoped<IExportService, ExportService>();
         services.AddScoped<ISeedService, DataSeeder>();
 

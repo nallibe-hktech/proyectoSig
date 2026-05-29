@@ -86,6 +86,9 @@ export const routes: Routes = [
       // Sync (Administrator)
       { path: 'sync', loadComponent: () => import('./features/sync/sync.component').then((m) => m.SyncComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Sincronizaciones — SIG' },
 
+      // Celero Visitas (Administrator)
+      { path: 'celero-visitas', loadComponent: () => import('./features/celero-visitas/celero-visitas.component').then((m) => m.CeleroVisitasComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Visitas Celero — SIG' },
+
       // Reports
       { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then((m) => m.ReportsComponent), title: 'Reports — SIG' },
 

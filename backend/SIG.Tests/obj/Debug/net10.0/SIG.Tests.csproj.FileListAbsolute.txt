@@ -1,11 +1,5 @@
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\.msCoverageSourceRootsMapping_SIG.Tests
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\CoverletSourceRootsMapping_SIG.Tests
-C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.AssemblyReference.cache
-C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\MvcTestingAppManifest.json
-C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.AssemblyInfoInputs.cache
-C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.AssemblyInfo.cs
-C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.CoreCompileInputs.cache
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\testhost.dll
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\xunit.abstractions.dll
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.API.deps.json
@@ -446,6 +440,12 @@ C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net1
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.Application.pdb
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.Infrastructure.pdb
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.Domain.pdb
+C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.AssemblyReference.cache
+C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\MvcTestingAppManifest.json
+C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.AssemblyInfoInputs.cache
+C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.AssemblyInfo.cs
+C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.CoreCompileInputs.cache
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.Up2Date
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.dll
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\refint\SIG.Tests.dll

@@ -83,6 +83,7 @@ export class ShellComponent implements OnInit {
     { label: 'Users', route: '/users', icon: 'manage_accounts', testId: 'nav-users', roles: ['Administrator', 'Auditor'] },
     { label: 'Audit Log', route: '/audit', icon: 'history', testId: 'nav-audit', roles: ['Administrator', 'Auditor'] },
     { label: 'Sync', route: '/sync', icon: 'refresh', testId: 'nav-sync', roles: ['Administrator'] },
+    { label: 'Celero Visitas', route: '/celero-visitas', icon: 'location_on', testId: 'nav-celero-visitas', roles: ['Administrator'] },
   ];
 
   protected readonly operativoNav = computed(() => this.filterByRole(this.allOperativoNav));

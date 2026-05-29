@@ -156,6 +156,13 @@ public interface IExportService
     Task<(byte[] Content, string FileName)> ExportA3ErpAsync(int closureId, int usuarioId, CancellationToken ct);
 }
 
+public interface ICeleroVisitaService
+{
+    Task<PagedCeleroVisitasDto> ListAsync(int page, int pageSize, string? searchNif = null, string? searchService = null, CancellationToken ct = default);
+    Task<CeleroVisitaDetailDto> GetByIdAsync(int id, CancellationToken ct);
+    Task<CeleroVisitaDetailDto> UpdateAsync(int id, CeleroVisitaUpdateRequest req, int usuarioId, CancellationToken ct);
+}
+
 public interface ISeedService
 {
     Task RunIfEmptyAsync(CancellationToken ct);

@@ -18,6 +18,12 @@ public class StagingCeleroVisita : IStagingRow
     public int? ProjectId { get; set; }
     public int? ActionId { get; set; }
 
+    // Mapeos y anotaciones locales (enriquecimiento de datos)
+    public string? Notas { get; set; }
+    public int? MapeadoPor { get; set; }
+    public DateTime? FechaMapeo { get; set; }
+    public string? EstadoMapeo { get; set; }
+
     // Auditoría y control
     public string PayloadJson { get; set; } = null!;
     public string Hash { get; set; } = null!;
