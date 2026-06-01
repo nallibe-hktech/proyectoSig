@@ -756,6 +756,10 @@
               "target": "Package",
               "version": "[35.6.1, )"
             },
+            "ClosedXML": {
+              "target": "Package",
+              "version": "[0.104.*, )"
+            },
             "EFCore.NamingConventions": {
               "target": "Package",
               "version": "[9.0.0, )"
@@ -807,6 +811,10 @@
             "Microsoft.Extensions.Http": {
               "target": "Package",
               "version": "[9.0.4, )"
+            },
+            "NPOI": {
+              "target": "Package",
+              "version": "[2.7.*, )"
             },
             "Npgsql": {
               "target": "Package",

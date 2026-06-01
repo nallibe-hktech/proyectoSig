@@ -186,6 +186,38 @@ public class ConceptUser
     public User User { get; set; } = null!;
 }
 
+public class TarifaProyecto : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ProjectId { get; set; }
+    public Project Project { get; set; } = null!;
+    public string Nombre { get; set; } = null!;    // "Visita estándar", "Hora extra", "KM", etc.
+    public decimal Valor { get; set; }              // price in EUR
+    public string? Unidad { get; set; }             // "visita" | "hora" | "km" | "dia" (informational)
+    public DateOnly FechaDesde { get; set; }
+    public DateOnly? FechaHasta { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public class PresupuestoProyecto : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ProjectId { get; set; }
+    public Project Project { get; set; } = null!;
+    public int? PeriodId { get; set; }              // null = applies to all periods
+    public Period? Period { get; set; }
+    public TipoConcepto Tipo { get; set; }          // Pago | Factura
+    public decimal Importe { get; set; }
+    public string? Descripcion { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 public class Variable : ISoftDeletable, IAuditable
 {
     public int Id { get; set; }

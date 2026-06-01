@@ -53,3 +53,13 @@ public record CostCenterUpdateRequest(string Codigo, string Nombre);
 public record PeriodDto(int Id, string Nombre, DateOnly FechaInicio, DateOnly FechaFin, EstadoPeriodo Estado);
 public record PeriodCreateRequest(string Nombre, DateOnly FechaInicio, DateOnly FechaFin);
 public record PeriodUpdateRequest(string Nombre, DateOnly FechaInicio, DateOnly FechaFin);
+
+// TarifaProyecto
+public record TarifaProyectoDto(int Id, int ProjectId, string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
+public record TarifaProyectoCreateRequest(string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
+public record TarifaProyectoUpdateRequest(string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
+
+// PresupuestoProyecto
+public record PresupuestoProyectoDto(int Id, int ProjectId, int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
+public record PresupuestoProyectoCreateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
+public record PresupuestoProyectoUpdateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);

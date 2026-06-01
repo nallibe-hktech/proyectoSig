@@ -22,3 +22,8 @@ public interface IPayHawkClient
 {
     Task<IReadOnlyList<PayHawkGastoDto>> GetGastosAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
 }
+
+public interface ISgpvClient
+{
+    Task<IReadOnlyList<SgpvVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
+}

@@ -125,3 +125,28 @@ public class CeleroMissionMapping : IAuditable
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
+
+public class StagingSgpvVisita : IStagingRow
+{
+    public int Id { get; set; }
+
+    // Datos crudos de SGPV
+    public string VisitaIdExterno { get; set; } = null!;
+    public string ResourceNif { get; set; } = "";
+    public string CentroId { get; set; } = null!;
+    public string? CentroNombre { get; set; }
+    public string? ServiceName { get; set; }
+    public DateOnly Fecha { get; set; }
+    public decimal? HorasDuracion { get; set; }
+
+    // IDs resueltos
+    public int? UserId { get; set; }
+    public int? ProjectId { get; set; }
+
+    // Auditoría y control
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}

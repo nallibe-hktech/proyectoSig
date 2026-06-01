@@ -172,3 +172,19 @@ public interface ICostCenterRepository
     Task AddAsync(CostCenter cc, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
+
+public interface ITarifaProyectoRepository
+{
+    Task<IReadOnlyList<TarifaProyecto>> ListByProjectAsync(int projectId, CancellationToken ct);
+    Task<TarifaProyecto?> GetByIdAsync(int id, CancellationToken ct);
+    Task AddAsync(TarifaProyecto entity, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
+public interface IPresupuestoProyectoRepository
+{
+    Task<IReadOnlyList<PresupuestoProyecto>> ListByProjectAsync(int projectId, CancellationToken ct);
+    Task<PresupuestoProyecto?> GetByIdAsync(int id, CancellationToken ct);
+    Task AddAsync(PresupuestoProyecto entity, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}

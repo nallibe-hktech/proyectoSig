@@ -29,6 +29,8 @@
     <PackageReference Include="Npgsql" Version="9.*" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.4.0" />
+    <PackageReference Include="ClosedXML" Version="0.104.*" />
+    <PackageReference Include="NPOI" Version="2.7.*" />
   </ItemGroup>
 
   <PropertyGroup>

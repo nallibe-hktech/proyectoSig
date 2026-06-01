@@ -109,6 +109,24 @@ public interface IPeriodService
     Task<PeriodDto> ReabrirAsync(int id, CancellationToken ct);
 }
 
+public interface ITarifaProyectoService
+{
+    Task<IReadOnlyList<TarifaProyectoDto>> ListByProjectAsync(int projectId, CancellationToken ct);
+    Task<TarifaProyectoDto> GetByIdAsync(int id, int projectId, CancellationToken ct);
+    Task<TarifaProyectoDto> CreateAsync(int projectId, TarifaProyectoCreateRequest req, CancellationToken ct);
+    Task<TarifaProyectoDto> UpdateAsync(int id, int projectId, TarifaProyectoUpdateRequest req, CancellationToken ct);
+    Task DeleteAsync(int id, int projectId, CancellationToken ct);
+}
+
+public interface IPresupuestoProyectoService
+{
+    Task<IReadOnlyList<PresupuestoProyectoDto>> ListByProjectAsync(int projectId, CancellationToken ct);
+    Task<PresupuestoProyectoDto> GetByIdAsync(int id, int projectId, CancellationToken ct);
+    Task<PresupuestoProyectoDto> CreateAsync(int projectId, PresupuestoProyectoCreateRequest req, CancellationToken ct);
+    Task<PresupuestoProyectoDto> UpdateAsync(int id, int projectId, PresupuestoProyectoUpdateRequest req, CancellationToken ct);
+    Task DeleteAsync(int id, int projectId, CancellationToken ct);
+}
+
 public interface IClosureService
 {
     Task<PagedResult<ClosureListItemDto>> ListAsync(ApprovalFilterRequest filter, int usuarioId, CancellationToken ct);

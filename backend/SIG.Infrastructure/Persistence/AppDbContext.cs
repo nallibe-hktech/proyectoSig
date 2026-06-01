@@ -23,6 +23,8 @@ public class AppDbContext : DbContext
     public DbSet<ActionUser> ActionUsers => Set<ActionUser>();
     public DbSet<Concept> Concepts => Set<Concept>();
     public DbSet<ConceptUser> ConceptUsers => Set<ConceptUser>();
+    public DbSet<TarifaProyecto> TarifasProyecto => Set<TarifaProyecto>();
+    public DbSet<PresupuestoProyecto> PresupuestosProyecto => Set<PresupuestoProyecto>();
     public DbSet<Variable> Variables => Set<Variable>();
     public DbSet<Period> Periods => Set<Period>();
     public DbSet<Closure> Closures => Set<Closure>();
@@ -40,6 +42,7 @@ public class AppDbContext : DbContext
     public DbSet<CeleroResourceMapping> CeleroResourceMappings => Set<CeleroResourceMapping>();
     public DbSet<CeleroServiceMapping> CeleroServiceMappings => Set<CeleroServiceMapping>();
     public DbSet<CeleroMissionMapping> CeleroMissionMappings => Set<CeleroMissionMapping>();
+    public DbSet<StagingSgpvVisita> StagingSgpvVisitas => Set<StagingSgpvVisita>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

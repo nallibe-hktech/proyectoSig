@@ -1,0 +1,397 @@
+================================================================================
+SIG-es REQUIREMENTS ANALYSIS - EXECUTIVE SUMMARY
+================================================================================
+
+PROJECT: SIG-es (Sistema Integrado de Gestión - Spain)
+DATE: May 29, 2026
+ANALYST: Claude Code Agent
+
+================================================================================
+1. WHAT IS SIG-es?
+================================================================================
+
+A financial operations platform consolidating payroll, invoicing, and operational
+data from 10 source systems. Handles complex multi-variable calculations, strict
+approval workflows, comprehensive audit trails (5-year fiscal hold).
+
+TARGET USERS: Finance (FICO), Operations, HR, Project Managers
+GEOGRAPHY: Spain (fiscal compliance required)
+SCALE: ~25 concurrent users, ~500 employees, 20+ active projects
+
+================================================================================
+2. THE 10 INTEGRATED SYSTEMS (Priority Order)
+================================================================================
+
+PRIORITY 1 (MVP):
+  1. Celero         → Clients, projects, visits (field operations master)
+  2. A3 Innuva      → Contracts, salaries, employee master data
+  3. SGPV           → Field sales resources & visits
+
+PRIORITY 2-5:
+  4. Bizneo         → Hours logged, absences
+  5. Intratime      → Timeclock in/out
+  6. Payhawk        → Expenses, dietas, mileage
+  7. TravelPerk     → Flights, hotels, rental cars
+
+PRIORITY 6-10:
+  8. Galán          → Logistics costs
+  9. Mediapost      → Distribution logistics
+  10. A3 ERP        → (Output only: invoicing)
+
+CRITICAL QUESTION: Are all 10 required for MVP or phased? (Unconfirmed)
+
+================================================================================
+3. PAYMENT CALCULATION MODELS
+================================================================================
+
+SIG supports 5+ DISTINCT payment models (each client has 1-3 models):
+
+MODEL A: Monthly Fixed + Variables (Granini, JDE, Inpost)
+  = Fixed Salary + (Visits × Bonus) + (Days × Dieta) + (KM × Rate) - Deductions
+
+MODEL B: Hourly (OPTIMISING, Morrison, Cosmetica)
+  = (Hours × €11.92/h) + (Extra Hours × OT Rate) + Incentives - Deductions
+
+MODEL C: Per-Unit/Furniture (COTY, DJI, Kobo, Molins)
+  = Fixed per Unit + Surcharges for 2nd/3rd Visit + Hours Extra - Deductions
+
+MODEL D: Daily Rate + Incentives (DAIKIN, ITC, Apple)
+  = (Contract Salary / Working Days) + Performance Bonus - Deductions
+
+MODEL E: Mixed (Cheil, Ploom)
+  = Fixed + Hours-based + Per-Visit + Logistics
+
+KEY RULES:
+  - RETROACTIVITY: Conditional. Tariff changes apply forward-looking; FICO can
+    request retroactive recalc with version history stored.
+  - DEDUCTIONS PRIORITY: Must define order (IRPF → SS → Embargoes → Loans)
+  - MINIMUM SALARY: Blocked if < SMI (Spanish national minimum), requires exception
+  - MARGIN ALERT: If < 15%, yellow flag; < 10%, red flag (blocker)
+
+================================================================================
+4. INVOICE LOGIC (DIFFERENT FROM PAYROLL)
+================================================================================
+
+Billing to clients includes MARKUP (margin):
+
+MODEL A: Monthly Fee (Granini, JDE, Inpost, Daikin)
+  = Fixed Fee + Variables (Dietas, KM, Travel) + Logistics Fee
+
+MODEL B: Per-Visit (Apple, Dyson, Amex, Morrison)
+  = (Visits × Tariff by Type/Zone) + Logistics (COSTE+MARGEN or Fixed)
+
+MODEL C: Hourly + Action (OPTIMISING, Cosmetica)
+  = (Hours × €/h) + (Fee per Action) + Logistics
+
+MODEL D: Quote/Presupuesto (DYSON, Kobo, DJI)
+  = Agreed Quote + Logistics (if not included) + Revisit surcharge
+
+IMPORTANT: If invoice exceeds presupuesto, escalated to FICO (not auto-capped).
+
+VAT RULE: 21% on domestic; 0% (exempt) on intra-EU services.
+
+================================================================================
+5. APPROVAL WORKFLOW
+================================================================================
+
+PARTICIPANTS (Multi-level, Non-Linear):
+
+Gestor / Backoffice / Interlocutor
+  ├→ Submit to FICO (multiple users can view/edit simultaneously)
+  └→ FICO Reviews
+      ├→ APPROVE → Lock & Ready for Export to A3
+      └→ REJECT → Return to Draft (unlimited retries allowed)
+
+ESCALATION: If FICO queue > 24h, auto-notify FICO + Dirección
+
+NOTES:
+  - No sequential "Dirección approval" step (Dirección only sees audit log)
+  - Bulk approval needed (approve 100 closures at once)
+  - Email notifications required on state changes
+  - All role changes logged to audit trail
+
+================================================================================
+6. ROLE PERMISSIONS (8 Roles)
+================================================================================
+
+GLOBAL ROLES:
+  - Admin          → Full system access (users, roles, config)
+  - Dirección      → View/Validate/Approve closures, edit users, see KPIs
+  - FICO           → Final approval, see all closures, validate concepts
+  - RRHH           → Edit payroll, manage contracts, view audit log
+  - Facilitador    → Training, support, see full audit log
+
+PROJECT-LEVEL ROLES:
+  - Gestor         → Edit own closure, see own projects, submit to FICO
+  - Backoffice     → Data entry, edit own closure, manual reconciliation
+  - Auxiliar       → Read-only, supporting backoffice
+
+DATA VISIBILITY MASKING:
+  - Salary: Hidden from Auxiliar, Backoffice (lower levels)
+  - Employee NIF: Hidden from non-HR roles
+  - Expense Receipts: Only Admin, FICO, RRHH (of own employee)
+  - Audit Log Full: Only Admin + FICO + Facilitador
+
+================================================================================
+7. DATA MODEL
+================================================================================
+
+CORE ENTITIES (18 main objects):
+  - Usuario, Rol, Recurso (Employee), Cliente
+  - Departamento, Proyecto (Action/Service), Visita
+  - Concepto (salary/invoice line), Pago (Payment), Factura (Invoice)
+  - Contrato, Ceco (Cost Center), Centro (Store location)
+  - Gasto (Expense), Viaje (Travel), Período, Cierre (Closure)
+  - Aprobación (Approval record)
+
+KEY RELATIONSHIP:
+  Cliente (1) ──M── Proyecto ──M── Visita ──M── Recurso
+  Proyecto ──M── Concepto (many payment models per project)
+  Usuario ──1── Rol (defines permissions)
+
+================================================================================
+8. CRITICAL BUSINESS RULES (Blockeante = Must Fix Before Closure)
+================================================================================
+
+BLOCKEANTE (System blocks closure):
+  ✗ Employee without valid contract for period
+  ✗ Expense without assigned project
+  ✗ Visit without assigned resource
+  ✗ Tariff missing for client+project combination
+  ✗ Salary < SMI without documented exception
+  ✗ Margin mismatch with presupuesto
+  ✗ Unjustified hours exceeding threshold
+
+ADVERTENCIA (Alert, User Confirms):
+  ⚠ Extra hours beyond contract max (overtime approval needed)
+  ⚠ Margin 10-15% (yellow flag)
+  ⚠ Multiple revisits to same center in short period
+  ⚠ Anticipated payments not yet cleared
+  ⚠ Logistics cost estimates exceeded
+
+ESCALATION: If error unresolved > 24h, escalate to FICO + Admin
+
+================================================================================
+9. A3 INTEGRATION (Output Formats)
+================================================================================
+
+A3 INNUVA (Payroll Platform):
+  Format: Excel 97-2003 (.xls) [NOT .xlsx]
+  Frequency: Monthly after FICO approval
+  Required Fields: Company, Imputación, Tipo de Paga, Importe Bruto,
+                   SS Trabajador, IRPF, Importe Líquido, Descuentos, KM
+  Validation: All contracted employees included, no negative gross, reconcile
+
+A3 ERP (Accounting/Invoicing):
+  Format: Excel 2007+ (.xlsx)
+  Frequency: Monthly after FICO approval
+  Data: Client, Invoice lines (description, hours/units, rate, amount),
+        21% VAT (domestic) / 0% (intra-EU), Project ref
+  Validation: Line items sum to total, >= 1 line per invoice, no dupes
+
+REJECTION HANDLING: TBD (who investigates: SIG support or FICO? Can retry auto?)
+
+================================================================================
+10. MISSING IN CURRENT CODEBASE
+================================================================================
+
+18 MAJOR FEATURES NOT YET IMPLEMENTED:
+
+CALCULATION ENGINE:
+  ✗ Multi-client concept framework (rules per client)
+  ✗ Hierarchical concept application (per employee, project, cost center)
+  ✗ Deduction priority system
+  ✗ Retroactivity handling + version history storage
+  ✗ Formula test harness
+
+DATA INGESTION:
+  ✗ Celero PostgreSQL connector (VPN + credentials)
+  ✗ Bizneo, Intratime, Payhawk, TravelPerk APIs
+  ✗ SFTP for Galán/Mediapost
+  ✗ SGPV download automation
+  ✗ Data validation layer (schema, duplicates, business rules)
+  ✗ Error recovery + retry logic
+  ✗ Change Data Capture (CDC) for 3-hour updates
+
+WORKFLOW & COMPLIANCE:
+  ✗ Approval state machine (multi-level with escalation)
+  ✗ Audit log (full change history, 5-year retention)
+  ✗ Role-based data masking in queries
+  ✗ Version history snapshots (before/after approval)
+
+REPORTING:
+  ✗ Dashboards (margin, productivity, costs, trend)
+  ✗ Drill-down navigation
+  ✗ Multi-dimensional analytics
+  ✗ PDF/Excel export
+  ✗ Scheduled delivery
+
+A3 ORCHESTRATION:
+  ✗ Excel template generation (payroll format)
+  ✗ Validation before export
+  ✗ Retry logic + human review
+  ✗ Error notification routing
+
+INFRASTRUCTURE:
+  ✗ Azure AD SSO (tenant: sigespana.es)
+  ✗ HTTPS enforcement
+  ✗ Database encryption at rest/transit
+  ✗ Disaster recovery (RTO 4h, RPO 1h)
+
+================================================================================
+11. KEY INFORMATION GAPS (Need Clarification)
+================================================================================
+
+CALCULATION LOGIC:
+  [ ] Exact formula for "Cuota por hora estimada" (est vs actual reconciliation)
+  [ ] How are "Incentivos trimestrales" calculated?
+  [ ] Embargoes: Who notifies SIG? Can employees dispute?
+  [ ] Is there a per-project SMI exception list?
+
+DATA & GOVERNANCE:
+  [ ] Are all Payhawk expenses auto-captured or user-filtered?
+  [ ] Are Galán/Mediapost costs always project-linked?
+  [ ] If TravelPerk trip spans 2 months, which month's billing?
+  [ ] Are Bizneo absences coded so SIG excludes from payment?
+  [ ] If A3 salary changes mid-month, retroactive or forward?
+
+APPROVALS & WORKFLOWS:
+  [ ] Does rejection reason auto-notify Gestor?
+  [ ] Can multiple users approve simultaneously (parallel)?
+  [ ] Max rejection iterations before escalation?
+  [ ] Can Admin force-approve if FICO unavailable?
+
+REPORTING:
+  [ ] Is "Margin by Client" month-end snapshot or rolling 12-month?
+  [ ] "Productivity" = visits/day? hours/day? revenue/day?
+  [ ] Special audit events for role changes?
+  [ ] GDPR: Delete or anonymize employee data on exit?
+
+A3 INTEGRATION:
+  [ ] When A3 rejects, who corrects: SIG user or A3 user?
+  [ ] Auto-retry or manual "Send Again"?
+  [ ] Invoice decimals: 2 or 4 places?
+  [ ] Can single SIG closure produce multiple ERP invoices?
+
+================================================================================
+12. NON-FUNCTIONAL REQUIREMENTS
+================================================================================
+
+PERFORMANCE:
+  - API response < 2s (single record), < 5s (bulk)
+  - Dashboard load < 3s
+  - Bulk closure: 1,000 records/min
+  - Data ingestion: All 10 systems complete within 2h window
+
+AVAILABILITY:
+  - SLA: 99.99% uptime (max 4 min/month downtime)
+  - Critical hours: 7:00 AM – 8:00 PM
+  - Maintenance: Off-hours with 48h notice
+
+SECURITY:
+  - HTTPS only (TLS 1.3+)
+  - AES-256 at rest
+  - Azure AD SSO (sigespana.es)
+  - MFA for FICO + Admin
+  - API key rotation: 90 days
+
+COMPLIANCE:
+  - GDPR: 5-year retention, right to deletion honored
+  - Fiscal Spain: Minimum 5-year records per law
+  - ISO 27001 (certification planned?)
+  - SOC 2 Type II (optional)
+
+DATA RETENTION:
+  - Hot: Current month + 11 previous (fast access)
+  - Archive: Months 13–60 (Azure cold storage)
+  - Deletion: After 5-year review, eligible for purge
+
+DISASTER RECOVERY:
+  - RTO: 4 hours
+  - RPO: 1 hour
+  - Backup: Daily full + hourly transactional logs
+  - Location: Geo-redundant (Azure paired region)
+
+================================================================================
+13. PHASE ROADMAP
+================================================================================
+
+PHASE 0 (CURRENT):
+  ✓ Document APIs for all 10 systems
+  ✓ Finalize calculation logic (FICO)
+  ✓ Define approval workflow
+  ✓ Identify Azure AD tenant + service accounts
+  ✓ Procure API keys / VPN access
+
+PHASE 1 (MVP - Backend & Integrations):
+  - Core data model + schema
+  - Celero PostgreSQL + A3 Innuva + SGPV + Bizneo integrations
+  - Calculation engine (3–5 payment models)
+  - Basic audit logging
+  - Azure deployment
+
+PHASE 1.5 (Frontend & Workflows):
+  - UI screens (Dashboard, Closures, Approvals)
+  - Approval state machine
+  - RBAC enforcement
+  - Excel export templates
+  - Azure AD SSO
+
+PHASE 2 (Extended Integrations):
+  - Payhawk, TravelPerk, Galán, Mediapost
+  - Advanced reporting + analytics
+  - Audit log UI
+  - Escalation logic
+
+PHASE 3 (Hardening):
+  - Performance tuning, caching
+  - Advanced security (MFA, key rotation)
+  - GDPR/Compliance testing
+  - Load testing (1,000+ concurrent)
+
+================================================================================
+14. CRITICAL DECISIONS PENDING STAKEHOLDER SIGN-OFF
+================================================================================
+
+1. MVP SCOPE: All 10 systems or phased? (Celero + A3 + SGPV only for Phase 1?)
+2. APPROVAL AUTHORITY: Can Dirección override FICO rejection?
+3. MARGIN FORMULA: Exact calculation method (reference docs or walk-through?)
+4. RETROACTIVE EDITS: Once exported to A3, is SIG closure read-only?
+5. CONCEPT VERSIONING: Do prior-month calcs use old or new formula if changed?
+6. AZURE AD SYNC: Auto-grant role via group or manual SIG admin assignment?
+7. LOGISTICS ALLOCATION: Multi-employee in same visit—cost split how? (equal/prorata)
+8. A3 ERROR HANDLING: Who investigates rejection? Can SIG retry auto or manual only?
+
+================================================================================
+15. NEXT STEPS
+================================================================================
+
+1. STAKEHOLDER VALIDATION WORKSHOP (1 day):
+   - Confirm MVP scope (10 systems or 3?)
+   - Validate calculation models (walk-through 2–3 complex clients)
+   - Finalize approval workflow (single FICO sign-off or Dirección override?)
+   - Confirm Azure AD tenant details
+
+2. DETAILED SPECIFICATIONS (Per Phase):
+   - Calculation logic spec document (FICO ownership)
+   - Data model / ER diagram (Architecture team)
+   - API contracts for integrations
+   - Approval state machine diagram
+   - RBAC matrix (finalized)
+
+3. ARCHITECTURE KICKOFF:
+   - Azure resource design (SQL, App Service, Storage, VPN)
+   - Celero PostgreSQL connection strategy
+   - API framework selection (REST / GraphQL)
+   - Database schema design
+
+4. API DOCUMENTATION:
+   - Celero: Request schema and field lengths
+   - Bizneo: Hours aggregation rules
+   - A3 Innuva: Payroll template field mapping
+   - Error codes and retry strategy
+
+================================================================================
+REPORT GENERATED: May 29, 2026
+FULL REPORT: REQUIREMENTS_ANALYSIS.md (same directory)
+================================================================================

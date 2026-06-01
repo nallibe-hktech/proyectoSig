@@ -29,7 +29,7 @@ public sealed class FilterSpec
 
 public sealed class SourceNode : FormulaNode
 {
-    public string Entity { get; set; } = null!; // GastosPayHawk, VisitasCelero, HorasBizneo, HorasIntratime
+    public string Entity { get; set; } = null!; // GastosPayHawk, VisitasCelero, HorasBizneo, HorasIntratime, TarifasProyecto, VisitasSgpv
     public string? Field { get; set; }
     public List<FilterSpec> Filters { get; set; } = new();
 }

@@ -39,3 +39,12 @@ public class PayHawkClient : IPayHawkClient
     public Task<IReadOnlyList<PayHawkGastoDto>> GetGastosAsync(DateOnly desde, DateOnly hasta, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<PayHawkGastoDto>>(Array.Empty<PayHawkGastoDto>());
 }
+
+public class SgpvClient : ISgpvClient
+{
+    private readonly HttpClient _http;
+    public SgpvClient(HttpClient http) { _http = http; }
+    public Task<IReadOnlyList<SgpvVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<SgpvVisitaDto>>(Array.Empty<SgpvVisitaDto>());
+    // TODO: implementar login HTTPS + download cuando se tengan credenciales SGPV
+}

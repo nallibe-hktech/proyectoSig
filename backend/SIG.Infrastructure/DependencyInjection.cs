@@ -59,6 +59,8 @@ public static class DependencyInjection
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<ICostCenterRepository, CostCenterRepository>();
         services.AddScoped<ICeleroMappingRepository, CeleroMappingRepository>();
+        services.AddScoped<ITarifaProyectoRepository, TarifaProyectoRepository>();
+        services.AddScoped<IPresupuestoProyectoRepository, PresupuestoProyectoRepository>();
         services.AddScoped(typeof(IStagingRepository<>), typeof(StagingRepository<>));
 
         // Services
@@ -76,6 +78,8 @@ public static class DependencyInjection
         services.AddScoped<IDepartmentService, DepartmentService>();
         services.AddScoped<ICostCenterService, CostCenterService>();
         services.AddScoped<IPeriodService, PeriodService>();
+        services.AddScoped<ITarifaProyectoService, TarifaProyectoService>();
+        services.AddScoped<IPresupuestoProyectoService, PresupuestoProyectoService>();
         services.AddScoped<IClosureService, ClosureService>();
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IDashboardService, DashboardService>();
@@ -100,6 +104,7 @@ public static class DependencyInjection
             services.AddSingleton<IBizneoClient, BizneoFakeClient>();
             services.AddSingleton<IIntratimeClient, IntratimeFakeClient>();
             services.AddSingleton<IPayHawkClient, PayHawkFakeClient>();
+            services.AddSingleton<ISgpvClient, SgpvFakeClient>();
         }
         else
         {
@@ -116,6 +121,7 @@ public static class DependencyInjection
             services.AddHttpClient<IBizneoClient, BizneoClient>();
             services.AddHttpClient<IIntratimeClient, IntratimeClient>();
             services.AddHttpClient<IPayHawkClient, PayHawkClient>();
+            services.AddHttpClient<ISgpvClient, SgpvClient>();
         }
 
         return services;

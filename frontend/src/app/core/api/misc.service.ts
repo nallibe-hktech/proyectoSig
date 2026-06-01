@@ -37,13 +37,16 @@ export class SyncService {
 export class ExportService {
   private readonly http = inject(HttpClient);
   exportA3Innuva(closureId: number) {
-    return this.downloadXml(`${environment.apiUrl}/exports/a3-innuva/${closureId}`, `A3Innuva_${closureId}.xml`);
+    return this.http.get(`${environment.apiUrl}/exports/a3-innuva/${closureId}`, {
+      observe: 'response',
+      responseType: 'blob'
+    });
   }
   exportA3Erp(closureId: number) {
-    return this.downloadXml(`${environment.apiUrl}/exports/a3-erp/${closureId}`, `A3ERP_${closureId}.xml`);
-  }
-  private downloadXml(url: string, fallbackName: string) {
-    return this.http.get(url, { observe: 'response', responseType: 'blob' });
+    return this.http.get(`${environment.apiUrl}/exports/a3-erp/${closureId}`, {
+      observe: 'response',
+      responseType: 'blob'
+    });
   }
   saveAttachment(response: HttpResponse<Blob>, fallbackName: string): void {
     if (!response.body) return;

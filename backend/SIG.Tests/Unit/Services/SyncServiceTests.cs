@@ -13,17 +13,19 @@ public class SyncServiceTests
     private readonly IBizneoClient _bizneo = Substitute.For<IBizneoClient>();
     private readonly IIntratimeClient _intratime = Substitute.For<IIntratimeClient>();
     private readonly IPayHawkClient _payhawk = Substitute.For<IPayHawkClient>();
+    private readonly ISgpvClient _sgpv = Substitute.For<ISgpvClient>();
     private readonly IStagingRepository<StagingCeleroVisita> _celeroRepo = Substitute.For<IStagingRepository<StagingCeleroVisita>>();
     private readonly IStagingRepository<StagingBizneoEmpleado> _empRepo = Substitute.For<IStagingRepository<StagingBizneoEmpleado>>();
     private readonly IStagingRepository<StagingBizneoHora> _horaRepo = Substitute.For<IStagingRepository<StagingBizneoHora>>();
     private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo = Substitute.For<IStagingRepository<StagingIntratimeFichaje>>();
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo = Substitute.For<IStagingRepository<StagingPayHawkGasto>>();
+    private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo = Substitute.For<IStagingRepository<StagingSgpvVisita>>();
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly IProjectRepository _projectRepo = Substitute.For<IProjectRepository>();
     private readonly IActionRepository _actionRepo = Substitute.For<IActionRepository>();
     private readonly ICeleroMappingRepository _mappingRepo = Substitute.For<ICeleroMappingRepository>();
 
-    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _celeroRepo, _empRepo, _horaRepo, _ficRepo, _gastoRepo, _userRepo, _projectRepo, _actionRepo, _mappingRepo);
+    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _sgpv, _celeroRepo, _empRepo, _horaRepo, _ficRepo, _gastoRepo, _sgpvRepo, _userRepo, _projectRepo, _actionRepo, _mappingRepo);
 
     [Fact]
     public async Task SyncAsync_SistemaDesconocido_LanzaIntegrationException()

@@ -239,7 +239,7 @@ export class ClosureDetailComponent implements OnInit {
   protected onExportInnuva(): void {
     const c = this.closure(); if (!c) return;
     this.exportSvc.exportA3Innuva(c.id).subscribe({
-      next: (resp) => { this.exportSvc.saveAttachment(resp, `A3Innuva_${c.id}.xml`); this.notify.success('Export A3 Innuva descargado'); },
+      next: (resp) => { this.exportSvc.saveAttachment(resp, `A3Innuva_${c.id}.xls`); this.notify.success('Export A3 Innuva descargado'); },
       error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo exportar'),
     });
   }
@@ -247,7 +247,7 @@ export class ClosureDetailComponent implements OnInit {
   protected onExportErp(): void {
     const c = this.closure(); if (!c) return;
     this.exportSvc.exportA3Erp(c.id).subscribe({
-      next: (resp) => { this.exportSvc.saveAttachment(resp, `A3ERP_${c.id}.xml`); this.notify.success('Export A3 ERP descargado'); },
+      next: (resp) => { this.exportSvc.saveAttachment(resp, `A3ERP_${c.id}.xlsx`); this.notify.success('Export A3 ERP descargado'); },
       error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo exportar'),
     });
   }

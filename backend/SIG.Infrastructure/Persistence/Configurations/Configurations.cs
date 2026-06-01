@@ -170,6 +170,42 @@ public class ConceptUserConfiguration : IEntityTypeConfiguration<ConceptUser>
     }
 }
 
+public class TarifaProyectoConfiguration : IEntityTypeConfiguration<TarifaProyecto>
+{
+    public void Configure(EntityTypeBuilder<TarifaProyecto> b)
+    {
+        b.Property(t => t.Nombre).HasMaxLength(200).IsRequired();
+        b.Property(t => t.Valor).HasPrecision(18, 4);
+        b.Property(t => t.Unidad).HasMaxLength(50);
+        b.HasOne(t => t.Project)
+            .WithMany()
+            .HasForeignKey(t => t.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(t => t.ProjectId);
+        b.HasQueryFilter(t => !t.IsDeleted);
+    }
+}
+
+public class PresupuestoProyectoConfiguration : IEntityTypeConfiguration<PresupuestoProyecto>
+{
+    public void Configure(EntityTypeBuilder<PresupuestoProyecto> b)
+    {
+        b.Property(p => p.Importe).HasPrecision(18, 4);
+        b.Property(p => p.Descripcion).HasMaxLength(500);
+        b.Property(p => p.Tipo).HasConversion<string>().HasMaxLength(20);
+        b.HasOne(p => p.Project)
+            .WithMany()
+            .HasForeignKey(p => p.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(p => p.Period)
+            .WithMany()
+            .HasForeignKey(p => p.PeriodId)
+            .OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(p => new { p.ProjectId, p.PeriodId });
+        b.HasQueryFilter(p => !p.IsDeleted);
+    }
+}
+
 public class VariableConfiguration : IEntityTypeConfiguration<Variable>
 {
     public void Configure(EntityTypeBuilder<Variable> b)
@@ -394,5 +430,22 @@ public class CeleroMissionMappingConfiguration : IEntityTypeConfiguration<Celero
         b.Property(m => m.CeleroMissionName).HasMaxLength(300).IsRequired();
         b.Property(m => m.Descripcion).HasMaxLength(500);
         b.HasOne(m => m.Action).WithMany().HasForeignKey(m => m.ActionId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class StagingSgpvVisitaConfiguration : IEntityTypeConfiguration<StagingSgpvVisita>
+{
+    public void Configure(EntityTypeBuilder<StagingSgpvVisita> b)
+    {
+        b.HasIndex(s => s.Hash).IsUnique();
+        b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
+        b.Property(s => s.VisitaIdExterno).HasMaxLength(100).IsRequired();
+        b.Property(s => s.ResourceNif).HasMaxLength(20);
+        b.Property(s => s.CentroId).HasMaxLength(100).IsRequired();
+        b.Property(s => s.CentroNombre).HasMaxLength(200);
+        b.Property(s => s.ServiceName).HasMaxLength(200);
+        b.Property(s => s.HorasDuracion).HasPrecision(18, 4);
+        b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();
+        b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
     }
 }

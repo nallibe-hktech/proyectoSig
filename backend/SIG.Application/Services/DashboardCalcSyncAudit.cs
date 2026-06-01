@@ -112,23 +112,26 @@ public class SyncService : ISyncService
     private readonly IBizneoClient _bizneo;
     private readonly IIntratimeClient _intratime;
     private readonly IPayHawkClient _payhawk;
+    private readonly ISgpvClient _sgpv;
     private readonly IStagingRepository<StagingCeleroVisita> _celeroRepo;
     private readonly IStagingRepository<StagingBizneoEmpleado> _empRepo;
     private readonly IStagingRepository<StagingBizneoHora> _horaRepo;
     private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo;
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo;
+    private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo;
     private readonly IUserRepository _userRepo;
     private readonly IProjectRepository _projectRepo;
     private readonly IActionRepository _actionRepo;
     private readonly ICeleroMappingRepository _mappingRepo;
 
     public SyncService(
-        ICeleroClient celero, IBizneoClient bizneo, IIntratimeClient intratime, IPayHawkClient payhawk,
+        ICeleroClient celero, IBizneoClient bizneo, IIntratimeClient intratime, IPayHawkClient payhawk, ISgpvClient sgpv,
         IStagingRepository<StagingCeleroVisita> celeroRepo,
         IStagingRepository<StagingBizneoEmpleado> empRepo,
         IStagingRepository<StagingBizneoHora> horaRepo,
         IStagingRepository<StagingIntratimeFichaje> ficRepo,
         IStagingRepository<StagingPayHawkGasto> gastoRepo,
+        IStagingRepository<StagingSgpvVisita> sgpvRepo,
         IUserRepository userRepo,
         IProjectRepository projectRepo,
         IActionRepository actionRepo,
@@ -138,6 +141,7 @@ public class SyncService : ISyncService
         _bizneo = bizneo;
         _intratime = intratime;
         _payhawk = payhawk;
+        _sgpv = sgpv;
         _celeroRepo = celeroRepo;
         _userRepo = userRepo;
         _projectRepo = projectRepo;
@@ -146,6 +150,7 @@ public class SyncService : ISyncService
         _horaRepo = horaRepo;
         _ficRepo = ficRepo;
         _gastoRepo = gastoRepo;
+        _sgpvRepo = sgpvRepo;
         _mappingRepo = mappingRepo;
     }
 
@@ -305,8 +310,70 @@ public class SyncService : ISyncService
                 await _gastoRepo.SaveChangesAsync(ct);
                 break;
             }
+            case "sgpv":
+            {
+                var data = await _sgpv.GetVisitasAsync(desde, hasta, ct);
+                var nuevas = new List<StagingSgpvVisita>();
+
+                // Cargar mapeos explícitos (alta prioridad)
+                var resourceMappings = await _mappingRepo.GetResourceMappingsAsync(ct);
+                var serviceMappings = await _mappingRepo.GetServiceMappingsAsync(ct);
+
+                var nifToUserIdMapping = resourceMappings.ToDictionary(m => m.CeleroNif, m => m.UserId);
+                var serviceNameToProjectIdMapping = serviceMappings.ToDictionary(m => m.CeleroServiceName, m => m.ProjectId);
+
+                // Cargar lookups de fallback para resolución por nombre/NIF
+                var users = await _userRepo.ListAsync(ct);
+                var projects = await _projectRepo.ListAsync(ct);
+
+                var nifToUserId = users.Where(u => !u.IsDeleted).ToDictionary(u => u.NIF, u => u.Id);
+                var serviceNameToProjectId = projects.Where(p => !p.IsDeleted).ToDictionary(p => p.Nombre, p => p.Id);
+
+                foreach (var d in data)
+                {
+                    var json = JsonSerializer.Serialize(d);
+                    var hash = Sha256(json);
+                    if (await _sgpvRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+
+                    // Resolver IDs: primero mapeos explícitos, luego fallback a nombre/NIF
+                    int? userId = null;
+                    if (!string.IsNullOrEmpty(d.ResourceNif))
+                    {
+                        if (nifToUserIdMapping.TryGetValue(d.ResourceNif, out var uid)) userId = uid;
+                        else if (nifToUserId.TryGetValue(d.ResourceNif, out uid)) userId = uid;
+                    }
+
+                    int? projectId = null;
+                    if (!string.IsNullOrEmpty(d.ServiceName))
+                    {
+                        if (serviceNameToProjectIdMapping.TryGetValue(d.ServiceName, out var pid)) projectId = pid;
+                        else if (serviceNameToProjectId.TryGetValue(d.ServiceName, out pid)) projectId = pid;
+                    }
+
+                    nuevas.Add(new StagingSgpvVisita
+                    {
+                        VisitaIdExterno = d.VisitaIdExterno,
+                        ResourceNif = d.ResourceNif,
+                        CentroId = d.CentroId,
+                        CentroNombre = d.CentroNombre,
+                        ServiceName = d.ServiceName,
+                        Fecha = d.Fecha,
+                        HorasDuracion = d.HorasDuracion,
+                        UserId = userId,
+                        ProjectId = projectId,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = true
+                    });
+                    ins++;
+                }
+                await _sgpvRepo.AddRangeAsync(nuevas, ct);
+                await _sgpvRepo.SaveChangesAsync(ct);
+                break;
+            }
             default:
-                throw new IntegrationException(sistema, "Sistema no soportado. Use celero, bizneo, intratime, payhawk.");
+                throw new IntegrationException(sistema, "Sistema no soportado. Use celero, bizneo, intratime, payhawk, sgpv.");
         }
         return new SyncResultDto(sistema, ins, dup, err, DateTime.UtcNow);
     }

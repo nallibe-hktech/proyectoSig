@@ -6,17 +6,25 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTabsModule } from '@angular/material/tabs';
 import { ProjectService } from '../../core/api/projects.service';
 import { ProjectDetailDto } from '../../models/dtos';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { NotifyService } from '../../core/notify.service';
+import { TarifasListComponent } from './tarifas/tarifas-list.component';
+import { PresupuestosListComponent } from './presupuestos/presupuestos-list.component';
 
 @Component({
   selector: 'app-project-detail',
   standalone: true,
-  imports: [CommonModule, DatePipe, RouterLink, MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatDialogModule, BreadcrumbsComponent, SkeletonComponent],
+  imports: [
+    CommonModule, DatePipe, RouterLink,
+    MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatDialogModule, MatTabsModule,
+    BreadcrumbsComponent, SkeletonComponent,
+    TarifasListComponent, PresupuestosListComponent,
+  ],
   template: `
     <div class="sig-page">
       <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Projects', route: '/projects' }, { label: project()?.nombre ?? 'Detalle' }]" />
@@ -46,6 +54,28 @@ import { NotifyService } from '../../core/notify.service';
             </dl>
           </mat-card-content>
         </mat-card>
+
+        <mat-tab-group>
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon>local_offer</mat-icon>
+              <span style="margin-left: 8px;">Tarifas</span>
+            </ng-template>
+            <div style="padding: 16px;">
+              <app-tarifas-list [projectId]="project()!.id"></app-tarifas-list>
+            </div>
+          </mat-tab>
+
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon>attach_money</mat-icon>
+              <span style="margin-left: 8px;">Presupuestos</span>
+            </ng-template>
+            <div style="padding: 16px;">
+              <app-presupuestos-list [projectId]="project()!.id"></app-presupuestos-list>
+            </div>
+          </mat-tab>
+        </mat-tab-group>
       }
     </div>
   `,

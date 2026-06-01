@@ -10,3 +10,11 @@ public record BizneoEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nom
 public record BizneoHoraDto(string RegistroIdExterno, int UserId, int ProjectId, DateOnly Fecha, decimal Horas);
 public record IntratimeFichajeDto(string FichajeIdExterno, int UserId, DateTime Entrada, DateTime? Salida);
 public record PayHawkGastoDto(string GastoIdExterno, int UserId, int ProjectId, DateOnly Fecha, decimal Importe, string Categoria);
+public record SgpvVisitaDto(
+    string VisitaIdExterno,
+    string ResourceNif,
+    string CentroId,
+    string? CentroNombre,
+    string? ServiceName,
+    DateOnly Fecha,
+    decimal? HorasDuracion);

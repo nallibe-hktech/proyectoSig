@@ -27,6 +27,11 @@ public class CalculationDataLoader : ICalculationDataLoader
             .Where(f => f.Entrada >= desdeUtc && f.Entrada <= hastaUtc).ToListAsync(ct);
         ctx.Gastos = await _db.StagingPayHawkGastos.AsNoTracking()
             .Where(g => g.ProjectId == projectId && g.Fecha >= desde && g.Fecha <= hasta).ToListAsync(ct);
+        ctx.Tarifas = await _db.TarifasProyecto.AsNoTracking()
+            .Where(t => t.ProjectId == projectId && !t.IsDeleted && t.FechaDesde <= hasta && (t.FechaHasta == null || t.FechaHasta >= desde))
+            .ToListAsync(ct);
+        ctx.VisitasSgpv = await _db.StagingSgpvVisitas.AsNoTracking()
+            .Where(s => s.ProjectId == projectId && s.Fecha >= desde && s.Fecha <= hasta).ToListAsync(ct);
         ctx.Variables = await _db.Variables.AsNoTracking().ToListAsync(ct);
         return ctx;
     }

@@ -551,3 +551,49 @@ public class StagingRepository<TStaging> : IStagingRepository<TStaging> where TS
     }
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
+
+public class TarifaProyectoRepository : ITarifaProyectoRepository
+{
+    private readonly AppDbContext _db;
+    public TarifaProyectoRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<TarifaProyecto>> ListByProjectAsync(int projectId, CancellationToken ct) =>
+        await _db.TarifasProyecto.AsNoTracking()
+            .Where(t => t.ProjectId == projectId && !t.IsDeleted)
+            .OrderByDescending(t => t.FechaDesde)
+            .ToListAsync(ct);
+
+    public Task<TarifaProyecto?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.TarifasProyecto.FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, ct);
+
+    public Task AddAsync(TarifaProyecto entity, CancellationToken ct)
+    {
+        _db.TarifasProyecto.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+public class PresupuestoProyectoRepository : IPresupuestoProyectoRepository
+{
+    private readonly AppDbContext _db;
+    public PresupuestoProyectoRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<PresupuestoProyecto>> ListByProjectAsync(int projectId, CancellationToken ct) =>
+        await _db.PresupuestosProyecto.AsNoTracking()
+            .Where(p => p.ProjectId == projectId && !p.IsDeleted)
+            .OrderByDescending(p => p.Id)
+            .ToListAsync(ct);
+
+    public Task<PresupuestoProyecto?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.PresupuestosProyecto.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+
+    public Task AddAsync(PresupuestoProyecto entity, CancellationToken ct)
+    {
+        _db.PresupuestosProyecto.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}

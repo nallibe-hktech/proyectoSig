@@ -802,6 +802,67 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("periods", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.PresupuestoProyecto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<decimal>("Importe")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("importe");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int?>("PeriodId")
+                        .HasColumnType("integer")
+                        .HasColumnName("period_id");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("integer")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_presupuestos_proyecto");
+
+                    b.HasIndex("PeriodId")
+                        .HasDatabaseName("ix_presupuestos_proyecto_period_id");
+
+                    b.HasIndex("ProjectId", "PeriodId")
+                        .HasDatabaseName("ix_presupuestos_proyecto_project_id_period_id");
+
+                    b.ToTable("presupuestos_proyecto", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.Project", b =>
                 {
                     b.Property<int>("Id")
@@ -1492,6 +1553,156 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("staging_pay_hawk_gastos", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingSgpvVisita", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CentroId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("centro_id");
+
+                    b.Property<string>("CentroNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("centro_nombre");
+
+                    b.Property<string>("ErrorProcesamiento")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error_procesamiento");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha");
+
+                    b.Property<DateTime>("FechaUltimaSincronizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_ultima_sincronizacion");
+
+                    b.Property<bool>("FlagProcesado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("flag_procesado");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("hash");
+
+                    b.Property<decimal?>("HorasDuracion")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("horas_duracion");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<int?>("ProjectId")
+                        .HasColumnType("integer")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("ResourceNif")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("resource_nif");
+
+                    b.Property<string>("ServiceName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("service_name");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("VisitaIdExterno")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("visita_id_externo");
+
+                    b.HasKey("Id")
+                        .HasName("pk_staging_sgpv_visitas");
+
+                    b.HasIndex("Hash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_staging_sgpv_visitas_hash");
+
+                    b.ToTable("staging_sgpv_visitas", (string)null);
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.TarifaProyecto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateOnly>("FechaDesde")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_desde");
+
+                    b.Property<DateOnly?>("FechaHasta")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_hasta");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nombre");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("integer")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Unidad")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("unidad");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tarifas_proyecto");
+
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("ix_tarifas_proyecto_project_id");
+
+                    b.ToTable("tarifas_proyecto", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.User", b =>
                 {
                     b.Property<int>("Id")
@@ -1876,6 +2087,26 @@ namespace SIG.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.PresupuestoProyecto", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.Period", "Period")
+                        .WithMany()
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_presupuestos_proyecto_periods_period_id");
+
+                    b.HasOne("SIG.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_presupuestos_proyecto_projects_project_id");
+
+                    b.Navigation("Period");
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.Project", b =>
                 {
                     b.HasOne("SIG.Domain.Entities.Client", "Client")
@@ -1974,6 +2205,18 @@ namespace SIG.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_celero_service_mappings_projects_project_id");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.TarifaProyecto", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tarifas_proyecto_projects_project_id");
 
                     b.Navigation("Project");
                 });

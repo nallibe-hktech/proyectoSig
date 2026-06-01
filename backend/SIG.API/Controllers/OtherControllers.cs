@@ -106,14 +106,88 @@ public class ExportsController : ControllerBase
     public async Task<IActionResult> A3Innuva(int closureId, CancellationToken ct)
     {
         var (content, filename) = await _svc.ExportA3InnuvaAsync(closureId, UserId, ct);
-        return File(content, "application/xml", filename);
+        return File(content, "application/vnd.ms-excel", filename);
     }
 
     [HttpGet("a3-erp/{closureId:int}")]
     public async Task<IActionResult> A3Erp(int closureId, CancellationToken ct)
     {
         var (content, filename) = await _svc.ExportA3ErpAsync(closureId, UserId, ct);
-        return File(content, "application/xml", filename);
+        return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename);
+    }
+}
+
+[ApiController]
+[Route("api/projects/{projectId:int}/tarifas")]
+[Authorize(Roles = "Administrator,Backoffice")]
+public class TarifasController : ControllerBase
+{
+    private readonly ITarifaProyectoService _svc;
+    public TarifasController(ITarifaProyectoService svc) { _svc = svc; }
+
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> List(int projectId, CancellationToken ct) =>
+        Ok(await _svc.ListByProjectAsync(projectId, ct));
+
+    [HttpGet("{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> Get(int projectId, int id, CancellationToken ct) =>
+        Ok(await _svc.GetByIdAsync(id, projectId, ct));
+
+    [HttpPost]
+    public async Task<IActionResult> Create(int projectId, SIG.Application.DTOs.TarifaProyectoCreateRequest req, CancellationToken ct)
+    {
+        var r = await _svc.CreateAsync(projectId, req, ct);
+        return CreatedAtAction(nameof(Get), new { projectId, id = r.Id }, r);
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int projectId, int id, SIG.Application.DTOs.TarifaProyectoUpdateRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpdateAsync(id, projectId, req, ct));
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int projectId, int id, CancellationToken ct)
+    {
+        await _svc.DeleteAsync(id, projectId, ct);
+        return NoContent();
+    }
+}
+
+[ApiController]
+[Route("api/projects/{projectId:int}/presupuestos")]
+[Authorize(Roles = "Administrator,Backoffice")]
+public class PresupuestosController : ControllerBase
+{
+    private readonly IPresupuestoProyectoService _svc;
+    public PresupuestosController(IPresupuestoProyectoService svc) { _svc = svc; }
+
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> List(int projectId, CancellationToken ct) =>
+        Ok(await _svc.ListByProjectAsync(projectId, ct));
+
+    [HttpGet("{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> Get(int projectId, int id, CancellationToken ct) =>
+        Ok(await _svc.GetByIdAsync(id, projectId, ct));
+
+    [HttpPost]
+    public async Task<IActionResult> Create(int projectId, SIG.Application.DTOs.PresupuestoProyectoCreateRequest req, CancellationToken ct)
+    {
+        var r = await _svc.CreateAsync(projectId, req, ct);
+        return CreatedAtAction(nameof(Get), new { projectId, id = r.Id }, r);
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int projectId, int id, SIG.Application.DTOs.PresupuestoProyectoUpdateRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpdateAsync(id, projectId, req, ct));
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int projectId, int id, CancellationToken ct)
+    {
+        await _svc.DeleteAsync(id, projectId, ct);
+        return NoContent();
     }
 }
 

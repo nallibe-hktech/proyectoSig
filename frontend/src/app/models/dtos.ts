@@ -389,6 +389,42 @@ export interface VariableCreateRequest {
 }
 export type VariableUpdateRequest = VariableCreateRequest;
 
+// ------------------ Tarifa ------------------
+export interface TarifaProyectoDto {
+  id: number;
+  projectId: number;
+  nombre: string;
+  valor: number;
+  unidad?: string | null;
+  fechaDesde: string; // DateOnly ISO yyyy-MM-dd
+  fechaHasta?: string | null; // DateOnly ISO yyyy-MM-dd
+}
+export interface TarifaProyectoCreateRequest {
+  nombre: string;
+  valor: number;
+  unidad?: string | null;
+  fechaDesde: string; // DateOnly ISO yyyy-MM-dd
+  fechaHasta?: string | null; // DateOnly ISO yyyy-MM-dd
+}
+export type TarifaProyectoUpdateRequest = TarifaProyectoCreateRequest;
+
+// ------------------ Presupuesto ------------------
+export interface PresupuestoProyectoDto {
+  id: number;
+  projectId: number;
+  periodId?: number | null;
+  tipo: TipoConcepto;
+  importe: number;
+  descripcion?: string | null;
+}
+export interface PresupuestoProyectoCreateRequest {
+  periodId?: number | null;
+  tipo: TipoConcepto;
+  importe: number;
+  descripcion?: string | null;
+}
+export type PresupuestoProyectoUpdateRequest = PresupuestoProyectoCreateRequest;
+
 // ------------------ Formula AST ------------------
 export type FormulaNode =
   | { type: 'Number'; value: number }

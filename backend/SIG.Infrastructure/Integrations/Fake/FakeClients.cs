@@ -134,3 +134,52 @@ public class PayHawkFakeClient : IPayHawkClient
         return Task.FromResult<IReadOnlyList<PayHawkGastoDto>>(list);
     }
 }
+
+public class SgpvFakeClient : ISgpvClient
+{
+    public Task<IReadOnlyList<SgpvVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
+    {
+        Randomizer.Seed = new Random(FakeSeed.Seed);
+
+        var centros = new[]
+        {
+            ("CENTRO001", "Centro Madrid Centro"),
+            ("CENTRO002", "Centro Madrid Norte"),
+            ("CENTRO003", "Centro Barcelona"),
+            ("CENTRO004", "Centro Valencia"),
+            ("CENTRO005", "Centro Sevilla")
+        };
+
+        var servicios = new[]
+        {
+            "Visitas GPV España",
+            "Visitas Premium",
+            "Operaciones Campo",
+            "Formación Equipos",
+            "Implantación Madrid"
+        };
+
+        var nifs = new[]
+        {
+            "12345678A", "23456789B", "34567890C", "45678901D", "56789012E",
+            "67890123F", "78901234G", "89012345H", "90123456J", "01234567K"
+        };
+
+        var faker = new Faker<SgpvVisitaDto>()
+            .CustomInstantiator(f =>
+            {
+                var centro = f.PickRandom(centros);
+                return new SgpvVisitaDto(
+                    $"SGPV-{f.Random.AlphaNumeric(8).ToUpper()}",
+                    f.PickRandom(nifs),
+                    centro.Item1,
+                    centro.Item2,
+                    f.PickRandom(servicios),
+                    DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue))),
+                    Math.Round(f.Random.Decimal(0.5m, 8m), 2)
+                );
+            });
+        var list = faker.Generate(30);
+        return Task.FromResult<IReadOnlyList<SgpvVisitaDto>>(list);
+    }
+}
