@@ -294,13 +294,18 @@ test.describe('A3 Exports (Innuva .xls y ERP .xlsx)', () => {
 
     // Analizar cada fila
     rows.forEach((row, index) => {
+      // Saltar fila TOTAL (no tiene IVA desglosado)
+      if (String(row['Concepto'] || '').trim().toUpperCase() === 'TOTAL') {
+        return;
+      }
+
       // Buscar columnas de IVA, País, Importe y Total
       const ivaKey = Object.keys(row).find(k => k.toLowerCase().includes('iva') || k.toLowerCase().includes('vat'));
       const paisKey = Object.keys(row).find(k => k.toLowerCase().includes('país') || k.toLowerCase().includes('pais'));
       const importeKey = Object.keys(row).find(k => k.toLowerCase().includes('importe') && !k.toLowerCase().includes('iva'));
       const totalKey = Object.keys(row).find(k => k.toLowerCase().includes('total'));
 
-      if (ivaKey && (paisKey || true)) {
+      if (ivaKey) {
         const ivaValue = parseFloat(String(row[ivaKey] || 0).replace('%', '').trim());
 
         // Si hay país, validar regla VAT

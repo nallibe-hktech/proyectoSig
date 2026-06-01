@@ -1,5 +1,6 @@
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using SIG.Application.Interfaces.Repositories;
@@ -16,12 +17,14 @@ public class ExportService : IExportService
     private readonly AppDbContext _db;
     private readonly IAuditLogRepository _auditRepo;
     private readonly ICurrentUserService _currentUser;
+    private readonly ILogger<ExportService> _logger;
 
-    public ExportService(AppDbContext db, IAuditLogRepository auditRepo, ICurrentUserService currentUser)
+    public ExportService(AppDbContext db, IAuditLogRepository auditRepo, ICurrentUserService currentUser, ILogger<ExportService> logger)
     {
         _db = db;
         _auditRepo = auditRepo;
         _currentUser = currentUser;
+        _logger = logger;
     }
 
     public async Task<(byte[] Content, string FileName)> ExportA3InnuvaAsync(int closureId, int usuarioId, CancellationToken ct)
@@ -137,7 +140,7 @@ public class ExportService : IExportService
 
         foreach (var line in invoiceLines)
         {
-            var vat = GetVatRate(client?.Pais);
+            var vat = GetVatRate(client?.Pais, _logger);
             var vatAmount = line.Importe * vat / 100;
 
             ws.Cell(rowNum, 1).Value = client?.NIF ?? "";
@@ -178,23 +181,52 @@ public class ExportService : IExportService
         return (content, fileName);
     }
 
-    private static decimal GetVatRate(string? pais)
+    private static decimal GetVatRate(string? pais, ILogger<ExportService> logger)
     {
         // 21% for Spain (or null), 0% for intra-EU
-        if (string.IsNullOrEmpty(pais) || pais == "España")
+        if (string.IsNullOrEmpty(pais) ||
+            pais.Equals("España", StringComparison.OrdinalIgnoreCase) ||
+            pais.Equals("Spain", StringComparison.OrdinalIgnoreCase))
             return 21m;
         return 0m;
     }
 
     private async Task<Closure> LoadClosureForExportAsync(int id, CancellationToken ct)
     {
-        return await _db.Closures
-            .Include(c => c.Project).ThenInclude(p => p.Client)
+        var closure = await _db.Closures
+            .Include(c => c.Project)
             .Include(c => c.Period)
-            .Include(c => c.Lines).ThenInclude(l => l.Concept)
+            .Include(c => c.Lines)
             .Include(c => c.Lines).ThenInclude(l => l.User).ThenInclude(u => u!.Department)
+            .IgnoreQueryFilters()  // Ignore soft-delete filter for Closure and related entities
             .FirstOrDefaultAsync(c => c.Id == id, ct)
             ?? throw new EntityNotFoundException("Closure", id);
+
+        // Explicitly load Client with IgnoreQueryFilters to bypass soft-delete filter
+        if (closure.Project?.ClientId > 0)
+        {
+            var client = await _db.Clients
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Id == closure.Project.ClientId, ct);
+            if (closure.Project != null)
+                closure.Project.Client = client;
+        }
+
+        // Explicitly load Concepts with IgnoreQueryFilters to bypass soft-delete filter
+        var conceptIds = closure.Lines.Select(l => l.ConceptId).Distinct().ToList();
+        var concepts = await _db.Concepts
+            .IgnoreQueryFilters()
+            .Where(c => conceptIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, ct);
+
+        // Attach loaded concepts to the lines
+        foreach (var line in closure.Lines)
+        {
+            if (concepts.TryGetValue(line.ConceptId, out var concept))
+                line.Concept = concept;
+        }
+
+        return closure;
     }
 
     private static void EnsureApproved(Closure c)

@@ -210,28 +210,28 @@ public class DataSeeder : ISeedService
         var fechaDesde = new DateOnly(2025, 1, 1);
         var concepts = new List<Concept>
         {
-            new() { Nombre = "Suma de gastos directos", Tipo = TipoConcepto.Pago, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+            new() { Nombre = "Suma de gastos directos", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "Aggregate", op = "Sum", field = "Importe",
                 source = new { type = "Source", entity = "GastosPayHawk", filters = new object[0] }
             }) },
-            new() { Nombre = "Bonus por visita estándar", Tipo = TipoConcepto.Pago, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+            new() { Nombre = "Bonus por visita estándar", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "BinaryOp", op = "Mul",
                 left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
                     filters = new[] { new { field = "TipoVisita", op = "Eq", value = 1 } } } },
                 right = new { type = "Number", value = 5 }
             }) },
-            new() { Nombre = "Bonus por visita premium", Tipo = TipoConcepto.Pago, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+            new() { Nombre = "Bonus por visita premium", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "BinaryOp", op = "Mul",
                 left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
                     filters = new[] { new { field = "TipoVisita", op = "Eq", value = 2 } } } },
                 right = new { type = "Number", value = 8 }
             }) },
-            new() { Nombre = "Pago por horas trabajadas", Tipo = TipoConcepto.Pago, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+            new() { Nombre = "Pago por horas trabajadas", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "BinaryOp", op = "Mul",
                 left = new { type = "Aggregate", op = "Sum", field = "Horas", source = new { type = "Source", entity = "HorasBizneo", filters = new object[0] } },
                 right = new { type = "Variable", variableId = tarifaHoraId }
             }) },
-            new() { Nombre = "Pago por implantación completada", Tipo = TipoConcepto.Pago, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+            new() { Nombre = "Pago por implantación completada", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "BinaryOp", op = "Mul",
                 left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
                     filters = new[] { new { field = "PuntoMontado", op = "Eq", value = 1 } } } },
@@ -462,6 +462,8 @@ public class DataSeeder : ISeedService
 
         var allLines = new List<ClosureLine>();
         var allLogs = new List<(ClosureLine line, CalculationResult result, int conceptId)>();
+        // Recursos de campo para asignar a ClosureLines de pago
+        var fieldUsers = users.Skip(11).Take(4).ToList();
 
         foreach (var c in closuresFull)
         {
@@ -469,13 +471,19 @@ public class DataSeeder : ISeedService
             // Cargar concepts aplicables
             var aplic = concepts.Where(cn => cn.FechaDesde <= c.Period.FechaFin &&
                                               (cn.FechaHasta == null || cn.FechaHasta >= c.Period.FechaInicio)).ToList();
+            int userIdx = 0;
             foreach (var concept in aplic)
             {
                 var result = await _engine.EvaluateAsync(concept, c, null, ct);
+                // Asignar UserId para conceptos de pago (rotando entre field users)
+                var assignedUserId = concept.Tipo == TipoConcepto.Pago
+                    ? fieldUsers[userIdx % fieldUsers.Count].Id
+                    : (int?)null;
                 var line = new ClosureLine
                 {
                     ClosureId = c.Id,
                     ConceptId = concept.Id,
+                    UserId = assignedUserId,
                     Importe = result.Resultado,
                     DatosEntradaJson = result.InputsJson,
                     Tipo = concept.Tipo,
@@ -485,6 +493,7 @@ public class DataSeeder : ISeedService
                 allLogs.Add((line, result, concept.Id));
                 if (concept.Tipo == TipoConcepto.Pago) coste += result.Resultado;
                 else factura += result.Resultado;
+                userIdx++;
             }
             c.CosteTotal = Math.Round(coste, 2);
             c.FacturacionTotal = Math.Round(factura, 2);
