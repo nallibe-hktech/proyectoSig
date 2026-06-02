@@ -1,3 +1,5 @@
+#pragma warning disable S2245 // Random usado intencionalmente para datos semilla deterministas (semilla fija 20260101)
+
 using System.Text.Json;
 using Bogus;
 using Microsoft.EntityFrameworkCore;
@@ -96,7 +98,45 @@ public class DataSeeder : ISeedService
     {
         Randomizer.Seed = new Random(Seed);
 
-        // ROLES
+        var roles = await SeedRolesAsync(ct);
+        var rMap = roles.ToDictionary(r => r.Nombre);
+
+        var dMap = await SeedDepartmentsAsync(ct);
+
+        var costCenters = await SeedCostCentersAsync(ct);
+
+        var passwordHash = _hasher.Hash(_config["Seed:DemoPassword"] ?? throw new InvalidOperationException("Seed:DemoPassword no configurada en appsettings"));
+        var users = await SeedUsersAsync(passwordHash, dMap, rMap, ct);
+        var uByEmail = users.ToDictionary(u => u.Email);
+
+        var clients = await SeedClientsAsync(ct);
+
+        var projects = await SeedProjectsAsync(clients, costCenters, uByEmail, ct);
+        var projectsList = projects.ToList();
+
+        var variables = await SeedVariablesAsync(ct);
+        var tarifaHoraId = variables.First(v => v.Nombre == "TarifaHora").Id;
+
+        var concepts = await SeedConceptsAsync(tarifaHoraId, ct);
+
+        var actions = await SeedActionsAsync(projectsList, dMap, concepts, uByEmail, ct);
+
+        var periods = await SeedPeriodsAsync(ct);
+        var periodsList = periods.ToList();
+
+        await SeedStagingDataAsync(users, projects, actions, periodsList, uByEmail, ct);
+
+        var closuresFull = await SeedClosuresAsync(projectsList, periodsList, ct);
+
+        await SeedLineasYLogsAsync(closuresFull, concepts, users, ct);
+
+        await SeedApprovalsAsync(closuresFull, rMap, uByEmail, ct);
+
+        await SeedAuditExtraAsync(uByEmail, ct);
+    }
+
+    private async Task<List<Role>> SeedRolesAsync(CancellationToken ct)
+    {
         var roles = new List<Role>
         {
             new() { Nombre = "Administrator", Descripcion = "Acceso total" },
@@ -109,9 +149,11 @@ public class DataSeeder : ISeedService
         };
         _db.Roles.AddRange(roles);
         await _db.SaveChangesAsync(ct);
-        var rMap = roles.ToDictionary(r => r.Nombre);
+        return roles;
+    }
 
-        // DEPARTMENTS
+    private async Task<Dictionary<string, Department>> SeedDepartmentsAsync(CancellationToken ct)
+    {
         var deps = new List<Department>
         {
             new() { Nombre = "Operaciones" },
@@ -121,9 +163,11 @@ public class DataSeeder : ISeedService
         };
         _db.Departments.AddRange(deps);
         await _db.SaveChangesAsync(ct);
-        var dMap = deps.ToDictionary(d => d.Nombre);
+        return deps.ToDictionary(d => d.Nombre);
+    }
 
-        // COSTCENTERS
+    private async Task<List<CostCenter>> SeedCostCentersAsync(CancellationToken ct)
+    {
         var costCenters = new List<CostCenter>
         {
             new() { Codigo = "025888", Nombre = "Operaciones campo" },
@@ -133,10 +177,11 @@ public class DataSeeder : ISeedService
         };
         _db.CostCenters.AddRange(costCenters);
         await _db.SaveChangesAsync(ct);
+        return costCenters;
+    }
 
-        // USERS
-        var demoPassword = _config["Seed:DemoPassword"] ?? throw new InvalidOperationException("Seed:DemoPassword no configurada en appsettings");
-        var passwordHash = _hasher.Hash(demoPassword);
+    private async Task<List<User>> SeedUsersAsync(string passwordHash, Dictionary<string, Department> dMap, Dictionary<string, Role> rMap, CancellationToken ct)
+    {
         var users = new List<User>
         {
             New("admin@sig.local",      "12345678A", "Admin",     "SIG",      dMap.GetValueOrDefault("Dirección"), passwordHash, rMap["Administrator"]),
@@ -157,9 +202,11 @@ public class DataSeeder : ISeedService
         };
         _db.Users.AddRange(users);
         await _db.SaveChangesAsync(ct);
-        var uByEmail = users.ToDictionary(u => u.Email);
+        return users;
+    }
 
-        // CLIENTS
+    private async Task<List<Client>> SeedClientsAsync(CancellationToken ct)
+    {
         var clients = new List<Client>
         {
             new() { Nombre = "Alpha Foods",     NIF = "A12345678", Direccion = "Calle Mayor 1",  Ciudad = "Madrid",   Provincia = "Madrid",   Pais = "España", CodigoPostal = "28001", ContactoNombre = "Ana Foods",    ContactoEmail = "ana@alpha.es",    ContactoTelefono = "910000001" },
@@ -168,8 +215,11 @@ public class DataSeeder : ISeedService
         };
         _db.Clients.AddRange(clients);
         await _db.SaveChangesAsync(ct);
+        return clients;
+    }
 
-        // PROJECTS (8: 3 Alpha, 3 Beta, 2 Gamma)
+    private async Task<List<Project>> SeedProjectsAsync(List<Client> clients, List<CostCenter> costCenters, Dictionary<string, User> uByEmail, CancellationToken ct)
+    {
         var alpha = clients[0]; var beta = clients[1]; var gamma = clients[2];
         var fechaAlta = new DateOnly(2025, 1, 15);
         var projects = new List<Project>
@@ -183,18 +233,19 @@ public class DataSeeder : ISeedService
             NewProject("Gamma - Operaciones Campo",   gamma.Id, costCenters[0].Id, uByEmail["pm.gamma@sig.local"].Id, fechaAlta),
             NewProject("Gamma - Formación Premium",   gamma.Id, costCenters[3].Id, uByEmail["pm.gamma@sig.local"].Id, fechaAlta),
         };
-        // Asignar pm.multi a un proyecto cruzado
         foreach (var p in projects)
         {
             p.ProjectUsers.Add(new ProjectUser { UserId = uByEmail["pm.multi@sig.local"].Id });
-            // Asignar también recursos gpv1..gpv4 para que sean visibles
             foreach (var gpv in new[] { "gpv1@sig.local", "gpv2@sig.local", "gpv3@sig.local", "gpv4@sig.local" })
                 p.ProjectUsers.Add(new ProjectUser { UserId = uByEmail[gpv].Id });
         }
         _db.Projects.AddRange(projects);
         await _db.SaveChangesAsync(ct);
+        return projects;
+    }
 
-        // VARIABLES
+    private async Task<List<Variable>> SeedVariablesAsync(CancellationToken ct)
+    {
         var variables = new List<Variable>
         {
             new() { Nombre = "PuntoMontado", QuestionIdExterno = "Q12", MapeoValoresJson = JsonSerializer.Serialize(new[] { new { respuesta = "Sí", valor = 1 }, new { respuesta = "No", valor = 0 } }) },
@@ -204,9 +255,11 @@ public class DataSeeder : ISeedService
         };
         _db.Variables.AddRange(variables);
         await _db.SaveChangesAsync(ct);
-        var tarifaHoraId = variables.First(v => v.Nombre == "TarifaHora").Id;
+        return variables;
+    }
 
-        // CONCEPTS (8 según INPUT_APP)
+    private async Task<List<Concept>> SeedConceptsAsync(int tarifaHoraId, CancellationToken ct)
+    {
         var fechaDesde = new DateOnly(2025, 1, 1);
         var concepts = new List<Concept>
         {
@@ -251,8 +304,11 @@ public class DataSeeder : ISeedService
         };
         _db.Concepts.AddRange(concepts);
         await _db.SaveChangesAsync(ct);
+        return concepts;
+    }
 
-        // ACTIONS (20-25, 2-4 por proyecto)
+    private async Task<List<Action>> SeedActionsAsync(List<Project> projects, Dictionary<string, Department> dMap, List<Concept> concepts, Dictionary<string, User> uByEmail, CancellationToken ct)
+    {
         var actions = new List<Action>();
         var actionNames = new[] { "Implantación", "Visita Estándar", "Visita Premium", "Formación", "Reposición" };
         foreach (var p in projects)
@@ -263,13 +319,9 @@ public class DataSeeder : ISeedService
                 var name = actionNames[i % actionNames.Length] + " - " + p.Nombre;
                 var act = new Action
                 {
-                    Nombre = name,
-                    ProjectId = p.Id,
-                    ClientId = p.ClientId,
-                    DepartmentId = dMap["Operaciones"].Id,
-                    Estado = EstadoAccion.Activa
+                    Nombre = name, ProjectId = p.Id, ClientId = p.ClientId,
+                    DepartmentId = dMap["Operaciones"].Id, Estado = EstadoAccion.Activa
                 };
-                // Asignar 2-3 conceptos aleatorios
                 foreach (var c in concepts.Take(3))
                     act.ActionConcepts.Add(new ActionConcept { ConceptId = c.Id });
                 foreach (var gpv in new[] { "gpv1@sig.local", "gpv2@sig.local" })
@@ -279,8 +331,11 @@ public class DataSeeder : ISeedService
         }
         _db.Actions.AddRange(actions);
         await _db.SaveChangesAsync(ct);
+        return actions;
+    }
 
-        // PERIODS (5)
+    private async Task<List<Period>> SeedPeriodsAsync(CancellationToken ct)
+    {
         var periods = new List<Period>
         {
             new() { Nombre = "Noviembre 2025", FechaInicio = new(2025,11,1), FechaFin = new(2025,11,30), Estado = EstadoPeriodo.Cerrado },
@@ -291,15 +346,17 @@ public class DataSeeder : ISeedService
         };
         _db.Periods.AddRange(periods);
         await _db.SaveChangesAsync(ct);
+        return periods;
+    }
 
-        // STAGING: generar visitas, horas, fichajes, gastos con semilla fija
+    private async Task SeedStagingDataAsync(List<User> users, List<Project> projects, List<Action> actions, List<Period> periods, Dictionary<string, User> uByEmail, CancellationToken ct)
+    {
         Randomizer.Seed = new Random(Seed);
         var stagingVisitas = new List<StagingCeleroVisita>();
         var stagingHoras = new List<StagingBizneoHora>();
         var stagingEmps = new List<StagingBizneoEmpleado>();
         var stagingFichajes = new List<StagingIntratimeFichaje>();
         var stagingGastos = new List<StagingPayHawkGasto>();
-        var faker = new Faker();
         int hashSeed = 0;
 
         foreach (var u in users)
@@ -320,83 +377,15 @@ public class DataSeeder : ISeedService
         {
             foreach (var period in periods)
             {
-                int numVisitas = 5 + (p.Id + period.Id) % 4;
-                for (int i = 0; i < numVisitas; i++)
-                {
-                    var rec = users.Skip(11).Take(4).ToList()[i % 4];
-                    var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i).Next(0, 27));
-                    if (date > period.FechaFin) date = period.FechaFin;
-                    var action = actions.First(a => a.ProjectId == p.Id);
-                    var v = new StagingCeleroVisita
-                    {
-                        VisitaIdExterno = $"VC-{p.Id:00}{period.Id:00}{i:00}",
-                        ResourceNif = rec.NIF,
-                        ServiceName = p.Nombre,
-                        MissionName = action.Nombre,
-                        Fecha = date,
-                        UserId = rec.Id, ProjectId = p.Id, ActionId = action.Id,
-                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
-                    };
-                    v.PayloadJson = JsonSerializer.Serialize(new { v.VisitaIdExterno, v.ResourceNif, v.ServiceName, v.MissionName, v.Fecha });
-                    v.Hash = Sha256($"visita-{++hashCounter}");
-                    stagingVisitas.Add(v);
-                }
-
-                int numHoras = 8 + (p.Id + period.Id) % 5;
-                for (int i = 0; i < numHoras; i++)
-                {
-                    var rec = users.Skip(11).Take(4).ToList()[i % 4];
-                    var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 1000).Next(0, 27));
-                    if (date > period.FechaFin) date = period.FechaFin;
-                    var h = new StagingBizneoHora
-                    {
-                        RegistroIdExterno = $"BH-{p.Id:00}{period.Id:00}{i:00}",
-                        UserId = rec.Id, ProjectId = p.Id, Fecha = date, Horas = 4 + (i % 5),
-                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
-                    };
-                    h.PayloadJson = JsonSerializer.Serialize(new { h.RegistroIdExterno, h.UserId, h.ProjectId, h.Fecha, h.Horas });
-                    h.Hash = Sha256($"hora-{++hashCounter}");
-                    stagingHoras.Add(h);
-                }
-
-                int numFichajes = 12 + (p.Id + period.Id) % 4;
-                for (int i = 0; i < numFichajes; i++)
-                {
-                    var rec = users.Skip(11).Take(4).ToList()[i % 4];
-                    var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 2000).Next(0, 27));
-                    if (date > period.FechaFin) date = period.FechaFin;
-                    var dt = DateTime.SpecifyKind(date.ToDateTime(new TimeOnly(8, 0)), DateTimeKind.Utc);
-                    var f = new StagingIntratimeFichaje
-                    {
-                        FichajeIdExterno = $"FIC-{p.Id:00}{period.Id:00}{i:00}",
-                        UserId = rec.Id,
-                        Entrada = dt,
-                        Salida = DateTime.SpecifyKind(dt.AddHours(8), DateTimeKind.Utc),
-                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
-                    };
-                    f.PayloadJson = JsonSerializer.Serialize(new { f.FichajeIdExterno, f.UserId, f.Entrada, f.Salida });
-                    f.Hash = Sha256($"fichaje-{++hashCounter}");
-                    stagingFichajes.Add(f);
-                }
-
-                int numGastos = 3 + (p.Id + period.Id) % 4;
-                for (int i = 0; i < numGastos; i++)
-                {
-                    var rec = users.Skip(11).Take(4).ToList()[i % 4];
-                    var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 3000).Next(0, 27));
-                    if (date > period.FechaFin) date = period.FechaFin;
-                    var g = new StagingPayHawkGasto
-                    {
-                        GastoIdExterno = $"GH-{p.Id:00}{period.Id:00}{i:00}",
-                        UserId = rec.Id, ProjectId = p.Id, Fecha = date,
-                        Importe = 50 + (i * 11) % 200,
-                        Categoria = new[] { "Viajes", "Material", "Restauración", "Combustible" }[i % 4],
-                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
-                    };
-                    g.PayloadJson = JsonSerializer.Serialize(new { g.GastoIdExterno, g.UserId, g.ProjectId, g.Fecha, g.Importe, g.Categoria });
-                    g.Hash = Sha256($"gasto-{++hashCounter}");
-                    stagingGastos.Add(g);
-                }
+                var pId = p.Id; var periodId = period.Id;
+                stagingVisitas.AddRange(GenerateVisitas(p, period, actions, users, hashCounter));
+                hashCounter += 5 + (pId + periodId) % 4;
+                stagingHoras.AddRange(GenerateHoras(p, period, users, hashCounter));
+                hashCounter += 8 + (pId + periodId) % 5;
+                stagingFichajes.AddRange(GenerateFichajes(p, period, users, hashCounter));
+                hashCounter += 12 + (pId + periodId) % 4;
+                stagingGastos.AddRange(GenerateGastos(p, period, users, hashCounter));
+                hashCounter += 3 + (pId + periodId) % 4;
             }
         }
         _db.StagingBizneoEmpleados.AddRange(stagingEmps);
@@ -405,89 +394,154 @@ public class DataSeeder : ISeedService
         _db.StagingIntratimeFichajes.AddRange(stagingFichajes);
         _db.StagingPayHawkGastos.AddRange(stagingGastos);
         await _db.SaveChangesAsync(ct);
+    }
 
-        // CLOSURES — generamos 1 por Project × Period aplicable (5 periodos × 8 proyectos = 40 closures + extras Marzo en algunos)
-        // Distribución requerida (≈ 50):
-        // 20 Aprobado (Nov-Dic-Ene de proyectos 1-7) → tres primeros periodos cerrados
-        // 8 Approved listos para export → todos los cierres aprobados son "Aprobado" en nuestro estado
-        // 6 Pendiente Fico (Febrero) → PasoActual=Fico, Estado=EnAprobacion
-        // 8 Pendiente Backoffice (Febrero) → PasoActual=Backoffice, Estado=EnAprobacion
-        // 5 Pendiente PM (Marzo) → PasoActual=ProjectManager, Estado=Borrador
-        // 3 Rechazados (Marzo) → PasoActual=ProjectManager, Estado=Rechazado
+    private static List<StagingCeleroVisita> GenerateVisitas(Project p, Period period, List<Action> actions, List<User> users, int hashOffset)
+    {
+        var list = new List<StagingCeleroVisita>();
+        int num = 5 + (p.Id + period.Id) % 4;
+        for (int i = 0; i < num; i++)
+        {
+            var rec = users.Skip(11).Take(4).ToList()[i % 4];
+            var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i).Next(0, 27));
+            if (date > period.FechaFin) date = period.FechaFin;
+            var action = actions.First(a => a.ProjectId == p.Id);
+            var v = new StagingCeleroVisita
+            {
+                VisitaIdExterno = $"VC-{p.Id:00}{period.Id:00}{i:00}",
+                ResourceNif = rec.NIF, ServiceName = p.Nombre, MissionName = action.Nombre,
+                Fecha = date, UserId = rec.Id, ProjectId = p.Id, ActionId = action.Id,
+                FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
+            };
+            v.PayloadJson = JsonSerializer.Serialize(new { v.VisitaIdExterno, v.ResourceNif, v.ServiceName, v.MissionName, v.Fecha });
+            v.Hash = Sha256($"visita-{hashOffset + i}");
+            list.Add(v);
+        }
+        return list;
+    }
 
+    private static List<StagingBizneoHora> GenerateHoras(Project p, Period period, List<User> users, int hashOffset)
+    {
+        var list = new List<StagingBizneoHora>();
+        int num = 8 + (p.Id + period.Id) % 5;
+        for (int i = 0; i < num; i++)
+        {
+            var rec = users.Skip(11).Take(4).ToList()[i % 4];
+            var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 1000).Next(0, 27));
+            if (date > period.FechaFin) date = period.FechaFin;
+            var h = new StagingBizneoHora
+            {
+                RegistroIdExterno = $"BH-{p.Id:00}{period.Id:00}{i:00}",
+                UserId = rec.Id, ProjectId = p.Id, Fecha = date, Horas = 4 + (i % 5),
+                FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
+            };
+            h.PayloadJson = JsonSerializer.Serialize(new { h.RegistroIdExterno, h.UserId, h.ProjectId, h.Fecha, h.Horas });
+            h.Hash = Sha256($"hora-{hashOffset + i}");
+            list.Add(h);
+        }
+        return list;
+    }
+
+    private static List<StagingIntratimeFichaje> GenerateFichajes(Project p, Period period, List<User> users, int hashOffset)
+    {
+        var list = new List<StagingIntratimeFichaje>();
+        int num = 12 + (p.Id + period.Id) % 4;
+        for (int i = 0; i < num; i++)
+        {
+            var rec = users.Skip(11).Take(4).ToList()[i % 4];
+            var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 2000).Next(0, 27));
+            if (date > period.FechaFin) date = period.FechaFin;
+            var dt = DateTime.SpecifyKind(date.ToDateTime(new TimeOnly(8, 0)), DateTimeKind.Utc);
+            var f = new StagingIntratimeFichaje
+            {
+                FichajeIdExterno = $"FIC-{p.Id:00}{period.Id:00}{i:00}",
+                UserId = rec.Id, Entrada = dt,
+                Salida = DateTime.SpecifyKind(dt.AddHours(8), DateTimeKind.Utc),
+                FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
+            };
+            f.PayloadJson = JsonSerializer.Serialize(new { f.FichajeIdExterno, f.UserId, f.Entrada, f.Salida });
+            f.Hash = Sha256($"fichaje-{hashOffset + i}");
+            list.Add(f);
+        }
+        return list;
+    }
+
+    private static List<StagingPayHawkGasto> GenerateGastos(Project p, Period period, List<User> users, int hashOffset)
+    {
+        var list = new List<StagingPayHawkGasto>();
+        int num = 3 + (p.Id + period.Id) % 4;
+        for (int i = 0; i < num; i++)
+        {
+            var rec = users.Skip(11).Take(4).ToList()[i % 4];
+            var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 3000).Next(0, 27));
+            if (date > period.FechaFin) date = period.FechaFin;
+            var g = new StagingPayHawkGasto
+            {
+                GastoIdExterno = $"GH-{p.Id:00}{period.Id:00}{i:00}",
+                UserId = rec.Id, ProjectId = p.Id, Fecha = date,
+                Importe = 50 + (i * 11) % 200,
+                Categoria = new[] { "Viajes", "Material", "Restauración", "Combustible" }[i % 4],
+                FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
+            };
+            g.PayloadJson = JsonSerializer.Serialize(new { g.GastoIdExterno, g.UserId, g.ProjectId, g.Fecha, g.Importe, g.Categoria });
+            g.Hash = Sha256($"gasto-{hashOffset + i}");
+            list.Add(g);
+        }
+        return list;
+    }
+
+    private async Task<List<Closure>> SeedClosuresAsync(List<Project> projects, List<Period> periods, CancellationToken ct)
+    {
         var closures = new List<Closure>();
-        // Nov, Dic, Ene: cerrados (Aprobado)
         foreach (var period in periods.Take(3))
             foreach (var p in projects)
                 closures.Add(NewClosureBare(p.Id, period.Id, EstadoClosure.Aprobado, ApprovalStep.SystemExports));
 
-        // Febrero: 6 Fico + 8 Backoffice (8 closures totales Febrero)
         var febrero = periods[3];
-        int idx = 0;
-        foreach (var p in projects)
+        for (int idx = 0; idx < projects.Count; idx++)
         {
-            EstadoClosure est = EstadoClosure.EnAprobacion;
-            ApprovalStep paso = (idx % 2 == 0) ? ApprovalStep.Fico : ApprovalStep.Backoffice;
-            // De los 8: 6 Fico + 2 Backoffice → ajustamos: si idx<6 Fico, resto Backoffice
-            if (idx < 6) paso = ApprovalStep.Fico;
-            else paso = ApprovalStep.Backoffice;
-            closures.Add(NewClosureBare(p.Id, febrero.Id, est, paso));
-            idx++;
+            var paso = idx < 6 ? ApprovalStep.Fico : ApprovalStep.Backoffice;
+            closures.Add(NewClosureBare(projects[idx].Id, febrero.Id, EstadoClosure.EnAprobacion, paso));
         }
-        // Añadimos 6 Backoffice extra (Febrero) sobre proyectos repetidos? necesitamos 8 Backoffice — añadiremos 6 extra de Febrero no se puede (1 closure por Project×Period). Reasignamos los 8 a Backoffice:
-        // Vamos a redistribuir: los 8 closures de Febrero ya creados. Marca 6 como Fico, 2 como Backoffice ya hecho.
-        // Para acercarnos a "8 Backoffice", añadimos 6 closures más a periodo Marzo (Backoffice). Pero también necesitamos PM y Rechazados en Marzo.
 
-        // Marzo: 8 closures (1 por proyecto)
         var marzo = periods[4];
-        // Distribución: 5 PM Borrador, 3 Rechazado
         for (int i = 0; i < projects.Count; i++)
         {
             var p = projects[i];
-            if (i < 5)
-                closures.Add(NewClosureBare(p.Id, marzo.Id, EstadoClosure.Borrador, ApprovalStep.ProjectManager));
-            else
-                closures.Add(NewClosureBare(p.Id, marzo.Id, EstadoClosure.Rechazado, ApprovalStep.ProjectManager));
+            closures.Add(i < 5
+                ? NewClosureBare(p.Id, marzo.Id, EstadoClosure.Borrador, ApprovalStep.ProjectManager)
+                : NewClosureBare(p.Id, marzo.Id, EstadoClosure.Rechazado, ApprovalStep.ProjectManager));
         }
 
         _db.Closures.AddRange(closures);
         await _db.SaveChangesAsync(ct);
 
-        // ClosureLines + CalculationLogs por motor
-        // Refresca colección con períodos y proyectos
-        var closuresFull = await _db.Closures
-            .Include(c => c.Project)
-            .Include(c => c.Period)
-            .ToListAsync(ct);
+        return await _db.Closures.Include(c => c.Project).Include(c => c.Period).ToListAsync(ct);
+    }
 
+    private async Task SeedLineasYLogsAsync(List<Closure> closuresFull, List<Concept> concepts, List<User> users, CancellationToken ct)
+    {
         var allLines = new List<ClosureLine>();
         var allLogs = new List<(ClosureLine line, CalculationResult result, int conceptId)>();
-        // Recursos de campo para asignar a ClosureLines de pago
         var fieldUsers = users.Skip(11).Take(4).ToList();
 
         foreach (var c in closuresFull)
         {
             decimal coste = 0, factura = 0;
-            // Cargar concepts aplicables
             var aplic = concepts.Where(cn => cn.FechaDesde <= c.Period.FechaFin &&
                                               (cn.FechaHasta == null || cn.FechaHasta >= c.Period.FechaInicio)).ToList();
             int userIdx = 0;
             foreach (var concept in aplic)
             {
                 var result = await _engine.EvaluateAsync(concept, c, null, ct);
-                // Asignar UserId para conceptos de pago (rotando entre field users)
                 var assignedUserId = concept.Tipo == TipoConcepto.Pago
                     ? fieldUsers[userIdx % fieldUsers.Count].Id
                     : (int?)null;
                 var line = new ClosureLine
                 {
-                    ClosureId = c.Id,
-                    ConceptId = concept.Id,
-                    UserId = assignedUserId,
-                    Importe = result.Resultado,
-                    DatosEntradaJson = result.InputsJson,
-                    Tipo = concept.Tipo,
-                    TieneIncidencia = result.Incidencias.Any()
+                    ClosureId = c.Id, ConceptId = concept.Id, UserId = assignedUserId,
+                    Importe = result.Resultado, DatosEntradaJson = result.InputsJson,
+                    Tipo = concept.Tipo, TieneIncidencia = result.Incidencias.Any()
                 };
                 allLines.Add(line);
                 allLogs.Add((line, result, concept.Id));
@@ -505,19 +559,18 @@ public class DataSeeder : ISeedService
 
         var calcLogs = allLogs.Select(t => new CalculationLog
         {
-            ClosureLineId = t.line.Id,
-            ConceptId = t.conceptId,
-            FormulaSnapshotJson = t.result.FormulaSnapshotJson,
-            InputsJson = t.result.InputsJson,
+            ClosureLineId = t.line.Id, ConceptId = t.conceptId,
+            FormulaSnapshotJson = t.result.FormulaSnapshotJson, InputsJson = t.result.InputsJson,
             Resultado = t.result.Resultado,
             Incidencias = t.result.Incidencias.Any() ? JsonSerializer.Serialize(t.result.Incidencias) : null,
-            SistemaOrigen = t.result.SistemaOrigen,
-            Timestamp = DateTime.UtcNow
+            SistemaOrigen = t.result.SistemaOrigen, Timestamp = DateTime.UtcNow
         }).ToList();
         _db.CalculationLogs.AddRange(calcLogs);
         await _db.SaveChangesAsync(ct);
+    }
 
-        // Approvals + ApprovalHistory
+    private async Task SeedApprovalsAsync(List<Closure> closuresFull, Dictionary<string, Role> rMap, Dictionary<string, User> uByEmail, CancellationToken ct)
+    {
         var pmId = uByEmail["pm.alpha@sig.local"].Id;
         var bofId = uByEmail["backoffice1@sig.local"].Id;
         var ficoId = uByEmail["fico@sig.local"].Id;
@@ -530,7 +583,6 @@ public class DataSeeder : ISeedService
         {
             if (c.Estado == EstadoClosure.Aprobado)
             {
-                // Aprobaciones completas
                 approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, UserId = pmId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
                 approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id,     Paso = ApprovalStep.Backoffice,     UserId = bofId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(1) });
                 approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Fico"].Id,           Paso = ApprovalStep.Fico,           UserId = ficoId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(2) });
@@ -542,7 +594,6 @@ public class DataSeeder : ISeedService
             }
             else if (c.Estado == EstadoClosure.EnAprobacion)
             {
-                // PM y posiblemente Backoffice aprobados, paso actual pendiente
                 approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, UserId = pmId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
                 history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = pmId, PasoOrigen = ApprovalStep.ProjectManager, PasoDestino = ApprovalStep.Backoffice, Accion = "Aprobar", Timestamp = ts });
                 if (c.PasoActual == ApprovalStep.Fico)
@@ -551,7 +602,7 @@ public class DataSeeder : ISeedService
                     history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = bofId, PasoOrigen = ApprovalStep.Backoffice, PasoDestino = ApprovalStep.Fico, Accion = "Aprobar", Timestamp = ts.AddHours(1) });
                     approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Fico"].Id, Paso = ApprovalStep.Fico, Estado = EstadoApproval.Pendiente });
                 }
-                else // Backoffice pending
+                else
                 {
                     approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id, Paso = ApprovalStep.Backoffice, Estado = EstadoApproval.Pendiente });
                 }
@@ -572,8 +623,10 @@ public class DataSeeder : ISeedService
         _db.Approvals.AddRange(approvals);
         _db.ApprovalHistory.AddRange(history);
         await _db.SaveChangesAsync(ct);
+    }
 
-        // El SaveChangesInterceptor escribió ya audit logs (Create/Update). Forzamos algunos extra para >100.
+    private async Task SeedAuditExtraAsync(Dictionary<string, User> uByEmail, CancellationToken ct)
+    {
         var auditExtra = new List<AuditLog>();
         for (int i = 0; i < 30; i++)
         {
@@ -645,3 +698,5 @@ public class DataSeeder : ISeedService
         return Convert.ToHexString(bytes);
     }
 }
+
+#pragma warning restore S2245

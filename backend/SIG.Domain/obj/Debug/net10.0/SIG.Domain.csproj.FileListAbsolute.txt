@@ -9,3 +9,14 @@ C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\refint\SIG.Domain.dll
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\SIG.Domain.pdb
 C:\Users\NallibeRiveraGrisale\Workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\ref\SIG.Domain.dll
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\bin\Debug\net10.0\SIG.Domain.deps.json
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\bin\Debug\net10.0\SIG.Domain.dll
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\bin\Debug\net10.0\SIG.Domain.pdb
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\SIG.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\SIG.Domain.AssemblyInfoInputs.cache
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\SIG.Domain.AssemblyInfo.cs
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\SIG.Domain.csproj.CoreCompileInputs.cache
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\SIG.Domain.dll
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\refint\SIG.Domain.dll
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\SIG.Domain.pdb
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\obj\Debug\net10.0\ref\SIG.Domain.dll

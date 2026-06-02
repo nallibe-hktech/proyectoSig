@@ -17,14 +17,14 @@ import { SkeletonComponent } from '../../shared/page-skeleton.component';
       <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Roles' }]" />
       <div class="sig-page__header"><h1 class="sig-page__title">Roles del sistema</h1></div>
       <p style="color: var(--mat-sys-on-surface-variant); margin-bottom: 16px;">
-        Los 7 roles están definidos por el sistema (Administrator, Direction, Fico, Backoffice, ProjectManager, Auditor, Reader). No son editables.
+        Los 7 roles están definidos por el sistema. No son editables.
       </p>
       <mat-card><mat-card-content>
         @if (loading()) { <sig-skeleton [count]="5" /> }
         @else {
-          <table mat-table [dataSource]="items()" class="sig-table" data-testid="tabla-roles">
-            <ng-container matColumnDef="nombre"><th mat-header-cell *matHeaderCellDef>Rol</th><td mat-cell *matCellDef="let r">{{ r.nombre }}</td></ng-container>
-            <ng-container matColumnDef="desc"><th mat-header-cell *matHeaderCellDef>Descripción</th><td mat-cell *matCellDef="let r">{{ r.descripcion ?? '—' }}</td></ng-container>
+          <table mat-table [dataSource]="items()" class="sig-table sig-table-dark-header" data-testid="tabla-roles">
+            <ng-container matColumnDef="nombre"><th mat-header-cell *matHeaderCellDef>Rol</th><td mat-cell *matCellDef="let r"><strong>{{ r.nombre }}</strong></td></ng-container>
+            <ng-container matColumnDef="desc"><th mat-header-cell *matHeaderCellDef>Descripción</th><td mat-cell *matCellDef="let r" style="color: var(--sig-text-muted);">{{ r.descripcion ?? '—' }}</td></ng-container>
             <tr mat-header-row *matHeaderRowDef="['nombre', 'desc']"></tr>
             <tr mat-row *matRowDef="let row; columns: ['nombre', 'desc']" data-testid="row-role"></tr>
           </table>

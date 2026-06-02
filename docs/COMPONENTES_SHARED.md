@@ -1,246 +1,218 @@
-# Componentes Compartidos — SIG · Plataforma de Cierres
+# Componentes Compartidos SIG
 
-> Catálogo de componentes reutilizables del sistema de diseño.
-> Versión: 1.0 | Fecha: Mayo 2026
+> Catálogo de componentes shared reutilizables en la plataforma.
+> Fecha: Junio 2026 | Versión: 1.0
 
 ---
 
-## 1. `app-page-header`
+## sig-breadcrumbs
 
-Selector: `<app-page-header>`
+| Atributo | Valor |
+|----------|-------|
+| Selector | `sig-breadcrumbs` |
+| Archivo | `frontend/src/app/shared/breadcrumbs.component.ts` |
+| Módulo | Angular Material: `MatIconModule` |
 
-Propósito: Encabezado estándar de página con título, breadcrumbs y acciones.
+### Inputs
 
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `title` | `string` | — | Título de la página |
-| `breadcrumbs` | `BreadcrumbItem[]` | `[]` | Array de {label, route?} |
-| `icon` | `string` | — | Icono opcional antes del título |
+| Input | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `crumbs` | `Crumb[]` | Sí | Array de {label: string, route?: string} |
+
+### Outputs
+
+Ninguno.
+
+### data-testid
+
+- `breadcrumbs` — contenedor `<nav>`
+
+### Estados
+
+- Ruta activa → último crumb sin enlace, clase `.sig-breadcrumb-current`
+- Crumb intermedio → enlace `<a>` + separador `chevron_right`
+
+---
+
+## sig-state-badge
+
+| Atributo | Valor |
+|----------|-------|
+| Selector | `sig-state-badge` |
+| Archivo | `frontend/src/app/shared/state-badge.component.ts` |
+
+### Inputs
+
+| Input | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `estado` | `EstadoClosure` | Sí | Estado del cierre |
+| `paso` | `ApprovalStep` | Sí | Paso actual del flujo |
+
+### Outputs
+
+Ninguno.
+
+### data-testid
+
+- `badge-estado` — span con clase dinámica
+
+### Variantes CSS
+
+Ver `docs/SISTEMA_DISENO.md §6.5` — clases `sig-badge--*` según estado+paso.
+
+---
+
+## sig-empty-state
+
+| Atributo | Valor |
+|----------|-------|
+| Selector | `sig-empty-state` |
+| Archivo | `frontend/src/app/shared/empty-state.component.ts` |
+| Módulos | `MatIconModule`, `MatButtonModule` |
+
+### Inputs
+
+| Input | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `icon` | `string` | Sí | Glifo Material Symbols |
+| `title` | `string` | Sí | Título del estado vacío |
+| `description` | `string` | No | Descripción opcional |
+| `ctaLabel` | `string` | No | Texto del botón de acción |
+| `hasFilter` | `boolean` | No | Si true, icono del botón cambia a `filter_list` |
+
+### Outputs
 
 | Output | Tipo | Descripción |
 |--------|------|-------------|
-| — | — | — |
+| `ctaClick` | `void` | Click en botón de acción |
 
-`data-testid`: `page-header-{title}`
+### data-testid
 
----
+- `empty-state` — contenedor
+- `btn-empty-cta` — botón de acción
 
-## 2. `app-stat-card`
+### Estados visuales
 
-Selector: `<app-stat-card>`
-
-Propósito: Tarjeta KPI con valor, etiqueta y tendencia. Usada en Dashboard.
-
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `label` | `string` | — | Etiqueta upper (ej: "CIERRES COMPLETADOS") |
-| `value` | `string` | — | Valor principal (ej: "12", "€450K") |
-| `trend` | `'up' \| 'down' \| 'neutral'` | `'neutral'` | Dirección de tendencia |
-| `trendText` | `string` | — | Texto de tendencia (ej: "+2 vs mes ant.") |
-| `accent` | `string` | `#1F4E78` | Color de barra lateral |
-| `icon` | `string` | — | Icono decorativo |
-
-`data-testid`: `kpi-{label}`
+- Sin descripción → no renderiza `<p>`
+- Sin ctaLabel → no renderiza botón
+- hasFilter=true → icono `filter_list` en vez de `add`
 
 ---
 
-## 3. `app-data-table`
+## sig-skeleton
 
-Selector: `<app-data-table>`
+| Atributo | Valor |
+|----------|-------|
+| Selector | `sig-skeleton` |
+| Archivo | `frontend/src/app/shared/page-skeleton.component.ts` |
 
-Propósito: Tabla de datos reutilizable con paginación, ordenación y estados.
+### Inputs
 
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `columns` | `ColumnDef[]` | — | Definición de columnas: {key, label, sortable?, width?, format?} |
-| `data` | `any[]` | `[]` | Datos a mostrar |
-| `total` | `number` | `0` | Total de registros (para paginación) |
-| `page` | `number` | `1` | Página actual |
-| `pageSize` | `number` | `25` | Registros por página |
-| `loading` | `boolean` | `false` | Muestra skeleton mientras carga |
-| `emptyMessage` | `string` | `'No hay datos'` | Mensaje cuando no hay datos |
-| `selectable` | `boolean` | `false` | Muestra checkbox multi-select |
+| Input | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `count` | `number` | No | Número de filas skeleton (default 5) |
 
-| Output | Tipo | Descripción |
-|--------|------|-------------|
-| `pageChange` | `number` | Cambio de página |
-| `sortChange` | `{key, direction}` | Cambio de ordenación |
-| `rowClick` | `any` | Click en fila |
-| `selectionChange` | `any[]` | Cambio en selección |
+### data-testid
 
-Estados: loading (skeleton), empty (empty state), error, datos.
-`data-testid`: `tbl-{entity}`
+No aplica (elementos renderizados no tienen testid).
 
 ---
 
-## 4. `app-filter-bar`
+## sig-confirm-dialog
 
-Selector: `<app-filter-bar>`
+| Atributo | Valor |
+|----------|-------|
+| Selector | `sig-confirm-dialog` |
+| Archivo | `frontend/src/app/shared/confirm-dialog.component.ts` |
+| Módulos | `MatDialogModule`, `MatButtonModule`, `MatIconModule` |
 
-Propósito: Barra de filtros reutilizable con campos configurables.
+### Dependencia
 
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `filters` | `FilterDef[]` | `[]` | Definición de filtros: {key, label, type: 'text'|'select'|'date', options?} |
-| `values` | `Record<string, any>` | `{}` | Valores actuales |
-| `total` | `number` | `0` | Total de registros (badge) |
+Inyectar vía `MatDialog.open(ConfirmDialogComponent, { data: ConfirmDialogData })`.
 
-| Output | Tipo | Descripción |
-|--------|------|-------------|
-| `search` | `Record<string, any>` | Emite al hacer clic en Filtrar |
-| `clear` | `void` | Emite al limpiar filtros |
+### ConfirmDialogData
 
-`data-testid`: `filter-bar`
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `title` | `string` | Sí | Título del diálogo |
+| `message` | `string` | Sí | Cuerpo del mensaje |
+| `entityName` | `string?` | No | Nombre de la entidad a eliminar (formateado) |
+| `dependencies` | `{label, count}[]?` | No | Lista de dependencias afectadas |
+| `confirmLabel` | `string?` | No | Texto del botón confirmar |
+| `cancelLabel` | `string?` | No | Texto del botón cancelar |
+| `destructive` | `boolean?` | No | Si true, botón warn + advertencia |
 
----
+### Retorno
 
-## 5. `app-budget-progress`
+`MatDialogRef` cierra con `true` (confirmado) o `false` (cancelado).
 
-Selector: `<app-budget-progress>`
+### data-testid
 
-Propósito: Barra de progreso presupuestario (coste vs presupuesto).
-
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `actual` | `number` | `0` | Valor actual |
-| `budget` | `number` | `0` | Presupuesto |
-| `label` | `string` | — | Etiqueta |
-
-`data-testid`: `budget-progress`
-
----
-
-## 6. `app-empty-state`
-
-Selector: `<app-empty-state>`
-
-Propósito: Estado vacío para listas y búsquedas sin resultados.
-
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `icon` | `string` | `'inbox'` | Icono a mostrar |
-| `title` | `string` | `'Sin datos'` | Título del estado vacío |
-| `message` | `string` | — | Mensaje descriptivo |
-| `actionLabel` | `string` | — | Texto del CTA (opcional) |
-| `actionRoute` | `string` | — | Ruta del CTA (opcional) |
-
-| Output | Tipo | Descripción |
-|--------|------|-------------|
-| `action` | `void` | Click en CTA (si no hay route) |
-
-`data-testid`: `empty-state`
+- `modal-confirmacion` — título del diálogo
+- `btn-confirmar-eliminar` — botón confirmar
+- `btn-cancelar-eliminar` — botón cancelar
 
 ---
 
-## 7. `app-confirm-dialog`
+## sig-pie-chart
 
-Selector: N/A (servicio `MatDialog`)
+| Atributo | Valor |
+|----------|-------|
+| Selector | `sig-pie-chart` |
+| Archivo | `frontend/src/app/shared/pie-chart.component.ts` |
 
-Propósito: Diálogo de confirmación genérico.
-
-| Input (vía data) | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `title` | `string` | `'Confirmar'` | Título del diálogo |
-| `message` | `string` | `'¿Estás seguro?'` | Mensaje de confirmación |
-| `confirmLabel` | `string` | `'Confirmar'` | Texto botón confirmar |
-| `cancelLabel` | `string` | `'Cancelar'` | Texto botón cancelar |
-| `type` | `'danger' \| 'warning' \| 'info'` | `'info'` | Tipo semántico |
-
-`data-testid`: `confirm-dialog`
+Gráfico SVG circular para KPIs de dashboard.
 
 ---
 
-## 8. `app-toast-notification`
+## Componentes compartidos adicionales (en features)
 
-Selector: Servicio `MatSnackBar`
+### app-page-header
 
-Propósito: Notificación toast semántica.
+No implementado como shared. Consiste en patrón: `.sig-page__header` + `.sig-page__title` + breadcrumbs.
 
-| Método | Descripción |
-|--------|-------------|
-| `success(message)` | Toast verde |
-| `error(message)` | Toast rojo |
-| `warning(message)` | Toast amarillo |
-| `info(message)` | Toast azul |
+### app-stat-card (sig-kpi-card)
 
-CSS classes: `snack-success`, `snack-error`, `snack-warning`, `snack-info`
+Implementado como estilo CSS en `styles.scss` (`.sig-kpi-card`). Card con label uppercase + value grande + trend indicator.
 
----
+### app-data-table (sig-table)
 
-## 9. `app-amount-display`
+Implementado como estilo CSS en `styles.scss` (`.sig-table`, `.sig-table-dark-header`). No es componente Angular, son clases aplicadas a `mat-table`.
 
-Selector: `<app-amount-display>`
+### app-filter-bar
 
-Propósito: Muestra importes monetarios formateados con moneda.
+Patrón implementado en cada listado feature (search input + selects de filtro). No hay componente shared.
 
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `value` | `number` | `0` | Importe |
-| `currency` | `string` | `'EUR'` | Código de moneda |
-| `showSign` | `boolean` | `false` | Muestra signo +/- |
-| `mono` | `boolean` | `true` | Usa fuente Roboto Mono |
+### app-budget-progress
 
-`data-testid`: `amount-{suffix}`
+No implementado en el esqueleto actual. Pendiente para implementación futura si el módulo de presupuestos lo requiere.
 
----
+### app-toast-notification
 
-## 10. `app-category-badge`
+Implementado via `NotifyService` + snackbars de Angular Material con clases semánticas (`.snack-success`, `.snack-error`, `.snack-warning`, `.snack-info`).
 
-Selector: `<app-category-badge>`
+### app-amount-display
 
-Propósito: Badge de categoría con color semántico.
+No implementado como componente. Usar clase `.mono-num` + formato manual con `Intl.NumberFormat`.
 
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `tipo` | `'Pago' \| 'Factura' \| 'Activo' \| 'Inactivo' \| string` | — | Tipo/categoría |
-| `estado` | `string` | — | Estado del flujo |
+### app-category-badge
 
-`data-testid`: `badge-{tipo}-{estado}`
+No implementado como componente. Usar `sig-state-badge` para estados y clases `.sig-badge-*` para categorías personalizadas.
 
 ---
 
-## 11. `app-breadcrumbs`
+## data-testid — convención general
 
-Selector: `<app-breadcrumbs>`
+Formato: `<entidad>-<acción>` o `<entidad>-<campo>`
 
-Propósito: Breadcrumbs de navegación.
-
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `items` | `{label, route?}[]` | `[]` | Items de breadcrumb |
-
-`data-testid`: `breadcrumbs`
-
----
-
-## 12. `app-state-badge`
-
-Selector: `<app-state-badge>`
-
-Propósito: Badge de estado para el flujo de aprobación.
-
-| Input | Tipo | Default | Descripción |
-|-------|------|---------|-------------|
-| `estado` | `string` | — | Estado (Aprobado, Rechazado, Pendiente, etc.) |
-| `paso` | `string` | — | Paso del flujo (PM, Backoffice, FICO, etc.) |
-
-Clases CSS: `sig-badge sig-badge--{estado}`
-
----
-
-## 13. `app-page-skeleton`
-
-Selector: `<app-page-skeleton>`
-
-Propósito: Skeleton loading placeholder para páginas.
-
-`data-testid`: `skeleton`
-
----
-
-## 14. Consejos de uso
-
-- Todos los componentes shared son standalone
-- Usar `data-testid` en cada elemento interactivo para E2E
-- Los colores semánticos se definen en `styles.scss` como variables CSS
-- No mezclar iconos: siempre `material-symbols-outlined`
+| Elemento | Patrón | Ejemplo |
+|----------|--------|---------|
+| Botón crear | `btn-nuevo-<entidad>` | `btn-nuevo-cliente` |
+| Botón editar | `btn-editar-<id>` | `btn-editar-42` |
+| Botón eliminar | `btn-eliminar-<id>` | `btn-eliminar-42` |
+| Input búsqueda | `search-<entidad>` | `search-clientes` |
+| Select filtro | `filter-<campo>` | `filter-estado` |
+| Celda tabla | `cell-<columna>-<id>` | `cell-nombre-42` |
+| Paginación | `paginator` | `paginator` |
+| Navegación | `nav-<ruta>` | `nav-dashboard` |
+| Card KPI | `kpi-<nombre>` | `kpi-cierres-completados` |

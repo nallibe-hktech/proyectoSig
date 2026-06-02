@@ -1,0 +1,300 @@
+name: SIG Backend CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/sig-backend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  GCP_PROJECT_ID: 'sig-prod'
+  ALLOYDB_INSTANCE: 'projects/sig-prod/locations/us-central1/clusters/prod/instances/primary'
+  ALLOYDB_DATABASE: 'sig_plataforma'
+  ALLOYDB_USER: 'alloydb_user'
+
+jobs:
+  # =========================================================================
+  # JOB 1: Build & Test with Testcontainers (Unit + Integration Tests)
+  # =========================================================================
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    services:
+      # Optional: PostgreSQL service for E2E tests (if needed)
+      # Testcontainers will create its own Docker container for unit/integration tests
+      postgres-e2e:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sig_plataforma_e2e
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpw123
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5433:5432
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Step 2: Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: 'backend/**/packages.lock.json'
+
+      # Step 3: Restore dependencies
+      - name: Restore NuGet packages
+        run: dotnet restore backend/
+
+      # Step 4: Build
+      - name: Build
+        run: dotnet build backend/ --configuration Release --no-restore /p:TreatWarningsAsErrors=false
+
+      # Step 5: Run unit tests
+      - name: Run unit tests
+        run: dotnet test backend/SIG.Tests/ --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage" --verbosity normal
+
+      # Step 6: Upload test results
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: '**/test-results.trx'
+
+      # Step 7: Upload coverage to Codecov (optional)
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          flags: unittests
+          fail_ci_if_error: false
+          verbose: true
+
+      # Step 8: SonarQube analysis (optional, if configured)
+      - name: Run SonarQube analysis
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "SonarQube scan would run here (configure in .sonarqube/)"
+        continue-on-error: true
+
+  # =========================================================================
+  # JOB 2: Verify migrations against staging AlloyDB (Optional)
+  # =========================================================================
+  verify-migrations:
+    name: Verify Migrations (Staging AlloyDB)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Download AlloyDB Auth Proxy
+        run: |
+          curl -o /tmp/alloydb-auth-proxy https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64
+          chmod +x /tmp/alloydb-auth-proxy
+
+      - name: Start AlloyDB Auth Proxy
+        run: |
+          /tmp/alloydb-auth-proxy \
+            "${{ env.ALLOYDB_INSTANCE }}" \
+            --port 5432 &
+          sleep 3
+
+          # Verify proxy is listening
+          nc -zv localhost 5432 || (echo "Proxy failed to start" && exit 1)
+
+      - name: Apply migrations to staging
+        env:
+          ConnectionStrings__Default: "Host=localhost;Port=5432;Database=${{ env.ALLOYDB_DATABASE }}_staging;Username=${{ env.ALLOYDB_USER }};Password=${{ secrets.ALLOYDB_STAGING_PASSWORD }};SslMode=Require;Trust Server Certificate=false"
+        run: |
+          cd backend
+          dotnet ef database update --project SIG.Infrastructure --startup-project SIG.API/ --verbose
+          echo "✓ Migrations applied successfully to staging AlloyDB"
+
+  # =========================================================================
+  # JOB 3: Code Quality Checks (Linting, Security Scanning)
+  # =========================================================================
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    needs: build-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Step 1: Check formatting (if you use editorconfig)
+      - name: Check code formatting
+        run: |
+          cd backend
+          dotnet format --verify-no-changes --verbosity diagnostic
+        continue-on-error: true
+
+      # Step 2: Run StyleCop (if configured)
+      - name: Analyze code style
+        run: |
+          echo "StyleCop/FxCop rules would run here if configured"
+        continue-on-error: true
+
+  # =========================================================================
+  # JOB 4: Security Scanning
+  # =========================================================================
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: build-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Dependabot check
+        run: |
+          echo "Dependabot alerts can be configured in GitHub repo settings"
+        continue-on-error: true
+
+      - name: OWASP Dependency Check (optional)
+        uses: dependency-check/Dependency-Check_Action@main
+        if: false  # Disabled by default; enable if you have a license
+        with:
+          path: 'backend'
+          format: 'JSON'
+        continue-on-error: true
+
+  # =========================================================================
+  # JOB 5: Build and Push Docker Image (Optional, for container deployments)
+  # =========================================================================
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build-test, verify-migrations]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Configure Docker authentication to GCP
+        run: |
+          gcloud auth configure-docker gcr.io
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: backend/SIG.API
+          push: true
+          tags: |
+            gcr.io/${{ env.GCP_PROJECT_ID }}/sig-api:${{ github.sha }}
+            gcr.io/${{ env.GCP_PROJECT_ID }}/sig-api:latest
+          cache-from: type=registry,ref=gcr.io/${{ env.GCP_PROJECT_ID }}/sig-api:buildcache
+          cache-to: type=registry,ref=gcr.io/${{ env.GCP_PROJECT_ID }}/sig-api:buildcache,mode=max
+
+  # =========================================================================
+  # JOB 6: Deployment (Optional, can be manual approval or CD)
+  # =========================================================================
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: docker-build
+    environment:
+      name: staging
+      url: https://staging-sig.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Configure kubectl
+        run: |
+          gcloud container clusters get-credentials sig-staging --region us-central1
+
+      - name: Deploy to Kubernetes (Staging)
+        run: |
+          kubectl set image deployment/sig-api \
+            sig-api=gcr.io/${{ env.GCP_PROJECT_ID }}/sig-api:${{ github.sha }} \
+            --record \
+            -n production
+
+          kubectl rollout status deployment/sig-api -n production --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n production -l app=sig-api
+          kubectl logs -n production -l app=sig-api --tail=50
+
+  # =========================================================================
+  # JOB 7: Notify on Failure
+  # =========================================================================
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [build-test, code-quality, security]
+
+    steps:
+      - name: Send failure notification
+        run: |
+          echo "CI/CD pipeline failed"
+          echo "GitHub Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        continue-on-error: true

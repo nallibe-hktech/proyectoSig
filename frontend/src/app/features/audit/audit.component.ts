@@ -73,21 +73,26 @@ import { exportCSV } from '../../core/api/api.helpers';
         @else if (items().length === 0) {
           <sig-empty-state icon="history" title="No hay registros de auditoría" />
         } @else {
-          <table mat-table [dataSource]="items()" class="sig-table" data-testid="tabla-audit">
-            <ng-container matColumnDef="timestamp"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let r" class="mono-num">{{ r.timestamp | date:'dd/MM/yy HH:mm:ss' }}</td></ng-container>
+          <table mat-table [dataSource]="items()" class="sig-table sig-table-dark-header" data-testid="tabla-audit">
+            <ng-container matColumnDef="timestamp"><th mat-header-cell *matHeaderCellDef>Fecha/Hora</th><td mat-cell *matCellDef="let r" class="mono-num">{{ r.timestamp | date:'dd/MM/yy HH:mm:ss' }}</td></ng-container>
             <ng-container matColumnDef="userId"><th mat-header-cell *matHeaderCellDef>Usuario</th><td mat-cell *matCellDef="let r">{{ r.userNombre ?? '— Sistema —' }}</td></ng-container>
-            <ng-container matColumnDef="action"><th mat-header-cell *matHeaderCellDef>Acción</th><td mat-cell *matCellDef="let r"><mat-chip>{{ r.action }}</mat-chip></td></ng-container>
-            <ng-container matColumnDef="entity"><th mat-header-cell *matHeaderCellDef>Entidad</th><td mat-cell *matCellDef="let r">{{ r.entityType }} #{{ r.entityId }}</td></ng-container>
+            <ng-container matColumnDef="action"><th mat-header-cell *matHeaderCellDef>Acción</th>
+              <td mat-cell *matCellDef="let r"><span [class]="'sig-badge sig-badge--' + (r.action === 'Create' ? 'approved' : r.action === 'Delete' ? 'closed' : 'pending')" data-testid="badge-accion">{{ r.action }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="entity"><th mat-header-cell *matHeaderCellDef>Entidad</th><td mat-cell *matCellDef="let r"><span class="mono-num">{{ r.entityType }}</span> <span style="color: var(--sig-text-muted);">#{{ r.entityId }}</span></td></ng-container>
             <ng-container matColumnDef="ip"><th mat-header-cell *matHeaderCellDef>IP</th><td mat-cell *matCellDef="let r" class="mono-num">{{ r.ip ?? '—' }}</td></ng-container>
             <tr mat-header-row *matHeaderRowDef="cols"></tr>
             <tr mat-row *matRowDef="let row; columns: cols" data-testid="row-audit"></tr>
           </table>
         }
-        <mat-paginator [length]="total()" [pageSize]="pageSize()" [pageIndex]="page() - 1" [pageSizeOptions]="[25, 50, 100]" showFirstLastButtons (page)="onPage($event)" data-testid="paginator-audit" />
+        <div class="sig-table-footer">
+          <span class="sig-total-badge" data-testid="total-badge">{{ total() }} registros</span>
+          <mat-paginator [length]="total()" [pageSize]="pageSize()" [pageIndex]="page() - 1" [pageSizeOptions]="[25, 50, 100]" showFirstLastButtons (page)="onPage($event)" data-testid="paginator-audit" />
+        </div>
       </mat-card-content></mat-card>
     </div>
   `,
-  styles: [`.sig-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: center; }`],
+  styles: [`.sig-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: center; } .sig-table-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; } .sig-total-badge { font-size: 13px; color: var(--sig-text-muted); }`],
 })
 export class AuditComponent implements OnInit {
   private readonly auditSvc = inject(AuditService);

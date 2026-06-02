@@ -4,6 +4,8 @@ using SIG.Application.Interfaces.Integrations;
 
 namespace SIG.Infrastructure.Integrations.Fake;
 
+#pragma warning disable S2245 // Random usado intencionalmente para datos de prueba deterministas (semilla fija)
+
 internal static class FakeSeed
 {
     public const int Seed = 20260101;
@@ -16,8 +18,6 @@ public class CeleroFakeClient : ICeleroClient
 
     public Task<IReadOnlyList<CeleroVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
-        Randomizer.Seed = new Random(FakeSeed.Seed);
-
         var servicios = new[]
         {
             "Implantación Madrid",
@@ -66,7 +66,6 @@ public class BizneoFakeClient : IBizneoClient
 {
     public Task<IReadOnlyList<BizneoEmpleadoDto>> GetEmpleadosAsync(CancellationToken ct)
     {
-        Randomizer.Seed = new Random(FakeSeed.Seed);
         var faker = new Faker<BizneoEmpleadoDto>()
             .CustomInstantiator(f => new BizneoEmpleadoDto(
                 $"EMP-{f.Random.AlphaNumeric(6).ToUpper()}",
@@ -80,7 +79,6 @@ public class BizneoFakeClient : IBizneoClient
 
     public Task<IReadOnlyList<BizneoHoraDto>> GetHorasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
-        Randomizer.Seed = new Random(FakeSeed.Seed);
         var faker = new Faker<BizneoHoraDto>()
             .CustomInstantiator(f => new BizneoHoraDto(
                 $"BH-{f.Random.AlphaNumeric(8).ToUpper()}",
@@ -98,7 +96,6 @@ public class IntratimeFakeClient : IIntratimeClient
 {
     public Task<IReadOnlyList<IntratimeFichajeDto>> GetFichajesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
-        Randomizer.Seed = new Random(FakeSeed.Seed);
         var faker = new Faker<IntratimeFichajeDto>()
             .CustomInstantiator(f =>
             {
@@ -120,7 +117,6 @@ public class PayHawkFakeClient : IPayHawkClient
 {
     public Task<IReadOnlyList<PayHawkGastoDto>> GetGastosAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
-        Randomizer.Seed = new Random(FakeSeed.Seed);
         var faker = new Faker<PayHawkGastoDto>()
             .CustomInstantiator(f => new PayHawkGastoDto(
                 $"GH-{f.Random.AlphaNumeric(8).ToUpper()}",
@@ -139,8 +135,6 @@ public class SgpvFakeClient : ISgpvClient
 {
     public Task<IReadOnlyList<SgpvVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
-        Randomizer.Seed = new Random(FakeSeed.Seed);
-
         var centros = new[]
         {
             ("CENTRO001", "Centro Madrid Centro"),
@@ -183,3 +177,5 @@ public class SgpvFakeClient : ISgpvClient
         return Task.FromResult<IReadOnlyList<SgpvVisitaDto>>(list);
     }
 }
+
+#pragma warning restore S2245

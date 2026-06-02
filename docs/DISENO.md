@@ -1,365 +1,284 @@
-# Diseño de Pantallas — SIG · Plataforma de Cierres
+# Diseño de Pantallas · SIG Plataforma de Cierres
 
-> Basado en `docs/ARQUITECTURA.md` (RFs) y diseños Penpot verificados.
-> Versión: 1.0 | Fecha: Mayo 2026
+> Fuente de verdad: mockups Penpot + ARQUITECTURA.md.
+> Fecha: Junio 2026 | Versión: 1.0
 
 ---
 
 ## 1. Layout general
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ Sidebar                         │ Top Bar                        │
-│ 260px · gradiente dark          │ 60px · bg white                │
-│                                 │ Título · Selector período ·   │
-│ Logo SIG                        │ Recalcular · Notificaciones    │
-│                                 │                                │
-│ PRINCIPAL:                      │ Content (padding: 24px)       │
-│  Dashboard       ◄ activo      │                                │
-│  Clientes                       │ ┌────────────────────────────┐ │
-│  Proyectos                      │ │    router-outlet           │ │
-│  Acciones                       │ │                            │ │
-│  Conceptos                      │ │                            │ │
-│  Periodos                       │ │                            │ │
-│  Aprobaciones                   │ └────────────────────────────┘ │
-│  Contabilidad                   │                                │
-│  Informes                       │ Footer: v1.0 · h&k ©2026     │
-│                                 │                                │
-│ ADMINISTRACIÓN:                 │                                │
-│  Usuarios                       │                                │
-│  CECOs                          │                                │
-│  Auditoría                      │                                │
-│                                 │                                │
-│ Perfil usuario (bottom)         │                                │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ AppBar (sticky, 64px) // PRIMARY bg, white text          │
+│ [☰] [SIG Logo] [⋯] [Período ▼] [Usuario] [👤]          │
+├──────────────┬───────────────────────────────────────────┤
+│ Sidenav      │ Main Content                              │
+│ (256px)      │                                           │
+│              │  .sig-page                                │
+│ OPERATIVO    │  ┌─── page__header (title + actions) ──┐  │
+│  Dashboard   │  │   [Breadcrumbs]                      │  │
+│  Clients     │  │   <h1>Title</h1>    [btn] [btn]     │  │
+│  Projects    │  └─────────────────────────────────────┘  │
+│  Actions     │                                           │
+│  Concepts    │  ┌─── filters ──────────────────────────┐  │
+│  Variables   │  │   [search] [filter1] [filter2]       │  │
+│  Periods     │  └─────────────────────────────────────┘  │
+│  Approvals   │                                           │
+│  Closures    │  ┌─── mat-table / cards ───────────────┐  │
+│  Reports     │  │   [datos paginados]                 │  │
+│ ─────────── │  └─────────────────────────────────────┘  │
+│ ADMIN       │                                           │
+│  CostCenters│  ┌─── paginator ─────────────────────────┐  │
+│  Departments│  │   [⏮] [⏪] [Page 1 of N] [⏩] [⏭]   │  │
+│  Roles      │  └─────────────────────────────────────┘  │
+│  Users      │                                           │
+│  Audit Log  │                                           │
+│  Sync       │                                           │
+│  Visitas    │                                           │
+└──────────────┴───────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Login (RF-A01, RF-A02, RF-A03)
+## 2. Pantallas por módulo
 
-**Ruta:** `/login` | **Archivo SVG:** `penpot-design-login.svg`
+### 2.1 Login (`/login`)
 
-### Layout
-- Fondo completo con gradiente oscuro `#1F4E78` → `#163A52` → `#0D2A3E`
-- Círculos decorativos semitransparentes + patrón de puntos
-- **Lado izquierdo:** Branding corporativo "h&k consulting · Plataforma Operativa SIG"
-  - Feature pills: "✅ Cierres automatizados", "🔗 9 sistemas integrados", "📊 Power BI en tiempo real", "🔒 Auditoría completa"
-- **Lado derecho:** Tarjeta blanca 500×720px con sombra profunda
-  - Header accent verde `#70AD47`
-  - Logo SIG circular en azul + texto "Iniciar Sesión"
-  - Campo email corporativo (en foco con `box-shadow` azul)
-  - Campo contraseña con toggle visibilidad (👁)
-  - Checkbox "Recordar sesión" + link "¿Olvidaste tu contraseña?"
-  - Botón "→ Acceder al Sistema" con gradiente azul
-  - Divider "o continuar con" + botón Azure AD (SSO)
-  - Footer: versión + copyright + roles disponibles
+| Atributo | Valor |
+|----------|-------|
+| Ruta | `/login` |
+| Shell | No (layout público independiente) |
+| Componente | `LoginComponent` |
+| Guard | `AllowAnonymous` |
 
-### Componentes usados
-- `mat-card`, `mat-form-field` (outline), `mat-checkbox`, `mat-button` (filled primary)
+**Layout:** Centro vertical+horizontal, card con logo SIG + formulario email/password + botón "Iniciar sesión". Enlace "¿Olvidó su contraseña?" (placeholder, no implementado).
 
-### Estados
+**Estados:**
+- **Default:** Formulario vacío, botón deshabilitado
+- **Validando:** Spinner en botón, feedback de error inline
+- **Error:** Mensaje "Credenciales incorrectas" en snackbar
+- **Éxito:** Redirección a `/dashboard`
+
+**data-testid:** `input-email`, `input-password`, `btn-login`, `login-error`
+
+---
+
+### 2.2 Dashboard (`/dashboard`)
+
+| Atributo | Valor |
+|----------|-------|
+| Ruta | `/dashboard` |
+| Roles | Todos |
+| Componente | `DashboardComponent` |
+
+**Layout:** Fila de 4 tarjetas KPI (Cierres completados, Pendientes, Facturación total, Margen). Panel "Mis proyectos" (tabla resumen). Panel de alertas (cards de warning/info). Selector de período en AppBar.
+
+**Estados:**
+- **Carga:** 4 esqueletos KPI + skeleton table
+- **Vacío:** Empty state "No hay datos para el período seleccionado" + CTA "Ir a Periodos"
+- **Error:** Snackbar "Error al cargar dashboard. Intente de nuevo."
+- **Éxito:** KPIs numéricos, tabla con datos, alertas visibles
+
+**Componentes:** `sig-kpi-card`, `mat-table`, `sig-state-badge`, `sig-skeleton`
+
+---
+
+### 2.3 Clients (`/clients`)
+
+| Atributo | Valor |
+|----------|-------|
+| Rutas | `/clients`, `/clients/nuevo`, `/clients/:id`, `/clients/:id/editar` |
+| Roles | Administrator, ProjectManager, Backoffice |
+| Componentes | `ClientsList`, `ClientForm`, `ClientDetail` |
+
+**Listado:** Search bar + tabla (Nombre, NIF, Ciudad, Proyectos, Acciones). Paginación 25 items. Botón "Nuevo Client" flotante o en header.
+
+**Formulario:** Nombre*, NIF*, Dirección, Ciudad, Provincia, País, CP, Contacto (nombre, email, teléfono). Validación en tiempo real. Botones Guardar/Cancelar.
+
+**Detalle:** Cabecera con nombre + NIF, información de contacto, tabla de proyectos asociados.
+
+**Estados:** Carga → skeleton. Vacío → `sig-empty-state`. Error → snackbar. Submit → loading en botón.
+
+---
+
+### 2.4 Projects (`/projects`)
+
+| Atributo | Valor |
+|----------|-------|
+| Rutas | `/projects`, `/projects/nuevo`, `/projects/:id`, `/projects/:id/editar` |
+| Roles | Administrator, ProjectManager, Backoffice |
+| Componentes | `ProjectsList`, `ProjectForm`, `ProjectDetail` |
+
+**Listado:** Filtros por cliente + estado + búsqueda. Tabla (Nombre, Cliente, Estado, Fecha alta, Acciones).
+
+**Formulario:** Nombre*, Cliente* (autocomplete), Estado*, CECO(s) multi-select, Departamento, Interlocutor (nombre, email, teléfono), Usuarios asignados (multi-select).
+
+**Detalle:** Cabecera con nombre + badge estado. Pestañas: Información, Acciones (sub-listado), Cierres (si existen).
+
+---
+
+### 2.5 Actions (`/actions`)
+
+| Atributo | Valor |
+|----------|-------|
+| Rutas | `/actions`, `/actions/nuevo`, `/actions/:id`, `/actions/:id/editar` |
+| Roles | Administrator, ProjectManager, Backoffice |
+| Componentes | `ActionsList`, `ActionForm`, `ActionDetail` |
+
+**Relación:** Pertenece a un Proyecto. Tiene N Conceptos.
+
+**Detalle (especial):** Sub-tabla de conceptos asociados con acciones Ver/Editar/Quitar/Duplicar. Botón "Añadir Concepto existente" + "Nuevo Concepto".
+
+---
+
+### 2.6 Concepts (`/concepts`)
+
+| Atributo | Valor |
+|----------|-------|
+| Rutas | `/concepts`, `/concepts/nuevo`, `/concepts/:id`, `/concepts/:id/editar`, `/concepts/:id/formula` |
+| Roles | Administrator, Backoffice |
+| Componentes | `ConceptsList`, `ConceptForm`, `ConceptDetail`, `FormulaEditor` |
+
+**Listado:** Filtro por tipo (Pago/Factura). Tabla (Nombre, Tipo, Desde, Hasta, Estado, Acciones).
+
+**Formulario:** Nombre*, Tipo*, Desde*, Hasta, Aplica a (multi-select acciones/usuarios), Fórmula (builder visual).
+
+**FormulaEditor:** Builder visual con bloques de Número, Variable, Operación. Árbol JSON editable. Vista previa del resultado.
+
+**Detalle cálculo (lectura):** Muestra datos de entrada, operación, resultado, origen, fecha importación.
+
+---
+
+### 2.7 Periods (`/periods`)
+
+| Atributo | Valor |
+|----------|-------|
+| Ruta | `/periods` |
+| Roles | Administrator, Backoffice |
+| Componentes | `PeriodsList`, `PeriodForm` |
+
+**Listado:** Tabla (Año, Mes, Estado, Fecha cálculo, Acciones). Botones "Cerrar"/"Reabrir" por período.
+
+**Acciones:** "Calcular" / "Recalcular" lanza el motor de cálculo. Confirm dialog antes de recalcular.
+
+---
+
+### 2.8 Approvals (`/approvals`, `/approvals/pendientes`)
+
+| Atributo | Valor |
+|----------|-------|
+| Rutas | `/approvals`, `/approvals/pendientes` |
+| Roles | ProjectManager, Backoffice, FICO, Direction |
+| Componentes | `ApprovalsComponent` |
+
+**Pendientes:** Tabla con checkbox multi-select. Columnas: Período, Cliente, Proyecto, Coste, Facturación, Margen, Estado. Botón "Aprobar seleccionados". Filtro por período.
+
+**Aprobados:** Histórico con Aprobado por + Fecha.
+
+**Detalle aprobación por proyecto:** KPIs (Coste total, Facturación, Margen) + desglose por concepto/empleado/importe + acciones editar/ver/borrar por línea + comentarios + botones [Aprobar] [Rechazar].
+
+**Flujo de rechazo:** Dialog con campo de comentarios obligatorio. Confirmación.
+
+---
+
+### 2.9 Closures (`/closures`)
+
+| Atributo | Valor |
+|----------|-------|
+| Rutas | `/closures`, `/closures/nuevo`, `/closures/:id` |
+| Roles | Administrator, ProjectManager, Backoffice |
+| Componentes | `ClosuresList`, `ClosureForm`, `ClosureDetail` |
+
+**Relación:** Un cierre pertenece a un Proyecto y un Período.
+
+**Detalle:** Cabecera con KPIs + estado + paso actual. Líneas de cierre en tabla (Concepto, Empleado, Importe, Tipo, Incidencias). Histórico de aprobaciones.
+
+---
+
+### 2.10 Contabilidad (`/reports` contiene export)
+
+| Atributo | Valor |
+|----------|-------|
+| Ruta | `/reports` |
+| Roles | Administrator, FICO, Backoffice |
+| Componente | `ReportsComponent` |
+
+**Acciones:** "Generar fichero A3 Innuva", "Generar fichero A3 ERP". Histórico de exportaciones con estado y fecha.
+
+---
+
+### 2.11 Audit (`/audit`)
+
+| Atributo | Valor |
+|----------|-------|
+| Ruta | `/audit` |
+| Roles | Administrator, Auditor |
+| Componente | `AuditComponent` |
+
+**Layout:** Filtros (Usuario, Entidad, Acción, Fechas) + tabla de log (Fecha, Usuario, Entidad, ID, Acción, Cambios). Paginación 50 items.
+
+---
+
+### 2.12 Admin — Cost Centers (`/cost-centers`)
+
+CRUD simple. Tabla (Código, Nombre, Estado). Formulario inline o dialog.
+
+### 2.13 Admin — Departments (`/departments`)
+
+CRUD simple. Tabla (Nombre, Estado). Formulario inline o dialog.
+
+### 2.14 Admin — Roles (`/roles`)
+
+Listado de solo lectura (seed fijo). Muestra Nombre + Descripción + Usuarios asignados.
+
+### 2.15 Admin — Users (`/users`)
+
+| Atributo | Valor |
+|----------|-------|
+| Rutas | `/users`, `/users/nuevo`, `/users/:id`, `/users/:id/editar` |
+| Roles | Administrator (CRUD), Auditor (lectura) |
+| Componentes | `UsersList`, `UserForm`, `UserDetail` |
+
+**Listado:** Tabla (NIF, Nombre, Email, Roles, Estado, Acciones). Search por NIF/nombre/email.
+
+**Formulario:** NIF*, Nombre*, Apellidos*, Email*, Contraseña*, Rol(es) multi-select, Departamento(s) multi-select, Asignaciones (Clientes/Proyectos/Acciones multi-select).
+
+### 2.16 Sync (`/sync`)
+
+Monitor de estado de integraciones. Tabla (Sistema, Última sync, Estado, Acción "Sincronizar ahora").
+
+---
+
+## 3. Estados globales por pantalla
+
 | Estado | Comportamiento |
 |--------|---------------|
-| Default | Formulario limpio, placeholder en inputs |
-| Loading | Botón disabled + spinner, inputs disabled |
-| Error | `mat-error` en email/password, snackbar error |
-| Success | Redirige a `/dashboard` |
-
-### Accesibilidad
-- `aria-label="Correo electrónico"` en input email
-- `aria-label="Contraseña"` en input password
-- `aria-label="Acceder al sistema"` en botón submit
-- Focus visible en todos los elementos interactivos
+| **Carga** | Skeleton shimmer (`.sig-skeleton`, `.sig-skeleton-row`, `.sig-skeleton-text`) |
+| **Vacío** | `sig-empty-state` con icono, título, descripción, CTA opcional |
+| **Error** | Snackbar semántico (`.snack-error`) + reload CTA |
+| **Carga submit** | Botón deshabilitado + spinner (Angular Material `disabled` + icono giratorio) |
+| **Éxito submit** | Snackbar `.snack-success` + redirección o recarga de lista |
+| **Offline** | (Placeholder) Snackbar "Sin conexión. Los datos pueden no estar actualizados." |
 
 ---
 
-## 3. Dashboard (RF-B01, RF-B02, RF-B03)
+## 4. Responsive
 
-**Ruta:** `/dashboard` | **Archivo SVG:** `penpot-design-dashboard.svg`
-
-### Layout
-- Top bar: título "Dashboard", selector período "📅 Mayo 2026 ▾", botón "↻ Recalcular", campana notificaciones (badge rojo "3")
-- **4 KPI cards** (row, gap 16px):
-  - Cierres completados: 12 ▲ +2 — acento `#1F4E78`
-  - Pend. aprobación: 3 ⚠ — acento `#FFC107`
-  - Facturación total: €450K ▲ +12% — acento `#70AD47`
-  - Margen promedio: 28% (obj: 25%) — acento `#163A52`
-- **Sección Alertas** (izquierda, 500px): cards con acento semántico
-  - ⚠ 3 proyectos pendientes aprobación FICO (bg `#FFF3E0`, acento `#FFC107`)
-  - ❌ 1 período bloqueado (bg `#FFEBEE`, acento `#D32F2F`)
-  - ✅ Cierre abril completado (bg `#E8F5E9`, acento `#70AD47`)
-- **Gráfico barras** (derecha, 580px): "Margen por Proyecto — Mayo 2026"
-  - Barras: Amex SS 32%, Granini 25%, Amex New 28%, Proj D 21%
-  - Línea discontinua objetivo 25% en verde
-- **Tabla Proyectos Activos**: columnas PROYECTO/CLIENTE/ESTADO/COSTE/FACTURACIÓN/MARGEN/ACCIONES
-  - Filas con datos + fila totales
-- **Barra Integraciones**: dots verde/amarillo/rojo para los 7 sistemas
-
-### Componentes usados
-- `mat-card` (KPI), `mat-table` o tabla personalizada, badges semánticos, `mat-icon`
-
-### Estados
-| Estado | Comportamiento |
-|--------|---------------|
-| Carga | Skeleton shimmer en KPI + tabla |
-| Vacío | Empty state "No hay datos para el período" |
-| Error | Snackbar error + retry |
-| Datos | KPIs, alertas, tabla con datos reales |
+| Breakpoint | Comportamiento |
+|------------|----------------|
+| < 600px (mobile) | Sidenav overlay (no side), padding reducido 16px, KPI values 28px |
+| 600-959px (tablet) | Sidenav side o collapsed, padding 24px |
+| ≥ 960px (desktop) | Sidenav side expandido 256px, layout completo |
 
 ---
 
-## 4. Clientes (RF-C01)
-
-**Ruta:** `/clients` | **RF:** CRUD Cliente
-
-### Layout
-- Top bar con título "📁 Clientes" + botón "+ Nuevo Cliente"
-- Barra de filtros: BUSCAR texto + botones Filtrar/Limpiar + badge total
-- Tabla con cabecera dark: ID/NOMBRE/NIF/CIUDAD/PROYECTOS/ACCIONES
-- Panel detalle lateral (overlay) al seleccionar fila
-- Formulario nuevo/editar en panel o página independiente
-
-### Campos formulario
-Cliente: NIF (required), Nombre (required), Dirección, Ciudad, Provincia, País, C.Postal, Contacto nombre/email/teléfono
-
-### Estados
-| Estado | Comportamiento |
-|--------|---------------|
-| Carga | Skeleton shimmer |
-| Vacío | Empty state "No hay clientes. Crea el primero." + CTA |
-| Error | Snackbar con mensaje de error |
-| Guardando | Botón disabled con spinner |
-
----
-
-## 5. Proyectos (RF-C02)
-
-**Ruta:** `/projects` | **Archivo SVG:** `penpot-design-proyectos.svg`
-
-### Layout
-- Top bar: "🏗️ Proyectos" + breadcrumb "Inicio › Proyectos" + botón "+ Nuevo Proyecto"
-- Barra de filtros: BUSCAR, CLIENTE (dropdown), ESTADO (dropdown), CECO (dropdown), Filtrar/Limpiar, badge total
-- Tabla con cabecera dark `#1F4E78`: ID/PROYECTO/CLIENTE/ESTADO/CECO(s)/INTERLOCUTOR/ACCIONES
-- Filas alternas: `#F0F7FF` + left accent para seleccionada
-- Paginación: "Mostrando 1-N de X proyectos" + controles numéricos
-- Panel detalle lateral derecho (overlay 450px):
-  - Cabecera dark con nombre proyecto + ✕ cerrar
-  - Campos: ID, Estado (badge), Cliente, CECO(s), Interlocutor, Departamento, Email, Teléfono
-  - Usuarios asignados con avatares circulares (iniciales)
-  - Acciones asociadas como pills
-  - Botones: Editar, Duplicar, 🗑️ Eliminar
-
-### Estados
-| Estado | Comportamiento |
-|--------|---------------|
-| Carga | Skeleton rows |
-| Vacío | Empty state |
-| Detalle abierto | Panel lateral overlay |
-| Formulario | Página dedicada `/projects/nuevo` o `/projects/:id/editar` |
-
----
-
-## 6. Acciones (RF-C03)
-
-**Ruta:** `/actions`
-
-### Layout
-- Similar a Proyectos: listado filtrable + detalle
-- Sub-tabla de Conceptos asociados (con acciones Ver/Editar/Quitar/Duplicar)
-- Funcionalidad "Añadir Concepto existente" y "Nuevo Concepto directo"
-
-### Componentes
-Tabla, chips de concepto, botones inline
-
----
-
-## 7. Conceptos / Editor de Fórmula (RF-C04)
-
-**Ruta:** `/concepts` | **Archivo SVG:** `penpot-design-conceptos.svg`
-
-### Layout — split panel
-
-**Panel izquierdo (480px):** Lista de conceptos
-- Barra de búsqueda + filtro Tipo (Pago/Factura)
-- Columnas: ID/CONCEPTO/TIPO/HASTA/ACCIONES
-- Fila activa con acento azul izquierdo + bg `#E8F4F8`
-- Conceptos: C143 "Nota de gastos pago" (Pago ∞), C78 "Nota de gastos facturación" (Factura ∞), etc.
-
-**Panel derecho (600px):** Editor de Fórmula
-- Cabecera dark: "🧮 Editor de Fórmula — C143 · Nota de gastos pago"
-- Meta fields: Nombre, Tipo (Pago ▾), Desde/Hasta, Aplica a (multi-select)
-- **Visual Formula Builder:**
-  - Tokens coloreados: Variable `#1F4E78`, Operador círculo `white+blue border`, Número `#70AD47`, botón + `dashed`
-  - **Paleta de Variables:** Σ Gasto Payhawk, N° Visitas Celero, Hrs Bizneo, Hrs Intratime, +Var
-  - **Operaciones:** +, −, ×, ÷, %, Σ suma, N count, 123 num
-- **Preview oscuro** (`#163A52`): "€ 1.250 — Suma de Gasto Payhawk" con metadata origen/fecha
-- **Jerarquía de aplicación:** pills: Global (activo) | Proyecto | Acción | Empleado
-- **Botones:** 💾 Guardar, Cancelar, 📋 Duplicar
-
-### Comportamientos interactivos
-- Drag/click de variables y operaciones al builder visual
-- Preview se actualiza en tiempo real
-- Jerarquía determina ámbito del concepto
-
----
-
-## 8. Periodos (RF-C07)
-
-**Ruta:** `/periods`
-
-### Layout
-- Listado de períodos con selector año/mes
-- Columnas: AÑO/MES/ESTADO/FECHA CÁLCULO/FECHA CIERRE/ACCIONES
-- Estados: Abierto (verde), Cerrado (azul), Bloqueado (gris)
-- Acciones: "Recalcular" (lanza motor), "Cerrar", "Reabrir"
-
-### Componentes
-Tabla, badges de estado, botones de acción
-
----
-
-## 9. Aprobaciones (RF-D01 a RF-D07)
-
-**Ruta:** `/approvals` | **Archivo SVG:** `penpot-design-aprobaciones.svg`
-
-### Layout
-- Top bar: "✅ Aprobaciones"
-- Barra de filtros: PERÍODO, CLIENTE, PROYECTO, ESTADO (dropdowns)
-- **Sección "⏳ Pendientes de Aprobación"** (bg `#FFF8E1`):
-  - Checkbox multi-select + botones "☑ Aprobar Seleccionados" / "✗ Rechazar"
-  - Columnas: checkbox | PERÍODO | CLIENTE | PROYECTO | COSTE | FACTURACIÓN | MARGEN | ACCIONES
-  - Botón "Aprobar" individual por fila (verde filled u outlined)
-  - Total pendiente
-- **Panel detalle izquierdo (680px):** "📋 Detalle — Amex Shop Small · Mayo 2026"
-  - KPIs: Coste total, Facturación, Margen
-  - Tabla desglose: CONCEPTO/EMPLEADO/IMPORTE PAGO/FACTURA
-  - Campo de comentarios "✏️ Añadir comentario..."
-- **Panel derecho (400px):** "✅ Registros Aprobados"
-  - Histórico: Período, Proyecto, Aprobado por
-  - Diagrama flujo: Cálculo ✓ → Revisión ✓ → FICO ⟳ → Dirección — → Cierre —
-
-### Flujo de aprobación (5 pasos)
-1. ProjectManager → 2. Backoffice → 3. FICO → 4. Dirección → 5. SystemExports
-- Cada paso muestra OK (verde), pendiente (amarillo), inactive (gris)
-- Aprobar avanza al siguiente paso, Rechazar retrocede
-
----
-
-## 10. Contabilidad (RF-E02, RF-E03)
-
-**Ruta:** N/A (pendiente de implementación completa)
-
-### Layout
-- Panel de exportación A3 Innuva y A3 ERP
-- Histórico de exportaciones
-- Validación previa al envío
-
----
-
-## 11. Informes (Power BI)
-
-**Ruta:** `/reports`
-
-### Layout
-- Integración vía iframe o embed Power BI
-- Dimensiones: margen por proyecto, productividad, costes
-- Selector de período y proyecto
-
----
-
-## 12. Administración
-
-### 12.1 Usuarios (RF-C05)
-
-**Ruta:** `/users`
-
-- Listado con filtros: rol, departamento, estado, búsqueda
-- Columnas: NIF/NOMBRE/EMAIL/ROL(ES)/DEPARTAMENTO/ESTADO/ACCIONES
-- Formulario: NIF, Nombre, Apellidos, Email, Contraseña, Rol(es) multi-select, Departamento(s) multi-select, Asignaciones
-- Asignaciones: selector multi-nivel Cliente → Proyecto → Acción
-
-### 12.2 CECOs
-
-**Ruta:** `/cost-centers`
-
-- CRUD simple: código, nombre, activo/inactivo
-
-### 12.3 Departamentos
-
-**Ruta:** `/departments`
-
-- CRUD simple: nombre, activo/inactivo
-
-### 12.4 Roles
-
-**Ruta:** `/roles`
-
-- Listado de roles fijos: Administrator, Direction, Fico, Backoffice, ProjectManager, Auditor, Reader
-
-### 12.5 Auditoría (RF-F01, RF-F02)
-
-**Ruta:** `/audit`
-
-- Log con filtros: usuario, entidad, acción, fechas
-- Columnas: FECHA/USUARIO/ENTIDAD/ID/ACCIÓN/CAMBIOS/IP
-- inmutable (solo lectura)
-
----
-
-## 13. Responsive
-
-| Breakpoint | Ancho | Layout |
-|------------|-------|--------|
-| Mobile | < 600px | Sidenav oculto (hamburger), contenido a ancho completo |
-| Tablet | 600-959px | Sidenav colapsable, KPI cards 2×2, tablas con scroll horizontal |
-| Desktop | ≥ 960px | Sidenav fijo 260px, layout completo |
-
----
-
-## 14. Navegación (flujo entre pantallas)
-
-```
-/login ──auth──> /dashboard
-                    ├── /clients
-                    ├── /projects
-                    │    └── /projects/:id
-                    ├── /actions
-                    ├── /concepts
-                    │    └── /concepts/:id/formula
-                    ├── /periods
-                    ├── /approvals
-                    │    └── /approvals/pendientes
-                    ├── /closures
-                    │    └── /closures/:id
-                    ├── /reports
-                    ├── /users
-                    ├── /cost-centers
-                    ├── /departments
-                    ├── /roles
-                    └── /audit
-```
-
-- Redirect raíz: `/` → `/dashboard`
-- Fallback: `**` → redirect to `/dashboard`
-- Login: público (sin shell)
-- Smoke test: `/_smoke` (público, solo dev)
-
----
-
-## 15. Componentes compartidos (shared)
-
-Ver `docs/COMPONENTES_SHARED.md` para detalle de cada componente reutilizable.
-
----
-
-## 16. Accesibilidad aplicada por pantalla
-
-| Pantalla | Consideraciones |
-|----------|-----------------|
-| Login | Labels visibles, focus order lógico, mensajes de error claros |
-| Dashboard | `aria-label` en KPIs, tabla con `aria-label`, iconos decorativos con `aria-hidden` |
-| Listados | Tablas con `aria-label`, paginación accesible, `aria-sort` en columnas |
-| Formularios | `mat-error` para validaciones, `aria-describedby` para ayudas |
-| Detalles | Regiones con `role="region"` y `aria-label` descriptivo |
-| Editor fórmula | Drag & drop con alternativa de teclado, `aria-live` para preview |
+## 5. Accesibilidad
+
+- Contraste WCAG 2.1 AA verificado en paleta
+- `:focus-visible` con outline 3px `--mat-sys-primary`
+- `aria-label` en todos los icon-buttons, inputs, selects
+- `role="banner"` en AppBar, `role="navigation"` en sidenav
+- `aria-label="Navegación principal"` en `<mat-sidenav>`
+- Tablas con `aria-label` descriptivo
+- Mensajes de error asociados vía `mat-error`
+- Color no es único indicador (iconos + texto + badge)

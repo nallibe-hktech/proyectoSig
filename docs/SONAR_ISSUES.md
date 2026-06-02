@@ -1,94 +1,74 @@
-# SonarQube Issues - QA Gate Report
+# SonarQube Issues — QA Gate Report
 
-**Analysis Date**: May 27, 2026
-**Quality Gate**: FAILED (2 CRITICAL issues)
+**Analysis Date**: June 01, 2026
+**Quality Gate**: ERROR — FAILED (18 CRITICAL, 15 MAJOR)
 **Project**: SIG-es
+**Coverage**: 0.0%
 
 ---
 
-## Critical Issues (BLOCKING)
+## Quality Gate Results
 
-### BUG-001 — [BACKEND-BUG] CRITICAL: Hardcoded Demo Password
-
-- **Archivo**: backend/SIG.Infrastructure/Seed/DataSeeder.cs:20
-- **Descripción**: Credencial de demostración hardcodeada como constante de compilación
-- **Severidad**: CRITICAL
-- **Riesgo**: Exposición de credenciales en repositorio, imposible cambiar sin redeploy
-- **Corrección requerida**: Mover a `Environment.GetEnvironmentVariable("DEMO_PASSWORD")` o `IConfiguration`
-
-### BUG-002 — [BACKEND-BUG] CRITICAL: Hardcoded Test Credentials
-
-- **Archivo**: backend/SIG.Tests/Integration/IntegrationTestBase.cs:29
-- **Descripción**: Credenciales de prueba hardcodeadas con parámetros default
-- **Severidad**: CRITICAL
-- **Riesgo**: Exposición en CI/CD logs, uso de credenciales real-like
-- **Corrección requerida**: Inyectar desde `appsettings.Testing.json` mediante `IConfiguration`
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| new_coverage | 0.0% | < 0% | ✅ OK |
+| new_duplicated_lines_density | 3.79% | > 12% | ✅ OK |
+| new_security_hotspots_reviewed | 0.0% | >= 20% | ❌ ERROR |
+| new_violations | 129 | > 30 | ❌ ERROR |
 
 ---
-
-## High Priority Issues
-
-### BUG-003 — [BACKEND-BUG] HIGH: Null Reference Risk in Controllers
-
-- **Archivos**: 
-  - backend/SIG.API/Controllers/ActionsController.cs:16
-  - backend/SIG.API/Controllers/ApprovalsController.cs:16
-  - backend/SIG.API/Controllers/AuthController.cs:40, :49
-  - backend/SIG.API/Controllers/ClientsController.cs:17
-  - backend/SIG.API/Controllers/ClosuresController.cs:16
-  - backend/SIG.API/Controllers/ConceptsController.cs:17
-  - backend/SIG.API/Controllers/OtherControllers.cs:17, :39, :79
-  - backend/SIG.API/Controllers/ProjectsController.cs:16
-  - backend/SIG.API/Controllers/UsersController.cs:41
-  
-- **Patrón**: `int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value)`
-- **Descripción**: Uso del operador null-forgiving (!) sin validación real. Si el claim no existe, causa NullReferenceException
-- **Severidad**: HIGH
-- **Corrección requerida**: Validación explícita con throw o crear servicio ICurrentUserService centralizado
-
-### BUG-004 — [BACKEND-BUG] HIGH: Null Reference in CurrentUserService
-
-- **Archivo**: backend/SIG.Infrastructure/Services/CurrentUserService.cs:16, :21
-- **Descripción**: HttpContext puede ser null en contextos no-HTTP (background jobs)
-- **Severidad**: HIGH
-- **Corrección requerida**: Validación explícita con throw si no hay contexto
-
----
-
-## Medium Priority Issues
-
-### BUG-005 — [BACKEND-BUG] MEDIUM: Broad Exception Catch
-
-- **Archivo**: backend/SIG.API/Middleware/ExceptionHandlingMiddleware.cs:37
-- **Descripción**: Captura genérica de Exception sin discriminar tipos específicos
-- **Severidad**: MEDIUM
-- **Nota**: Tiene logging, pero es mejor ser específico por tipo (DbException, ValidationException, etc)
-- **Corrección requerida**: Refactorizar a catch específicos por excepción esperada
-
-### BUG-006 — [BACKEND-BUG] MEDIUM: Broad Exception in Startup
-
-- **Archivo**: backend/SIG.API/Program.cs:119
-- **Descripción**: Captura genérica de Exception en configuración
-- **Severidad**: MEDIUM
-- **Corrección requerida**: Ser específico sobre qué excepciones se esperan
-
----
-
-## Quality Gate Result
 
 **SONAR-QUALITY-GATE: FAILED**
 
-Razón: 2 CRITICAL security vulnerabilities detectadas (hardcoded credentials)
-
-El proyecto NO puede avanzar a deployment hasta que se resuelvan BUG-001 y BUG-002.
+Razón: 129 code smells (18 CRITICAL, 15 MAJOR), 16 security hotspots sin revisar, 0% cobertura.
 
 ---
 
-## Test Results
+## Issue Distribution
 
-- **Unit Tests**: 204/204 PASSED ✅
-- **Integration Tests**: PASSED ✅
-- **Compilation**: SUCCESS ✅
+| Severity | Count |
+|----------|-------|
+| BLOCKER | 0 |
+| CRITICAL | 18 |
+| MAJOR | 15 |
+| MINOR | 71 |
+| INFO | 25 |
+
+| Type | Count |
+|------|-------|
+| CODE_SMELL | 129 |
+| BUG | 0 |
+| VULNERABILITY | 0 |
+
+---
+
+## [BACKEND-BUG] CRITICAL Issues (top 5)
+
+### CRITICAL 1: S2068 — Hardcoded credentials
+- **Archivo:** `backend/SIG.API/appsettings.json`, `backend/SIG.API/appsettings.Testing.json`, `backend/SIG.API/appsettings.E2E.json`
+- **Descripción:** Passwords hardcodeadas en archivos de configuración
+- **Severidad:** CRITICAL
+- **Corrección:** Mover a variables de entorno o Secret Manager
+
+### CRITICAL 2: S2696 — Static field modified by instance methods
+- **Archivo:** `backend/SIG.Infrastructure/Integrations/Fake/FakeClients.cs`
+- **Descripción:** Métodos de instancia modifican campos static
+- **Corrección:** Hacer los métodos static o quitar el static de los campos
+
+### CRITICAL 3: S4487 — Unread private fields
+- **Archivo:** `backend/SIG.Infrastructure/Integrations/Http/HttpClients.cs`
+- **Descripción:** Campos `_http` sin usar en varias clases
+- **Corrección:** Eliminar campos no usados
+
+### CRITICAL 4: S3776 — Cognitive Complexity > 15
+- **Archivo:** `backend/SIG.Infrastructure/Persistence/Interceptors/AuditInterceptor.cs` (16), `backend/SIG.Infrastructure/Seed/DataSeeder.cs` (82)
+- **Descripción:** Métodos con complejidad cognitiva excesiva
+- **Corrección:** Refactorizar en métodos más pequeños
+
+### CRITICAL 5: S2245 — Pseudorandom RNG
+- **Archivo:** `backend/SIG.Infrastructure/Seed/DataSeeder.cs`, `FakeClients.cs`
+- **Descripción:** Uso de `Random` en lugar de criptográficamente seguro
+- **Corrección:** Usar `RandomNumberGenerator` para datos sensibles
 
 ---
 
@@ -96,13 +76,15 @@ El proyecto NO puede avanzar a deployment hasta que se resuelvan BUG-001 y BUG-0
 
 | Metric | Value |
 |--------|-------|
-| Total Issues | 18 |
-| CRITICAL | 2 |
-| HIGH | 6 |
-| MEDIUM | 2 |
-| VULNERABILITIES | 2 |
-| BUGS | 6 |
-| CODE_SMELLS | 2 |
-| Quality Gate | FAILED |
-| Authorization | BLOCKED |
-
+| Total Issues | 129 |
+| BLOCKER | 0 |
+| CRITICAL | 18 |
+| MAJOR | 15 |
+| MINOR | 71 |
+| INFO | 25 |
+| Bugs | 0 |
+| Vulnerabilities | 0 |
+| Code Smells | 129 |
+| Security Hotspots | 16 (0% reviewed) |
+| Quality Gate | ❌ FAILED |
+| Authorization | ⛔ BLOCKED |

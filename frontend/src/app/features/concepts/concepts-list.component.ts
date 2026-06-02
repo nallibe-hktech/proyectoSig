@@ -89,12 +89,12 @@ import { exportCSV } from '../../core/api/api.helpers';
   styles: [`
     .sig-table-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
     .sig-search { flex: 1; max-width: 240px; }
-    .sig-concept-name { font-weight: 600; color: #1F4E78; }
+    .sig-concept-name { font-weight: 600; color: var(--mat-sys-primary); }
     .sig-type-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-    .sig-type--pago { background: #FFF3E0; color: #E65100; }
-    .sig-type--factura { background: #E3F2FD; color: #1565C0; }
+    .sig-type--pago { background: #FFF3E0; color: var(--sig-warning-dark); }
+    .sig-type--factura { background: #E3F2FD; color: var(--sig-primary-light); }
     :host ::ng-deep .sig-table--dark-header th.mat-header-cell {
-      background: #1F4E78 !important; color: rgba(255,255,255,0.85) !important;
+      background: var(--mat-sys-primary) !important; color: rgba(255,255,255,0.85) !important;
       font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
     }
   `],

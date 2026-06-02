@@ -5,15 +5,15 @@ services:
     image: postgres:16-alpine
     container_name: sig-es-db
     environment:
-      POSTGRES_USER: sig_user
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: SigEs@2026
-      POSTGRES_DB: sig_es_dev
+      POSTGRES_DB: sig_plataforma_dev
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sig_user -d sig_es_dev"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sig_plataforma_dev"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -150,11 +150,11 @@ import { StateBadgeComponent } from '../../shared/state-badge.component';
       padding: 10px 16px; margin-bottom: 12px;
       border-radius: 8px; background: #E3F2FD;
     }
-    .sig-batch-count { font-size: 13px; font-weight: 600; color: #1565C0; margin-right: auto; }
+    .sig-batch-count { font-size: 13px; font-weight: 600; color: var(--sig-primary-light); margin-right: auto; }
     .sig-row-pending { background: #FFF8E1 !important; }
     .sig-table-scroll { overflow-x: auto; }
     :host ::ng-deep .sig-table th.mat-header-cell {
-      background: #1F4E78 !important; color: rgba(255,255,255,0.85) !important;
+      background: var(--mat-sys-primary) !important; color: rgba(255,255,255,0.85) !important;
       font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
     }
   `],

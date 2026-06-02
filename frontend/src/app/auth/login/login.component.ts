@@ -73,10 +73,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
             <div class="sig-card-accent"></div>
 
             <div class="sig-card-header">
-              <div class="sig-logo-circle">
-                <span class="sig-logo-sig">SIG</span>
-                <span class="sig-logo-platform">PLATFORM</span>
-              </div>
+              <img src="/penpot-design-login.svg" alt="Login illustration" class="sig-login-illustration" />
               <h2 class="sig-card-title">Iniciar Sesi&oacute;n</h2>
               <p class="sig-card-subtitle">Accede a tu plataforma operativa</p>
             </div>
@@ -220,7 +217,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
       display: flex;
       flex-direction: column;
       min-height: 100vh;
-      background: linear-gradient(135deg, #1F4E78 0%, #163A52 50%, #0D2A3E 100%);
+      background: linear-gradient(135deg, var(--mat-sys-primary) 0%, var(--sig-primary-dark) 50%, var(--sig-primary-dark) 100%);
       overflow: hidden;
     }
     .sig-login-bg-decor {
@@ -275,7 +272,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
       line-height: 1.2;
     }
     .sig-brand-accent {
-      color: #70AD47;
+      color: var(--sig-success);
     }
     .sig-brand-sub {
       font-size: 14px;
@@ -302,7 +299,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
     .sig-pill--success {
       background: rgba(112,173,71,0.2);
       border-color: rgba(112,173,71,0.4);
-      color: #70AD47;
+      color: var(--sig-success);
     }
     .sig-integration-sidebar {
       margin-top: 8px;
@@ -321,9 +318,9 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
     .sig-dot {
       width: 8px; height: 8px; border-radius: 50%;
     }
-    .sig-dot--green { background: #70AD47; }
-    .sig-dot--yellow { background: #FFC107; }
-    .sig-dot--red { background: #D32F2F; }
+    .sig-dot--green { background: var(--sig-success); }
+    .sig-dot--yellow { background: var(--sig-warning); }
+    .sig-dot--red { background: var(--sig-danger); }
 
     /* Right card area */
     .sig-login-right {
@@ -341,7 +338,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
     }
     .sig-card-accent {
       height: 8px;
-      background: #70AD47;
+      background: var(--sig-success);
     }
     .sig-card-header {
       display: flex;
@@ -349,22 +346,17 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
       align-items: center;
       padding: 32px 24px 16px;
     }
-    .sig-logo-circle {
-      width: 100px; height: 100px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #1F4E78, #163A52);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    .sig-login-illustration {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
       margin-bottom: 20px;
-    }
-    .sig-logo-sig {
-      font-size: 26px; font-weight: 900; color: #70AD47; line-height: 1;
-    }
-    .sig-logo-platform {
-      font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.6);
-      letter-spacing: 2px; line-height: 1;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      background: transparent;
     }
     .sig-card-title {
-      font-size: 26px; font-weight: 700; color: #1F4E78; margin: 0 0 4px;
+      font-size: 26px; font-weight: 700; color: var(--mat-sys-primary); margin: 0 0 4px;
     }
     .sig-card-subtitle {
       font-size: 13px; color: #999; margin: 0;
@@ -384,7 +376,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
     .sig-forgot-link:hover { text-decoration: underline; }
     .sig-login-btn {
       margin-top: 8px; height: 44px;
-      background: linear-gradient(90deg, #1F4E78, #2E5C8A) !important;
+      background: linear-gradient(90deg, var(--mat-sys-primary), var(--sig-primary-light)) !important;
       font-weight: 600; font-size: 15px;
     }
     .sig-login-error {
@@ -396,13 +388,13 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
 
     .sig-divider-text {
       display: flex; align-items: center; gap: 12px;
-      margin: 16px 0; color: #BBB; font-size: 12px;
+      margin: 16px 0; color: var(--sig-text-light); font-size: 12px;
     }
     .sig-divider-text::before, .sig-divider-text::after {
-      content: ''; flex: 1; border-top: 1px solid #EEF2F7;
+      content: ''; flex: 1; border-top: 1px solid var(--sig-border);
     }
     .sig-azure-btn {
-      color: #1F4E78 !important; border-color: #1F4E78 !important;
+      color: var(--mat-sys-primary) !important; border-color: var(--mat-sys-primary) !important;
       opacity: 0.6;
     }
 

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "8fw3N07QhOk=",
+  "dgSpecHash": "oNY1HqFJ/b4=",
   "success": true,
-  "projectFilePath": "C:\\Users\\NallibeRiveraGrisale\\Workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
+  "projectFilePath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\bogus\\35.6.1\\bogus.35.6.1.nupkg.sha512",
@@ -114,9 +114,9 @@
       "code": "NU1903",
       "level": "Warning",
       "message": "El paquete \"System.Security.Cryptography.Xml\" 8.0.2 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-37gx-xxp4-5rgx",
-      "projectPath": "C:\\Users\\NallibeRiveraGrisale\\Workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
+      "projectPath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\NallibeRiveraGrisale\\Workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
+      "filePath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
       "libraryId": "System.Security.Cryptography.Xml",
       "targetGraphs": [
         "net10.0"
@@ -126,9 +126,9 @@
       "code": "NU1903",
       "level": "Warning",
       "message": "El paquete \"System.Security.Cryptography.Xml\" 8.0.2 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-w3x6-4m5h-cxqf",
-      "projectPath": "C:\\Users\\NallibeRiveraGrisale\\Workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
+      "projectPath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\NallibeRiveraGrisale\\Workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
+      "filePath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
       "libraryId": "System.Security.Cryptography.Xml",
       "targetGraphs": [
         "net10.0"

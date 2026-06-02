@@ -265,13 +265,13 @@ import { DashboardKpisDto, DashboardAvisoDto, MiProyectoDto } from '../../models
     }
     .sig-spacer { flex: 1 1 auto; }
     .sig-recalc-btn {
-      font-size: 12px; background: #1F4E78 !important; color: white !important;
+      font-size: 12px; background: var(--mat-sys-primary) !important; color: white !important;
     }
     .sig-notif-btn { position: relative; }
     .sig-notif-badge {
       position: absolute; top: 4px; right: 4px;
       width: 16px; height: 16px; border-radius: 50%;
-      background: #D32F2F; color: white;
+      background: var(--sig-danger); color: white;
       font-size: 9px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
     }
@@ -286,10 +286,10 @@ import { DashboardKpisDto, DashboardAvisoDto, MiProyectoDto } from '../../models
       position: relative; overflow: hidden;
       border-left: 5px solid transparent;
     }
-    .sig-kpi-card--primary { border-left-color: #1F4E78; }
-    .sig-kpi-card--warning { border-left-color: #FFC107; }
-    .sig-kpi-card--success { border-left-color: #70AD47; }
-    .sig-kpi-card--dark { border-left-color: #163A52; }
+    .sig-kpi-card--primary { border-left-color: var(--mat-sys-primary); }
+    .sig-kpi-card--warning { border-left-color: var(--sig-warning); }
+    .sig-kpi-card--success { border-left-color: var(--sig-success); }
+    .sig-kpi-card--dark { border-left-color: var(--sig-primary-dark); }
 
     .sig-dashboard-row {
       display: grid;
@@ -333,17 +333,17 @@ import { DashboardKpisDto, DashboardAvisoDto, MiProyectoDto } from '../../models
     .sig-bar-chart { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; }
     .sig-bar-row, .sig-bar-target { display: flex; align-items: center; gap: 12px; }
     .sig-bar-label { font-size: 12px; width: 90px; color: var(--sig-text-dark); font-weight: 500; flex-shrink: 0; }
-    .sig-bar-track { flex: 1; height: 22px; background: #E8EDF5; border-radius: 4px; position: relative; overflow: visible; }
+    .sig-bar-track { flex: 1; height: 22px; background: var(--sig-border); border-radius: 4px; position: relative; overflow: visible; }
     .sig-bar-fill { height: 100%; border-radius: 4px; min-width: 4px; transition: width 0.3s; }
     .sig-bar-value { font-size: 11px; font-weight: 600; color: var(--sig-text-dark); width: 36px; text-align: right; font-family: 'Roboto Mono', monospace; }
     .sig-bar-target-line {
       position: absolute; top: -4px; width: 2px; height: 30px;
-      background: #D32F2F; border-radius: 1px;
+      background: var(--sig-danger); border-radius: 1px;
     }
 
     /* Tabla dashboard */
     .sig-table--dashboard th.mat-header-cell {
-      background: #1F4E78 !important; color: rgba(255,255,255,0.85) !important;
+      background: var(--mat-sys-primary) !important; color: rgba(255,255,255,0.85) !important;
       font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
     }
 
@@ -355,9 +355,9 @@ import { DashboardKpisDto, DashboardAvisoDto, MiProyectoDto } from '../../models
     .sig-int-dots { display: flex; gap: 16px; flex-wrap: wrap; }
     .sig-int-dot { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sig-text-muted); }
     .sig-bullet { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .sig-bullet--green { background: #70AD47; }
-    .sig-bullet--yellow { background: #FFC107; }
-    .sig-bullet--red { background: #D32F2F; }
+    .sig-bullet--green { background: var(--sig-success); }
+    .sig-bullet--yellow { background: var(--sig-warning); }
+    .sig-bullet--red { background: var(--sig-danger); }
   `],
 })
 export class DashboardComponent implements OnInit {

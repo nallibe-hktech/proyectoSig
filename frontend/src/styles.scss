@@ -190,6 +190,11 @@ body {
     background: var(--mat-sys-surface-variant);
     color: var(--mat-sys-on-surface-variant);
   }
+
+  &--pending {
+    background: var(--sig-warning-container, #FFF3E0);
+    color: var(--sig-warning, #E65100);
+  }
 }
 
 // ------------------------------------------------------------
@@ -417,6 +422,21 @@ body {
   }
 }
 
+.sig-table-dark-header {
+  th.mat-header-cell {
+    background: #1F4E78 !important;
+    color: #FFFFFF !important;
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: none !important;
+    padding: 8px 12px !important;
+  }
+
+  td.mat-cell {
+    padding: 8px 12px !important;
+  }
+}
+
 // ------------------------------------------------------------
 // 16. Contenedor principal de página
 // ------------------------------------------------------------
@@ -445,28 +465,38 @@ body {
 // ------------------------------------------------------------
 .sig-logo-mark {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   cursor: pointer;
   text-decoration: none;
   color: inherit;
-}
 
-.sig-logo-mark .sig-logo {
-  font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 22px;
-  letter-spacing: 0.12em;
-  color: #FFFFFF;
-  line-height: 1;
-}
+  img.sig-logo-img {
+    height: 32px;
+    width: auto;
+    display: block;
+  }
 
-.sig-logo-mark .sig-logo-sub {
-  font-size: 10px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.65);
-  letter-spacing: 0.05em;
-  line-height: 1;
-  margin-top: 2px;
+  &.sig-logo-mark--dark img.sig-logo-img {
+    height: 40px;
+  }
+
+  .sig-logo {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.12em;
+    color: #FFFFFF;
+    line-height: 1;
+  }
+
+  .sig-logo-sub {
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.65);
+    letter-spacing: 0.05em;
+    line-height: 1;
+    margin-left: 8px;
+  }
 }
 
 // Versión negativa (login — fondo claro)

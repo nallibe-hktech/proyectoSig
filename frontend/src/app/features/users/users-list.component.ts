@@ -41,24 +41,25 @@ import { exportCSV } from '../../core/api/api.helpers';
         <div class="sig-table-toolbar">
           <mat-form-field appearance="outline" class="sig-search">
             <mat-icon matPrefix aria-hidden="true">search</mat-icon>
-            <mat-label>Buscar...</mat-label>
+            <mat-label>Buscar nombre/NIF/email...</mat-label>
             <input matInput [formControl]="search" data-testid="input-busqueda" />
           </mat-form-field>
           <button mat-stroked-button (click)="onExportCSV()" data-testid="btn-exportar-csv"><mat-icon>download</mat-icon> Exportar CSV</button>
+          <span class="sig-total-badge" data-testid="total-badge">{{ total() }} usuarios</span>
         </div>
         @if (loading()) { <sig-skeleton [count]="5" /> }
         @else if (items().length === 0) {
           <sig-empty-state icon="manage_accounts" title="No hay usuarios" ctaLabel="Crear primer usuario" [hasFilter]="!!search.value" (ctaClick)="router.navigate(['/users/nuevo'])" />
         } @else {
-          <table mat-table [dataSource]="items()" class="sig-table" data-testid="tabla-users">
+          <table mat-table [dataSource]="items()" class="sig-table sig-table-dark-header" data-testid="tabla-users">
+            <ng-container matColumnDef="nif"><th mat-header-cell *matHeaderCellDef>NIF</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.nif }}</td></ng-container>
             <ng-container matColumnDef="nombre"><th mat-header-cell *matHeaderCellDef>Nombre</th><td mat-cell *matCellDef="let row">{{ row.nombre }} {{ row.apellidos }}</td></ng-container>
             <ng-container matColumnDef="email"><th mat-header-cell *matHeaderCellDef>Email</th><td mat-cell *matCellDef="let row">{{ row.email }}</td></ng-container>
-            <ng-container matColumnDef="nif"><th mat-header-cell *matHeaderCellDef>NIF</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.nif }}</td></ng-container>
             <ng-container matColumnDef="roles"><th mat-header-cell *matHeaderCellDef>Roles</th><td mat-cell *matCellDef="let row">
               @for (r of row.roles; track r) { <mat-chip>{{ r }}</mat-chip> }
             </td></ng-container>
             <ng-container matColumnDef="estado"><th mat-header-cell *matHeaderCellDef>Estado</th>
-              <td mat-cell *matCellDef="let row"><span [class]="row.estado === 'Activo' ? 'sig-badge sig-badge--approved' : 'sig-badge sig-badge--closed'">{{ row.estado }}</span></td>
+              <td mat-cell *matCellDef="let row"><span [class]="'sig-badge sig-badge--' + (row.estado === 'Activo' ? 'approved' : 'closed')" data-testid="badge-estado">{{ row.estado }}</span></td>
             </ng-container>
             <ng-container matColumnDef="acciones"><th mat-header-cell *matHeaderCellDef style="text-align: right;">Acciones</th>
               <td mat-cell *matCellDef="let row">
@@ -77,7 +78,7 @@ import { exportCSV } from '../../core/api/api.helpers';
       </mat-card-content></mat-card>
     </div>
   `,
-  styles: [`.sig-table-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; } .sig-search { flex: 1; max-width: 480px; }`],
+  styles: [`.sig-table-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; } .sig-search { flex: 1; max-width: 400px; } .sig-total-badge { font-size: 13px; color: var(--sig-text-muted); margin-left: auto; }`],
 })
 export class UsersListComponent implements OnInit {
   private readonly userSvc = inject(UserService);
@@ -91,7 +92,7 @@ export class UsersListComponent implements OnInit {
   protected readonly pageSize = signal(25);
   protected readonly loading = signal(true);
   protected readonly search = new FormControl<string>('', { nonNullable: true });
-  protected readonly cols = ['nombre', 'email', 'nif', 'roles', 'estado', 'acciones'];
+  protected readonly cols = ['nif', 'nombre', 'email', 'roles', 'estado', 'acciones'];
 
   ngOnInit(): void {
     this.search.valueChanges.pipe(debounceTime(300), distinctUntilChanged()).subscribe(() => { this.page.set(1); this.load(); });

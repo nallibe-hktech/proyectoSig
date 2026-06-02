@@ -1,0 +1,418 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sig-production
+---
+# ============================================================================
+# Secret: AlloyDB credentials (populated from Google Secret Manager)
+# ============================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sig-api-secrets
+  namespace: sig-production
+type: Opaque
+stringData:
+  # These values should be fetched from Google Secret Manager via external-secrets
+  # or Sealed Secrets in production
+  CONNECTIONSTRINGS__DEFAULT: "Host=localhost;Port=5432;Database=sig_plataforma;Username=alloydb_user;Password=YOUR_PASSWORD_HERE;SslMode=Require;Trust Server Certificate=false"
+  JWTSETTINGS__SIGNINGKEY: "YOUR_JWT_SECRET_HERE"
+  SEED__DEMOPASSWORD: "Demo#2026!"
+
+---
+# ============================================================================
+# ConfigMap: Application settings
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sig-api-config
+  namespace: sig-production
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_URLS: "http://*:5000"
+  INTEGRATIONS__USEFAKE: "false"
+  FEATURES__ALLOWSEEDREGENERATION: "false"
+  FEATURES__SHOWDEMOCREDENTIALS: "false"
+  SEED__AUTORUN: "false"
+
+---
+# ============================================================================
+# Service Account for Workload Identity (optional, if using GCP IAM)
+# ============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sig-api
+  namespace: sig-production
+  annotations:
+    iam.gke.io/gcp-service-account: sig-api@sig-prod.iam.gserviceaccount.com
+
+---
+# ============================================================================
+# Deployment: SIG.API + AlloyDB Auth Proxy (sidecar)
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sig-api
+  namespace: sig-production
+  labels:
+    app: sig-api
+    version: v1
+spec:
+  replicas: 3  # Adjust based on load
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: sig-api
+  template:
+    metadata:
+      labels:
+        app: sig-api
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+    spec:
+      serviceAccountName: sig-api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+
+      # =====================================================================
+      # Init Container: Wait for AlloyDB Auth Proxy to be ready
+      # =====================================================================
+      initContainers:
+      - name: wait-for-proxy
+        image: busybox:1.36
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for AlloyDB Auth Proxy to be ready..."
+          until nc -zv localhost 5432; do
+            echo "Proxy not ready, retrying in 1 second..."
+            sleep 1
+          done
+          echo "✓ Proxy is ready"
+
+      # =====================================================================
+      # Application Containers
+      # =====================================================================
+      containers:
+      # Container 1: SIG.API (Main application)
+      - name: sig-api
+        image: gcr.io/sig-prod/sig-api:latest  # Update with your image
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 5000
+          protocol: TCP
+
+        # Environment variables from ConfigMap and Secrets
+        envFrom:
+        - configMapRef:
+            name: sig-api-config
+        - secretRef:
+            name: sig-api-secrets
+
+        # Additional environment variables
+        env:
+        - name: ASPNETCORE_LOGGING__CONSOLE__INCLUDELOGLEVELS: "true"
+        - name: LOG_LEVEL
+          value: "Information"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector:4317"  # OpenTelemetry (optional)
+
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        # Startup probe (for slow startups with migrations)
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 30  # Allow up to 5 minutes for startup
+
+        # Resource requests and limits
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+        # Security context
+        securityContext:
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+
+        # Volume mounts
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-tmp
+          mountPath: /var/tmp
+
+      # Container 2: AlloyDB Auth Proxy (Sidecar)
+      - name: alloydb-auth-proxy
+        image: gcr.io/cloudsql-docker/gke-mssql-proxy:1.4
+        args:
+        - "-instances=projects/sig-prod/locations/us-central1/clusters/prod/instances/primary=tcp:5432"
+        - "-use_http_health_check_server=false"
+        - "-max_connections=100"
+        ports:
+        - name: alloydb
+          containerPort: 5432
+          protocol: TCP
+
+        # Resource limits (small, as it's just a proxy)
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+
+        # Security context (run as non-root if possible)
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+
+        # Volume mounts
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+
+        # Optional: livenessProbe for proxy
+        livenessProbe:
+          tcpSocket:
+            port: alloydb
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+
+      # =====================================================================
+      # Volumes
+      # =====================================================================
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: var-tmp
+        emptyDir: {}
+
+      # Pod scheduling
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - sig-api
+              topologyKey: kubernetes.io/hostname
+
+      # Termination grace period (allow graceful shutdown)
+      terminationGracePeriodSeconds: 30
+
+      # DNS policy
+      dnsPolicy: ClusterFirst
+
+---
+# ============================================================================
+# Service: Expose SIG.API
+# ============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: sig-api
+  namespace: sig-production
+  labels:
+    app: sig-api
+spec:
+  type: ClusterIP  # Use LoadBalancer or Ingress for external access
+  selector:
+    app: sig-api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 5000
+    protocol: TCP
+  sessionAffinity: None
+
+---
+# ============================================================================
+# Horizontal Pod Autoscaler (HPA)
+# ============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sig-api-hpa
+  namespace: sig-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sig-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 2
+        periodSeconds: 15
+      selectPolicy: Max
+
+---
+# ============================================================================
+# PodDisruptionBudget (Ensure minimum availability during disruptions)
+# ============================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sig-api-pdb
+  namespace: sig-production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: sig-api
+
+---
+# ============================================================================
+# NetworkPolicy (Optional: Restrict traffic)
+# ============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sig-api-netpol
+  namespace: sig-production
+spec:
+  podSelector:
+    matchLabels:
+      app: sig-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+    ports:
+    - protocol: TCP
+      port: 5000
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 5432  # AlloyDB via proxy (localhost)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 53   # DNS
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53   # DNS
+
+---
+# ============================================================================
+# NOTES FOR DEPLOYMENT
+# ============================================================================
+# Before applying this manifest:
+#
+# 1. Build and push Docker image:
+#    docker build -t gcr.io/sig-prod/sig-api:latest backend/SIG.API/
+#    docker push gcr.io/sig-prod/sig-api:latest
+#
+# 2. Create the secrets (replace with real values from Google Secret Manager):
+#    kubectl create secret generic sig-api-secrets \
+#      --from-literal=CONNECTIONSTRINGS__DEFAULT="..." \
+#      --from-literal=JWTSETTINGS__SIGNINGKEY="..." \
+#      -n sig-production
+#
+# 3. Apply the manifest:
+#    kubectl apply -f k8s/sig-api-deployment.yaml
+#
+# 4. Verify deployment:
+#    kubectl get deployment sig-api -n sig-production
+#    kubectl logs -n sig-production -l app=sig-api --tail=50
+#
+# 5. Port-forward for testing (if needed):
+#    kubectl port-forward svc/sig-api 5000:80 -n sig-production

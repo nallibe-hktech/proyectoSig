@@ -1,9 +1,14 @@
 Product projects
 ---------------------------------------
+C:\Projects\workspaces\SIG-es\backend\SIG.Domain\SIG.Domain.csproj
+C:\Projects\workspaces\SIG-es\backend\SIG.Application\SIG.Application.csproj
+C:\Projects\workspaces\SIG-es\backend\SIG.Infrastructure\SIG.Infrastructure.csproj
+C:\Projects\workspaces\SIG-es\backend\SIG.API\SIG.API.csproj
 
 
 Test projects
 ---------------------------------------
+C:\Projects\workspaces\SIG-es\backend\SIG.Tests\SIG.Tests.csproj
 
 
 Invalid projects

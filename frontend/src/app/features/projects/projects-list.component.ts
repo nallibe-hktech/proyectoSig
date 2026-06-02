@@ -108,10 +108,10 @@ import { exportCSV } from '../../core/api/api.helpers';
       display: inline-flex; align-items: center; justify-content: center;
       min-width: 32px; height: 24px; padding: 0 10px;
       border-radius: 12px; background: #E3F2FD;
-      font-size: 12px; font-weight: 700; color: #1565C0;
+      font-size: 12px; font-weight: 700; color: var(--sig-primary-light);
     }
-    .sig-project-name { font-weight: 600; color: #1F4E78; }
-    .sig-id-cell { font-weight: 700; color: #1F4E78; font-size: 12px; }
+    .sig-project-name { font-weight: 600; color: var(--mat-sys-primary); }
+    .sig-id-cell { font-weight: 700; color: var(--mat-sys-primary); font-size: 12px; }
     .sig-chip {
       display: inline-block; padding: 2px 10px; border-radius: 10px;
       font-size: 11px; font-weight: 600;
@@ -120,7 +120,7 @@ import { exportCSV } from '../../core/api/api.helpers';
     .sig-chip--inactive { background: #FFEBEE; color: #C62828; }
 
     :host ::ng-deep .sig-table--dark-header th.mat-header-cell {
-      background: #1F4E78 !important; color: rgba(255,255,255,0.85) !important;
+      background: var(--mat-sys-primary) !important; color: rgba(255,255,255,0.85) !important;
       font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
     }
   `],
