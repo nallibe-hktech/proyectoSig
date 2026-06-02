@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { LoginDesignComponent } from '../../shared/login-design.component';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotifyService } from '../../core/notify.service';
 import { environment } from '../../../environments/environment';
@@ -30,6 +31,8 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
     MatDividerModule,
     MatProgressSpinnerModule,
     MatCheckboxModule,
+    // Login design SVG component
+    LoginDesignComponent,
   ],
   template: `
     <div class="sig-login-wrapper">
@@ -73,7 +76,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
             <div class="sig-card-accent"></div>
 
             <div class="sig-card-header">
-              <img src="/penpot-design-login.svg" alt="Login illustration" class="sig-login-illustration" />
+                          <app-login-design></app-login-design>
               <h2 class="sig-card-title">Iniciar Sesi&oacute;n</h2>
               <p class="sig-card-subtitle">Accede a tu plataforma operativa</p>
             </div>

@@ -18,6 +18,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { PeriodService } from '../../core/api/periods.service';
 import { PeriodDto } from '../../models/dtos';
 import { NotifyService } from '../../core/notify.service';
+import { DashboardDesignComponent } from '../../shared/dashboard-design.component';
 
 interface NavItem {
   label: string;
@@ -45,6 +46,8 @@ interface NavItem {
     MatSelectModule,
     MatFormFieldModule,
     MatTooltipModule,
+    // Design SVG components
+    DashboardDesignComponent,
   ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
