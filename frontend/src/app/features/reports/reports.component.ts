@@ -15,7 +15,7 @@ import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
       <mat-card style="margin-bottom: 16px;">
         <mat-card-content>
           <div style="display: flex; gap: 16px; align-items: flex-start;">
-            <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: var(--mat-sys-secondary);">bar_chart</mat-icon>
+            <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: var(--sig-teal);">bar_chart</mat-icon>
             <div>
               <h3 style="margin: 0 0 8px;">Reporting via Power BI</h3>
               <p style="margin: 0; color: var(--mat-sys-on-surface-variant);">

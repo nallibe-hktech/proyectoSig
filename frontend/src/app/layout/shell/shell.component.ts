@@ -18,6 +18,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { PeriodService } from '../../core/api/periods.service';
 import { PeriodDto } from '../../models/dtos';
 import { NotifyService } from '../../core/notify.service';
+import { ThemeService } from '../../core/theme.service';
 import { DashboardDesignComponent } from '../../shared/dashboard-design.component';
 
 interface NavItem {
@@ -57,6 +58,7 @@ export class ShellComponent implements OnInit {
   private readonly periodSvc = inject(PeriodService);
   private readonly notify = inject(NotifyService);
   private readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly theme = inject(ThemeService);
 
   protected sidenavOpen = signal(true);
   protected readonly currentUser = this.auth.currentUser;
@@ -64,6 +66,12 @@ export class ShellComponent implements OnInit {
     const u = this.currentUser();
     if (!u) return '';
     return `${u.nombre} ${u.apellidos}`.trim() || u.email;
+  });
+  protected readonly userInitial = computed(() => {
+    const u = this.currentUser();
+    if (!u) return 'U';
+    const name = u.nombre?.trim() || u.email;
+    return name.charAt(0).toUpperCase();
   });
 
   private readonly allOperativoNav: NavItem[] = [
@@ -136,7 +144,7 @@ export class ShellComponent implements OnInit {
 
   protected cerrarSesion(): void {
     this.auth.logout().subscribe({
-      next: () => this.notify.info('Sesión cerrada'),
+      next: () => this.notify.info('Sesion cerrada'),
     });
   }
 

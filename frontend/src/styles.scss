@@ -1,22 +1,22 @@
 // ============================================================
-// SIG · Plataforma de Cierres — Global Styles
-// Theme: Material 3 (M3) con paleta corporativa navy
+// SIG-ES · Global Styles — Dark Theme (fiel a mockups Penpot)
 // ============================================================
 
 @use '@angular/material' as mat;
 
 // ------------------------------------------------------------
-// 1. mat.theme — base M3 con paleta azure (la más cercana a navy)
-//    Tipografía: Inter (cargada en index.html vía Google Fonts)
-//    Density: 0 (estándar M3)
+// 1. Angular Material M3 base (dark scheme)
 // ------------------------------------------------------------
 html {
   height: 100%;
+  color-scheme: dark;
+
   @include mat.theme(
     (
       color: (
         primary: mat.$azure-palette,
-        tertiary: mat.$orange-palette,
+        tertiary: mat.$cyan-palette,
+        theme-type: dark,
       ),
       typography: Inter,
       density: 0,
@@ -24,80 +24,96 @@ html {
   );
 
   // ----------------------------------------------------------
-  // 2. Override de tokens M3 con la paleta corporativa SIG
-  //    Basado en diseños Penpot (fuente de verdad visual).
-  //    Colores extraídos de penpot-design-*.svg.
+  // 2. Override de tokens M3 — paleta SIG-ES dark Penpot
   // ----------------------------------------------------------
 
-  // PRIMARY — Azul corporativo Penpot #1F4E78
-  --mat-sys-primary:                  #1F4E78;
-  --mat-sys-on-primary:               #FFFFFF;
-  --mat-sys-primary-container:        #D6DFF3;
-  --mat-sys-on-primary-container:     #0D1B30;
+  // PRIMARY — Azul corporativo botones/links
+  --mat-sys-primary:                  #2563eb;
+  --mat-sys-on-primary:               #ffffff;
+  --mat-sys-primary-container:        #1e3a5c;
+  --mat-sys-on-primary-container:     #93c5fd;
 
-  // SECONDARY — Azul claro Penpot #2E5C8A
-  --mat-sys-secondary:                #2E5C8A;
-  --mat-sys-on-secondary:             #FFFFFF;
-  --mat-sys-secondary-container:      #DBEAFE;
-  --mat-sys-on-secondary-container:   #1E3A5F;
+  // SECONDARY — Teal accent activo
+  --mat-sys-secondary:                #00d4c4;
+  --mat-sys-on-secondary:             #003733;
+  --mat-sys-secondary-container:      #00d4c41a;
+  --mat-sys-on-secondary-container:   #00d4c4;
 
-  // TERTIARY — Dorado #C9A961
-  --mat-sys-tertiary:                 #C9A961;
-  --mat-sys-on-tertiary:              #3B2800;
-  --mat-sys-tertiary-container:       #F5E8C2;
-  --mat-sys-on-tertiary-container:    #4A3500;
+  // TERTIARY — Dorado badges/review
+  --mat-sys-tertiary:                 #f59e0b;
+  --mat-sys-on-tertiary:              #3b2800;
+  --mat-sys-tertiary-container:       #f59e0b1a;
+  --mat-sys-on-tertiary-container:    #f59e0b;
 
-  // ERROR — Rojo Penpot #D32F2F
-  --mat-sys-error:                    #D32F2F;
-  --mat-sys-on-error:                 #FFFFFF;
-  --mat-sys-error-container:          #FFDAD6;
-  --mat-sys-on-error-container:       #410002;
+  // ERROR
+  --mat-sys-error:                    #ef4444;
+  --mat-sys-on-error:                 #ffffff;
+  --mat-sys-error-container:          #ef44441a;
+  --mat-sys-on-error-container:       #fca5a5;
 
-  // SURFACE — Fondo página Penpot #F0F4F8
-  --mat-sys-surface:                  #F0F4F8;
-  --mat-sys-on-surface:               #1A1A1A;
-  --mat-sys-surface-variant:          #E8EDF5;
-  --mat-sys-on-surface-variant:       #44474F;
-  --mat-sys-outline:                  #74777F;
-  --mat-sys-outline-variant:          #C4C7CF;
+  // SURFACE — Fondos dark
+  --mat-sys-surface:                  #0d1b2a;
+  --mat-sys-on-surface:               #e8f0f9;
+  --mat-sys-surface-variant:          #13243a;
+  --mat-sys-on-surface-variant:       #94a3b8;
+  --mat-sys-outline:                  #1e3a5c;
+  --mat-sys-outline-variant:          #243b55;
 
-  // ----------------------------------------------------------
-  // 3. Tokens semánticos propios (Success, Warning, Danger)
-  //    Colores exactos de los diseños Penpot.
-  // ----------------------------------------------------------
-  --sig-success:                      #70AD47;
-  --sig-success-dark:                 #5A9438;
-  --sig-success-container:            #E8F5E9;
-  --sig-on-success:                   #FFFFFF;
-  --sig-on-success-container:         #2E7D32;
+  // BACKGROUND
+  --mat-sys-background:               #0d1b2a;
+  --mat-sys-on-background:            #e8f0f9;
 
-  --sig-warning:                      #FFC107;
-  --sig-warning-dark:                 #E65100;
-  --sig-warning-container:            #FFF3E0;
-  --sig-on-warning:                   #FFFFFF;
-  --sig-on-warning-container:         #E65100;
-
-  --sig-danger:                       #D32F2F;
-  --sig-danger-dark:                  #C62828;
-  --sig-danger-container:             #FFEBEE;
-  --sig-on-danger:                    #FFFFFF;
-  --sig-on-danger-container:          #C62828;
-
-  --sig-info:                         #1F4E78;
-  --sig-info-container:               #E8F4F8;
-
-  // Colores adicionales Penpot
-  --sig-primary-light:                #2E5C8A;
-  --sig-primary-dark:                 #163A52;
-  --sig-light:                        #E8F4F8;
-  --sig-lighter:                      #F5F5F5;
-  --sig-border:                       #D0D0D0;
-  --sig-text-muted:                   #666666;
-  --sig-text-light:                   #888888;
+  // INVERSE
+  --mat-sys-inverse-surface:          #e8f0f9;
+  --mat-sys-inverse-on-surface:       #0d1b2a;
+  --mat-sys-inverse-primary:          #1d4ed8;
 
   // ----------------------------------------------------------
-  // 4. Espaciado (escala 4px)
+  // 3. Tokens propios SIG-ES
   // ----------------------------------------------------------
+
+  // Backgrounds
+  --sig-bg-app:         #0d1b2a;
+  --sig-bg-sidebar:     #091523;
+  --sig-bg-card:        #13243a;
+  --sig-bg-card-alt:    #162033;
+  --sig-bg-hover:       #1a3050;
+  --sig-bg-active:      #1e3a5c;
+  --sig-bg-header:      #0a1828;
+  --sig-bg-overlay:     #0d1b2acc;
+
+  // Text
+  --sig-text-primary:   #e8f0f9;
+  --sig-text-secondary: #94a3b8;
+  --sig-text-muted:     #5a7a9a;
+  --sig-text-heading:   #ffffff;
+
+  // Accent
+  --sig-teal:           #00d4c4;
+  --sig-teal-bg:        #00d4c41a;
+  --sig-blue:           #2563eb;
+  --sig-blue-light:     #3b82f6;
+
+  // Status
+  --sig-success:        #22c55e;
+  --sig-success-bg:     #22c55e1a;
+  --sig-warning:        #f59e0b;
+  --sig-warning-bg:     #f59e0b1a;
+  --sig-danger:         #ef4444;
+  --sig-danger-bg:      #ef44441a;
+  --sig-pending:        #94a3b8;
+
+  // Borders
+  --sig-border:         #1e3a5c;
+  --sig-border-light:   #243b55;
+  --sig-border-focus:   #2563eb;
+
+  // Sizing
+  --sig-sidebar-width:        168px;
+  --sig-detail-panel-width:   296px;
+  --sig-header-height:        56px;
+
+  // Spacing scale
   --space-1:  4px;
   --space-2:  8px;
   --space-3:  12px;
@@ -108,113 +124,653 @@ html {
   --space-10: 40px;
   --space-12: 48px;
   --space-16: 64px;
-  --space-64: 256px;
+
+  // Radius
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   10px;
+  --radius-xl:   14px;
+  --radius-pill: 50px;
+
+  // Shadows
+  --shadow-card:  0 2px 12px rgba(0,0,0,.45);
+  --shadow-panel: 4px 0 24px rgba(0,0,0,.5);
 }
 
 // ------------------------------------------------------------
-// 5. Reset y base de body
+// 4. Base reset
 // ------------------------------------------------------------
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
-  color-scheme: light;
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
   margin: 0;
   height: 100%;
+  background-color: var(--sig-bg-app);
+  color: var(--sig-text-primary);
+  font-family: 'Inter', 'Roboto', -apple-system, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 }
 
 // ------------------------------------------------------------
-// 6. Focus visible accesible (WCAG AA)
+// 5. Angular Material dark overrides
+//    Forzamos tokens MDC que Material no recalcula por su cuenta
+// ------------------------------------------------------------
+
+// Filled text-field
+.mat-mdc-form-field {
+  --mdc-filled-text-field-container-color:             var(--sig-bg-card-alt);
+  --mdc-filled-text-field-focus-active-indicator-color: var(--sig-blue);
+  --mdc-filled-text-field-label-text-color:            var(--sig-text-secondary);
+  --mdc-filled-text-field-input-text-color:            var(--sig-text-primary);
+  --mdc-filled-text-field-hover-active-indicator-color: var(--sig-border-focus);
+  --mdc-filled-text-field-active-indicator-color:      var(--sig-border);
+}
+
+// Outlined text-field
+.mat-mdc-form-field.mat-form-field-appearance-outline {
+  --mdc-outlined-text-field-outline-color:             var(--sig-border);
+  --mdc-outlined-text-field-hover-outline-color:       var(--sig-border-focus);
+  --mdc-outlined-text-field-focus-outline-color:       var(--sig-blue);
+  --mdc-outlined-text-field-label-text-color:          var(--sig-text-secondary);
+  --mdc-outlined-text-field-input-text-color:          var(--sig-text-primary);
+  --mdc-outlined-text-field-container-shape:           6px;
+}
+
+// Select / menu
+.mat-mdc-select-value { color: var(--sig-text-primary) !important; }
+.mat-mdc-option        { color: var(--sig-text-primary) !important; background: var(--sig-bg-card) !important; }
+.mat-mdc-option:hover,
+.mat-mdc-option.mdc-list-item--selected { background: var(--sig-bg-hover) !important; }
+
+// Menu panel
+.mat-mdc-menu-panel {
+  background: var(--sig-bg-card) !important;
+  border: 1px solid var(--sig-border) !important;
+  border-radius: var(--radius-md) !important;
+}
+.mat-mdc-menu-item { color: var(--sig-text-primary) !important; }
+.mat-mdc-menu-item:hover { background: var(--sig-bg-hover) !important; }
+.mat-mdc-menu-item .mat-icon { color: var(--sig-text-secondary) !important; }
+
+// Divider
+.mat-divider { border-color: var(--sig-border) !important; }
+
+// Dialog
+.mat-mdc-dialog-container {
+  --mdc-dialog-container-color: var(--sig-bg-card);
+  --mdc-dialog-supporting-text-color: var(--sig-text-secondary);
+  border: 1px solid var(--sig-border);
+  border-radius: var(--radius-lg) !important;
+}
+
+// Snackbar
+.mdc-snackbar__surface {
+  background: var(--sig-bg-card) !important;
+  border: 1px solid var(--sig-border) !important;
+}
+.mdc-snackbar__label { color: var(--sig-text-primary) !important; }
+
+// Tooltip
+.mdc-tooltip__surface {
+  background: var(--sig-bg-card-alt) !important;
+  color: var(--sig-text-primary) !important;
+  border: 1px solid var(--sig-border) !important;
+  font-size: 12px !important;
+}
+
+// Checkbox
+.mdc-checkbox__background { border-color: var(--sig-border) !important; }
+.mdc-checkbox--selected .mdc-checkbox__background { background: var(--sig-blue) !important; border-color: var(--sig-blue) !important; }
+
+// Progress spinner
+.mdc-circular-progress__indeterminate-circle-graphic { stroke: var(--sig-teal) !important; }
+
+// Spinner en botón primario
+.sig-login-btn .mdc-circular-progress__indeterminate-circle-graphic { stroke: #fff !important; }
+
+// Scrollbar global
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--sig-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--sig-border-light); }
+
+// ------------------------------------------------------------
+// 6. Focus visible accesible
 // ------------------------------------------------------------
 :focus-visible {
-  outline: 3px solid var(--mat-sys-primary);
+  outline: 2px solid var(--sig-blue);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 // ------------------------------------------------------------
-// 7. Tipografía — clase para campos numéricos (Roboto Mono)
+// 7. Tipografía
 // ------------------------------------------------------------
 .mono-num {
   font-family: 'Roboto Mono', monospace;
   font-size: 14px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  letter-spacing: .02em;
 }
 
 // ------------------------------------------------------------
-// 8. Badges de estado del flujo de aprobación
+// 8. Shared layout utilities
 // ------------------------------------------------------------
-.sig-badge {
-  display: inline-flex;
+.sig-page {
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  &__title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--sig-text-heading);
+    margin: 0;
+  }
+}
+
+// ------------------------------------------------------------
+// 9. Cards
+// ------------------------------------------------------------
+.sig-card {
+  background:    var(--sig-bg-card);
+  border:        1px solid var(--sig-border);
+  border-radius: var(--radius-lg);
+  box-shadow:    var(--shadow-card);
+}
+
+.sig-kpi-card {
+  @extend .sig-card;
+  padding: 20px;
+
+  &__label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--sig-text-muted);
+    margin-bottom: 8px;
+  }
+
+  &__value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--sig-text-heading);
+    font-family: 'Roboto Mono', monospace;
+    line-height: 1;
+  }
+
+  &__trend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    margin-top: 8px;
+    color: var(--sig-text-muted);
+
+    &--up   { color: var(--sig-success); }
+    &--down { color: var(--sig-danger); }
+  }
+}
+
+// Mat-card override
+.mat-mdc-card {
+  background:    var(--sig-bg-card) !important;
+  border:        1px solid var(--sig-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow:    var(--shadow-card) !important;
+  color:         var(--sig-text-primary) !important;
+}
+.mat-mdc-card-title    { color: var(--sig-text-heading) !important; }
+.mat-mdc-card-subtitle { color: var(--sig-text-secondary) !important; }
+
+// ------------------------------------------------------------
+// 10. Buttons
+// ------------------------------------------------------------
+.sig-btn {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             6px;
+  padding:         8px 16px;
+  border:          none;
+  border-radius:   var(--radius-md);
+  font-size:       14px;
+  font-weight:     500;
+  font-family:     inherit;
+  cursor:          pointer;
+  transition:      background 150ms ease, opacity 150ms ease, box-shadow 150ms ease;
+  text-decoration: none;
+  white-space:     nowrap;
+
+  &--primary {
+    background: var(--sig-blue);
+    color: #fff;
+    &:hover { background: var(--sig-blue-light); }
+    &:disabled { opacity: .5; cursor: not-allowed; }
+  }
+
+  &--teal {
+    background: var(--sig-teal-bg);
+    color: var(--sig-teal);
+    border: 1px solid rgba(0, 212, 196, .3);
+    &:hover { background: rgba(0, 212, 196, .2); }
+  }
+
+  &--outline {
+    background: transparent;
+    color: var(--sig-text-primary);
+    border: 1px solid var(--sig-border);
+    &:hover { background: var(--sig-bg-hover); }
+  }
+
+  &--danger {
+    background: var(--sig-danger-bg);
+    color: var(--sig-danger);
+    border: 1px solid rgba(239, 68, 68, .3);
+    &:hover { background: rgba(239, 68, 68, .2); }
+  }
+
+  &--icon {
+    padding:       6px;
+    background:    transparent;
+    color:         var(--sig-text-secondary);
+    border-radius: var(--radius-sm);
+    position:      relative;
+    &:hover { background: var(--sig-bg-hover); color: var(--sig-text-primary); }
+  }
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+}
+
+// Material button overrides
+.mat-mdc-button,
+.mat-mdc-outlined-button {
+  --mdc-text-button-label-text-color: var(--sig-text-primary) !important;
+  border-color: var(--sig-border) !important;
+}
+.mat-mdc-raised-button,
+.mat-mdc-flat-button {
+  --mdc-filled-button-container-color: var(--sig-blue) !important;
+  --mdc-filled-button-label-text-color: #ffffff !important;
+}
+.mat-mdc-icon-button { color: var(--sig-text-secondary) !important; }
+.mat-mdc-icon-button:hover { background: var(--sig-bg-hover) !important; }
+
+// ------------------------------------------------------------
+// 11. Filter bar
+// ------------------------------------------------------------
+.sig-filter-bar {
+  display:       flex;
+  align-items:   center;
+  gap:           12px;
+  padding:       12px 0 16px;
+  flex-wrap:     wrap;
+}
+
+.sig-search-input {
+  position:    relative;
+  display:     flex;
   align-items: center;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 20px;
+
+  mat-icon {
+    position:  absolute;
+    left:      10px;
+    color:     var(--sig-text-muted);
+    font-size: 18px;
+  }
+
+  input {
+    padding:          8px 12px 8px 36px;
+    background:       var(--sig-bg-card-alt);
+    border:           1px solid var(--sig-border);
+    border-radius:    var(--radius-md);
+    color:            var(--sig-text-primary);
+    font-size:        14px;
+    font-family:      inherit;
+    outline:          none;
+    min-width:        220px;
+    transition:       border-color 150ms ease;
+
+    &::placeholder { color: var(--sig-text-muted); }
+    &:focus        { border-color: var(--sig-border-focus); }
+  }
+}
+
+.sig-filter-total {
+  font-size:  12px;
+  color:      var(--sig-text-muted);
+  margin-left: auto;
   white-space: nowrap;
 
-  &--pending-pm {
-    background: var(--sig-warning-container);
-    color: var(--sig-warning);
+  strong { color: var(--sig-text-secondary); }
+}
+
+// ------------------------------------------------------------
+// 12. Tables
+// ------------------------------------------------------------
+.sig-table-wrapper {
+  background:    var(--sig-bg-card);
+  border:        1px solid var(--sig-border);
+  border-radius: var(--radius-lg);
+  overflow:      hidden;
+}
+
+.sig-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  thead tr {
+    background: #0a1828;
   }
 
-  &--pending-backoffice {
-    background: var(--sig-warning-container);
-    color: var(--sig-warning);
+  th {
+    padding:        10px 16px;
+    text-align:     left;
+    font-size:      11px;
+    font-weight:    600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color:          var(--sig-text-muted);
+    border-bottom:  1px solid var(--sig-border);
+    white-space:    nowrap;
   }
 
-  &--pending-fico {
-    background: var(--mat-sys-secondary-container);
-    color: var(--mat-sys-secondary);
+  td {
+    padding:       10px 16px;
+    font-size:     13px;
+    color:         var(--sig-text-primary);
+    border-bottom: 1px solid var(--sig-border);
+    vertical-align: middle;
   }
 
-  &--pending-direction {
-    background: var(--mat-sys-primary-container);
-    color: var(--mat-sys-primary);
+  tbody tr:last-child td { border-bottom: none; }
+
+  tbody tr:hover { background: var(--sig-bg-hover); }
+
+  // Mat-table overrides
+  th.mat-header-cell {
+    background:    #0a1828 !important;
+    color:         var(--sig-text-muted) !important;
+    font-size:     11px !important;
+    font-weight:   600 !important;
+    letter-spacing: .06em !important;
+    text-transform: uppercase !important;
+    border-bottom: 1px solid var(--sig-border) !important;
+    padding:       10px 16px !important;
+    position:      sticky;
+    top:           0;
+    z-index:       5;
   }
 
-  &--approved {
-    background: var(--sig-success-container);
-    color: var(--sig-success);
+  td.mat-cell {
+    font-size:    13px !important;
+    color:        var(--sig-text-primary) !important;
+    border-bottom: 1px solid var(--sig-border) !important;
+    padding:      10px 16px !important;
   }
 
-  &--rejected {
-    background: var(--mat-sys-error-container);
-    color: var(--mat-sys-error);
+  tr.mat-row { background: var(--sig-bg-card); }
+  tr.mat-row:hover { background: var(--sig-bg-hover) !important; }
+
+  .sig-table-actions {
+    display:         flex;
+    gap:             4px;
+    justify-content: flex-end;
+  }
+}
+
+.sig-table-id {
+  font-family: 'Roboto Mono', monospace;
+  font-size:   12px;
+  color:       var(--sig-text-muted);
+}
+
+.sig-table-name {
+  font-weight: 500;
+  color:       var(--sig-text-heading);
+}
+
+.sig-table-footer {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         12px 16px;
+  border-top:      1px solid var(--sig-border);
+  font-size:       12px;
+  color:           var(--sig-text-muted);
+}
+
+// Mat-table container
+.mat-mdc-table {
+  background: var(--sig-bg-card) !important;
+}
+
+// ------------------------------------------------------------
+// 13. Badges & Badges de estado
+// ------------------------------------------------------------
+.sig-badge {
+  display:      inline-flex;
+  align-items:  center;
+  gap:          5px;
+  padding:      3px 10px;
+  border-radius: var(--radius-pill);
+  font-size:    11px;
+  font-weight:  600;
+  letter-spacing: .03em;
+  white-space:  nowrap;
+
+  &::before {
+    content:       '';
+    width:         6px;
+    height:        6px;
+    border-radius: 50%;
+    flex-shrink:   0;
   }
 
-  &--closed {
-    background: var(--mat-sys-surface-variant);
-    color: var(--mat-sys-on-surface-variant);
+  &--active   { background: var(--sig-success-bg); color: var(--sig-success);   &::before { background: var(--sig-success); } }
+  &--review   { background: var(--sig-warning-bg); color: var(--sig-warning);   &::before { background: var(--sig-warning); } }
+  &--inactive { background: var(--sig-danger-bg);  color: var(--sig-danger);    &::before { background: var(--sig-danger);  } }
+  &--pending  { background: rgba(148,163,184,.12); color: var(--sig-pending);   &::before { background: var(--sig-pending); } }
+
+  // Approval states (backwards compat)
+  &--pending-pm,
+  &--pending-backoffice,
+  &--pending-fico,
+  &--pending-direction { background: var(--sig-warning-bg); color: var(--sig-warning); &::before { background: var(--sig-warning); } }
+  &--approved          { background: var(--sig-success-bg); color: var(--sig-success); &::before { background: var(--sig-success); } }
+  &--rejected          { background: var(--sig-danger-bg);  color: var(--sig-danger);  &::before { background: var(--sig-danger);  } }
+  &--closed            { background: rgba(148,163,184,.12); color: var(--sig-pending); &::before { background: var(--sig-pending); } }
+  &--pending           { background: var(--sig-warning-bg); color: var(--sig-warning); &::before { background: var(--sig-warning); } }
+}
+
+.sig-type-pill {
+  display:       inline-flex;
+  align-items:   center;
+  padding:       2px 10px;
+  border-radius: var(--radius-pill);
+  font-size:     11px;
+  font-weight:   600;
+  letter-spacing: .04em;
+
+  &--pago     { background: rgba(37,99,235,.15);  color: #2563eb; }
+  &--factura  { background: rgba(139,92,246,.15); color: #8b5cf6; }
+  &--global   { background: var(--sig-teal-bg);   color: var(--sig-teal); }
+  &--proyecto { background: var(--sig-warning-bg); color: var(--sig-warning); }
+}
+
+// ------------------------------------------------------------
+// 14. Pagination
+// ------------------------------------------------------------
+.sig-pagination {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+
+  button {
+    width:         30px;
+    height:        30px;
+    padding:       0;
+    border:        1px solid var(--sig-border);
+    border-radius: var(--radius-sm);
+    background:    transparent;
+    color:         var(--sig-text-secondary);
+    font-size:     13px;
+    cursor:        pointer;
+    transition:    background 150ms ease;
+
+    &:hover    { background: var(--sig-bg-hover); }
+    &.active   { background: var(--sig-blue); color: #fff; border-color: var(--sig-blue); }
+    &:disabled { opacity: .4; cursor: not-allowed; }
+  }
+}
+
+// Mat paginator
+.mat-mdc-paginator {
+  background: var(--sig-bg-card) !important;
+  color:      var(--sig-text-secondary) !important;
+  border-top: 1px solid var(--sig-border) !important;
+}
+.mat-mdc-paginator .mat-mdc-select-value { color: var(--sig-text-primary) !important; }
+.mat-mdc-paginator .mat-mdc-icon-button  { color: var(--sig-text-secondary) !important; }
+
+// ------------------------------------------------------------
+// 15. Detail panel (drawer lateral derecho)
+// ------------------------------------------------------------
+.sig-detail-panel {
+  width:            var(--sig-detail-panel-width);
+  background:       var(--sig-bg-card);
+  border-left:      1px solid var(--sig-border);
+  box-shadow:       var(--shadow-panel);
+  display:          flex;
+  flex-direction:   column;
+  overflow:         hidden;
+
+  &__header {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    padding:         14px 16px;
+    border-bottom:   1px solid var(--sig-border);
+    background:      #0a1828;
+    flex-shrink:     0;
   }
 
-  &--pending {
-    background: var(--sig-warning-container, #FFF3E0);
-    color: var(--sig-warning, #E65100);
+  &__title {
+    font-size:   14px;
+    font-weight: 600;
+    color:       var(--sig-text-heading);
+  }
+
+  &__body {
+    flex:       1;
+    overflow-y: auto;
+    padding:    16px;
+
+    &::-webkit-scrollbar       { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: var(--sig-border); border-radius: 2px; }
+  }
+
+  &__footer {
+    padding:    12px 16px;
+    border-top: 1px solid var(--sig-border);
+    display:    flex;
+    gap:        8px;
+    flex-shrink: 0;
   }
 }
 
 // ------------------------------------------------------------
-// 9. Skeleton shimmer animation
+// 16. Avatar
+// ------------------------------------------------------------
+.sig-avatar {
+  width:           32px;
+  height:          32px;
+  border-radius:   50%;
+  background:      var(--sig-bg-active);
+  color:           var(--sig-teal);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       12px;
+  font-weight:     700;
+  flex-shrink:     0;
+  letter-spacing:  .03em;
+}
+
+// ------------------------------------------------------------
+// 17. Formula builder tokens
+// ------------------------------------------------------------
+.sig-formula-builder {
+  background:    var(--sig-bg-card-alt);
+  border:        1px solid var(--sig-border);
+  border-radius: var(--radius-md);
+  padding:       12px;
+  min-height:    56px;
+  display:       flex;
+  flex-wrap:     wrap;
+  align-items:   center;
+  gap:           6px;
+}
+
+.sig-token {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           4px;
+  padding:       3px 10px;
+  border-radius: var(--radius-sm);
+  font-size:     12px;
+  font-weight:   500;
+  cursor:        default;
+
+  &--variable  { background: #00d4c41a; color: #00d4c4; border: 1px solid rgba(0,212,196,.25); }
+  &--numero    { background: rgba(74,222,128,.1); color: #4ade80; border: 1px solid rgba(74,222,128,.25); }
+  &--operacion { background: rgba(148,163,184,.1); color: #94a3b8; border: 1px solid rgba(148,163,184,.25); font-size: 16px; }
+  &--payhawk  { background: rgba(245,158,11,.1);  color: #f59e0b;  border: 1px solid rgba(245,158,11,.25); }
+  &--celero   { background: rgba(59,130,246,.1);  color: #3b82f6;  border: 1px solid rgba(59,130,246,.25); }
+  &--bizneo   { background: rgba(167,139,250,.1); color: #a78bfa;  border: 1px solid rgba(167,139,250,.25); }
+  &--intratime { background: rgba(251,146,60,.1); color: #fb923c;  border: 1px solid rgba(251,146,60,.25); }
+
+  button.sig-token-remove {
+    background: none;
+    border:     none;
+    color:      inherit;
+    opacity:    .6;
+    cursor:     pointer;
+    padding:    0;
+    font-size:  14px;
+    line-height: 1;
+    &:hover { opacity: 1; }
+  }
+}
+
+// ------------------------------------------------------------
+// 18. Skeleton shimmer
 // ------------------------------------------------------------
 @keyframes skeleton-shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
 }
 
 .sig-skeleton {
   background: linear-gradient(
     90deg,
-    var(--mat-sys-surface-variant) 25%,
-    var(--mat-sys-primary-container) 50%,
-    var(--mat-sys-surface-variant) 75%
+    var(--sig-bg-card-alt) 25%,
+    var(--sig-bg-hover) 50%,
+    var(--sig-bg-card-alt) 75%
   );
-  background-size: 800px 100%;
-  animation: skeleton-shimmer 1.5s infinite ease-in-out;
-  border-radius: 4px;
+  background-size: 1200px 100%;
+  animation: skeleton-shimmer 1.6s infinite ease-in-out;
+  border-radius: var(--radius-sm);
 }
 
 .sig-skeleton-row {
@@ -224,299 +780,217 @@ body {
 }
 
 .sig-skeleton-text {
-  height: 16px;
-  border-radius: 4px;
+  height: 14px;
+  border-radius: 3px;
   @extend .sig-skeleton;
 }
 
 // ------------------------------------------------------------
-// 10. AppBar (mat-toolbar override para paleta navy)
+// 19. Snackbar semánticos
 // ------------------------------------------------------------
-.sig-appbar.mat-toolbar {
-  background-color: var(--mat-sys-primary);
-  color: var(--mat-sys-on-primary);
-
-  .sig-logo {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 20px;
-    letter-spacing: 0.08em;
-    color: #FFFFFF;
-  }
-
-  .sig-logo-sub {
-    font-size: 11px;
-    font-weight: 400;
-    color: rgba(255, 255, 255, 0.7);
-    margin-left: 4px;
-    display: none;
-
-    @media (min-width: 960px) {
-      display: inline;
-    }
-  }
-}
+.snack-success .mdc-snackbar__surface { background: #0f2b1a !important; border-color: var(--sig-success) !important; }
+.snack-success .mdc-snackbar__label   { color: var(--sig-success) !important; }
+.snack-error   .mdc-snackbar__surface { background: #2c1010 !important; border-color: var(--sig-danger)  !important; }
+.snack-error   .mdc-snackbar__label   { color: var(--sig-danger)  !important; }
+.snack-warning .mdc-snackbar__surface { background: #2a1f08 !important; border-color: var(--sig-warning) !important; }
+.snack-warning .mdc-snackbar__label   { color: var(--sig-warning) !important; }
+.snack-info    .mdc-snackbar__surface { background: #0e1e38 !important; border-color: var(--sig-blue)    !important; }
+.snack-info    .mdc-snackbar__label   { color: var(--sig-blue)    !important; }
 
 // ------------------------------------------------------------
-// 11. Sidenav
-// ------------------------------------------------------------
-.sig-sidenav {
-  width: var(--space-64); // 256px expandido
-  background: var(--mat-sys-surface);
-  border-right: 1px solid var(--mat-sys-outline-variant);
-
-  .sig-nav-group-label {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--mat-sys-on-surface-variant);
-    padding: var(--space-4) var(--space-4) var(--space-2) var(--space-4);
-    margin-top: var(--space-4);
-  }
-
-  mat-nav-list {
-    padding-top: 0;
-  }
-
-  a[mat-list-item] {
-    border-radius: 8px;
-    margin: 2px var(--space-2);
-
-    &.active {
-      background: var(--mat-sys-primary-container);
-      color: var(--mat-sys-primary);
-    }
-  }
-}
-
-// Sidenav colapsado (64px)
-.sig-sidenav-collapsed {
-  width: var(--space-16); // 64px
-}
-
-// ------------------------------------------------------------
-// 12. Breadcrumbs
-// ------------------------------------------------------------
-.sig-breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: 13px;
-  color: var(--mat-sys-on-surface-variant);
-  padding: var(--space-2) 0 var(--space-4);
-
-  a {
-    color: var(--mat-sys-secondary);
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
-  .sig-breadcrumb-separator {
-    color: var(--mat-sys-outline);
-    font-size: 16px;
-  }
-
-  .sig-breadcrumb-current {
-    color: var(--mat-sys-on-surface);
-    font-weight: 500;
-  }
-}
-
-// ------------------------------------------------------------
-// 13. Tarjetas KPI
-// ------------------------------------------------------------
-.sig-kpi-card {
-  min-width: 160px;
-
-  .sig-kpi-label {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--mat-sys-on-surface-variant);
-    margin-bottom: var(--space-2);
-  }
-
-  .sig-kpi-value {
-    font-size: 40px;
-    font-weight: 600;
-    color: var(--mat-sys-primary);
-    line-height: 1;
-    font-family: 'Roboto Mono', monospace;
-  }
-
-  .sig-kpi-trend {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13px;
-    margin-top: var(--space-2);
-
-    &--up {
-      color: var(--sig-success);
-    }
-
-    &--down {
-      color: var(--mat-sys-error);
-    }
-  }
-}
-
-// ------------------------------------------------------------
-// 14. Snackbar semánticos
-// ------------------------------------------------------------
-.snack-success .mdc-snackbar__surface {
-  background: var(--sig-success);
-  color: var(--sig-on-success);
-}
-
-.snack-error .mdc-snackbar__surface {
-  background: var(--mat-sys-error);
-  color: var(--mat-sys-on-error);
-}
-
-.snack-warning .mdc-snackbar__surface {
-  background: var(--sig-warning);
-  color: var(--sig-on-warning);
-}
-
-.snack-info .mdc-snackbar__surface {
-  background: var(--mat-sys-primary);
-  color: var(--mat-sys-on-primary);
-}
-
-// ------------------------------------------------------------
-// 15. Tablas
-// ------------------------------------------------------------
-.sig-table {
-  width: 100%;
-
-  th.mat-header-cell {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: var(--mat-sys-surface);
-    font-weight: 600;
-    font-size: 13px;
-    color: var(--mat-sys-on-surface-variant);
-    border-bottom: 2px solid var(--mat-sys-outline-variant);
-  }
-
-  tr.mat-row:hover {
-    background: var(--mat-sys-surface-variant);
-  }
-
-  td.mat-cell {
-    font-size: 14px;
-    color: var(--mat-sys-on-surface);
-  }
-
-  .sig-table-actions {
-    display: flex;
-    gap: 4px;
-    justify-content: flex-end;
-  }
-}
-
-.sig-table-dark-header {
-  th.mat-header-cell {
-    background: #1F4E78 !important;
-    color: #FFFFFF !important;
-    font-weight: 600;
-    font-size: 13px;
-    border-bottom: none !important;
-    padding: 8px 12px !important;
-  }
-
-  td.mat-cell {
-    padding: 8px 12px !important;
-  }
-}
-
-// ------------------------------------------------------------
-// 16. Contenedor principal de página
-// ------------------------------------------------------------
-.sig-page {
-  padding: var(--space-6);
-  width: 100%;
-  box-sizing: border-box;
-
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-6);
-  }
-
-  &__title {
-    font-size: 28px;
-    font-weight: 600;
-    color: var(--mat-sys-primary);
-    margin: 0;
-  }
-}
-
-// ------------------------------------------------------------
-// 17. Logo SIG (implementación CSS — se reemplaza con SVG real)
+// 20. Logo mark (compatibilidad con ShellComponent)
 // ------------------------------------------------------------
 .sig-logo-mark {
-  display: flex;
+  display:     flex;
   align-items: center;
-  cursor: pointer;
+  cursor:      pointer;
   text-decoration: none;
   color: inherit;
-
-  img.sig-logo-img {
-    height: 32px;
-    width: auto;
-    display: block;
-  }
-
-  &.sig-logo-mark--dark img.sig-logo-img {
-    height: 40px;
-  }
-
-  .sig-logo {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 22px;
-    letter-spacing: 0.12em;
-    color: #FFFFFF;
-    line-height: 1;
-  }
-
-  .sig-logo-sub {
-    font-size: 10px;
-    font-weight: 400;
-    color: rgba(255,255,255,0.65);
-    letter-spacing: 0.05em;
-    line-height: 1;
-    margin-left: 8px;
-  }
-}
-
-// Versión negativa (login — fondo claro)
-.sig-logo-mark--dark .sig-logo {
-  color: var(--mat-sys-primary);
-}
-
-.sig-logo-mark--dark .sig-logo-sub {
-  color: var(--mat-sys-on-surface-variant);
 }
 
 // ------------------------------------------------------------
-// 18. Responsive utilities
+// 21. Responsive
 // ------------------------------------------------------------
 @media (max-width: 599px) {
-  .sig-page {
-    padding: var(--space-4);
+  .sig-page { padding: 16px; }
+  .sig-kpi-card__value { font-size: 24px; }
+  .sig-filter-bar { gap: 8px; }
+}
+
+
+// ------------------------------------------------------------
+// 22. Backwards-compat tokens (legacy names used by components)
+// ------------------------------------------------------------
+html {
+  /* Old light-theme token names re-mapped to dark equivalents */
+  --sig-text-dark:          #e8f0f9;   /* was dark text on light bg, now = text-primary */
+  --sig-text-light:         #5a7a9a;   /* was light text, now = text-muted */
+  --sig-text-lighter:       #94a3b8;   /* now = text-secondary */
+  --sig-primary-light:      #3b82f6;   /* blue-light */
+  --sig-primary-dark:       #1e3a5c;   /* bg-active */
+  --sig-warning-dark:       #d97706;   /* amber-600 for warning text */
+  --sig-warning-container:  #f59e0b1a;
+  --sig-success-container:  #22c55e1a;
+  --sig-danger-container:   #ef44441a;
+  --sig-on-success:         #ffffff;
+  --sig-on-warning:         #ffffff;
+  --sig-on-danger:          #ffffff;
+  --sig-lighter:            #162033;   /* alt card bg */
+  --sig-light:              #13243a;   /* card bg */
+  --sig-border-color:       #1e3a5c;   /* alias of --sig-border */
+}
+
+// ============================================================
+// 23. LIGHT THEME — overrides when body.sig-light
+// ============================================================
+body.sig-light {
+  color-scheme: light;
+
+  // M3 surface tokens
+  --mat-sys-surface:               #f0f4f8;
+  --mat-sys-on-surface:            #1a2b3c;
+  --mat-sys-surface-variant:       #ffffff;
+  --mat-sys-on-surface-variant:    #4a6278;
+  --mat-sys-outline:               #cdd8e3;
+  --mat-sys-outline-variant:       #dde6ef;
+  --mat-sys-background:            #f0f4f8;
+  --mat-sys-on-background:         #1a2b3c;
+
+  // SIG backgrounds
+  --sig-bg-app:         #f0f4f8;
+  --sig-bg-sidebar:     #1a3a5c;
+  --sig-bg-card:        #ffffff;
+  --sig-bg-card-alt:    #f8fafc;
+  --sig-bg-hover:       #e8f0f8;
+  --sig-bg-active:      #dbeafe;
+  --sig-bg-header:      #ffffff;
+  --sig-bg-overlay:     #f0f4f8cc;
+
+  // SIG text
+  --sig-text-primary:   #1a2b3c;
+  --sig-text-secondary: #4a6278;
+  --sig-text-muted:     #7a94a8;
+  --sig-text-heading:   #0f1f2e;
+
+  // SIG accents stay the same
+  --sig-teal:           #0097a7;
+  --sig-teal-bg:        #e0f7fa;
+  --sig-blue:           #2563eb;
+  --sig-blue-light:     #3b82f6;
+
+  // Status
+  --sig-success:        #16a34a;
+  --sig-success-bg:     #dcfce7;
+  --sig-warning:        #d97706;
+  --sig-warning-bg:     #fef3c7;
+  --sig-danger:         #dc2626;
+  --sig-danger-bg:      #fee2e2;
+  --sig-pending:        #64748b;
+
+  // Borders
+  --sig-border:         #cdd8e3;
+  --sig-border-light:   #dde6ef;
+  --sig-border-focus:   #2563eb;
+
+  // Shadows
+  --shadow-card:  0 2px 12px rgba(0,0,0,.08);
+  --shadow-panel: 4px 0 24px rgba(0,0,0,.06);
+
+  // Compat
+  --sig-text-dark:          #1a2b3c;
+  --sig-text-light:         #7a94a8;
+  --sig-text-lighter:       #4a6278;
+  --sig-primary-light:      #3b82f6;
+  --sig-primary-dark:       #dbeafe;
+  --sig-warning-dark:       #b45309;
+  --sig-warning-container:  #fef3c7;
+  --sig-success-container:  #dcfce7;
+  --sig-danger-container:   #fee2e2;
+  --sig-lighter:            #f8fafc;
+  --sig-light:              #ffffff;
+  --sig-border-color:       #cdd8e3;
+
+  // Mat overrides for light mode
+  background-color: var(--sig-bg-app);
+  color: var(--sig-text-primary);
+
+  // Forms light mode
+  .mat-mdc-form-field {
+    --mdc-filled-text-field-container-color:              #f8fafc;
+    --mdc-filled-text-field-label-text-color:             #4a6278;
+    --mdc-filled-text-field-input-text-color:             #1a2b3c;
+  }
+  .mat-mdc-form-field.mat-form-field-appearance-outline {
+    --mdc-outlined-text-field-outline-color:              #cdd8e3;
+    --mdc-outlined-text-field-hover-outline-color:        #2563eb;
+    --mdc-outlined-text-field-focus-outline-color:        #2563eb;
+    --mdc-outlined-text-field-label-text-color:           #4a6278;
+    --mdc-outlined-text-field-input-text-color:           #1a2b3c;
   }
 
-  .sig-kpi-card .sig-kpi-value {
-    font-size: 28px;
+  .mat-mdc-select-value { color: #1a2b3c !important; }
+  .mat-mdc-option        { color: #1a2b3c !important; background: #ffffff !important; }
+  .mat-mdc-option:hover,
+  .mat-mdc-option.mdc-list-item--selected { background: #e8f0f8 !important; }
+
+  .mat-mdc-menu-panel {
+    background: #ffffff !important;
+    border: 1px solid #cdd8e3 !important;
+  }
+  .mat-mdc-menu-item { color: #1a2b3c !important; }
+  .mat-mdc-menu-item:hover { background: #e8f0f8 !important; }
+  .mat-mdc-menu-item .mat-icon { color: #4a6278 !important; }
+  .mat-divider { border-color: #cdd8e3 !important; }
+  .mat-mdc-card {
+    background: #ffffff !important;
+    border: 1px solid #cdd8e3 !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08) !important;
+    color: #1a2b3c !important;
+  }
+  .mat-mdc-card-title    { color: #0f1f2e !important; }
+  .mat-mdc-card-subtitle { color: #4a6278 !important; }
+
+  .mdc-snackbar__surface {
+    background: #ffffff !important;
+    border: 1px solid #cdd8e3 !important;
+  }
+  .mdc-snackbar__label { color: #1a2b3c !important; }
+
+  .mdc-tooltip__surface {
+    background: #1a2b3c !important;
+    color: #ffffff !important;
+    border: none !important;
+  }
+
+  // Sidenav always dark
+  .sig-sidenav {
+    background-color: #162d4a !important;
+
+    .sig-nav-group-label { color: rgba(255,255,255,.6) !important; }
+    .sig-sidebar-brand-name { color: #ffffff !important; }
+    .sig-sidebar-brand-sub  { color: rgba(255,255,255,.6) !important; }
+
+    a[mat-list-item] {
+      color: rgba(255,255,255,.85) !important;
+      mat-icon { color: rgba(255,255,255,.55) !important; }
+      &:hover { background: rgba(255,255,255,.08) !important; color: #fff !important; mat-icon { color: rgba(255,255,255,.8) !important; } }
+      &.active {
+        background: rgba(0,212,196,.15) !important;
+        color: #00d4c4 !important;
+        &::before { background: #00d4c4; }
+        mat-icon[matListItemIcon] { color: #00d4c4 !important; }
+      }
+    }
+    mat-divider { border-color: rgba(255,255,255,.12) !important; }
+  }
+
+  // AppBar light
+  .sig-appbar {
+    background-color: #ffffff !important;
+    color: #1a2b3c !important;
+    border-bottom: 1px solid #cdd8e3 !important;
+    .mat-icon { color: #4a6278 !important; }
+    .mat-mdc-icon-button { color: #4a6278 !important; }
   }
 }
+

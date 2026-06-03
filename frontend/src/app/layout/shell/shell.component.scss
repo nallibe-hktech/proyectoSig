@@ -1,110 +1,152 @@
-// Shell layout styles
+// =====================================================================
+// SIG-ES Shell Layout
+// =====================================================================
 
 .sig-shell-container {
-  height: 100vh;
+  height: 100vh; background-color: var(--sig-bg-app);
+  ::ng-deep > .mat-drawer-content { display: flex; flex-direction: column; }
 }
 
-// mat-sidenav-content debe ocupar todo el ancho restante. Material lo gestiona
-// internamente vía margin-left cuando hay un sidenav en modo 'side'; aquí
-// blindamos que el contenido y su <main> tomen el 100% del espacio disponible.
-::ng-deep .sig-shell-container > .mat-drawer-content {
-  display: flex;
-  flex-direction: column;
-}
-
-// AppBar overrides
 .sig-appbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background-color: var(--mat-sys-primary) !important;
-  color: var(--mat-sys-on-primary) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-
-  .mat-icon {
-    color: rgba(255, 255, 255, 0.9);
-  }
-
-  .mat-icon-button {
-    color: rgba(255, 255, 255, 0.9);
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-  }
+  position: sticky; top: 0; z-index: 200;
+  height: var(--sig-header-height) !important;
+  min-height: var(--sig-header-height) !important;
+  padding: 0 16px !important;
+  background-color: var(--sig-bg-header) !important;
+  color: var(--sig-text-primary) !important;
+  border-bottom: 1px solid var(--sig-border) !important;
+  box-shadow: none !important;
+  .mat-icon { color: var(--sig-text-secondary); }
+  .mat-mdc-icon-button { color: var(--sig-text-secondary) !important; &:hover { background: var(--sig-bg-hover) !important; } }
 }
 
-// Spacer flexbox
-.sig-spacer {
-  flex: 1 1 auto;
+.sig-spacer { flex: 1 1 auto; }
+
+.sig-appbar-user {
+  margin-left: 10px; font-size: 13px; color: var(--sig-text-secondary);
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-// Selector de período en AppBar
 .sig-periodo-select {
-  max-width: 180px;
-  color: #FFFFFF;
-
-  .mat-select-value {
-    color: #FFFFFF;
-  }
-
-  .mat-select-arrow {
-    color: rgba(255, 255, 255, 0.7);
-  }
+  max-width: 160px;
+  .mat-mdc-select-value-text { font-size: 13px !important; color: var(--sig-text-primary) !important; }
+  .mat-mdc-select-arrow { color: var(--sig-text-muted) !important; }
 }
+.sig-periodo-panel { .mat-mdc-option { font-size: 13px !important; } }
 
-// Sidenav
+// -- Sidenav ----------------------------------------------------------
 .sig-sidenav {
-  width: 256px;
-  border-right: 1px solid var(--mat-sys-outline-variant);
-  background: var(--mat-sys-surface);
-  overflow: hidden;
+  width: var(--sig-sidebar-width) !important;
+  background-color: var(--sig-bg-sidebar) !important;
+  border-right: 1px solid rgba(255,255,255,.05) !important;
+  box-shadow: var(--shadow-panel) !important;
+  overflow-x: hidden;
+
+  &::-webkit-scrollbar       { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
 
   .sig-sidenav-logo {
-    padding: 16px;
-    display: flex;
-    align-items: center;
-
-    .sig-logo-mark--dark .sig-logo {
-      font-size: 20px;
-    }
+    padding: 14px 12px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.07);
   }
+
+  .sig-sidebar-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+
+  .sig-user-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, #00d4c4, #2563eb);
+    color: #fff; font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  .sig-sidebar-brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+  .sig-sidebar-brand-name { font-size: 14px; font-weight: 700; color: #ffffff; letter-spacing: .5px; }
+  .sig-sidebar-brand-sub  { font-size: 10px; color: rgba(255,255,255,.58); font-weight: 400; }
 
   .sig-nav-group-label {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--mat-sys-on-surface-variant);
-    padding: 16px 16px 4px;
+    padding: 12px 14px 4px; font-size: 9px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: rgba(255,255,255,.55); user-select: none;
   }
+
+  mat-nav-list { padding: 3px 0 !important; }
 
   a[mat-list-item] {
-    border-radius: 8px;
-    margin: 2px 8px;
-    color: var(--mat-sys-on-surface);
+    --mdc-list-list-item-container-color: transparent;
+    border-radius: 6px !important;
+    margin: 1px 6px !important;
+    height: 34px !important;
+    position: relative !important;
+    transition: background 120ms ease !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 10px !important;
+
+    &:hover { background: rgba(255,255,255,.06) !important; }
 
     &.active {
-      background-color: var(--mat-sys-primary-container);
-      color: var(--mat-sys-primary);
+      background: rgba(0,212,196,.1) !important;
 
-      mat-icon {
-        color: var(--mat-sys-primary);
+      &::before {
+        content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+        width: 3px; height: 20px; background: #00d4c4; border-radius: 0 2px 2px 0;
       }
-    }
 
-    &:hover:not(.active) {
-      background-color: var(--mat-sys-surface-variant);
+      .sig-nav-icon { color: #00d4c4 !important; }
+      .sig-nav-label { color: #00d4c4 !important; font-weight: 600 !important; }
     }
   }
+
+  // Override ALL MDC list item internals
+  ::ng-deep .mdc-list-item__content {
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  ::ng-deep .mdc-list-item__primary-text {
+    display: flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+
+  .sig-nav-icon {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+    color: rgba(255,255,255,.52) !important;
+    margin-right: 9px !important;
+    flex-shrink: 0;
+    transition: color 120ms ease;
+  }
+
+  .sig-nav-label {
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    color: rgba(255,255,255,.88) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1 !important;
+  }
+
+  a[mat-list-item]:hover .sig-nav-icon  { color: rgba(255,255,255,.8) !important; }
+  a[mat-list-item]:hover .sig-nav-label { color: rgba(255,255,255,.98) !important; }
+
+  mat-divider { border-color: rgba(255,255,255,.06) !important; margin: 5px 0 !important; }
 }
 
-// Contenido principal
+// -- Main content -----------------------------------------------------
 .sig-main-content {
-  padding: 24px;
-  flex: 1 1 auto;
-  width: 100%;
-  box-sizing: border-box;
-  overflow-y: auto;
-  min-height: calc(100vh - 64px); // 64px = altura AppBar
+  flex: 1 1 auto; overflow-y: auto;
+  min-height: calc(100vh - var(--sig-header-height));
+  background: var(--sig-bg-app);
+
+  &::-webkit-scrollbar       { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--sig-border); border-radius: 3px; }
+  &::-webkit-scrollbar-thumb:hover { background: var(--sig-border-light); }
 }

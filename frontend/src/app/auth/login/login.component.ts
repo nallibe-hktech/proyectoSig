@@ -162,8 +162,11 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
           @if (showDemo) {
             <div class="sig-demo-card" data-testid="demo-credentials">
               <div class="sig-demo-header">
-                <span class="sig-demo-title">Credenciales demo</span>
-                <span class="sig-demo-sub">Solo desarrollo</span>
+                <div>
+                  <span class="sig-demo-title">Credenciales demo</span>
+                  <span class="sig-demo-sub">Solo desarrollo</span>
+                </div>
+                <button type="button" (click)="toggleDemo()" class="sig-demo-toggle-btn" title="Desactivar modo demo">✕</button>
               </div>
               @for (c of demoCreds; track c.email) {
                 <div class="sig-demo-row">
@@ -457,12 +460,19 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
     .sig-demo-header {
       display:         flex;
       justify-content: space-between;
-      align-items:     baseline;
+      align-items:     flex-start;
       margin-bottom:   10px;
     }
 
     .sig-demo-title { font-size:13px; font-weight:600; color:rgba(255,255,255,.7); }
     .sig-demo-sub   { font-size:11px; color:rgba(255,255,255,.3); }
+
+    .sig-demo-toggle-btn {
+      background: transparent; border: none; color: rgba(255,255,255,.3); 
+      font-size: 18px; cursor: pointer; padding: 0; width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 150ms; &:hover { color: rgba(255,255,255,.6); }
+    }
 
     .sig-demo-row {
       display:         flex;
@@ -538,6 +548,13 @@ export class LoginComponent {
 
   protected useDemo(c: DemoCred): void {
     this.form.patchValue({ email: c.email, password: c.password });
+  }
+
+  protected toggleDemo(): void {
+    const current = localStorage.getItem('sig_showDemo');
+    const next = current === 'false' ? 'true' : 'false';
+    localStorage.setItem('sig_showDemo', next);
+    location.reload();
   }
 
   protected submit(): void {

@@ -24,7 +24,9 @@ import { environment } from '../../../environments/environment';
         </div>
         <div class="sig-exec-actions">
           @if (showDemo) {
-            <span class="sig-demo-badge">ENTORNO DEMO</span>
+            <button (click)="toggleDemo()" title="Click para desactivar modo demo" class="sig-demo-badge sig-demo-badge--toggle">
+              ENTORNO DEMO
+            </button>
           }
           <div class="sig-period-chip">
             <mat-icon style="font-size:16px;width:16px;height:16px;">schedule</mat-icon>
@@ -369,6 +371,10 @@ import { environment } from '../../../environments/environment';
       border: 1px solid rgba(245,158,11,.25);
       padding: 4px 10px; border-radius: 4px;
     }
+    .sig-demo-badge--toggle {
+      cursor: pointer; transition: all 150ms;
+      &:hover { background: rgba(245,158,11,.18); border-color: rgba(245,158,11,.4); }
+    }
     .sig-period-chip {
       display: flex; align-items: center; gap: 6px;
       background: var(--sig-bg-card); border: 1px solid var(--sig-border);
@@ -631,5 +637,12 @@ export class DashboardComponent implements OnInit {
       case 'ErrorSync':         return 'error';
       default:                  return 'info';
     }
+  }
+
+  protected toggleDemo(): void {
+    const current = localStorage.getItem('sig_showDemo');
+    const next = current === 'false' ? 'true' : 'false';
+    localStorage.setItem('sig_showDemo', next);
+    location.reload();
   }
 }

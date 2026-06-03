@@ -28,7 +28,9 @@ interface FlujoStep { nombre: string; estado: 'ok' | 'pending' | 'idle'; }
         </h1>
         <div class="sig-appr-header-right">
           @if (showDemo) {
-            <span class="sig-demo-badge">ENTORNO DEMO</span>
+            <button (click)="toggleDemo()" title="Click para desactivar modo demo" class="sig-demo-badge sig-demo-badge--toggle">
+              ENTORNO DEMO
+            </button>
           }
           <div class="sig-period-chip">
             <mat-icon>schedule</mat-icon>
@@ -243,6 +245,7 @@ interface FlujoStep { nombre: string; estado: 'ok' | 'pending' | 'idle'; }
     .sig-appr-title { font-size: 20px; font-weight: 700; color: var(--sig-text-heading); margin: 0; display: flex; align-items: center; gap: 8px; mat-icon { color: var(--sig-teal); font-size: 20px; width: 20px; height: 20px; } }
     .sig-appr-header-right { display: flex; align-items: center; gap: 10px; }
     .sig-demo-badge { font-size: 10px; font-weight: 700; letter-spacing: 1px; background: rgba(245,158,11,.12); color: #f59e0b; border: 1px solid rgba(245,158,11,.25); padding: 4px 10px; border-radius: 4px; }
+    .sig-demo-badge--toggle { cursor: pointer; transition: all 150ms; &:hover { background: rgba(245,158,11,.18); border-color: rgba(245,158,11,.4); } }
     .sig-period-chip { display: flex; align-items: center; gap: 6px; background: var(--sig-bg-card); border: 1px solid var(--sig-border); border-radius: 8px; padding: 6px 12px; font-size: 13px; color: var(--sig-text-primary); mat-icon { font-size: 15px !important; width: 15px !important; height: 15px !important; color: var(--sig-text-muted) !important; } }
     .sig-appr-icon-btn { color: var(--sig-text-secondary) !important; background: var(--sig-bg-card) !important; border: 1px solid var(--sig-border) !important; border-radius: 8px !important; }
     .sig-notif { position: relative; }
@@ -389,5 +392,12 @@ export class ApprovalsComponent {
     if (m >= 28) return 'sig-margen-badge margen--green';
     if (m >= 20) return 'sig-margen-badge margen--yellow';
     return 'sig-margen-badge margen--red';
+  }
+
+  protected toggleDemo(): void {
+    const current = localStorage.getItem('sig_showDemo');
+    const next = current === 'false' ? 'true' : 'false';
+    localStorage.setItem('sig_showDemo', next);
+    location.reload();
   }
 }
