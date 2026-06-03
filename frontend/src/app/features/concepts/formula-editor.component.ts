@@ -246,28 +246,30 @@ import {
   styles: [`
     .sig-editor-grid { display: grid; grid-template-columns: 260px 1fr; gap: 16px; }
     @media (max-width: 959px) { .sig-editor-grid { grid-template-columns: 1fr; } }
+    /* Ensure palettes and canvas follow the current theme tokens */
+    .sig-palette, .sig-canvas { background: var(--mat-sys-surface); color: var(--mat-sys-on-surface); }
     .sig-palette mat-card-content { display: flex; flex-direction: column; gap: 8px; }
     .sig-prim-btn { justify-content: flex-start; }
     .sig-canvas mat-card-content { min-height: 200px; }
     .sig-section-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mat-sys-on-surface-variant); margin: 0 0 8px; }
-    .sig-expression { font-family: 'Roboto Mono', monospace; font-size: 15px; padding: 12px; background: var(--mat-sys-surface-variant); border-radius: 8px; }
+    .sig-expression { font-family: 'Roboto Mono', monospace; font-size: 15px; padding: 12px; background: var(--mat-sys-surface-variant); color: var(--mat-sys-on-surface); border-radius: 8px; }
     .sig-valid { color: var(--sig-success); display: flex; align-items: center; gap: 6px; font-size: 14px; }
     .sig-invalid { color: var(--sig-warning); display: flex; align-items: center; gap: 6px; font-size: 14px; }
-    .sig-node { border: 2px solid var(--mat-sys-outline-variant); border-radius: 8px; padding: 12px; margin: 8px 0; background: white; }
-    .sig-node--Number { border-color: var(--mat-sys-primary); }
-    .sig-node--Variable { border-color: var(--mat-sys-secondary); }
-    .sig-node--BinaryOp { border-color: #C9A961; }
+    .sig-node { border: 2px solid var(--mat-sys-outline-variant); border-radius: 8px; padding: 12px; margin: 8px 0; background: var(--mat-sys-surface); color: var(--mat-sys-on-surface); }
+    .sig-node--Number { border-color: var(--sig-blue); }
+    .sig-node--Variable { border-color: var(--sig-teal); }
+    .sig-node--BinaryOp { border-color: #f59e0b; }
     .sig-node--Source { border-color: var(--sig-success); }
     .sig-node--Aggregate { border-color: var(--sig-warning); }
     .sig-node-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .sig-node-title { font-weight: 600; font-size: 14px; }
+    .sig-node-title { font-weight: 600; font-size: 14px; color: var(--mat-sys-on-surface); }
     .sig-node-icon { color: inherit; }
     .sig-inline-field, .sig-op-field { width: 200px; max-width: 100%; }
     .sig-binop, .sig-aggregate, .sig-source { display: flex; flex-direction: column; gap: 8px; }
     .sig-slot { padding-left: 16px; border-left: 3px solid var(--mat-sys-outline-variant); margin: 8px 0; }
     .sig-slot-label { font-size: 12px; font-weight: 600; color: var(--mat-sys-on-surface-variant); margin-bottom: 4px; }
     .sig-empty-slot { display: flex; gap: 4px; flex-wrap: wrap; }
-    .sig-filters-section { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--mat-sys-surface); border-radius: 4px; }
+    .sig-filters-section { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--mat-sys-surface); color: var(--mat-sys-on-surface); border-radius: 4px; }
     .sig-filter-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
     .sig-filter-small { width: 140px; }
     .sig-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }

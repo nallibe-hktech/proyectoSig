@@ -576,7 +576,12 @@ export class DashboardComponent implements OnInit {
   protected readonly loadingKpis   = signal(true);
   protected readonly loadingAvisos = signal(true);
   protected readonly loadingMis    = signal(true);
-  protected readonly showDemo      = environment.showDemoCredentials;
+  protected get showDemo(): boolean {
+    const o = localStorage.getItem('sig_showDemo');
+    if (o === 'true') return true;
+    if (o === 'false') return false;
+    return environment.showDemoCredentials;
+  }
 
   private readonly activePeriod = this.periodSvc.activeId;
 

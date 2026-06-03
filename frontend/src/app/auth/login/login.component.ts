@@ -10,7 +10,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { LoginDesignComponent } from '../../shared/login-design.component';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotifyService } from '../../core/notify.service';
 import { environment } from '../../../environments/environment';
@@ -31,399 +30,478 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
     MatDividerModule,
     MatProgressSpinnerModule,
     MatCheckboxModule,
-    // Login design SVG component
-    LoginDesignComponent,
   ],
   template: `
     <div class="sig-login-wrapper">
-      <!-- Decorative background elements -->
-      <div class="sig-login-bg-decor">
-        <div class="sig-bg-circle sig-bg-circle--1"></div>
-        <div class="sig-bg-circle sig-bg-circle--2"></div>
-        <div class="sig-bg-circle sig-bg-circle--3"></div>
+      <!-- Background glows -->
+      <div class="sig-login-bg">
+        <div class="sig-glow sig-glow--blue"></div>
+        <div class="sig-glow sig-glow--teal"></div>
+        <div class="sig-glow sig-glow--mid"></div>
       </div>
 
       <div class="sig-login-layout">
-        <!-- Left: Branding + Feature pills -->
-        <div class="sig-login-brand">
-          <div class="sig-brand-header">
-            <span class="sig-brand-company">h&amp;k consulting</span>
-            <h1 class="sig-brand-title">Plataforma<br><span class="sig-brand-accent">Operativa SIG</span></h1>
-            <p class="sig-brand-sub">Sistema Integrado de Gesti&oacute;n · ES</p>
-          </div>
 
-          <div class="sig-feature-pills">
-            <span class="sig-pill sig-pill--success">✅ Cierres automatizados</span>
-            <span class="sig-pill">🔗 9 sistemas integrados</span>
-            <span class="sig-pill">📊 Power BI en tiempo real</span>
-            <span class="sig-pill">🔒 Auditor&iacute;a completa</span>
-          </div>
-
-          <div class="sig-integration-sidebar">
-            <span class="sig-int-label">Integraciones activas</span>
-            <div class="sig-int-list">
-              <span class="sig-int-item"><span class="sig-dot sig-dot--green"></span> Celero</span>
-              <span class="sig-int-item"><span class="sig-dot sig-dot--green"></span> Bizneo</span>
-              <span class="sig-int-item"><span class="sig-dot sig-dot--green"></span> Intratime</span>
-              <span class="sig-int-item"><span class="sig-dot sig-dot--green"></span> Payhawk</span>
+        <!-- LEFT: Brand word-blocks -->
+        <div class="sig-login-left">
+          <div class="sig-word-blocks">
+            <div class="sig-word-block sig-word-block--plain">service</div>
+            <div class="sig-word-block sig-word-block--accent">innovation</div>
+            <div class="sig-word-block sig-word-block--plain">
+              group
+              <span class="sig-reg">&reg;</span>
             </div>
           </div>
+          <p class="sig-tagline">EXCELLENCE &ndash; MADE IN EUROPE</p>
         </div>
 
-        <!-- Right: Login Card + Demo -->
+        <!-- RIGHT: Login card -->
         <div class="sig-login-right">
-          <mat-card class="sig-login-card" data-testid="login-card">
-            <div class="sig-card-accent"></div>
+          <div class="sig-login-card">
+            <h2 class="sig-card-title">&iexcl;Bienvenido de nuevo!</h2>
+            <p class="sig-card-sub">Introduce tus credenciales para acceder a la plataforma.</p>
 
-            <div class="sig-card-header">
-                          <app-login-design></app-login-design>
-              <h2 class="sig-card-title">Iniciar Sesi&oacute;n</h2>
-              <p class="sig-card-subtitle">Accede a tu plataforma operativa</p>
-            </div>
+            <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="sig-form">
 
-            <mat-divider />
-
-            <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-              <mat-form-field appearance="outline" class="sig-full-width">
-                <mat-label>Correo electr&oacute;nico</mat-label>
-                <input
-                  matInput
-                  type="email"
-                  formControlName="email"
-                  placeholder="usuario@sigeurope.com"
-                  autocomplete="email"
-                  data-testid="input-email"
-                />
-                <mat-icon matSuffix aria-hidden="true">mail</mat-icon>
+              <div class="sig-field-wrap">
+                <label class="sig-label">Correo electr&oacute;nico</label>
+                <div class="sig-input-row">
+                  <mat-icon class="sig-input-icon">mail</mat-icon>
+                  <input
+                    class="sig-input"
+                    type="email"
+                    formControlName="email"
+                    placeholder="nombre@sigeurope.com"
+                    autocomplete="email"
+                    data-testid="input-email"
+                  />
+                </div>
                 @if (form.controls.email.touched && form.controls.email.hasError('required')) {
-                  <mat-error>El correo es obligatorio</mat-error>
+                  <span class="sig-field-error">El correo es obligatorio</span>
                 }
                 @if (form.controls.email.touched && form.controls.email.hasError('email')) {
-                  <mat-error>Introduce un correo v&aacute;lido</mat-error>
+                  <span class="sig-field-error">Introduce un correo v&aacute;lido</span>
                 }
-              </mat-form-field>
+              </div>
 
-              <mat-form-field appearance="outline" class="sig-full-width">
-                <mat-label>Contrase&ntilde;a</mat-label>
-                <input
-                  matInput
-                  [type]="showPassword() ? 'text' : 'password'"
-                  formControlName="password"
-                  placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
-                  autocomplete="current-password"
-                  data-testid="input-password"
-                />
-                <button
-                  mat-icon-button
-                  matSuffix
-                  type="button"
-                  (click)="showPassword.set(!showPassword())"
-                  [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-                  data-testid="btn-toggle-password"
-                >
-                  <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
-                </button>
+              <div class="sig-field-wrap">
+                <label class="sig-label">Contrase&ntilde;a</label>
+                <div class="sig-input-row">
+                  <mat-icon class="sig-input-icon">lock</mat-icon>
+                  <input
+                    class="sig-input"
+                    [type]="showPassword() ? 'text' : 'password'"
+                    formControlName="password"
+                    placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                    autocomplete="current-password"
+                    data-testid="input-password"
+                  />
+                  <button
+                    type="button"
+                    class="sig-eye-btn"
+                    (click)="showPassword.set(!showPassword())"
+                    [attr.aria-label]="showPassword() ? 'Ocultar' : 'Mostrar'"
+                  >
+                    <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+                  </button>
+                </div>
                 @if (form.controls.password.touched && form.controls.password.hasError('required')) {
-                  <mat-error>La contrase&ntilde;a es obligatoria</mat-error>
+                  <span class="sig-field-error">La contrase&ntilde;a es obligatoria</span>
                 }
-                @if (form.controls.password.touched && form.controls.password.hasError('minlength')) {
-                  <mat-error>La contrase&ntilde;a debe tener al menos 8 caracteres</mat-error>
-                }
-              </mat-form-field>
+              </div>
 
-              <div class="sig-login-options">
-                <mat-checkbox data-testid="remember-me">Recordar sesi&oacute;n</mat-checkbox>
-                <a href="#" (click)="$event.preventDefault()" class="sig-forgot-link">&iquest;Olvidaste tu contrase&ntilde;a?</a>
+              <div class="sig-login-opts">
+                <label class="sig-remember">
+                  <input type="checkbox" class="sig-checkbox" />
+                  <span>Recordarme</span>
+                </label>
+                <a href="#" (click)="$event.preventDefault()" class="sig-forgot">&iquest;Olvidaste tu contrase&ntilde;a?</a>
               </div>
 
               @if (errorMessage()) {
-                <div class="sig-login-error" data-testid="login-error">
-                  <mat-icon aria-hidden="true">error</mat-icon>
+                <div class="sig-error-banner" data-testid="login-error">
+                  <mat-icon>error</mat-icon>
                   {{ errorMessage() }}
                 </div>
               }
 
               <button
-                mat-flat-button
                 type="submit"
-                class="sig-full-width sig-login-btn"
+                class="sig-submit-btn"
                 [disabled]="loading() || form.invalid"
                 data-testid="btn-login"
               >
                 @if (loading()) {
-                  <mat-spinner diameter="20" />
+                  <mat-spinner diameter="18" />
                 } @else {
-                  Acceder al Sistema
+                  Acceder al Sistema &nbsp;&rarr;
                 }
               </button>
 
-              <div class="sig-divider-text">
-                <span>o continuar con</span>
-              </div>
+              <div class="sig-or-divider"><span>o continua con</span></div>
 
               <button
-                mat-stroked-button
                 type="button"
-                class="sig-full-width sig-azure-btn"
+                class="sig-sso-btn"
                 disabled
                 data-testid="btn-azure-sso"
               >
-                <mat-icon aria-hidden="true">cloud</mat-icon>
-                Azure AD (SSO pr&oacute;ximamente)
+                <!-- Microsoft M logo -->
+                <svg width="18" height="18" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                  <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                  <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                </svg>
+                Microsoft / Azure AD SSO
               </button>
+
             </form>
-          </mat-card>
+          </div>
 
           @if (showDemo) {
-            <mat-card class="sig-demo-card" data-testid="demo-credentials">
-              <mat-card-header>
-                <mat-card-title style="font-size: 14px;">Credenciales demo</mat-card-title>
-                <mat-card-subtitle>Solo desarrollo</mat-card-subtitle>
-              </mat-card-header>
-              <mat-card-content>
-                @for (c of demoCreds; track c.email) {
-                  <div class="sig-demo-row">
-                    <div>
-                      <div style="font-size: 13px; font-weight: 500;">{{ c.email }}</div>
-                      <div style="font-size: 11px; color: var(--mat-sys-on-surface-variant);">{{ c.nombre }} · {{ c.rol }}</div>
-                    </div>
-                    <button
-                      mat-stroked-button
-                      type="button"
-                      size="small"
-                      (click)="useDemo(c)"
-                      [attr.data-testid]="'btn-demo-' + c.rol.toLowerCase()"
-                    >
-                      Usar
-                    </button>
+            <div class="sig-demo-card" data-testid="demo-credentials">
+              <div class="sig-demo-header">
+                <span class="sig-demo-title">Credenciales demo</span>
+                <span class="sig-demo-sub">Solo desarrollo</span>
+              </div>
+              @for (c of demoCreds; track c.email) {
+                <div class="sig-demo-row">
+                  <div>
+                    <div class="sig-demo-email">{{ c.email }}</div>
+                    <div class="sig-demo-meta">{{ c.nombre }} &middot; {{ c.rol }}</div>
                   </div>
-                }
-                <mat-divider />
-                <div style="font-size: 11px; color: var(--mat-sys-on-surface-variant); padding: 8px 0 2px;">
-                  Password com&uacute;n: <strong>Demo#2026!</strong>
+                  <button type="button" class="sig-use-btn" (click)="useDemo(c)">Usar</button>
                 </div>
-              </mat-card-content>
-            </mat-card>
+              }
+            </div>
           }
-        </div>
-      </div>
 
-      <footer class="sig-login-footer">
-        <span>v1.0.0 · &copy; 2026 SIG ES · Todos los derechos reservados</span>
-      </footer>
+          <footer class="sig-login-footer">
+            SIG-ES Plataforma Integral v1.0 &middot; &copy; 2026 Service Innovation Group &middot; Excellence made in Europe
+          </footer>
+        </div>
+
+      </div>
     </div>
   `,
   styles: [`
     :host { display: contents; }
+
+    /* Wrapper */
     .sig-login-wrapper {
-      position: relative;
-      display: flex;
+      position:       relative;
+      display:        flex;
       flex-direction: column;
-      min-height: 100vh;
-      background: linear-gradient(135deg, var(--mat-sys-primary) 0%, var(--sig-primary-dark) 50%, var(--sig-primary-dark) 100%);
-      overflow: hidden;
-    }
-    .sig-login-bg-decor {
-      position: absolute; inset: 0; pointer-events: none;
-    }
-    .sig-bg-circle {
-      position: absolute; border-radius: 50%;
-    }
-    .sig-bg-circle--1 {
-      width: 400px; height: 400px; top: -100px; left: 10%;
-      background: rgba(112,173,71,0.06);
-    }
-    .sig-bg-circle--2 {
-      width: 500px; height: 500px; bottom: -150px; right: -50px;
-      background: rgba(46,92,138,0.10);
-    }
-    .sig-bg-circle--3 {
-      width: 300px; height: 300px; top: 50%; left: 40%;
-      background: rgba(255,255,255,0.02);
+      min-height:     100vh;
+      background:     #0d1b2a;
+      overflow:       hidden;
     }
 
+    /* BG glows */
+    .sig-login-bg { position:absolute; inset:0; pointer-events:none; }
+    .sig-glow     { position:absolute; border-radius:50%; filter:blur(110px); }
+    .sig-glow--blue  { width:480px; height:480px; top:-140px; left:-60px; background:#2563eb; opacity:.14; }
+    .sig-glow--teal  { width:400px; height:400px; bottom:-100px; right:-60px; background:#00d4c4; opacity:.10; }
+    .sig-glow--mid   { width:260px; height:260px; top:42%; left:37%; background:#1e3a5c; opacity:.20; }
+
+    /* Layout */
     .sig-login-layout {
-      display: flex;
-      flex: 1;
-      align-items: center;
+      display:         flex;
+      flex:            1;
+      align-items:     center;
       justify-content: center;
-      gap: 60px;
-      padding: 40px;
-      position: relative;
-      z-index: 1;
+      gap:             80px;
+      padding:         48px 40px;
+      position:        relative;
+      z-index:         1;
     }
 
-    /* Left branding */
-    .sig-login-brand {
-      display: flex;
+    /* ---- LEFT: word-blocks ---- */
+    .sig-login-left {
+      display:        flex;
       flex-direction: column;
-      gap: 32px;
-      max-width: 420px;
+      gap:            12px;
+      align-items:    flex-start;
     }
-    .sig-brand-company {
-      font-size: 12px;
-      font-weight: 700;
+
+    .sig-word-blocks {
+      display:     flex;
+      flex-direction: row;
+      align-items: center;
+      gap:         8px;
+      flex-wrap:   wrap;
+    }
+
+    .sig-word-block {
+      display:        inline-flex;
+      align-items:    center;
+      padding:        8px 18px;
+      border:         2px solid rgba(255,255,255,.15);
+      border-radius:  6px;
+      font-size:      20px;
+      font-weight:    700;
+      letter-spacing: 1.5px;
+      text-transform: lowercase;
+      color:          #ffffff;
+      background:     rgba(255,255,255,.04);
+      position:       relative;
+      white-space:    nowrap;
+    }
+
+    .sig-word-block--accent {
+      background:   #2563eb;
+      border-color: #2563eb;
+      color:        #ffffff;
+    }
+
+    .sig-reg {
+      font-size:     12px;
+      vertical-align: super;
+      margin-left:   2px;
+      font-weight:   400;
+      opacity:       .7;
+    }
+
+    .sig-tagline {
+      font-size:      10px;
+      font-weight:    600;
       letter-spacing: 3px;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.4);
+      color:          rgba(255,255,255,.4);
+      text-align:     left;
+      margin:         8px 0 0;
     }
-    .sig-brand-title {
-      font-size: 36px;
-      font-weight: 800;
-      color: #FFFFFF;
-      margin: 8px 0 0;
-      line-height: 1.2;
-    }
-    .sig-brand-accent {
-      color: var(--sig-success);
-    }
-    .sig-brand-sub {
-      font-size: 14px;
-      color: rgba(255,255,255,0.5);
-      margin: 4px 0 0;
-    }
-    .sig-feature-pills {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .sig-pill {
-      display: inline-flex;
-      align-items: center;
-      height: 32px;
-      padding: 0 16px;
-      border-radius: 16px;
-      font-size: 12px;
-      color: rgba(255,255,255,0.7);
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.15);
-      width: fit-content;
-    }
-    .sig-pill--success {
-      background: rgba(112,173,71,0.2);
-      border-color: rgba(112,173,71,0.4);
-      color: var(--sig-success);
-    }
-    .sig-integration-sidebar {
-      margin-top: 8px;
-    }
-    .sig-int-label {
-      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-      color: rgba(255,255,255,0.4); text-transform: uppercase;
-    }
-    .sig-int-list {
-      display: flex; flex-direction: column; gap: 6px; margin-top: 8px;
-    }
-    .sig-int-item {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 12px; color: rgba(255,255,255,0.6);
-    }
-    .sig-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-    }
-    .sig-dot--green { background: var(--sig-success); }
-    .sig-dot--yellow { background: var(--sig-warning); }
-    .sig-dot--red { background: var(--sig-danger); }
 
-    /* Right card area */
+    /* ---- RIGHT: Card ---- */
     .sig-login-right {
-      display: flex;
+      display:        flex;
       flex-direction: column;
-      align-items: center;
-      gap: 16px;
+      align-items:    stretch;
+      gap:            14px;
+      width:          400px;
     }
+
     .sig-login-card {
-      width: 500px;
-      border-radius: 20px;
-      padding: 0;
-      overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+      background:    rgba(255,255,255,.04);
+      border:        1px solid rgba(255,255,255,.1);
+      border-radius: 14px;
+      padding:       32px;
+      backdrop-filter: blur(10px);
     }
-    .sig-card-accent {
-      height: 8px;
-      background: var(--sig-success);
-    }
-    .sig-card-header {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 32px 24px 16px;
-    }
-    .sig-login-illustration {
-      width: 120px;
-      height: 120px;
-      object-fit: contain;
-      margin-bottom: 20px;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-      background: transparent;
-    }
+
     .sig-card-title {
-      font-size: 26px; font-weight: 700; color: var(--mat-sys-primary); margin: 0 0 4px;
-    }
-    .sig-card-subtitle {
-      font-size: 13px; color: #999; margin: 0;
-    }
-
-    .sig-login-card form {
-      padding: 16px 32px 32px;
-    }
-    .sig-full-width { width: 100%; margin-bottom: 4px; }
-    .sig-login-options {
-      display: flex; justify-content: space-between; align-items: center;
-      margin: 8px 0 12px;
-    }
-    .sig-forgot-link {
-      font-size: 12px; color: var(--mat-sys-secondary); text-decoration: none;
-    }
-    .sig-forgot-link:hover { text-decoration: underline; }
-    .sig-login-btn {
-      margin-top: 8px; height: 44px;
-      background: linear-gradient(90deg, var(--mat-sys-primary), var(--sig-primary-light)) !important;
-      font-weight: 600; font-size: 15px;
-    }
-    .sig-login-error {
-      display: flex; align-items: center; gap: 8px;
-      color: var(--mat-sys-error); background: var(--mat-sys-error-container);
-      padding: 8px 12px; border-radius: 8px; margin: 8px 0; font-size: 13px;
-    }
-    .sig-login-error mat-icon { font-size: 18px; width: 18px; height: 18px; }
-
-    .sig-divider-text {
-      display: flex; align-items: center; gap: 12px;
-      margin: 16px 0; color: var(--sig-text-light); font-size: 12px;
-    }
-    .sig-divider-text::before, .sig-divider-text::after {
-      content: ''; flex: 1; border-top: 1px solid var(--sig-border);
-    }
-    .sig-azure-btn {
-      color: var(--mat-sys-primary) !important; border-color: var(--mat-sys-primary) !important;
-      opacity: 0.6;
+      font-size:   24px;
+      font-weight: 700;
+      color:       #ffffff;
+      margin:      0 0 6px;
     }
 
+    .sig-card-sub {
+      font-size:  13px;
+      color:      rgba(255,255,255,.45);
+      margin:     0 0 24px;
+    }
+
+    /* Form */
+    .sig-form { display:flex; flex-direction:column; gap:14px; }
+
+    .sig-field-wrap { display:flex; flex-direction:column; gap:5px; }
+
+    .sig-label {
+      font-size:   12px;
+      font-weight: 500;
+      color:       rgba(255,255,255,.55);
+      letter-spacing: .3px;
+    }
+
+    .sig-input-row {
+      display:        flex;
+      align-items:    center;
+      background:     rgba(255,255,255,.06);
+      border:         1px solid rgba(255,255,255,.12);
+      border-radius:  8px;
+      padding:        0 12px;
+      transition:     border-color 150ms;
+      &:focus-within { border-color: #2563eb; }
+    }
+
+    .sig-input-icon {
+      font-size:  18px !important;
+      width:      18px !important;
+      height:     18px !important;
+      color:      rgba(255,255,255,.3) !important;
+      margin-right: 8px;
+    }
+
+    .sig-input {
+      flex:           1;
+      background:     transparent;
+      border:         none;
+      outline:        none;
+      font-size:      14px;
+      color:          #e8f0f9;
+      padding:        11px 0;
+      font-family:    inherit;
+      &::placeholder { color: rgba(255,255,255,.25); }
+    }
+
+    .sig-eye-btn {
+      background:  transparent;
+      border:      none;
+      cursor:      pointer;
+      color:       rgba(255,255,255,.3);
+      display:     flex;
+      align-items: center;
+      padding:     0;
+      mat-icon { font-size:18px !important; width:18px !important; height:18px !important; }
+    }
+
+    .sig-field-error { font-size:11px; color:#ef4444; margin-top:2px; }
+
+    .sig-login-opts {
+      display:         flex;
+      justify-content: space-between;
+      align-items:     center;
+      margin-top:      2px;
+    }
+
+    .sig-remember {
+      display:     flex;
+      align-items: center;
+      gap:         6px;
+      font-size:   12px;
+      color:       rgba(255,255,255,.45);
+      cursor:      pointer;
+    }
+
+    .sig-checkbox {
+      accent-color: #2563eb;
+      width: 14px; height: 14px;
+    }
+
+    .sig-forgot {
+      font-size:       12px;
+      color:           rgba(255,255,255,.35);
+      text-decoration: none;
+      &:hover { color: #3b82f6; }
+    }
+
+    .sig-error-banner {
+      display:       flex;
+      align-items:   center;
+      gap:           8px;
+      color:         #ef4444;
+      background:    rgba(239,68,68,.1);
+      border:        1px solid rgba(239,68,68,.25);
+      padding:       9px 12px;
+      border-radius: 8px;
+      font-size:     13px;
+      mat-icon { font-size:18px !important; width:18px !important; height:18px !important; }
+    }
+
+    .sig-submit-btn {
+      width:           100%;
+      height:          44px;
+      background:      #2563eb;
+      color:           #ffffff;
+      border:          none;
+      border-radius:   8px;
+      font-size:       15px;
+      font-weight:     600;
+      font-family:     inherit;
+      cursor:          pointer;
+      display:         flex;
+      align-items:     center;
+      justify-content: center;
+      gap:             6px;
+      transition:      background 150ms;
+      margin-top:      4px;
+      &:hover:not(:disabled) { background: #3b82f6; }
+      &:disabled { opacity:.5; cursor:not-allowed; }
+    }
+
+    .sig-or-divider {
+      display:     flex;
+      align-items: center;
+      gap:         12px;
+      color:       rgba(255,255,255,.2);
+      font-size:   12px;
+      &::before, &::after { content:''; flex:1; border-top:1px solid rgba(255,255,255,.1); }
+    }
+
+    .sig-sso-btn {
+      width:           100%;
+      height:          42px;
+      background:      transparent;
+      color:           rgba(255,255,255,.5);
+      border:          1px solid rgba(255,255,255,.1);
+      border-radius:   8px;
+      font-size:       13px;
+      font-family:     inherit;
+      cursor:          pointer;
+      display:         flex;
+      align-items:     center;
+      justify-content: center;
+      gap:             10px;
+      opacity:         0.6;
+    }
+
+    /* Demo card */
     .sig-demo-card {
-      width: 500px;
-      border-radius: 12px;
+      background:    rgba(255,255,255,.03);
+      border:        1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
+      padding:       16px;
     }
+
+    .sig-demo-header {
+      display:         flex;
+      justify-content: space-between;
+      align-items:     baseline;
+      margin-bottom:   10px;
+    }
+
+    .sig-demo-title { font-size:13px; font-weight:600; color:rgba(255,255,255,.7); }
+    .sig-demo-sub   { font-size:11px; color:rgba(255,255,255,.3); }
+
     .sig-demo-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 0; border-bottom: 1px solid var(--mat-sys-outline-variant);
+      display:         flex;
+      justify-content: space-between;
+      align-items:     center;
+      padding:         7px 0;
+      border-bottom:   1px solid rgba(255,255,255,.06);
+      &:last-of-type { border-bottom: none; }
     }
-    .sig-demo-row:last-of-type { border-bottom: none; }
 
+    .sig-demo-email { font-size:12px; font-weight:500; color:rgba(255,255,255,.75); }
+    .sig-demo-meta  { font-size:11px; color:rgba(255,255,255,.35); margin-top:1px; }
+
+    .sig-use-btn {
+      height:        28px;
+      padding:       0 12px;
+      background:    transparent;
+      color:         #3b82f6;
+      border:        1px solid rgba(59,130,246,.4);
+      border-radius: 6px;
+      font-size:     12px;
+      font-family:   inherit;
+      cursor:        pointer;
+      &:hover { background: rgba(59,130,246,.1); }
+    }
+
+    /* Footer */
     .sig-login-footer {
-      text-align: center; padding: 16px;
-      font-size: 11px; color: rgba(255,255,255,0.4);
-      position: relative; z-index: 1;
+      text-align: center;
+      font-size:  11px;
+      color:      rgba(255,255,255,.2);
+      padding:    4px 0 8px;
     }
 
-    @media (max-width: 1024px) {
-      .sig-login-layout { flex-direction: column; gap: 32px; padding: 24px; }
-      .sig-login-brand { max-width: 100%; align-items: center; text-align: center; }
-      .sig-feature-pills { align-items: center; }
-      .sig-integration-sidebar { display: none; }
-      .sig-login-card { width: 100%; max-width: 460px; }
-      .sig-demo-card { width: 100%; max-width: 460px; }
+    @media (max-width: 900px) {
+      .sig-login-layout { flex-direction:column; gap:32px; padding:28px 20px; }
+      .sig-login-left   { align-items:center; }
+      .sig-login-right  { width:100%; max-width:420px; }
+      .sig-word-block   { font-size:20px; min-width:180px; }
     }
   `],
 })
@@ -442,14 +520,19 @@ export class LoginComponent {
   protected readonly showPassword = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
-  protected readonly showDemo = environment.showDemoCredentials;
+  protected get showDemo(): boolean {
+    const o = localStorage.getItem('sig_showDemo');
+    if (o === 'true') return true;
+    if (o === 'false') return false;
+    return environment.showDemoCredentials;
+  }
   protected readonly demoCreds: DemoCred[] = [
     { email: 'admin@sig.local', password: 'Demo#2026!', nombre: 'Admin SIG', rol: 'Administrator' },
     { email: 'direccion@sig.local', password: 'Demo#2026!', nombre: 'Carmen Ruiz', rol: 'Direction' },
-    { email: 'fico@sig.local', password: 'Demo#2026!', nombre: 'Javier López', rol: 'Fico' },
-    { email: 'backoffice1@sig.local', password: 'Demo#2026!', nombre: 'Laura Sánchez', rol: 'Backoffice' },
-    { email: 'pm.alpha@sig.local', password: 'Demo#2026!', nombre: 'María García', rol: 'ProjectManager' },
-    { email: 'auditor@sig.local', password: 'Demo#2026!', nombre: 'Inés Romero', rol: 'Auditor' },
+    { email: 'fico@sig.local', password: 'Demo#2026!', nombre: 'Javier Lopez', rol: 'Fico' },
+    { email: 'backoffice1@sig.local', password: 'Demo#2026!', nombre: 'Laura Sanchez', rol: 'Backoffice' },
+    { email: 'pm.alpha@sig.local', password: 'Demo#2026!', nombre: 'Maria Garcia', rol: 'ProjectManager' },
+    { email: 'auditor@sig.local', password: 'Demo#2026!', nombre: 'Ines Romero', rol: 'Auditor' },
     { email: 'reader@sig.local', password: 'Demo#2026!', nombre: 'Luis Vega', rol: 'Reader' },
   ];
 
@@ -466,12 +549,12 @@ export class LoginComponent {
     this.auth.login({ email, password }).subscribe({
       next: () => {
         this.loading.set(false);
-        this.notify.success('Sesión iniciada correctamente');
+        this.notify.success('Sesion iniciada correctamente');
         void this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         this.loading.set(false);
-        const msg = err?.error?.title ?? 'Correo o contraseña incorrectos';
+        const msg = err?.error?.title ?? 'Correo o contrasena incorrectos';
         this.errorMessage.set(msg);
       },
     });
