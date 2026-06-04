@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Integrations;
 
@@ -14,10 +15,14 @@ public class CeleroClient : ICeleroClient
 public class BizneoClient : IBizneoClient
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<BizneoClient>? _logger;
+    private readonly string _apiKey;
 
-    public BizneoClient(HttpClient httpClient)
+    public BizneoClient(HttpClient httpClient, string apiKey, ILogger<BizneoClient>? logger = null)
     {
         _httpClient = httpClient;
+        _apiKey = apiKey;
+        _logger = logger;
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
     }
 
@@ -25,17 +30,22 @@ public class BizneoClient : IBizneoClient
     {
         try
         {
-            var data = await _httpClient.GetFromJsonAsync<BizneoEmpleadosResponse>("v1/employees", ct);
-            if (data?.Employees == null) return Array.Empty<BizneoEmpleadoDto>();
-            return data.Employees.Select(e => new BizneoEmpleadoDto(
-                e.Id,
-                e.Nif,
-                e.FullName,
-                e.Department
+            var url = $"users?token={_apiKey}";
+            _logger?.LogInformation($"[Bizneo] GET {_httpClient.BaseAddress}{url}");
+            var data = await _httpClient.GetFromJsonAsync<BizneoUsersResponse>(url, ct);
+            var count = data?.Users?.Count ?? 0;
+            _logger?.LogInformation($"[Bizneo] Respuesta: {count} usuarios");
+            if (data?.Users == null) return Array.Empty<BizneoEmpleadoDto>();
+            return data.Users.Select(u => new BizneoEmpleadoDto(
+                u.Id?.ToString() ?? "",
+                u.Email ?? "",
+                $"{u.FirstName} {u.LastName}",
+                u.Department ?? ""
             )).ToList();
         }
-        catch
+        catch (Exception ex)
         {
+            _logger?.LogError($"[Bizneo] Error: {ex.Message}");
             return Array.Empty<BizneoEmpleadoDto>();
         }
     }
@@ -44,19 +54,24 @@ public class BizneoClient : IBizneoClient
     {
         try
         {
-            var data = await _httpClient.GetFromJsonAsync<BizneoHorasResponse>(
-                $"v1/timesheets?from={desde:yyyy-MM-dd}&to={hasta:yyyy-MM-dd}", ct);
-            if (data?.Timesheets == null) return Array.Empty<BizneoHoraDto>();
-            return data.Timesheets.Select(h => new BizneoHoraDto(
-                h.Id,
-                int.TryParse(h.UserId, out var uid) ? uid : 0,
-                int.TryParse(h.ProjectId, out var pid) ? pid : 0,
-                DateOnly.Parse(h.Date),
-                h.Hours
-            )).Where(h => h.UserId > 0 && h.ProjectId > 0).ToList();
+            var url = $"absences?token={_apiKey}";
+            _logger?.LogInformation($"[Bizneo] GET {_httpClient.BaseAddress}{url}");
+            var data = await _httpClient.GetFromJsonAsync<BizneoAbsencesResponse>(url, ct);
+            var count = data?.Absences?.Count ?? 0;
+            _logger?.LogInformation($"[Bizneo] Respuesta: {count} ausencias");
+            // Mapper simple: convertir absencias a horas (mismo DTO por ahora)
+            if (data?.Absences == null) return Array.Empty<BizneoHoraDto>();
+            return data.Absences.Select(a => new BizneoHoraDto(
+                a.Id?.ToString() ?? "",
+                a.UserId,
+                0,
+                DateOnly.FromDateTime(a.StartAt),
+                0
+            )).ToList();
         }
-        catch
+        catch (Exception ex)
         {
+            _logger?.LogError($"[Bizneo] Error: {ex.Message}");
             return Array.Empty<BizneoHoraDto>();
         }
     }
@@ -97,6 +112,46 @@ public class BizneoClient : IBizneoClient
         public string Date { get; set; } = "";
         [JsonPropertyName("hours")]
         public decimal Hours { get; set; }
+    }
+
+    private class BizneoUsersResponse
+    {
+        [JsonPropertyName("users")]
+        public List<BizneoUserResponse>? Users { get; set; }
+    }
+
+    private class BizneoUserResponse
+    {
+        [JsonPropertyName("id")]
+        public int? Id { get; set; }
+        [JsonPropertyName("email")]
+        public string? Email { get; set; }
+        [JsonPropertyName("first_name")]
+        public string? FirstName { get; set; }
+        [JsonPropertyName("last_name")]
+        public string? LastName { get; set; }
+        [JsonPropertyName("department")]
+        public string? Department { get; set; }
+    }
+
+    private class BizneoAbsencesResponse
+    {
+        [JsonPropertyName("absences")]
+        public List<BizneoAbsenceResponse>? Absences { get; set; }
+    }
+
+    private class BizneoAbsenceResponse
+    {
+        [JsonPropertyName("id")]
+        public int? Id { get; set; }
+        [JsonPropertyName("user_id")]
+        public int UserId { get; set; }
+        [JsonPropertyName("start_at")]
+        public DateTime StartAt { get; set; }
+        [JsonPropertyName("end_at")]
+        public DateTime EndAt { get; set; }
+        [JsonPropertyName("state")]
+        public string? State { get; set; }
     }
 }
 
@@ -157,10 +212,12 @@ public class IntratimeClient : IIntratimeClient
 public class PayHawkClient : IPayHawkClient
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<PayHawkClient> _logger;
 
-    public PayHawkClient(HttpClient httpClient)
+    public PayHawkClient(HttpClient httpClient, ILogger<PayHawkClient> logger)
     {
         _httpClient = httpClient;
+        _logger = logger;
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
     }
 
@@ -168,8 +225,11 @@ public class PayHawkClient : IPayHawkClient
     {
         try
         {
-            var data = await _httpClient.GetFromJsonAsync<PayHawkGastosResponse>(
-                $"expenses?start_date={desde:yyyy-MM-dd}&end_date={hasta:yyyy-MM-dd}", ct);
+            var url = $"expenses?start_date={desde:yyyy-MM-dd}&end_date={hasta:yyyy-MM-dd}";
+            _logger.LogInformation($"[PayHawk] GET {_httpClient.BaseAddress}{url}");
+            var data = await _httpClient.GetFromJsonAsync<PayHawkGastosResponse>(url, ct);
+            var count = data?.Expenses?.Count ?? 0;
+            _logger.LogInformation($"[PayHawk] Respuesta: {count} gastos");
             if (data?.Expenses == null) return Array.Empty<PayHawkGastoDto>();
             return data.Expenses.Select(g => new PayHawkGastoDto(
                 g.Id,
@@ -180,8 +240,9 @@ public class PayHawkClient : IPayHawkClient
                 g.Category ?? "Otros"
             )).Where(g => g.UserId > 0 && g.ProjectId > 0).ToList();
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError($"[PayHawk] Error: {ex.Message}");
             return Array.Empty<PayHawkGastoDto>();
         }
     }
@@ -274,6 +335,85 @@ public class SgpvClient : ISgpvClient
         public string Fecha { get; set; } = "";
         [JsonPropertyName("horas_duracion")]
         public decimal? HorasDuracion { get; set; }
+    }
+
+    public async Task<IReadOnlyList<SgpvProductoDto>> GetProductosAsync(CancellationToken ct)
+    {
+        try
+        {
+            var auth = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{_username}:{_password}"));
+            var request = new HttpRequestMessage(HttpMethod.Get, "ExportData.php");
+            request.Headers.Add("Authorization", $"Basic {auth}");
+
+            // Timeout de 120 segundos para SGPV (servidor lento)
+            _httpClient.Timeout = TimeSpan.FromSeconds(120);
+
+            var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+                return Array.Empty<SgpvProductoDto>();
+
+            var data = await response.Content.ReadFromJsonAsync<SgpvProductosResponse>(ct);
+            if (data?.Export?.Productos == null) return Array.Empty<SgpvProductoDto>();
+
+            return data.Export.Productos.Select(p => new SgpvProductoDto(
+                p.IdProducto ?? "",
+                p.IdCliente ?? "",
+                p.Cliente ?? "",
+                p.Categoria ?? "",
+                p.Subcategoria ?? "",
+                p.CodigoReferencia ?? "",
+                p.Referencia ?? "",
+                p.EAN ?? "",
+                p.Marca ?? "",
+                p.PVPRecomendado ?? "0",
+                p.Competencia ?? "No",
+                p.Activo == "1"
+            )).ToList();
+        }
+        catch
+        {
+            return Array.Empty<SgpvProductoDto>();
+        }
+    }
+
+    private class SgpvProductosResponse
+    {
+        [JsonPropertyName("export")]
+        public SgpvExportData? Export { get; set; }
+    }
+
+    private class SgpvExportData
+    {
+        [JsonPropertyName("ET_Referencias")]
+        public List<SgpvProductoResponse>? Productos { get; set; }
+    }
+
+    private class SgpvProductoResponse
+    {
+        [JsonPropertyName("idProducto")]
+        public string? IdProducto { get; set; }
+        [JsonPropertyName("idCliente")]
+        public string? IdCliente { get; set; }
+        [JsonPropertyName("Cliente")]
+        public string? Cliente { get; set; }
+        [JsonPropertyName("Categoria")]
+        public string? Categoria { get; set; }
+        [JsonPropertyName("Subcategoria")]
+        public string? Subcategoria { get; set; }
+        [JsonPropertyName("CodigoReferencia")]
+        public string? CodigoReferencia { get; set; }
+        [JsonPropertyName("Referencia")]
+        public string? Referencia { get; set; }
+        [JsonPropertyName("EAN")]
+        public string? EAN { get; set; }
+        [JsonPropertyName("Marca")]
+        public string? Marca { get; set; }
+        [JsonPropertyName("PVPRecomendado")]
+        public string? PVPRecomendado { get; set; }
+        [JsonPropertyName("Competencia")]
+        public string? Competencia { get; set; }
+        [JsonPropertyName("activo")]
+        public string? Activo { get; set; }
     }
 }
 

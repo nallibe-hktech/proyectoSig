@@ -60,7 +60,7 @@ public class AuditController : ControllerBase
 
 [ApiController]
 [Route("api/sync")]
-[Authorize(Roles = "Administrator")]
+[Authorize(Roles = "Administrator,Admin SIG")]
 public class SyncController : ControllerBase
 {
     private readonly ISyncService _svc;

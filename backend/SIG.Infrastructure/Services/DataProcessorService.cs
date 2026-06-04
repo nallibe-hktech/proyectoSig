@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Repositories;
 using SIG.Application.Interfaces.Services;
@@ -22,17 +23,20 @@ public class DataProcessorService : IDataProcessorService
     private readonly IUserRepository _userRepo;
     private readonly IDepartmentRepository _deptRepo;
     private readonly IAuditLogRepository _auditRepo;
+    private readonly ILogger<DataProcessorService> _logger;
 
     public DataProcessorService(
         AppDbContext db,
         IUserRepository userRepo,
         IDepartmentRepository deptRepo,
-        IAuditLogRepository auditRepo)
+        IAuditLogRepository auditRepo,
+        ILogger<DataProcessorService> logger)
     {
         _db = db;
         _userRepo = userRepo;
         _deptRepo = deptRepo;
         _auditRepo = auditRepo;
+        _logger = logger;
     }
 
     /// <summary>
@@ -46,7 +50,10 @@ public class DataProcessorService : IDataProcessorService
             .OrderBy(x => x.Id)
             .ToListAsync(ct);
 
+        _logger.LogInformation($"[Bizneo Empleados] Encontrados {pendientes.Count} registros pendientes");
+
         int processed = 0, errors = 0;
+        int nuevos = 0, actualizados = 0;
 
         foreach (var staging in pendientes)
         {
@@ -62,6 +69,7 @@ public class DataProcessorService : IDataProcessorService
                     usuario = new User
                     {
                         Nombre = staging.Nombre,
+                        Apellidos = "", // No disponible en staging
                         NIF = staging.NIF,
                         Email = $"{staging.Nombre.ToLower().Replace(" ", ".")}@empresa.es",
                         PasswordHash = "temp", // Usuario necesita resetear
@@ -70,12 +78,16 @@ public class DataProcessorService : IDataProcessorService
                         UpdatedAt = DateTime.UtcNow
                     };
                     _db.Users.Add(usuario);
+                    nuevos++;
+                    _logger.LogDebug($"[Bizneo] Nuevo usuario: {staging.Nombre} ({staging.NIF})");
                 }
                 else
                 {
                     // Actualizar datos existentes
                     usuario.Nombre = staging.Nombre;
                     usuario.UpdatedAt = DateTime.UtcNow;
+                    actualizados++;
+                    _logger.LogDebug($"[Bizneo] Usuario actualizado: {staging.Nombre} ({staging.NIF})");
                 }
 
                 // Marcar staging como procesado
@@ -87,10 +99,12 @@ public class DataProcessorService : IDataProcessorService
             {
                 staging.ErrorProcesamiento = ex.Message;
                 errors++;
+                _logger.LogError($"[Bizneo] Error procesando {staging.Nombre}: {ex.Message}");
             }
         }
 
         await _db.SaveChangesAsync(ct);
+        _logger.LogInformation($"[Bizneo Empleados] Resultado: {nuevos} nuevos, {actualizados} actualizados, {errors} errores");
         return (processed, errors);
     }
 
@@ -119,6 +133,7 @@ public class DataProcessorService : IDataProcessorService
                     usuario = new User
                     {
                         Nombre = staging.Nombre,
+                        Apellidos = "",
                         NIF = staging.NIF,
                         Email = $"{staging.Nombre.ToLower().Replace(" ", ".")}@empresa.es",
                         PasswordHash = "temp",

@@ -125,10 +125,12 @@ public static class DependencyInjection
                           ?? throw new InvalidOperationException("Integrations:Bizneo:BaseUrl no configurada");
             var bizneoKey = config["Integrations:Bizneo:ApiKey"]
                           ?? throw new InvalidOperationException("Integrations:Bizneo:ApiKey no configurada");
-            services.AddHttpClient<IBizneoClient, BizneoClient>(client =>
+            services.AddHttpClient("bizneo", client => client.BaseAddress = new Uri(bizneoUrl));
+            services.AddScoped<IBizneoClient>(sp =>
             {
-                client.BaseAddress = new Uri(bizneoUrl);
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {bizneoKey}");
+                var factory = sp.GetRequiredService<IHttpClientFactory>();
+                var client = factory.CreateClient("bizneo");
+                return new BizneoClient(client, bizneoKey);
             });
 
             // Intratime
@@ -153,7 +155,7 @@ public static class DependencyInjection
             services.AddHttpClient<IPayHawkClient, PayHawkClient>(client =>
             {
                 client.BaseAddress = new Uri(payhawkUrl);
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {payhawkKey}");
+                client.DefaultRequestHeaders.Add("Authorization", $"Basic {payhawkKey}");
             });
 
             // Sgpv
@@ -180,6 +182,7 @@ public static class DependencyInjection
             {
                 client.BaseAddress = new Uri(a3InuvaUrl);
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {a3InuvaKey}");
+                client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", a3InuvaKey);
             });
 
             // Travel Perk

@@ -12,7 +12,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
     {
         b.HasIndex(u => u.NIF).IsUnique();
         b.HasIndex(u => u.Email).IsUnique();
-        b.Property(u => u.NIF).HasMaxLength(20).IsRequired();
+        b.Property(u => u.NIF).HasMaxLength(50).IsRequired();
         b.Property(u => u.Email).HasMaxLength(200).IsRequired();
         b.Property(u => u.Nombre).HasMaxLength(100).IsRequired();
         b.Property(u => u.Apellidos).HasMaxLength(200).IsRequired();
@@ -354,7 +354,7 @@ public class StagingBizneoEmpleadoConfiguration : IEntityTypeConfiguration<Stagi
         b.HasIndex(s => s.Hash).IsUnique();
         b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
         b.Property(s => s.EmpleadoIdExterno).HasMaxLength(100).IsRequired();
-        b.Property(s => s.NIF).HasMaxLength(20).IsRequired();
+        b.Property(s => s.NIF).HasMaxLength(50).IsRequired();
         b.Property(s => s.Nombre).HasMaxLength(200).IsRequired();
         b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();
         b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
@@ -367,7 +367,7 @@ public class StagingBizneoHoraConfiguration : IEntityTypeConfiguration<StagingBi
     {
         b.HasIndex(s => s.Hash).IsUnique();
         b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
-        b.Property(s => s.RegistroIdExterno).HasMaxLength(100).IsRequired();
+        b.Property(s => s.RegistroIdExterno).HasMaxLength(255).IsRequired();
         b.Property(s => s.Horas).HasPrecision(18, 4);
         b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();
         b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
@@ -380,7 +380,7 @@ public class StagingIntratimeFichajeConfiguration : IEntityTypeConfiguration<Sta
     {
         b.HasIndex(s => s.Hash).IsUnique();
         b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
-        b.Property(s => s.FichajeIdExterno).HasMaxLength(100).IsRequired();
+        b.Property(s => s.FichajeIdExterno).HasMaxLength(255).IsRequired();
         b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();
         b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
     }
@@ -392,7 +392,7 @@ public class StagingPayHawkGastoConfiguration : IEntityTypeConfiguration<Staging
     {
         b.HasIndex(s => s.Hash).IsUnique();
         b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
-        b.Property(s => s.GastoIdExterno).HasMaxLength(100).IsRequired();
+        b.Property(s => s.GastoIdExterno).HasMaxLength(255).IsRequired();
         b.Property(s => s.Importe).HasPrecision(18, 4);
         b.Property(s => s.Categoria).HasMaxLength(100).IsRequired();
         b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();

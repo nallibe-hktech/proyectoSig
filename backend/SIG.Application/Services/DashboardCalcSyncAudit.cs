@@ -226,7 +226,7 @@ public class SyncService : ISyncService
                         PayloadJson = json,
                         Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow,
-                        FlagProcesado = true
+                        FlagProcesado = false
                     });
                     ins++;
                 }
@@ -246,7 +246,7 @@ public class SyncService : ISyncService
                     {
                         EmpleadoIdExterno = e.EmpleadoIdExterno, NIF = e.NIF, Nombre = e.Nombre, Departamento = e.Departamento,
                         PayloadJson = json, Hash = hash,
-                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
+                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
                     } }, ct);
                     ins++;
                 }
@@ -262,7 +262,7 @@ public class SyncService : ISyncService
                         RegistroIdExterno = h.RegistroIdExterno, UserId = h.UserId, ProjectId = h.ProjectId,
                         Fecha = h.Fecha, Horas = h.Horas,
                         PayloadJson = json, Hash = hash,
-                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
+                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
                     } }, ct);
                     ins++;
                 }
@@ -283,7 +283,7 @@ public class SyncService : ISyncService
                         Entrada = DateTime.SpecifyKind(f.Entrada, DateTimeKind.Utc),
                         Salida = f.Salida.HasValue ? DateTime.SpecifyKind(f.Salida.Value, DateTimeKind.Utc) : null,
                         PayloadJson = json, Hash = hash,
-                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
+                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
                     } }, ct);
                     ins++;
                 }
@@ -303,7 +303,7 @@ public class SyncService : ISyncService
                         GastoIdExterno = g.GastoIdExterno, UserId = g.UserId, ProjectId = g.ProjectId,
                         Fecha = g.Fecha, Importe = g.Importe, Categoria = g.Categoria,
                         PayloadJson = json, Hash = hash,
-                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
+                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
                     } }, ct);
                     ins++;
                 }
@@ -364,7 +364,7 @@ public class SyncService : ISyncService
                         PayloadJson = json,
                         Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow,
-                        FlagProcesado = true
+                        FlagProcesado = false
                     });
                     ins++;
                 }

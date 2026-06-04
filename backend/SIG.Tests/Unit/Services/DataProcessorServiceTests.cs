@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Repositories;
 using SIG.Infrastructure.Persistence;
@@ -11,9 +12,10 @@ public class DataProcessorServiceTests
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly IDepartmentRepository _deptRepo = Substitute.For<IDepartmentRepository>();
     private readonly IAuditLogRepository _auditRepo = Substitute.For<IAuditLogRepository>();
+    private readonly ILogger<DataProcessorService> _logger = Substitute.For<ILogger<DataProcessorService>>();
 
     private DataProcessorService CreateSut() =>
-        new(_db, _userRepo, _deptRepo, _auditRepo);
+        new(_db, _userRepo, _deptRepo, _auditRepo, _logger);
 
     [Fact]
     public async Task ProcessAllPendingAsync_RetornaResultadoValido()

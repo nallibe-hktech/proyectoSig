@@ -176,6 +176,38 @@ public class SgpvFakeClient : ISgpvClient
         var list = faker.Generate(30);
         return Task.FromResult<IReadOnlyList<SgpvVisitaDto>>(list);
     }
+
+    public Task<IReadOnlyList<SgpvProductoDto>> GetProductosAsync(CancellationToken ct)
+    {
+        var clientes = new[] { "SPONTEX", "UNICS", "ROMMER" };
+        var categorias = new[] { "BAYETAS", "ESPONJAS", "PAÑOS", "CEPILLOS", "ACCESORIOS" };
+        var subcategorias = new[] { "MICROFIBRA", "DESECHABLES", "POSAVAJILLAS", "LIMPIADORAS" };
+        var marcas = new[] { "SPONTEX", "UNICS", "VILEDA", "SWIRL", "O-CEDAR" };
+
+        var faker = new Faker<SgpvProductoDto>()
+            .CustomInstantiator(f =>
+            {
+                var cliente = f.PickRandom(clientes);
+                var categoria = f.PickRandom(categorias);
+                return new SgpvProductoDto(
+                    f.Random.Number(1, 997).ToString(),
+                    f.Random.Number(1, 10).ToString(),
+                    cliente,
+                    categoria,
+                    f.PickRandom(subcategorias),
+                    f.Random.Number(10000000, 99999999).ToString(),
+                    f.Commerce.ProductName(),
+                    $"{f.Random.Long(1000000000, 9999999999)}",
+                    f.PickRandom(marcas),
+                    Math.Round(f.Random.Decimal(1, 20), 2).ToString(),
+                    f.PickRandom(new[] { "Si", "No" }),
+                    f.Random.Bool(0.9f) // 90% activos
+                );
+            });
+
+        var list = faker.Generate(25);
+        return Task.FromResult<IReadOnlyList<SgpvProductoDto>>(list);
+    }
 }
 
 public class A3InnuvaFakeClient : IA3InnuvaClient

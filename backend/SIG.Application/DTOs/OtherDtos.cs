@@ -29,3 +29,18 @@ public record ProcessingResultDto(
 
 public record AuditLogFilterRequest(int? UserId, string? EntityType, AuditAction? Action, DateOnly? Desde, DateOnly? Hasta, int Page = 1, int PageSize = 50);
 public record AuditLogDto(long Id, int? UserId, string? UserNombre, string EntityType, string EntityId, AuditAction Action, string? OldValueJson, string? NewValueJson, DateTime Timestamp, string? Ip);
+
+// SGPV Productos
+public record SgpvProductoDto(
+    string IdProducto,
+    string IdCliente,
+    string Cliente,
+    string Categoria,
+    string Subcategoria,
+    string CodigoReferencia,
+    string Referencia,
+    string EAN,
+    string Marca,
+    string PVPRecomendado,
+    string Competencia,
+    bool Activo);
