@@ -348,10 +348,19 @@ export interface CalculationDetailDto {
 }
 export interface SyncResultDto {
   sistema: string;
-  filasInsertadas: number;
-  filasDuplicadasIgnoradas: number;
-  filasError: number;
-  fechaUltimaSincronizacion: string;
+  exito: boolean;
+  registrosInsertados: number;
+  registrosActualizados: number;
+  registrosError: number;
+  mensajeError?: string | null;
+  fechaUltimaSincronizacion?: string | null;
+}
+export interface ProcessingResultDto {
+  timestamp: string;
+  systems: Record<string, { processed: number; errors: number }>;
+  totalProcessed: number;
+  totalErrors: number;
+  error?: string | null;
 }
 export interface AuditLogFilterRequest {
   userId?: number | null;

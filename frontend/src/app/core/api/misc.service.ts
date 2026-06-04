@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import {
-  CalculationDetailDto, SyncResultDto, AuditLogFilterRequest, AuditLogDto,
+  CalculationDetailDto, SyncResultDto, ProcessingResultDto, AuditLogFilterRequest, AuditLogDto,
   VariableDto, VariableCreateRequest, VariableUpdateRequest, PagedResult,
 } from '../../models/dtos';
 import { toHttpParams, downloadBlob } from './api.helpers';
@@ -30,6 +30,9 @@ export class SyncService {
   private readonly http = inject(HttpClient);
   sync(system: 'celero' | 'bizneo' | 'intratime' | 'payhawk') {
     return this.http.post<SyncResultDto>(`${environment.apiUrl}/sync/${system}`, {});
+  }
+  processAll() {
+    return this.http.post<ProcessingResultDto>(`${environment.apiUrl}/sync/process`, {});
   }
 }
 
