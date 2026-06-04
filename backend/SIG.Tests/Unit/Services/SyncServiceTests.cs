@@ -50,14 +50,15 @@ public class SyncServiceTests
         var result = await sut.SyncAsync("celero", CancellationToken.None);
 
         result.Sistema.Should().Be("celero");
-        result.FilasInsertadas.Should().Be(2);
-        result.FilasDuplicadasIgnoradas.Should().Be(0);
+        result.Exito.Should().BeTrue();
+        result.RegistrosInsertados.Should().Be(2);
+        result.RegistrosActualizados.Should().Be(0);
         await _celeroRepo.Received(1).AddRangeAsync(Arg.Is<IEnumerable<StagingCeleroVisita>>(r => r.Count() == 2), Arg.Any<CancellationToken>());
         await _celeroRepo.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task SyncAsync_Celero_HashExistente_NoInsertaIncrementaDuplicados()
+    public async Task SyncAsync_Celero_HashExistente_NoInsertaIncrementaActualizados()
     {
         _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(new[]
@@ -70,8 +71,8 @@ public class SyncServiceTests
         var sut = CreateSut();
         var result = await sut.SyncAsync("celero", CancellationToken.None);
 
-        result.FilasInsertadas.Should().Be(0);
-        result.FilasDuplicadasIgnoradas.Should().Be(2);
+        result.RegistrosInsertados.Should().Be(0);
+        result.RegistrosActualizados.Should().Be(2);
     }
 
     [Fact]
@@ -88,7 +89,8 @@ public class SyncServiceTests
         var result = await sut.SyncAsync("payhawk", CancellationToken.None);
 
         result.Sistema.Should().Be("payhawk");
-        result.FilasInsertadas.Should().Be(1);
+        result.Exito.Should().BeTrue();
+        result.RegistrosInsertados.Should().Be(1);
     }
 
     [Fact]
@@ -115,7 +117,7 @@ public class SyncServiceTests
         var sut = CreateSut();
         var result = await sut.SyncAsync("intratime", CancellationToken.None);
 
-        result.FilasInsertadas.Should().Be(1);
+        result.RegistrosInsertados.Should().Be(1);
         // Verifica que los DateTimes guardados tienen Kind=Utc (gotcha Npgsql)
         await _ficRepo.Received(1).AddRangeAsync(
             Arg.Is<IEnumerable<StagingIntratimeFichaje>>(rows =>
@@ -136,6 +138,39 @@ public class SyncServiceTests
         var sut = CreateSut();
         var result = await sut.SyncAsync("bizneo", CancellationToken.None);
 
-        result.FilasInsertadas.Should().Be(2); // 1 empleado + 1 hora
+        result.Exito.Should().BeTrue();
+        result.RegistrosInsertados.Should().Be(2); // 1 empleado + 1 hora
+    }
+
+    [Fact]
+    public async Task SyncAsync_A3Innuva_ThrowsNotImplemented()
+    {
+        var sut = CreateSut();
+        await FluentActions.Awaiting(() => sut.SyncAsync("a3innuva", CancellationToken.None))
+            .Should().ThrowAsync<IntegrationException>();
+    }
+
+    [Fact]
+    public async Task SyncAsync_TravelPerk_ThrowsNotImplemented()
+    {
+        var sut = CreateSut();
+        await FluentActions.Awaiting(() => sut.SyncAsync("travelperk", CancellationToken.None))
+            .Should().ThrowAsync<IntegrationException>();
+    }
+
+    [Fact]
+    public async Task SyncAsync_SyncResult_ContieneExitoYTimestamp()
+    {
+        _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { new CeleroVisitaDto("v1", "12345678A", "Proyecto1", "Acción1", new DateOnly(2026, 3, 1)) });
+        _celeroRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var sut = CreateSut();
+        var result = await sut.SyncAsync("celero", CancellationToken.None);
+
+        result.Exito.Should().BeTrue();
+        result.MensajeError.Should().BeNull();
+        result.FechaUltimaSincronizacion.Should().HaveValue();
+        result.FechaUltimaSincronizacion!.Value.Year.Should().Be(DateTime.UtcNow.Year);
     }
 }

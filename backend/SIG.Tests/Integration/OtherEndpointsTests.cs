@@ -136,7 +136,8 @@ public class OtherEndpointsTests : IntegrationTestBase
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await ReadJsonAsync<SyncResultDto>(resp);
         body!.Sistema.Should().Be("celero");
-        body.FilasInsertadas.Should().BeGreaterOrEqualTo(0);
+        body.Exito.Should().BeTrue();
+        body.RegistrosInsertados.Should().BeGreaterOrEqualTo(0);
     }
 
     [Fact]
@@ -145,9 +146,9 @@ public class OtherEndpointsTests : IntegrationTestBase
         var client = await CreateAuthenticatedClientAsync();
         var first = await ReadJsonAsync<SyncResultDto>(await client.PostAsync("/api/sync/celero", null));
         var second = await ReadJsonAsync<SyncResultDto>(await client.PostAsync("/api/sync/celero", null));
-        // Idempotencia: la segunda corrida debería tener 0 insertados y todo en duplicados (mismo hash)
-        second!.FilasInsertadas.Should().Be(0);
-        second.FilasDuplicadasIgnoradas.Should().BeGreaterThan(0);
+        // Idempotencia: la segunda corrida debería tener 0 insertados y todo en actualizados (mismo hash)
+        second!.RegistrosInsertados.Should().Be(0);
+        second.RegistrosActualizados.Should().BeGreaterThan(0);
     }
 
     [Fact]
