@@ -531,9 +531,11 @@ export class LoginComponent {
   protected readonly errorMessage = signal<string | null>(null);
 
   protected get showDemo(): boolean {
-    const o = localStorage.getItem('sig_showDemo');
-    if (o === 'true') return true;
-    if (o === 'false') return false;
+    if (environment.production) {
+      const o = localStorage.getItem('sig_showDemo');
+      if (o === 'true') return true;
+      if (o === 'false') return false;
+    }
     return environment.showDemoCredentials;
   }
   protected readonly demoCreds: DemoCred[] = [

@@ -1,6 +1,5 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProjectService } from '../../core/api/projects.service';
@@ -9,7 +8,7 @@ import { ProjectListItemDto } from '../../models/dtos';
 @Component({
   selector: 'app-projects-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, DatePipe, MatIconModule],
+  imports: [CommonModule, FormsModule, DatePipe, MatIconModule],
   template: `
     <div class="sig-list-page">
 

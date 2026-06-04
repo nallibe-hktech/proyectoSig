@@ -52,16 +52,17 @@ public class CeleroPostgresClient : ICeleroClient
             await lockCmd.ExecuteNonQueryAsync(ct);
 
             var sql = """
-                SELECT
-                    "visitId"::text AS visita_id,
-                    COALESCE("resourceExternalId", '') AS resource_nif,
-                    COALESCE("serviceName", '') AS service_name,
-                    COALESCE("missionType", '') AS mission_name,
-                    "visitPlanDate" AS fecha
-                FROM public.visit_list_view
-                WHERE "visitPlanDate" BETWEEN @desde AND @hasta
-                  AND "visitStatus" = 'done'
-                ORDER BY "visitId"
+                SELECT v.id::text                          AS visita_id,
+                       COALESCE(r."resourceExternalId",'') AS resource_nif,
+                       COALESCE(m."serviceName",'')        AS service_name,
+                       COALESCE(m."missionType",'')        AS mission_name,
+                       v."planDate"                        AS fecha
+                FROM public.visit v
+                JOIN public.analytics_mission_list_view m ON m."missionId" = v."missionId"
+                JOIN public.resource_list_view r          ON r."resourceId" = v."resourceId"
+                WHERE v."planDate" BETWEEN @desde AND @hasta
+                  AND v.status = 'done'
+                ORDER BY v.id
                 """;
 
             using var cmd = new NpgsqlCommand(sql, conn);

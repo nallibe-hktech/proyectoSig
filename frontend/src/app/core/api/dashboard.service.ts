@@ -18,4 +18,7 @@ export class DashboardService {
   getMisProyectos(periodId?: number | null) {
     return this.http.get<MiProyectoDto[]>(`${this.base}/mis-proyectos`, { params: toHttpParams({ periodId }) });
   }
+  regenerateSeed() {
+    return this.http.post(`${environment.apiUrl}/dev/regenerar-seed`, {});
+  }
 }

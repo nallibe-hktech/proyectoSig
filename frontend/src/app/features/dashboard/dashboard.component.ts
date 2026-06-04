@@ -1,6 +1,5 @@
 import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
-import { CommonModule, DecimalPipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { DashboardService } from '../../core/api/dashboard.service';
@@ -12,7 +11,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, DecimalPipe, MatIconModule, MatButtonModule],
+  imports: [CommonModule, MatIconModule, MatButtonModule],
   template: `
     <div class="sig-exec-page">
 
@@ -23,11 +22,9 @@ import { environment } from '../../../environments/environment';
           <p class="sig-exec-sub">Per&iacute;odo &middot; {{ kpis()?.periodNombre ?? 'Cargando...' }}</p>
         </div>
         <div class="sig-exec-actions">
-          @if (showDemo) {
-            <button (click)="toggleDemo()" title="Click para desactivar modo demo" class="sig-demo-badge sig-demo-badge--toggle">
-              ENTORNO DEMO
-            </button>
-          }
+          <button (click)="regenerate()" mat-icon-button class="sig-exec-icon-btn" title="Regenerar datos de sincronización" [disabled]="regenerating()">
+            <mat-icon>{{ regenerating() ? 'hourglass_empty' : 'refresh' }}</mat-icon>
+          </button>
           <div class="sig-period-chip">
             <mat-icon style="font-size:16px;width:16px;height:16px;">schedule</mat-icon>
             <span>{{ kpis()?.periodNombre ?? '...' }}</span>
@@ -582,12 +579,7 @@ export class DashboardComponent implements OnInit {
   protected readonly loadingKpis   = signal(true);
   protected readonly loadingAvisos = signal(true);
   protected readonly loadingMis    = signal(true);
-  protected get showDemo(): boolean {
-    const o = localStorage.getItem('sig_showDemo');
-    if (o === 'true') return true;
-    if (o === 'false') return false;
-    return environment.showDemoCredentials;
-  }
+  protected readonly regenerating  = signal(false);
 
   private readonly activePeriod = this.periodSvc.activeId;
 
@@ -639,10 +631,19 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  protected toggleDemo(): void {
-    const current = localStorage.getItem('sig_showDemo');
-    const next = current === 'false' ? 'true' : 'false';
-    localStorage.setItem('sig_showDemo', next);
-    location.reload();
+  protected regenerate(): void {
+    if (this.regenerating()) return;
+    this.regenerating.set(true);
+    this.dashboardSvc.regenerateSeed().subscribe({
+      next: () => {
+        this.notify.success('Datos regenerados exitosamente');
+        this.loadAll(this.activePeriod() ?? undefined);
+        this.regenerating.set(false);
+      },
+      error: (err) => {
+        this.notify.error('Error al regenerar datos: ' + (err?.error?.title || err?.message || 'Error desconocido'));
+        this.regenerating.set(false);
+      }
+    });
   }
 }

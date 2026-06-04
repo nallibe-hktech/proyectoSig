@@ -208,7 +208,7 @@ public class ExportService : IExportService
             var client = await _db.Clients
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(c => c.Id == closure.Project.ClientId, ct);
-            if (closure.Project != null)
+            if (closure.Project != null && client != null)
                 closure.Project.Client = client;
         }
 

@@ -145,7 +145,12 @@ public class DataSeeder : ISeedService
             new() { Nombre = "Backoffice", Descripcion = "Backoffice" },
             new() { Nombre = "ProjectManager", Descripcion = "PM" },
             new() { Nombre = "Auditor", Descripcion = "Auditor" },
-            new() { Nombre = "Reader", Descripcion = "Solo lectura" }
+            new() { Nombre = "Reader", Descripcion = "Solo lectura" },
+            new() { Nombre = "RRHH", Descripcion = "Recursos Humanos" },
+            new() { Nombre = "Facilitador", Descripcion = "Facilitador" },
+            new() { Nombre = "Interlocutor", Descripcion = "Interlocutor" },
+            new() { Nombre = "Gestor", Descripcion = "Gestor" },
+            new() { Nombre = "Auxiliar", Descripcion = "Auxiliar" }
         };
         _db.Roles.AddRange(roles);
         await _db.SaveChangesAsync(ct);

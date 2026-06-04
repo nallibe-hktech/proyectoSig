@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "oNY1HqFJ/b4=",
+  "dgSpecHash": "iJ8+csf5fV4=",
   "success": true,
   "projectFilePath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
   "expectedPackageFiles": [
@@ -96,9 +96,9 @@
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\system.diagnostics.eventlog\\9.0.4\\system.diagnostics.eventlog.9.0.4.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\system.identitymodel.tokens.jwt\\8.4.0\\system.identitymodel.tokens.jwt.8.4.0.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\system.io.packaging\\8.0.1\\system.io.packaging.8.0.1.nupkg.sha512",
-    "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\system.security.cryptography.pkcs\\8.0.1\\system.security.cryptography.pkcs.8.0.1.nupkg.sha512",
+    "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\system.security.cryptography.pkcs\\10.0.8\\system.security.cryptography.pkcs.10.0.8.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\system.security.cryptography.protecteddata\\4.4.0\\system.security.cryptography.protecteddata.4.4.0.nupkg.sha512",
-    "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\system.security.cryptography.xml\\8.0.2\\system.security.cryptography.xml.8.0.2.nupkg.sha512",
+    "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\system.security.cryptography.xml\\10.0.8\\system.security.cryptography.xml.10.0.8.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\xunit\\2.9.3\\xunit.2.9.3.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\xunit.abstractions\\2.0.3\\xunit.abstractions.2.0.3.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\xunit.analyzers\\1.18.0\\xunit.analyzers.1.18.0.nupkg.sha512",
@@ -109,30 +109,5 @@
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\xunit.runner.visualstudio\\3.1.4\\xunit.runner.visualstudio.3.1.4.nupkg.sha512",
     "C:\\Users\\NallibeRiveraGrisale\\.nuget\\packages\\zstring\\2.6.0\\zstring.2.6.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "message": "El paquete \"System.Security.Cryptography.Xml\" 8.0.2 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-37gx-xxp4-5rgx",
-      "projectPath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
-      "warningLevel": 1,
-      "filePath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
-      "libraryId": "System.Security.Cryptography.Xml",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "message": "El paquete \"System.Security.Cryptography.Xml\" 8.0.2 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-w3x6-4m5h-cxqf",
-      "projectPath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
-      "warningLevel": 1,
-      "filePath": "C:\\Projects\\workspaces\\SIG-es\\backend\\SIG.Tests\\SIG.Tests.csproj",
-      "libraryId": "System.Security.Cryptography.Xml",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  "logs": []
 }
