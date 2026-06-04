@@ -30,9 +30,6 @@ import { environment } from '../../../environments/environment';
             <span>{{ kpis()?.periodNombre ?? '...' }}</span>
             <mat-icon style="font-size:14px;width:14px;height:14px;">expand_more</mat-icon>
           </div>
-          <button mat-icon-button class="sig-exec-icon-btn" aria-label="Actualizar datos">
-            <mat-icon>refresh</mat-icon>
-          </button>
           <button mat-icon-button class="sig-exec-icon-btn sig-notif-btn" aria-label="Notificaciones" data-testid="btn-notificaciones">
             <mat-icon>notifications</mat-icon>
             <span class="sig-notif-badge">3</span>
