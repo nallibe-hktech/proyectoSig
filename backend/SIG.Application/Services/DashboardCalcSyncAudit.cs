@@ -372,10 +372,19 @@ public class SyncService : ISyncService
                 await _sgpvRepo.SaveChangesAsync(ct);
                 break;
             }
+            case "a3innuva":
+            case "travelperk":
+                throw new IntegrationException(sistema, "Sistema aún no implementado en modo sincronización.");
             default:
-                throw new IntegrationException(sistema, "Sistema no soportado. Use celero, bizneo, intratime, payhawk, sgpv.");
+                throw new IntegrationException(sistema, "Sistema no soportado. Use celero, bizneo, intratime, payhawk, sgpv, a3innuva, travelperk.");
         }
-        return new SyncResultDto(sistema, ins, dup, err, DateTime.UtcNow);
+        return new SyncResultDto(
+            Sistema: sistema,
+            Exito: true,
+            RegistrosInsertados: ins,
+            RegistrosActualizados: dup,
+            RegistrosError: err,
+            FechaUltimaSincronizacion: DateTime.UtcNow);
     }
 
     private static string Sha256(string s)

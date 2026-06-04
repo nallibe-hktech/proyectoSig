@@ -11,6 +11,13 @@ public record MiProyectoDto(int ProjectId, string Nombre, int ClientId, string C
 public record CalculationDetailDto(int ClosureLineId, int ConceptId, string ConceptNombre, string FormulaSnapshotJson, string InputsJson, decimal Resultado, string? Incidencias, string SistemaOrigen, DateTime Timestamp);
 
 // Sync / Audit
-public record SyncResultDto(string Sistema, int FilasInsertadas, int FilasDuplicadasIgnoradas, int FilasError, DateTime FechaUltimaSincronizacion);
+public record SyncResultDto(
+    string Sistema,
+    bool Exito,
+    int RegistrosInsertados,
+    int RegistrosActualizados,
+    int RegistrosError,
+    string? MensajeError = null,
+    DateTime? FechaUltimaSincronizacion = null);
 public record AuditLogFilterRequest(int? UserId, string? EntityType, AuditAction? Action, DateOnly? Desde, DateOnly? Hasta, int Page = 1, int PageSize = 50);
 public record AuditLogDto(long Id, int? UserId, string? UserNombre, string EntityType, string EntityId, AuditAction Action, string? OldValueJson, string? NewValueJson, DateTime Timestamp, string? Ip);

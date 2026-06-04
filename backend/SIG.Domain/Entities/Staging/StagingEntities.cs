@@ -150,3 +150,36 @@ public class StagingSgpvVisita : IStagingRow
     public bool FlagProcesado { get; set; }
     public string? ErrorProcesamiento { get; set; }
 }
+
+public class StagingA3InnuvaEmpleado : IStagingRow
+{
+    public int Id { get; set; }
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+    public string Nombre { get; set; } = null!;
+    public string? Departamento { get; set; }
+    public decimal? SueldoMensual { get; set; }
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+public class StagingTravelPerkViaje : IStagingRow
+{
+    public int Id { get; set; }
+    public string ViajeIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string Solicitante { get; set; } = null!;
+    public DateOnly FechaInicio { get; set; }
+    public DateOnly? FechaFin { get; set; }
+    public decimal Presupuesto { get; set; }
+    public string Estado { get; set; } = null!;
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
