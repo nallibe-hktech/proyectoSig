@@ -27,3 +27,13 @@ public interface ISgpvClient
 {
     Task<IReadOnlyList<SgpvVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
 }
+
+public interface IA3InnuvaClient
+{
+    Task<IReadOnlyList<A3InnuvaEmpleadoDto>> GetEmpleadosAsync(CancellationToken ct);
+}
+
+public interface ITravelPerkClient
+{
+    Task<IReadOnlyList<TravelPerkViajeDto>> GetViajesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
+}

@@ -18,3 +18,6 @@ public record SgpvVisitaDto(
     string? ServiceName,
     DateOnly Fecha,
     decimal? HorasDuracion);
+public record A3InnuvaEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento, decimal? SueldoMensual);
+public record A3InnuvaGenericoDto(string IdExterno, string Nombre, string Tipo, DateTime? FechaRegistro);
+public record TravelPerkViajeDto(string ViajeIdExterno, string Solicitante, DateOnly FechaInicio, DateOnly? FechaFin, decimal Presupuesto, string Estado);

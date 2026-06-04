@@ -178,4 +178,46 @@ public class SgpvFakeClient : ISgpvClient
     }
 }
 
+public class A3InnuvaFakeClient : IA3InnuvaClient
+{
+    public Task<IReadOnlyList<A3InnuvaEmpleadoDto>> GetEmpleadosAsync(CancellationToken ct)
+    {
+        var departamentos = new[] { "RRHH", "Finanzas", "Operaciones", "Dirección", "Backoffice" };
+        var faker = new Faker<A3InnuvaEmpleadoDto>()
+            .CustomInstantiator(f => new A3InnuvaEmpleadoDto(
+                $"A3EMP-{f.Random.AlphaNumeric(6).ToUpper()}",
+                $"{f.Random.Long(10000000, 99999999)}A",
+                f.Name.FullName(),
+                f.PickRandom(departamentos),
+                Math.Round(f.Random.Decimal(20000, 80000), 2)
+            ));
+        var list = faker.Generate(20);
+        return Task.FromResult<IReadOnlyList<A3InnuvaEmpleadoDto>>(list);
+    }
+}
+
+public class TravelPerkFakeClient : ITravelPerkClient
+{
+    public Task<IReadOnlyList<TravelPerkViajeDto>> GetViajesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
+    {
+        var estados = new[] { "pending", "approved", "completed", "rejected" };
+        var faker = new Faker<TravelPerkViajeDto>()
+            .CustomInstantiator(f =>
+            {
+                var inicio = f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue));
+                var fin = inicio.AddDays(f.Random.Int(1, 7));
+                return new TravelPerkViajeDto(
+                    $"TP-{f.Random.AlphaNumeric(8).ToUpper()}",
+                    f.Name.FullName(),
+                    DateOnly.FromDateTime(inicio),
+                    DateOnly.FromDateTime(fin),
+                    Math.Round(f.Random.Decimal(500, 5000), 2),
+                    f.PickRandom(estados)
+                );
+            });
+        var list = faker.Generate(25);
+        return Task.FromResult<IReadOnlyList<TravelPerkViajeDto>>(list);
+    }
+}
+
 #pragma warning restore S2245
