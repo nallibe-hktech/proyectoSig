@@ -119,6 +119,7 @@ public class SyncService : ISyncService
     private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo;
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo;
     private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo;
+    private readonly IStagingRepository<StagingSgpvProducto> _sgpvProductoRepo;
     private readonly IUserRepository _userRepo;
     private readonly IProjectRepository _projectRepo;
     private readonly IActionRepository _actionRepo;
@@ -132,6 +133,7 @@ public class SyncService : ISyncService
         IStagingRepository<StagingIntratimeFichaje> ficRepo,
         IStagingRepository<StagingPayHawkGasto> gastoRepo,
         IStagingRepository<StagingSgpvVisita> sgpvRepo,
+        IStagingRepository<StagingSgpvProducto> sgpvProductoRepo,
         IUserRepository userRepo,
         IProjectRepository projectRepo,
         IActionRepository actionRepo,
@@ -151,6 +153,7 @@ public class SyncService : ISyncService
         _ficRepo = ficRepo;
         _gastoRepo = gastoRepo;
         _sgpvRepo = sgpvRepo;
+        _sgpvProductoRepo = sgpvProductoRepo;
         _mappingRepo = mappingRepo;
     }
 
@@ -372,11 +375,47 @@ public class SyncService : ISyncService
                 await _sgpvRepo.SaveChangesAsync(ct);
                 break;
             }
+            case "sgpv-productos":
+            {
+                var data = await _sgpv.GetProductosAsync(ct);
+                var nuevas = new List<StagingSgpvProducto>();
+
+                foreach (var d in data)
+                {
+                    var json = JsonSerializer.Serialize(d);
+                    var hash = Sha256(json);
+                    if (await _sgpvProductoRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+
+                    nuevas.Add(new StagingSgpvProducto
+                    {
+                        IdProducto = d.IdProducto,
+                        IdCliente = d.IdCliente,
+                        Cliente = d.Cliente,
+                        Categoria = d.Categoria,
+                        Subcategoria = d.Subcategoria,
+                        CodigoReferencia = d.CodigoReferencia,
+                        Referencia = d.Referencia,
+                        EAN = d.EAN,
+                        Marca = d.Marca,
+                        PVPRecomendado = d.PVPRecomendado,
+                        Competencia = d.Competencia,
+                        Activo = d.Activo,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    });
+                    ins++;
+                }
+                await _sgpvProductoRepo.AddRangeAsync(nuevas, ct);
+                await _sgpvProductoRepo.SaveChangesAsync(ct);
+                break;
+            }
             case "a3innuva":
             case "travelperk":
                 throw new IntegrationException(sistema, "Sistema aún no implementado en modo sincronización.");
             default:
-                throw new IntegrationException(sistema, "Sistema no soportado. Use celero, bizneo, intratime, payhawk, sgpv, a3innuva, travelperk.");
+                throw new IntegrationException(sistema, "Sistema no soportado. Use celero, bizneo, intratime, payhawk, sgpv, sgpv-productos, a3innuva, travelperk.");
         }
         return new SyncResultDto(
             Sistema: sistema,

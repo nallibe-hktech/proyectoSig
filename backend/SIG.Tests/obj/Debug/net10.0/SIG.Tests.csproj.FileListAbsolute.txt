@@ -1,5 +1,11 @@
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\.msCoverageSourceRootsMapping_SIG.Tests
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\CoverletSourceRootsMapping_SIG.Tests
+C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.AssemblyReference.cache
+C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\MvcTestingAppManifest.json
+C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.AssemblyInfoInputs.cache
+C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.AssemblyInfo.cs
+C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.CoreCompileInputs.cache
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\testhost.dll
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\xunit.abstractions.dll
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.API.deps.json
@@ -461,12 +467,6 @@ C:\Projects\workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.API.pdb
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.Application.pdb
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.Infrastructure.pdb
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\bin\Debug\net10.0\SIG.Domain.pdb
-C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.AssemblyReference.cache
-C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\MvcTestingAppManifest.json
-C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.GeneratedMSBuildEditorConfig.editorconfig
-C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.AssemblyInfoInputs.cache
-C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.AssemblyInfo.cs
-C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.CoreCompileInputs.cache
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.csproj.Up2Date
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\SIG.Tests.dll
 C:\Projects\workspaces\SIG-es\backend\SIG.Tests\obj\Debug\net10.0\refint\SIG.Tests.dll

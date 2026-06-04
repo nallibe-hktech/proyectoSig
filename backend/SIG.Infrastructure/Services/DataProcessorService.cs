@@ -109,6 +109,44 @@ public class DataProcessorService : IDataProcessorService
     }
 
     /// <summary>
+    /// Procesa productos desde SGPV staging
+    /// Solo marca como procesado (sin tabla productiva)
+    /// </summary>
+    public async Task<(int Processed, int Errors)> ProcessSgpvProductosAsync(CancellationToken ct)
+    {
+        var pendientes = await _db.StagingSgpvProductos
+            .Where(x => !x.FlagProcesado)
+            .OrderBy(x => x.Id)
+            .ToListAsync(ct);
+
+        _logger.LogInformation($"[SGPV Productos] Encontrados {pendientes.Count} registros pendientes");
+
+        int processed = 0, errors = 0;
+
+        foreach (var staging in pendientes)
+        {
+            try
+            {
+                // Solo marcar como procesado (sin tabla productiva destino)
+                staging.FlagProcesado = true;
+                staging.ErrorProcesamiento = null;
+                processed++;
+                _logger.LogDebug($"[SGPV] Producto procesado: {staging.IdProducto}");
+            }
+            catch (Exception ex)
+            {
+                staging.ErrorProcesamiento = ex.Message;
+                errors++;
+                _logger.LogError($"[SGPV] Error procesando {staging.IdProducto}: {ex.Message}");
+            }
+        }
+
+        await _db.SaveChangesAsync(ct);
+        _logger.LogInformation($"[SGPV Productos] Resultado: {processed} procesados, {errors} errores");
+        return (processed, errors);
+    }
+
+    /// <summary>
     /// Procesa empleados desde A3 Innuva staging → productivo
     /// Similar a Bizneo
     /// </summary>
@@ -235,12 +273,16 @@ public class DataProcessorService : IDataProcessorService
             var a3 = await ProcessA3InnuvaEmpleadosAsync(ct);
             systems["a3innuva_empleados"] = a3;
 
+            // Productos de SGPV
+            var sgpvProductos = await ProcessSgpvProductosAsync(ct);
+            systems["sgpv_productos"] = sgpvProductos;
+
             // Horas, gastos, fiches, viajes (validación y marcado)
             var otros = await ProcessHorasYGastosAsync(ct);
             systems["otros"] = otros;
 
-            totalProcessed = bizneo.Processed + a3.Processed + otros.Processed;
-            totalErrors = bizneo.Errors + a3.Errors + otros.Errors;
+            totalProcessed = bizneo.Processed + a3.Processed + sgpvProductos.Processed + otros.Processed;
+            totalErrors = bizneo.Errors + a3.Errors + sgpvProductos.Errors + otros.Errors;
         }
         catch (Exception ex)
         {

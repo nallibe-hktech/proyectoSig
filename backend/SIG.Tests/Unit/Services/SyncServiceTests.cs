@@ -20,12 +20,13 @@ public class SyncServiceTests
     private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo = Substitute.For<IStagingRepository<StagingIntratimeFichaje>>();
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo = Substitute.For<IStagingRepository<StagingPayHawkGasto>>();
     private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo = Substitute.For<IStagingRepository<StagingSgpvVisita>>();
+    private readonly IStagingRepository<StagingSgpvProducto> _sgpvProductoRepo = Substitute.For<IStagingRepository<StagingSgpvProducto>>();
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly IProjectRepository _projectRepo = Substitute.For<IProjectRepository>();
     private readonly IActionRepository _actionRepo = Substitute.For<IActionRepository>();
     private readonly ICeleroMappingRepository _mappingRepo = Substitute.For<ICeleroMappingRepository>();
 
-    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _sgpv, _celeroRepo, _empRepo, _horaRepo, _ficRepo, _gastoRepo, _sgpvRepo, _userRepo, _projectRepo, _actionRepo, _mappingRepo);
+    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _sgpv, _celeroRepo, _empRepo, _horaRepo, _ficRepo, _gastoRepo, _sgpvRepo, _sgpvProductoRepo, _userRepo, _projectRepo, _actionRepo, _mappingRepo);
 
     [Fact]
     public async Task SyncAsync_SistemaDesconocido_LanzaIntegrationException()

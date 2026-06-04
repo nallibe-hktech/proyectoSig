@@ -183,3 +183,25 @@ public class StagingTravelPerkViaje : IStagingRow
     public bool FlagProcesado { get; set; }
     public string? ErrorProcesamiento { get; set; }
 }
+
+public class StagingSgpvProducto : IStagingRow
+{
+    public int Id { get; set; }
+    public string IdProducto { get; set; } = null!;
+    public string IdCliente { get; set; } = null!;
+    public string Cliente { get; set; } = null!;
+    public string Categoria { get; set; } = null!;
+    public string Subcategoria { get; set; } = null!;
+    public string CodigoReferencia { get; set; } = null!;
+    public string Referencia { get; set; } = null!;
+    public string EAN { get; set; } = null!;
+    public string Marca { get; set; } = null!;
+    public string? PVPRecomendado { get; set; }
+    public string? Competencia { get; set; }
+    public bool Activo { get; set; }
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
