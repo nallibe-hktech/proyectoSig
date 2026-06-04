@@ -386,4 +386,34 @@ public class OtherEndpointsTests : IntegrationTestBase
         var content = await resp.Content.ReadAsStringAsync();
         content.Should().Contain("duplicate");
     }
+
+    // === /api/sync/process ===
+
+    [Fact]
+    public async Task PostSyncProcess_ComoAdmin_Devuelve200()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsync("/api/sync/process", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await ReadJsonAsync<ProcessingResultDto>(resp);
+        body.Should().NotBeNull();
+        body!.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
+        body.Systems.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task PostSyncProcess_ComoReader_Devuelve403()
+    {
+        var client = await CreateAuthenticatedClientAsync("reader@sig.local");
+        var resp = await client.PostAsync("/api/sync/process", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task PostSyncProcess_SinToken_Devuelve401()
+    {
+        var client = CreateClient();
+        var resp = await client.PostAsync("/api/sync/process", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }

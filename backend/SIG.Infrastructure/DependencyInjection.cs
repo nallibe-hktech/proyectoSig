@@ -89,6 +89,7 @@ public static class DependencyInjection
         services.AddScoped<ICeleroVisitaService, CeleroVisitaService>();
         services.AddScoped<IExportService, ExportService>();
         services.AddScoped<ISeedService, DataSeeder>();
+        services.AddScoped<IDataProcessorService, DataProcessorService>();
 
         // Calculation
         services.AddScoped<IFormulaParser, FormulaParser>();

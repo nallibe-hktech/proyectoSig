@@ -19,5 +19,13 @@ public record SyncResultDto(
     int RegistrosError,
     string? MensajeError = null,
     DateTime? FechaUltimaSincronizacion = null);
+
+public record ProcessingResultDto(
+    DateTime Timestamp,
+    Dictionary<string, (int Processed, int Errors)> Systems,
+    int TotalProcessed = 0,
+    int TotalErrors = 0,
+    string? Error = null);
+
 public record AuditLogFilterRequest(int? UserId, string? EntityType, AuditAction? Action, DateOnly? Desde, DateOnly? Hasta, int Page = 1, int PageSize = 50);
 public record AuditLogDto(long Id, int? UserId, string? UserNombre, string EntityType, string EntityId, AuditAction Action, string? OldValueJson, string? NewValueJson, DateTime Timestamp, string? Ip);

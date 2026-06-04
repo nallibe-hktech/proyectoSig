@@ -64,12 +64,22 @@ public class AuditController : ControllerBase
 public class SyncController : ControllerBase
 {
     private readonly ISyncService _svc;
+    private readonly IDataProcessorService _processor;
     private readonly AppDbContext _db;
-    public SyncController(ISyncService svc, AppDbContext db) { _svc = svc; _db = db; }
+    public SyncController(ISyncService svc, IDataProcessorService processor, AppDbContext db)
+    {
+        _svc = svc;
+        _processor = processor;
+        _db = db;
+    }
 
     [HttpPost("{system}")]
     public async Task<IActionResult> Sync(string system, CancellationToken ct) =>
         Ok(await _svc.SyncAsync(system, ct));
+
+    [HttpPost("process")]
+    public async Task<IActionResult> ProcessPending(CancellationToken ct) =>
+        Ok(await _processor.ProcessAllPendingAsync(ct));
 
     [HttpGet("celero/stats")]
     public async Task<IActionResult> GetCeleroStats(CancellationToken ct)

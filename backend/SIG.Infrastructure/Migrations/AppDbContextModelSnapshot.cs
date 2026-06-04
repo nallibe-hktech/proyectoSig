@@ -1189,6 +1189,70 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("celero_service_mappings", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingA3InnuvaEmpleado", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Departamento")
+                        .HasColumnType("text")
+                        .HasColumnName("departamento");
+
+                    b.Property<string>("EmpleadoIdExterno")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("empleado_id_externo");
+
+                    b.Property<string>("ErrorProcesamiento")
+                        .HasColumnType("text")
+                        .HasColumnName("error_procesamiento");
+
+                    b.Property<DateTime>("FechaUltimaSincronizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_ultima_sincronizacion");
+
+                    b.Property<bool>("FlagProcesado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("flag_procesado");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("NIF")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nif");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_json");
+
+                    b.Property<decimal?>("SueldoMensual")
+                        .HasColumnType("numeric")
+                        .HasColumnName("sueldo_mensual");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_staging_a3innuva_empleados");
+
+                    b.ToTable("staging_a3innuva_empleados", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingBizneoEmpleado", b =>
                 {
                     b.Property<int>("Id")
@@ -1639,6 +1703,74 @@ namespace SIG.Infrastructure.Migrations
                         .HasDatabaseName("ix_staging_sgpv_visitas_hash");
 
                     b.ToTable("staging_sgpv_visitas", (string)null);
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingTravelPerkViaje", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ErrorProcesamiento")
+                        .HasColumnType("text")
+                        .HasColumnName("error_procesamiento");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("estado");
+
+                    b.Property<DateOnly?>("FechaFin")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_fin");
+
+                    b.Property<DateOnly>("FechaInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_inicio");
+
+                    b.Property<DateTime>("FechaUltimaSincronizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_ultima_sincronizacion");
+
+                    b.Property<bool>("FlagProcesado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("flag_procesado");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_json");
+
+                    b.Property<decimal>("Presupuesto")
+                        .HasColumnType("numeric")
+                        .HasColumnName("presupuesto");
+
+                    b.Property<string>("Solicitante")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("solicitante");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("ViajeIdExterno")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("viaje_id_externo");
+
+                    b.HasKey("Id")
+                        .HasName("pk_staging_travel_perk_viajes");
+
+                    b.ToTable("staging_travel_perk_viajes", (string)null);
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.TarifaProyecto", b =>

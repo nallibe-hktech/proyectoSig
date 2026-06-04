@@ -168,6 +168,11 @@ public interface ISyncService
     Task<SyncResultDto> SyncAsync(string sistema, CancellationToken ct);
 }
 
+public interface IDataProcessorService
+{
+    Task<ProcessingResultDto> ProcessAllPendingAsync(CancellationToken ct);
+}
+
 public interface IExportService
 {
     Task<(byte[] Content, string FileName)> ExportA3InnuvaAsync(int closureId, int usuarioId, CancellationToken ct);
