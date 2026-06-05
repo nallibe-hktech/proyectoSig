@@ -212,11 +212,13 @@ public class IntratimeClient : IIntratimeClient
 public class PayHawkClient : IPayHawkClient
 {
     private readonly HttpClient _httpClient;
+    private readonly string _accountId;
     private readonly ILogger<PayHawkClient> _logger;
 
-    public PayHawkClient(HttpClient httpClient, ILogger<PayHawkClient> logger)
+    public PayHawkClient(HttpClient httpClient, string accountId, ILogger<PayHawkClient> logger)
     {
         _httpClient = httpClient;
+        _accountId = accountId;
         _logger = logger;
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
     }
@@ -225,20 +227,59 @@ public class PayHawkClient : IPayHawkClient
     {
         try
         {
-            var url = $"expenses?start_date={desde:yyyy-MM-dd}&end_date={hasta:yyyy-MM-dd}";
+            _logger.LogInformation($"[PayHawk] Sincronizando gastos desde {desde:yyyy-MM-dd} hasta {hasta:yyyy-MM-dd}");
+
+            // PayHawk API v3: /accounts/{accountId}/expenses (sin filtros, filtramos después en memoria)
+            var url = $"accounts/{_accountId}/expenses";
             _logger.LogInformation($"[PayHawk] GET {_httpClient.BaseAddress}{url}");
             var data = await _httpClient.GetFromJsonAsync<PayHawkGastosResponse>(url, ct);
-            var count = data?.Expenses?.Count ?? 0;
-            _logger.LogInformation($"[PayHawk] Respuesta: {count} gastos");
-            if (data?.Expenses == null) return Array.Empty<PayHawkGastoDto>();
-            return data.Expenses.Select(g => new PayHawkGastoDto(
-                g.Id,
-                int.TryParse(g.UserId, out var uid) ? uid : 0,
-                int.TryParse(g.ProjectId, out var pid) ? pid : 0,
-                DateOnly.Parse(g.Date),
-                g.Amount,
-                g.Category ?? "Otros"
-            )).Where(g => g.UserId > 0 && g.ProjectId > 0).ToList();
+            var count = data?.Items?.Count ?? 0;
+            _logger.LogInformation($"[PayHawk] Respuesta: {count} gastos (total en API: {data?.Total})");
+            if (data?.Items == null) return Array.Empty<PayHawkGastoDto>();
+
+            // DEBUG: Mostrar primeros gastos sin filtrar
+            var allGastos = data.Items.Take(3).ToList();
+            foreach (var g in allGastos)
+            {
+                var uid = g.CreatedBy?.ExternalId ?? "EMPTY";
+                var projectField = g.Reconciliation?.CustomFields?.FirstOrDefault(cf => cf.Id == "proyecto_37e79a");
+                var pid = projectField?.SelectedValues?.FirstOrDefault()?.ExternalId ?? "EMPTY";
+                var gastoDate = DateOnly.FromDateTime(DateTime.Parse(g.CreatedAt));
+                var isInRange = gastoDate >= desde && gastoDate <= hasta;
+                _logger.LogWarning($"[PayHawk DEBUG] Gasto {g.Id}: Fecha={gastoDate} (en rango={isInRange}), Empleado={g.CreatedBy?.Email} ExternalId={uid}, Proyecto={pid}, Importe={g.Reconciliation?.TotalAmount}");
+            }
+
+            var gastos = data.Items
+                // .Where(g =>
+                // {
+                //     var gastoDate = DateOnly.FromDateTime(DateTime.Parse(g.CreatedAt));
+                //     return gastoDate >= desde && gastoDate <= hasta;
+                // })
+                .Select(g =>
+                {
+                    // ExternalId puede ser "44175805G" (NIF) — extraer solo números
+                    var externalIdStr = g.CreatedBy?.ExternalId ?? "";
+                    var numericExternalId = new string(externalIdStr.Where(char.IsDigit).ToArray());
+                    var uid = int.TryParse(numericExternalId, out var uidVal) ? uidVal : 0;
+
+                    var pid = int.TryParse(g.Reconciliation?.CustomFields
+                        ?.FirstOrDefault(cf => cf.Id == "proyecto_37e79a")
+                        ?.SelectedValues?.FirstOrDefault()?.ExternalId ?? "", out var pidVal) ? pidVal : 0;
+
+                    return new PayHawkGastoDto(
+                        g.Id,
+                        uid,
+                        pid,
+                        DateOnly.FromDateTime(DateTime.Parse(g.CreatedAt)),
+                        g.Reconciliation?.TotalAmount ?? 0,
+                        g.Category?.Name ?? "Otros"
+                    );
+                })
+                .Where(g => g.UserId > 0 && g.ProjectId > 0)
+                .ToList();
+
+            _logger.LogInformation($"[PayHawk] Después de filtrar: {gastos.Count} gastos válidos (de {count})");
+            return gastos;
         }
         catch (Exception ex)
         {
@@ -249,24 +290,104 @@ public class PayHawkClient : IPayHawkClient
 
     private class PayHawkGastosResponse
     {
-        [JsonPropertyName("expenses")]
-        public List<PayHawkGastoResponse>? Expenses { get; set; }
+        [JsonPropertyName("items")]
+        public List<PayHawkGastoResponse>? Items { get; set; }
+
+        [JsonPropertyName("total")]
+        public int Total { get; set; }
     }
 
     private class PayHawkGastoResponse
     {
         [JsonPropertyName("id")]
         public string Id { get; set; } = "";
-        [JsonPropertyName("user_id")]
-        public string UserId { get; set; } = "";
-        [JsonPropertyName("project_id")]
-        public string ProjectId { get; set; } = "";
-        [JsonPropertyName("date")]
-        public string Date { get; set; } = "";
-        [JsonPropertyName("amount")]
-        public decimal Amount { get; set; }
+
+        [JsonPropertyName("createdBy")]
+        public PayHawkUserResponse? CreatedBy { get; set; }
+
+        [JsonPropertyName("createdAt")]
+        public string CreatedAt { get; set; } = "";
+
+        [JsonPropertyName("type")]
+        public string? Type { get; set; }
+
+        [JsonPropertyName("status")]
+        public string? Status { get; set; }
+
+        [JsonPropertyName("isPaid")]
+        public bool IsPaid { get; set; }
+
+        [JsonPropertyName("title")]
+        public string? Title { get; set; }
+
         [JsonPropertyName("category")]
-        public string? Category { get; set; }
+        public PayHawkCategoryResponse? Category { get; set; }
+
+        [JsonPropertyName("reconciliation")]
+        public PayHawkReconciliationResponse? Reconciliation { get; set; }
+    }
+
+    private class PayHawkUserResponse
+    {
+        [JsonPropertyName("id")]
+        public string? Id { get; set; }
+
+        [JsonPropertyName("email")]
+        public string? Email { get; set; }
+
+        [JsonPropertyName("firstName")]
+        public string? FirstName { get; set; }
+
+        [JsonPropertyName("lastName")]
+        public string? LastName { get; set; }
+
+        [JsonPropertyName("externalId")]
+        public string? ExternalId { get; set; }
+    }
+
+    private class PayHawkCategoryResponse
+    {
+        [JsonPropertyName("id")]
+        public string? Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+    }
+
+    private class PayHawkReconciliationResponse
+    {
+        [JsonPropertyName("currency")]
+        public string? Currency { get; set; }
+
+        [JsonPropertyName("totalAmount")]
+        public decimal TotalAmount { get; set; }
+
+        [JsonPropertyName("customFields")]
+        public List<PayHawkCustomFieldResponse>? CustomFields { get; set; }
+    }
+
+    private class PayHawkCustomFieldResponse
+    {
+        [JsonPropertyName("id")]
+        public string? Id { get; set; }
+
+        [JsonPropertyName("label")]
+        public string? Label { get; set; }
+
+        [JsonPropertyName("selectedValues")]
+        public List<PayHawkSelectedValueResponse>? SelectedValues { get; set; }
+    }
+
+    private class PayHawkSelectedValueResponse
+    {
+        [JsonPropertyName("id")]
+        public string? Id { get; set; }
+
+        [JsonPropertyName("label")]
+        public string? Label { get; set; }
+
+        [JsonPropertyName("externalId")]
+        public string? ExternalId { get; set; }
     }
 }
 

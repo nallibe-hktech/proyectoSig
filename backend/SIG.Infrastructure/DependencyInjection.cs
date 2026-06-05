@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using SIG.Application.Calculation;
 using SIG.Application.Interfaces.Integrations;
 using SIG.Application.Interfaces.Repositories;
@@ -152,10 +153,19 @@ public static class DependencyInjection
                            ?? throw new InvalidOperationException("Integrations:PayHawk:BaseUrl no configurada");
             var payhawkKey = config["Integrations:PayHawk:ApiKey"]
                            ?? throw new InvalidOperationException("Integrations:PayHawk:ApiKey no configurada");
-            services.AddHttpClient<IPayHawkClient, PayHawkClient>(client =>
+            var payhawkAccountId = config["Integrations:PayHawk:AccountId"]
+                                ?? throw new InvalidOperationException("Integrations:PayHawk:AccountId no configurada");
+            services.AddHttpClient("payhawk", client =>
             {
                 client.BaseAddress = new Uri(payhawkUrl);
-                client.DefaultRequestHeaders.Add("Authorization", $"Basic {payhawkKey}");
+                client.DefaultRequestHeaders.Add("X-Payhawk-ApiKey", payhawkKey);
+            });
+            services.AddScoped<IPayHawkClient>(sp =>
+            {
+                var factory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = factory.CreateClient("payhawk");
+                var logger = sp.GetRequiredService<ILogger<PayHawkClient>>();
+                return new PayHawkClient(httpClient, payhawkAccountId, logger);
             });
 
             // Sgpv

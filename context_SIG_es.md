@@ -604,19 +604,52 @@ Rutas Angular: redirect con pathMatch: 'full' siempre al principio del array.
 ---
 
 
-## 13. Fases del proyecto (cronograma a alto nivel)
-```
-El proyecto sigue estas fases secuenciales (cronograma de h&k consulting):
-1- PREVIA — Definir roles, responsabilidades y objetivos: nombrar responsables funcionales por área (Operaciones/Campo, Financiero/Pagos y Facturación, RRHH/Tiempos y dietas, IT/BI/Seguridad/Integraciones/Reporting), definir canal único de comunicación con el desarrollador, alinear objetivos y validar qué procesos entran en el proyecto, establecer criterios de éxito operativos (trazabilidad, tiempo de cierre).
-2- PREVIA — Análisis de la situación actual: mapear cómo se gestiona hoy la operativa de campo, la consolidación financiera en Excel y el cálculo manual de pagos. Identificar todos los Excel existentes (quién los mantiene, qué entra y sale), tareas manuales repetitivas, y sistemas a integrar.
-3- PREVIA — Definición funcional de integración y consolidación: identificar entidades clave (Proyecto/Acción, Visita, Usuario, Gasto, Pago), acordar identificadores únicos y reglas de conciliación, priorizar integraciones (cuáles son MVP, cuáles son secundarias).
-4- PREVIA — Gestión de pagos: digitalizar plantillas Excel de pago, unificar criterios (campos obligatorios, fórmulas, excepciones), validar reglas con FICO, definir reglas de cálculo automático documentando lógicas para dietas, kilometraje, gastos, gratificaciones, visitas extra, incentivos. Identificar casos estándar, casos especiales, límites y validaciones.
-5- PREVIA — Gestión de facturación: definir reglas de facturación (precio unitario por visita, condiciones por proyecto/cliente, gestión de gastos asociados, relación visita → pago → factura), validar con A3 ERP qué se factura y formato de salida.
-6- PREVIA — Control de usuarios y seguridad: diseño de roles y permisos, integración con Azure Active Directory (definir grupos de AD, reglas de asignación automática de roles, requisitos de auditoría).
-7- PREVIA — Reporting y explotación analítica: definir KPIs prioritarios (pagos por proyecto y usuario, desviaciones de costes), preparar la integración con Power BI.
-Validación y preparación para trabajar con el desarrollador.
-Desarrollo H&K: implementación del producto.
-```
+## 13. Fases del proyecto — ESTADO ACTUAL (5 jun 2026)
+
+**Hito:** Semana 2 de 4-5 semanas | Entrega estimada: 15-20 julio 2026
+
+### FASES COMPLETADAS ✅
+
+**1- PREVIA — Roles y responsabilidades:** ✅ DONE
+- Responsables nombrados y comunicación activa con desarrollador
+
+**2- PREVIA — Análisis situación actual:** ✅ DONE
+- Mapeo de Excel, procesos manuales, sistemas identificados
+- Documento: `1. ESTADO GENERAL DEL PROYECTO.txt`
+
+**3- PREVIA — Definición funcional integración:** ✅ DONE
+- Entidades clave modeladas (Proyecto/Acción, Visita, Usuario, Gasto)
+- Identificadores únicos acordados
+- 9 sistemas priorizados para integración
+
+**4- PREVIA — Gestión de pagos:** ⚠️ PARCIAL (70%)
+- Plantillas Excel digitalizadas
+- Motor de cálculo implementado (FormulaParser + CalculationEngine)
+- **FALTA:** Validación de reglas FICO (dietas, km, límites)
+- **BLOQUEADOR:** Datos reales para testing
+
+**5- PREVIA — Gestión de facturación:** ⚠️ PARCIAL (80%)
+- Exports A3 Innuva y A3 ERP funcionales
+- Cálculos de margen presentes
+- **FALTA:** Integración real con A3 (OAuth2 Conectia)
+
+**6- PREVIA — Control usuarios y seguridad:** ✅ DONE (95%)
+- Roles RBAC implementados
+- JWT + Azure AD ready (SSO fase 2)
+- Ownership filters activos
+
+**7- PREVIA — Reporting y analítica:** ⚠️ PARCIAL (20%)
+- Vistas SQL analíticas creadas
+- Power BI embeddings pendientes
+
+### FASE ACTUAL: DESARROLLO H&K (Semana 2)
+
+**Sprint 3-5: Integraciones + UAT + Refinamientos**
+- Implementar APIs reales (PayHawk, Intratime, etc.)
+- Testing E2E con datos reales
+- Validación de flujos con stakeholders
+- Deployment Azure staging
+- Buffer final pre-go-live
 
 ---
 
