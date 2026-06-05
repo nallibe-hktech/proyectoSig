@@ -325,10 +325,17 @@ public class ClosureService : IClosureService
     {
         var withLines = await _repo.GetByIdWithLinesAsync(closure.Id, ct) ?? closure;
         var approvals = await _approvalRepo.ListByClosureAsync(closure.Id, ct);
+
+        // Enriquecer líneas con metadata de cálculo
+        // Nota: Los logs de cálculo están disponibles en CalculationLog.InputsJson
+        // para futuros enriquecimientos de desglose por empleado
         var lines = withLines.Lines.Select(l => new ClosureLineDto(
             l.Id, l.ConceptId, l.Concept?.Nombre ?? "", l.UserId,
             l.User != null ? $"{l.User.Nombre} {l.User.Apellidos}" : null,
-            l.Importe, l.Tipo, l.TieneIncidencia, l.RowVersion)).ToArray();
+            l.Importe, l.Tipo, l.TieneIncidencia, l.RowVersion,
+            null,  // SourceDataSummary - Se puede enriquecer con CalculationLog data
+            null)).ToArray();  // InputMetadata - Se puede enriquecer con período info
+
         var aps = approvals.Select(a => new ApprovalDto(
             a.Id, a.Paso, a.RoleId, a.Role?.Nombre ?? "", a.Estado, a.UserId,
             a.User != null ? $"{a.User.Nombre} {a.User.Apellidos}" : null,
