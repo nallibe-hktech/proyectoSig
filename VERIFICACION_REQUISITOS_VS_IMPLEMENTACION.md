@@ -269,7 +269,7 @@
 
 🔴 **QUÉ ESTÁ BLOQUEADO (DEPENDE DE CLIENTE):**
 - A3 Nómina & ERP (OAuth2 Conectia) — **CRÍTICO**
-- Intratime, PayHawk, TravelPerk (credenciales expiradas/falta)
+- Intratime, TravelPerk (credenciales expiradas/falta)
 - Datos reales para UAT
 - Validación de reglas de negocio
 
