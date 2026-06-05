@@ -29,8 +29,12 @@ public class ExportService : IExportService
 
     public async Task<(byte[] Content, string FileName)> ExportA3InnuvaAsync(int closureId, int usuarioId, CancellationToken ct)
     {
+        var timestamp = DateTime.UtcNow;
+        _logger.LogInformation($"Iniciando export A3 Innuva para cierre {closureId} por usuario {usuarioId}");
+
         var closure = await LoadClosureForExportAsync(closureId, ct);
         EnsureApproved(closure);
+        _logger.LogInformation($"Validación completada: Cierre {closureId} en estado {closure.Estado}");
 
         var workbook = new XSSFWorkbook();
         var sheet = workbook.CreateSheet("A3NOM");
@@ -59,8 +63,10 @@ public class ExportService : IExportService
         };
 
         // Group lines by UserId and aggregate by ColumnaA3
-        var employeeData = closure.Lines
-            .Where(l => l.Tipo == TipoConcepto.Pago && l.UserId.HasValue)
+        var paymentLines = closure.Lines.Where(l => l.Tipo == TipoConcepto.Pago && l.UserId.HasValue).ToList();
+        _logger.LogInformation($"Procesando {paymentLines.Count} líneas de pago para export");
+
+        var employeeData = paymentLines
             .GroupBy(l => l.UserId!.Value)
             .Select(g =>
             {
@@ -79,6 +85,8 @@ public class ExportService : IExportService
                 return new { User = user, Aggregated = aggregated };
             })
             .ToList();
+
+        _logger.LogInformation($"Export A3 Innuva: {employeeData.Count} empleados, {employeeData.Sum(e => e.Aggregated.Count)} conceptos mapeados");
 
         int rowNum = 1;
         foreach (var emp in employeeData)
@@ -105,13 +113,19 @@ public class ExportService : IExportService
         workbook.Write(ms);
         var content = ms.ToArray();
         var fileName = $"A3Innuva_{closure.Id}_{closure.Period.Nombre.Replace(" ", "_")}.xls";
+
+        _logger.LogInformation($"Export A3 Innuva completado exitosamente: {fileName} ({content.Length} bytes)");
         return (content, fileName);
     }
 
     public async Task<(byte[] Content, string FileName)> ExportA3ErpAsync(int closureId, int usuarioId, CancellationToken ct)
     {
+        var timestamp = DateTime.UtcNow;
+        _logger.LogInformation($"Iniciando export A3 ERP para cierre {closureId} por usuario {usuarioId}");
+
         var closure = await LoadClosureForExportAsync(closureId, ct);
         EnsureApproved(closure);
+        _logger.LogInformation($"Validación completada: Cierre {closureId} en estado {closure.Estado}");
 
         var client = closure.Project.Client;
 
@@ -135,6 +149,8 @@ public class ExportService : IExportService
         // Data
         int rowNum = 2;
         var invoiceLines = closure.Lines.Where(l => l.Tipo == TipoConcepto.Factura).ToList();
+        _logger.LogInformation($"Procesando {invoiceLines.Count} líneas de factura para export ERP");
+
         decimal totalBeforeVat = 0;
         decimal totalVat = 0;
 
@@ -172,12 +188,16 @@ public class ExportService : IExportService
         // Auto-fit columns
         ws.Columns("A", "G").AdjustToContents();
 
+        _logger.LogInformation($"Export A3 ERP: {invoiceLines.Count} líneas, Total antes IVA: {totalBeforeVat:C}, IVA: {totalVat:C}, Total: {totalBeforeVat + totalVat:C}");
+
         await LogExportAsync(closureId, "A3ERP", ct);
 
         using var ms = new MemoryStream();
         wb.SaveAs(ms);
         var content = ms.ToArray();
         var fileName = $"A3ERP_{closure.Id}_{closure.Period.Nombre.Replace(" ", "_")}.xlsx";
+
+        _logger.LogInformation($"Export A3 ERP completado exitosamente: {fileName} ({content.Length} bytes)");
         return (content, fileName);
     }
 
