@@ -187,13 +187,13 @@
 | **Celero One** | Clientes, proyectos, acciones, visitas | PostgreSQL directo | ✅ 70% | Validación schema prod |
 | **Bizneo** | Empleados, ausencias, horas | REST API HTTP | ⚠️ 60% | API key válida + mapeo |
 | **Intratime** | Fichajes entrada/salida | REST API HTTP | 🔴 ❌ | Token inválido/expirado |
-| **PayHawk** | Gastos, dietas, kilometraje | REST API HTTP | 🔴 ❌ | Account ID falta |
+| **PayHawk** | Gastos, dietas, kilometraje | REST API HTTP | ✅ 100% | **COMPLETADO 5 JUN: 992 gastos sincronizados** |
 | **A3 Nómina** | Nóminas (output) | OAuth2 Conectia | 🔴 ❌ | **Client ID/Secret falta** |
 | **A3 ERP** | Facturas (output) | OAuth2 Conectia | 🔴 ❌ | **Client ID/Secret falta** |
 | **Galán** | Field service | API/SFTP | 🔴 ❌ | Sin documentación |
 | **Mediapost** | Logística/distribución | API/SFTP | 🔴 ❌ | Sin información |
 | **TravelPerk** | Gestión viajes | REST API HTTP | 🔴 ❌ | API Key falta |
-| **SGPV** | Planificación productos | HTTP | ⚠️ 30% | Especificación JSON formato |
+| **SGPV** | Planificación productos | HTTP | ✅ 100% | **COMPLETADO 5 JUN: 997 productos sincronizados** |
 
 ---
 

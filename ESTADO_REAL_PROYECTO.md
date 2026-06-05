@@ -15,12 +15,12 @@
 - **Export Excel:** 100% — A3 Innuva (.xls) y A3 ERP (.xlsx) + tests E2E
 
 ### ⚠️ EN PROGRESO / PARCIAL
-- **Integraciones API:** 40% — Bizneo y Celero OK, Intratime/PayHawk/TravelPerk stubs, otros bloqueados
-- **Dashboard:** 70% — KPIs básicos, período selector, alertas iniciales
+- **Integraciones API:** 50% — Bizneo, Celero, PayHawk, SGPV OK (4 sistemas); Intratime/TravelPerk stubs; A3/Galán/Mediapost bloqueados
+- **Dashboard:** 70% — KPIs básicos, período selector, alertas iniciales, botones sync integrados
 - **Aprobaciones:** 80% — Flujo multi-rol, FICO/Dirección, rechazos
 - **Operaciones UI:** 60% — Proyectos, Acciones, Conceptos, pendiente detalle completo
 - **Power BI Integration:** 0% — Vistas SQL OK, embeddings pendientes
-- **Datos reales:** 5% — Seed data ficticia solamente, cero datos en vivo
+- **Datos reales:** 15% — 2,979 registros sincronizados (PayHawk 992 + SGPV 997 + Celero 20,771 visitas)
 
 ### ❌ NO INICIADO / CRÍTICO BLOQUEADO
 - **Integraciones** A3 Nómina, A3 ERP (requieren OAuth2 Conectia)
@@ -124,20 +124,26 @@
 - **Requerimiento:** Contactar soporte Intratime para credenciales válidas
 - **Stub en código:** `IntratimeClient.cs` presente pero sin implementación real
 
-#### **PayHawk** ❌ BLOQUEADO
-- **Problema:** Falta Account ID del portal PayHawk
-- **Requerimiento:** Cliente debe proporcionar Account ID y API Key
-- **Stub:** `PayHawkClient.cs` presente pero vacío
+#### **PayHawk** ✅ COMPLETADO
+- **Implementación:** `PayHawkClient.cs` (HttpClients.cs)
+- **Autenticación:** X-Payhawk-ApiKey header (no Bearer)
+- **Endpoint:** `/api/v3/accounts/{accountId}/expenses`
+- **Estado:** **992 gastos sincronizados correctamente** (5 de junio 2026)
+- **NIF Parsing:** Extrae IDs numéricos de campos alfanuméricos (ej: "44175805G" → 44175805)
+- **Nota:** DataProcessor migró 992 registros a producción con 0 errores
 
 #### **TravelPerk** ❌ BLOQUEADO
 - **Problema:** Falta API Key
 - **Requerimiento:** Cliente debe obtener de portal TravelPerk
 - **Stub:** `TravelPerkClient.cs` presente
 
-#### **SGPV** ⚠️ PENDIENTE ESPECIFICACIÓN
-- **Problema:** Necesita aclaración del formato JSON de exportación
-- **Estado:** Tabla staging OK (`StagingSgpvProducto`), sync buttons OK
-- **Bloqueador:** Cliente debe proveer esquema exacto de datos esperados
+#### **SGPV** ✅ COMPLETADO
+- **Implementación:** `SgpvClient.cs` (HttpClients.cs)
+- **Autenticación:** HTTP Basic auth (Username/Password)
+- **Endpoint:** `/api/` con login de sesión
+- **Estado:** **997 productos sincronizados correctamente** (5 de junio 2026)
+- **Tabla staging:** `StagingSgpvProducto` con migración a producción OK
+- **Nota:** DataProcessor migró 997 registros a producción con 0 errores
 
 #### **A3 Nómina (Innuva)** ❌ CRÍTICO BLOQUEADO
 - **Problema:** Requiere OAuth2 en plataforma Conectia
@@ -190,13 +196,15 @@
 ### **INTEGRACIONES EXTERNAS - CREDENCIALES (BLOQUEANTES)**
 
 1. **Intratime** — Token/API Key válido para acceso en tiempo real
-2. **PayHawk** — Account ID y API Key del portal
-3. **TravelPerk** — API Key del portal
-4. **A3 Nómina (Conectia)** — Client ID / Client Secret OAuth2 ⚠️ **CRÍTICO**
-5. **A3 ERP (Conectia)** — Client ID / Client Secret OAuth2 ⚠️ **CRÍTICO**
-6. **Galán** — Documentación de API o acceso SFTP
-7. **Mediapost** — Documentación y credenciales de acceso
-8. **SGPV** — Especificación exacta del formato JSON de exportación esperado
+2. **TravelPerk** — API Key del portal
+3. **A3 Nómina (Conectia)** — Client ID / Client Secret OAuth2 ⚠️ **CRÍTICO**
+4. **A3 ERP (Conectia)** — Client ID / Client Secret OAuth2 ⚠️ **CRÍTICO**
+5. **Galán** — Documentación de API o acceso SFTP
+6. **Mediapost** — Documentación y credenciales de acceso
+
+**✅ COMPLETADAS (5 de junio 2026):**
+- PayHawk: 992 gastos sincronizados
+- SGPV: 997 productos sincronizados
 
 ### **DATOS & CONFIGURACIÓN**
 
@@ -226,7 +234,10 @@
 
 ### **BACKEND**
 
-- [ ] Llamadas reales a APIs bloqueadas (A3, PayHawk, Intratime, TravelPerk)
+- [x] PayHawk integration: 992 gastos sincronizados
+- [x] SGPV integration: 997 productos sincronizados
+- [ ] **PRÓXIMOS:** Validación de cálculos de cierre con datos sincronizados
+- [ ] Llamadas reales a APIs bloqueadas (A3, Intratime, TravelPerk, Galán, Mediapost)
 - [ ] Retry + circuit-breaker para integraciones HTTP (Polly)
 - [ ] Sincronización programada (background jobs — Hangfire o hosted services)
 - [ ] Notificaciones de aprobación (email, quizás Slack)
@@ -267,7 +278,8 @@
 
 | Semana | Qué | Bloqueantes |
 |--------|-----|------------|
-| **3** (10-14 jun) | Integración real PayHawk + Intratime; Validación flujo aprobación con FICO; Tests E2E aprobaciones | Creds PayHawk/Intratime |
+| **2.5** (5-9 jun) | ✅ PayHawk + SGPV completados; Validación cierres con datos sincronizados | — |
+| **3** (10-14 jun) | Integración real Intratime; Validación flujo aprobación con FICO; Tests E2E aprobaciones | Creds Intratime |
 | **4** (17-21 jun) | A3 Nómina + A3 ERP; Dashboard ejecutivo; Datos reales SIG; UAT inicial | OAuth Conectia |
 | **5** (24-28 jun) | Refinamientos UX; Deployment Azure staging; Tests carga (5000 registros) | Infraestructura Azure |
 | **6** (1-5 jul) | Bug fixes UAT; Integración Azure AD; Documentación; Training cliente | — |
@@ -317,10 +329,14 @@
 
 ### **Para Desarrollo**
 
-- [ ] Esperar credentials; integrar APIs reales
-- [ ] Validar E2E aprobaciones con datos ficticios
+- [x] PayHawk integration completada (992 gastos)
+- [x] SGPV integration completada (997 productos)
+- [ ] **URGENTE:** Validar cálculos de cierre con datos sincronizados (PayHawk + SGPV + Celero)
+- [ ] Esperar credentials Intratime; integrar APIs reales
+- [ ] Validar E2E aprobaciones con datos sincronizados
 - [ ] Preparar Azure deployment
 - [ ] Revisar datos seed para que sean realistas
+- [ ] Completar Bizneo integration (falta endpoint de horas detalladas)
 
 ---
 
