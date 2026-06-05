@@ -1,0 +1,381 @@
+<div class="formula-editor">
+  <!-- ===== TOOLBAR (TOP) ===== -->
+  <div class="toolbar" data-testid="formula-toolbar">
+    <div class="toolbar-left">
+      <button
+        mat-icon-button
+        (click)="onClear()"
+        matTooltip="Limpiar canvas"
+        data-testid="formula-toolbar-clear"
+      >
+        <mat-icon>delete_sweep</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        (click)="onLoadJson()"
+        matTooltip="Importar desde JSON"
+        data-testid="formula-toolbar-load"
+      >
+        <mat-icon>upload_file</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        (click)="onExport()"
+        matTooltip="Descargar JSON"
+        data-testid="formula-toolbar-export"
+      >
+        <mat-icon>download</mat-icon>
+      </button>
+
+      <mat-divider [vertical]="true"></mat-divider>
+
+      <button
+        mat-icon-button
+        (click)="onUndo()"
+        [disabled]="!canUndoAction"
+        matTooltip="Deshacer (Ctrl+Z)"
+      >
+        <mat-icon>undo</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        (click)="onRedo()"
+        [disabled]="!canRedoAction"
+        matTooltip="Rehacer (Ctrl+Y)"
+      >
+        <mat-icon>redo</mat-icon>
+      </button>
+    </div>
+
+    <div class="toolbar-right">
+      <span
+        [class.valid]="isFormulaValid"
+        [class.invalid]="!isFormulaValid"
+        data-testid="formula-toolbar-status"
+      >
+        <mat-icon>{{ isFormulaValid ? 'check_circle' : 'error' }}</mat-icon>
+        {{ isFormulaValid ? 'Fórmula válida' : 'Fórmula inválida' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- ===== MAIN LAYOUT ===== -->
+  <div class="editor-container">
+    <!-- LEFT SIDEBAR - PALETTE -->
+    <div class="palette-panel" data-testid="formula-palette">
+      <div class="palette-scroll">
+        <!-- Sección NÚMEROS -->
+        <div class="palette-section" [attr.data-testid]="'formula-palette-section-Números'">
+          <div class="palette-section__header">Números</div>
+          <div class="palette-items">
+            <div
+              class="palette-item"
+              *ngFor="let item of paletteItems | slice: 0:1"
+              draggable="true"
+              (dragstart)="onPaletteItemDragStart($event, item)"
+              (dragend)="onPaletteItemDragEnd()"
+              [attr.data-testid]="'formula-palette-item-' + item.id"
+            >
+              <mat-icon>{{ item.icon }}</mat-icon>
+              <span>{{ item.name }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección VARIABLES -->
+        <div class="palette-section" [attr.data-testid]="'formula-palette-section-Variables'">
+          <div class="palette-section__header">Variables</div>
+          <div class="palette-items">
+            <div
+              class="palette-item"
+              *ngFor="let item of paletteItems | slice: 1:6"
+              draggable="true"
+              (dragstart)="onPaletteItemDragStart($event, item)"
+              (dragend)="onPaletteItemDragEnd()"
+              [attr.data-testid]="'formula-palette-item-' + item.id"
+            >
+              <mat-icon>{{ item.icon }}</mat-icon>
+              <span>{{ item.name }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección OPERACIONES -->
+        <div class="palette-section" [attr.data-testid]="'formula-palette-section-Operaciones'">
+          <div class="palette-section__header">Operaciones</div>
+          <div class="palette-items">
+            <div
+              class="palette-item"
+              *ngFor="let item of paletteItems | slice: 6"
+              draggable="true"
+              (dragstart)="onPaletteItemDragStart($event, item)"
+              (dragend)="onPaletteItemDragEnd()"
+              [attr.data-testid]="'formula-palette-item-' + item.id"
+            >
+              <mat-icon>{{ item.icon }}</mat-icon>
+              <span>{{ item.name }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER - CANVAS -->
+    <div
+      class="canvas-container"
+      #canvas
+      (dragover)="onCanvasDragOver($event)"
+      (drop)="onCanvasDrop($event)"
+      (mousemove)="onCanvasMouseMove($event)"
+      data-testid="formula-canvas"
+    >
+      <!-- Grid de fondo -->
+      <div class="canvas-grid" data-testid="formula-canvas__grid"></div>
+
+      <!-- Nodos -->
+      <div class="canvas-content">
+        <div
+          *ngFor="let node of (editorState$ | async)?.nodes | keyvalue: _trackByKey"
+          class="node"
+          [class.selected]="node.value.selected"
+          [class.invalid]="node.value.invalid"
+          [style.left.px]="node.value.posX"
+          [style.top.px]="node.value.posY"
+          [style.width.px]="node.value.width"
+          [style.height.px]="node.value.height"
+          [style.background-color]="getNodeColor(node.value.type) + '15'"
+          [style.border-color]="node.value.selected ? getNodeColor(node.value.type) : '#D0D0D0'"
+          (click)="onNodeClick(node.value.id, $event)"
+          (dblclick)="onNodeDoubleClick(node.value.id, $event)"
+          (dragstart)="onNodeDragStart(node.value, $event)"
+          (dragend)="onNodeDragEnd()"
+          draggable="true"
+          [attr.data-testid]="'formula-node-' + node.value.id"
+        >
+          <!-- Contenido del nodo según tipo -->
+          <ng-container [ngSwitch]="node.value.type">
+            <!-- NÚMERO -->
+            <ng-template ngSwitchCase="numero">
+              <div class="node-header">
+                <mat-icon>looks_3</mat-icon>
+                <span>Número</span>
+              </div>
+              <div class="node-value" [attr.data-testid]="'formula-node-' + node.value.id + '__value'">
+                {{ node.value.data.valor || 0 }}
+              </div>
+              <div class="node-connection-point output"></div>
+            </ng-template>
+
+            <!-- VARIABLE -->
+            <ng-template ngSwitchCase="variable">
+              <div class="node-header">
+                <mat-icon>data_object</mat-icon>
+                <span>Variable</span>
+              </div>
+              <div class="node-value" [attr.data-testid]="'formula-node-' + node.value.id + '__value'">
+                {{ node.value.data.entidad }}
+              </div>
+              <div class="node-subtitle">{{ node.value.data.campo }}</div>
+              <div class="node-connection-point output"></div>
+            </ng-template>
+
+            <!-- OPERACIÓN -->
+            <ng-template ngSwitchCase="operacion">
+              <div class="node-header">
+                <mat-icon>calculate</mat-icon>
+                <span>{{ node.value.data.operacion }}</span>
+              </div>
+              <div class="node-inputs">
+                <div *ngFor="let i of [0, 1, 2]" class="node-connection-point input"></div>
+              </div>
+              <div class="node-connection-point output"></div>
+            </ng-template>
+          </ng-container>
+
+          <!-- Botón delete (en hover) -->
+          <button
+            *ngIf="node.value.selected"
+            class="node-delete-btn"
+            mat-icon-button
+            (click)="onNodeDelete(node.value.id); $event.stopPropagation()"
+            [attr.data-testid]="'formula-node-' + node.value.id + '__delete-btn'"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR - INSPECTOR -->
+    <div class="inspector-panel" data-testid="formula-inspector">
+      <div class="inspector-content">
+        <!-- Si hay nodo seleccionado -->
+        <ng-container *ngIf="selectedNode">
+          <!-- Tipo de nodo -->
+          <h3>{{ selectedNode.type | uppercase }}</h3>
+
+          <!-- NÚMERO -->
+          <ng-container *ngIf="selectedNode.type === 'numero'">
+            <div class="inspector-field">
+              <label>Valor</label>
+              <input
+                type="number"
+                step="0.01"
+                [value]="selectedNode.data.valor || 0"
+                (change)="onPropertyChange(selectedNode.id, 'valor', $event)"
+                [attr.data-testid]="'formula-inspector-field-valor'"
+              />
+            </div>
+          </ng-container>
+
+          <!-- VARIABLE -->
+          <ng-container *ngIf="selectedNode.type === 'variable'">
+            <div class="inspector-field">
+              <label>Origen de datos</label>
+              <select
+                [value]="selectedNode.data.entidad || ''"
+                (change)="onPropertyChange(selectedNode.id, 'entidad', $event)"
+                [attr.data-testid]="'formula-inspector-field-entidad'"
+              >
+                <option value="">-- Selecciona --</option>
+                <option value="celero_visita">Celero Visita</option>
+                <option value="payhawk_gasto">PayHawk Gasto</option>
+                <option value="bizneo_hora">Bizneo Hora</option>
+                <option value="intratime_fichaje">Intratime Fichaje</option>
+                <option value="sgpv_producto">SGPV Producto</option>
+              </select>
+            </div>
+
+            <div class="inspector-field">
+              <label>Campo</label>
+              <select
+                [value]="selectedNode.data.campo || ''"
+                (change)="onPropertyChange(selectedNode.id, 'campo', $event)"
+                [attr.data-testid]="'formula-inspector-field-campo'"
+              >
+                <option value="">-- Selecciona --</option>
+                <option value="duracion_minutos">Duración (minutos)</option>
+                <option value="monto">Monto</option>
+                <option value="horas">Horas</option>
+                <option value="aprobadas">Aprobadas</option>
+                <option value="tiempo_total">Tiempo Total</option>
+                <option value="cantidad">Cantidad</option>
+                <option value="precio">Precio</option>
+              </select>
+            </div>
+
+            <div class="inspector-field">
+              <label>Agregación (opcional)</label>
+              <select
+                [value]="selectedNode.data.agregacion || 'none'"
+                (change)="onPropertyChange(selectedNode.id, 'agregacion', $event)"
+                [attr.data-testid]="'formula-inspector-field-agregacion'"
+              >
+                <option value="none">Ninguna</option>
+                <option value="sum">Suma</option>
+                <option value="avg">Promedio</option>
+                <option value="count">Cantidad</option>
+              </select>
+            </div>
+          </ng-container>
+
+          <!-- OPERACIÓN -->
+          <ng-container *ngIf="selectedNode.type === 'operacion'">
+            <div class="inspector-field">
+              <label>Tipo de operación</label>
+              <select
+                [value]="selectedNode.data.operacion || ''"
+                (change)="onPropertyChange(selectedNode.id, 'operacion', $event)"
+                [attr.data-testid]="'formula-inspector-field-operacion'"
+              >
+                <option value="">-- Selecciona --</option>
+                <option value="suma">Suma</option>
+                <option value="resta">Resta</option>
+                <option value="multiplica">Multiplica</option>
+                <option value="divide">Divide</option>
+                <option value="modulo">Módulo</option>
+                <option value="promedio">Promedio</option>
+                <option value="cuenta">Cuenta</option>
+              </select>
+            </div>
+
+            <div class="inspector-info">
+              <p>Operandos conectados: {{ selectedNode.data.operandos?.length || 0 }}</p>
+            </div>
+          </ng-container>
+
+          <!-- Botones de acción -->
+          <div class="inspector-actions">
+            <button
+              mat-stroked-button
+              (click)="onNodeDuplicate(selectedNode.id)"
+              [attr.data-testid]="'formula-inspector-duplicate-btn'"
+            >
+              <mat-icon>content_copy</mat-icon>
+              Duplicar
+            </button>
+
+            <button
+              mat-stroked-button
+              color="warn"
+              (click)="onNodeDelete(selectedNode.id)"
+              [attr.data-testid]="'formula-inspector-delete-btn'"
+            >
+              <mat-icon>delete</mat-icon>
+              Eliminar
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- Si no hay nodo seleccionado -->
+        <ng-container *ngIf="!selectedNode">
+          <div class="inspector-empty">
+            <mat-icon>info</mat-icon>
+            <p>Selecciona un nodo para ver sus propiedades</p>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== JSON PREVIEW (BOTTOM) ===== -->
+  <div class="json-preview" data-testid="formula-json-preview">
+    <div class="json-preview-header">
+      <h4>JSON Preview</h4>
+      <button
+        mat-icon-button
+        (click)="onCopyJson()"
+        matTooltip="Copiar al portapapeles"
+        [attr.data-testid]="'formula-json-copy-btn'"
+      >
+        <mat-icon>content_copy</mat-icon>
+      </button>
+    </div>
+    <textarea readonly class="json-content">{{ getFormattedJson() }}</textarea>
+  </div>
+
+  <!-- ===== LOAD JSON DIALOG ===== -->
+  <div class="dialog-overlay" *ngIf="showLoadJsonDialog" (click)="onCancelLoadJson()">
+    <div class="dialog-content" (click)="$event.stopPropagation()">
+      <h2>Importar Fórmula (JSON)</h2>
+
+      <textarea
+        [(ngModel)]="loadJsonInput"
+        placeholder="Pega tu JSON aquí..."
+        class="json-input"
+      ></textarea>
+
+      <div *ngIf="loadJsonError" class="error-message">
+        {{ loadJsonError }}
+      </div>
+
+      <div class="dialog-actions">
+        <button mat-stroked-button (click)="onCancelLoadJson()">Cancelar</button>
+        <button mat-raised-button color="primary" (click)="onImportJson()">Importar</button>
+      </div>
+    </div>
+  </div>
+</div>
