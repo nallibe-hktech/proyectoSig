@@ -8,7 +8,7 @@ namespace SIG.Application.Calculation;
 public class CalculationContext
 {
     public List<StagingCeleroVisita> Visitas { get; set; } = new();
-    public List<StagingBizneoHora> HorasBizneo { get; set; } = new();
+    public List<StagingBizneoAbsence> HorasBizneo { get; set; } = new();
     public List<StagingIntratimeFichaje> Fichajes { get; set; } = new();
     public List<StagingPayHawkGasto> Gastos { get; set; } = new();
     public List<TarifaProyecto> Tarifas { get; set; } = new();
@@ -169,7 +169,7 @@ public class RowAdapter
     {
         Fecha = v.Fecha, UserId = v.UserId, ProjectId = v.ProjectId, ActionId = v.ActionId, TipoVisita = null, PuntoMontado = null
     };
-    public static RowAdapter FromHora(StagingBizneoHora h) => new()
+    public static RowAdapter FromHora(StagingBizneoAbsence h) => new()
     {
         Fecha = h.Fecha, UserId = h.UserId, ProjectId = h.ProjectId, Horas = h.Horas
     };

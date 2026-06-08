@@ -19,7 +19,7 @@ public class CalculationDataLoader : ICalculationDataLoader
 
         ctx.Visitas = await _db.StagingCeleroVisitas.AsNoTracking()
             .Where(v => v.ProjectId == projectId && v.Fecha >= desde && v.Fecha <= hasta).ToListAsync(ct);
-        ctx.HorasBizneo = await _db.StagingBizneoHoras.AsNoTracking()
+        ctx.HorasBizneo = await _db.StagingBizneoAbsences.AsNoTracking()
             .Where(h => h.ProjectId == projectId && h.Fecha >= desde && h.Fecha <= hasta).ToListAsync(ct);
         var desdeUtc = DateTime.SpecifyKind(desde.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
         var hastaUtc = DateTime.SpecifyKind(hasta.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);

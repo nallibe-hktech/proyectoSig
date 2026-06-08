@@ -47,7 +47,7 @@ public class StagingBizneoEmpleado : IStagingRow
     public string? ErrorProcesamiento { get; set; }
 }
 
-public class StagingBizneoHora : IStagingRow
+public class StagingBizneoAbsence : IStagingRow
 {
     public int Id { get; set; }
     public string RegistroIdExterno { get; set; } = null!;

@@ -264,8 +264,8 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.HorasBizneo.AddRange(new[]
         {
-            new StagingBizneoHora { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Horas = 8m, PayloadJson = "{}", RegistroIdExterno = "r1", Hash = "h" },
-            new StagingBizneoHora { Fecha = new DateOnly(2026, 3, 6), UserId = 1, ProjectId = 100, Horas = 6m, PayloadJson = "{}", RegistroIdExterno = "r2", Hash = "h" },
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Horas = 8m, PayloadJson = "{}", RegistroIdExterno = "r1", Hash = "h" },
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 6), UserId = 1, ProjectId = 100, Horas = 6m, PayloadJson = "{}", RegistroIdExterno = "r2", Hash = "h" },
         });
         loader.Variables.Add(new Variable { Id = 4, Nombre = "TarifaHora", QuestionIdExterno = "q4", MapeoValoresJson = """[{"respuesta":"default","valor":18.5}]""" });
         var concept = CreateConcept("""
@@ -333,8 +333,8 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.HorasBizneo.AddRange(new[]
         {
-            new StagingBizneoHora { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Horas = 8m, PayloadJson = "{}", RegistroIdExterno = "r1", Hash = "h" },
-            new StagingBizneoHora { Fecha = new DateOnly(2026, 3, 5), UserId = 2, ProjectId = 100, Horas = 4m, PayloadJson = "{}", RegistroIdExterno = "r2", Hash = "h" },
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Horas = 8m, PayloadJson = "{}", RegistroIdExterno = "r1", Hash = "h" },
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 2, ProjectId = 100, Horas = 4m, PayloadJson = "{}", RegistroIdExterno = "r2", Hash = "h" },
         });
         var concept = CreateConcept("""{"type":"Aggregate","op":"Sum","field":"Horas","source":{"type":"Source","entity":"HorasBizneo","filters":[]}}""");
         var r = await sut.EvaluateAsync(concept, CreateClosure(), recursoId: 1, CancellationToken.None);
@@ -368,7 +368,7 @@ public class CalculationEngineTests
     {
         public List<StagingPayHawkGasto> Gastos { get; } = new();
         public List<StagingCeleroVisita> Visitas { get; } = new();
-        public List<StagingBizneoHora> HorasBizneo { get; } = new();
+        public List<StagingBizneoAbsence> HorasBizneo { get; } = new();
         public List<StagingIntratimeFichaje> Fichajes { get; } = new();
         public List<Variable> Variables { get; } = new();
 

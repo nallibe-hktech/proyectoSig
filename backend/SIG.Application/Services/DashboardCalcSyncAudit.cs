@@ -115,7 +115,7 @@ public class SyncService : ISyncService
     private readonly ISgpvClient _sgpv;
     private readonly IStagingRepository<StagingCeleroVisita> _celeroRepo;
     private readonly IStagingRepository<StagingBizneoEmpleado> _empRepo;
-    private readonly IStagingRepository<StagingBizneoHora> _horaRepo;
+    private readonly IStagingRepository<StagingBizneoAbsence> _absenceRepo;
     private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo;
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo;
     private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo;
@@ -129,7 +129,7 @@ public class SyncService : ISyncService
         ICeleroClient celero, IBizneoClient bizneo, IIntratimeClient intratime, IPayHawkClient payhawk, ISgpvClient sgpv,
         IStagingRepository<StagingCeleroVisita> celeroRepo,
         IStagingRepository<StagingBizneoEmpleado> empRepo,
-        IStagingRepository<StagingBizneoHora> horaRepo,
+        IStagingRepository<StagingBizneoAbsence> absenceRepo,
         IStagingRepository<StagingIntratimeFichaje> ficRepo,
         IStagingRepository<StagingPayHawkGasto> gastoRepo,
         IStagingRepository<StagingSgpvVisita> sgpvRepo,
@@ -149,7 +149,7 @@ public class SyncService : ISyncService
         _projectRepo = projectRepo;
         _actionRepo = actionRepo;
         _empRepo = empRepo;
-        _horaRepo = horaRepo;
+        _absenceRepo = absenceRepo;
         _ficRepo = ficRepo;
         _gastoRepo = gastoRepo;
         _sgpvRepo = sgpvRepo;
@@ -254,22 +254,22 @@ public class SyncService : ISyncService
                     ins++;
                 }
                 await _empRepo.SaveChangesAsync(ct);
-                var horas = await _bizneo.GetHorasAsync(desde, hasta, ct);
-                foreach (var h in horas)
+                var absences = await _bizneo.GetAbsencesAsync(desde, hasta, ct);
+                foreach (var a in absences)
                 {
-                    var json = JsonSerializer.Serialize(h);
+                    var json = JsonSerializer.Serialize(a);
                     var hash = Sha256(json);
-                    if (await _horaRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
-                    await _horaRepo.AddRangeAsync(new[] { new StagingBizneoHora
+                    if (await _absenceRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _absenceRepo.AddRangeAsync(new[] { new StagingBizneoAbsence
                     {
-                        RegistroIdExterno = h.RegistroIdExterno, UserId = h.UserId, ProjectId = h.ProjectId,
-                        Fecha = h.Fecha, Horas = h.Horas,
+                        RegistroIdExterno = a.RegistroIdExterno, UserId = a.UserId, ProjectId = a.ProjectId,
+                        Fecha = a.Fecha, Horas = a.Horas,
                         PayloadJson = json, Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
                     } }, ct);
                     ins++;
                 }
-                await _horaRepo.SaveChangesAsync(ct);
+                await _absenceRepo.SaveChangesAsync(ct);
                 break;
             }
             case "intratime":

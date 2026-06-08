@@ -36,7 +36,7 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<StagingCeleroVisita> StagingCeleroVisitas => Set<StagingCeleroVisita>();
     public DbSet<StagingBizneoEmpleado> StagingBizneoEmpleados => Set<StagingBizneoEmpleado>();
-    public DbSet<StagingBizneoHora> StagingBizneoHoras => Set<StagingBizneoHora>();
+    public DbSet<StagingBizneoAbsence> StagingBizneoAbsences => Set<StagingBizneoAbsence>();
     public DbSet<StagingIntratimeFichaje> StagingIntratimeFichajes => Set<StagingIntratimeFichaje>();
     public DbSet<StagingPayHawkGasto> StagingPayHawkGastos => Set<StagingPayHawkGasto>();
     public DbSet<CeleroResourceMapping> CeleroResourceMappings => Set<CeleroResourceMapping>();

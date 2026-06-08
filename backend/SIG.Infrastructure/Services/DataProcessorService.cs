@@ -204,18 +204,18 @@ public class DataProcessorService : IDataProcessorService
 
     /// <summary>
     /// Valida y marca como procesados los registros de otros sistemas
-    /// (horas, gastos, fiches, viajes) que no tienen mapeo directo a tablas productivas
+    /// (ausencias, gastos, fiches, viajes) que no tienen mapeo directo a tablas productivas
     /// </summary>
     public async Task<(int Processed, int Errors)> ProcessHorasYGastosAsync(CancellationToken ct)
     {
-        // Procesar horas Bizneo
-        var horasPendientes = await _db.StagingBizneoHoras
+        // Procesar ausencias Bizneo
+        var absencesPendientes = await _db.StagingBizneoAbsences
             .Where(x => !x.FlagProcesado && x.UserId > 0 && x.ProjectId > 0)
             .ToListAsync(ct);
 
-        foreach (var h in horasPendientes)
+        foreach (var a in absencesPendientes)
         {
-            h.FlagProcesado = true;
+            a.FlagProcesado = true;
         }
 
         // Procesar gastos PayHawk
@@ -248,7 +248,7 @@ public class DataProcessorService : IDataProcessorService
             v.FlagProcesado = true;
         }
 
-        var total = horasPendientes.Count + gastosPendientes.Count + fichajesPendientes.Count + viajesPendientes.Count;
+        var total = absencesPendientes.Count + gastosPendientes.Count + fichajesPendientes.Count + viajesPendientes.Count;
         await _db.SaveChangesAsync(ct);
         return (total, 0);
     }

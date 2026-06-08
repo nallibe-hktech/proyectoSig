@@ -358,7 +358,7 @@ public class DataSeeder : ISeedService
     {
         Randomizer.Seed = new Random(Seed);
         var stagingVisitas = new List<StagingCeleroVisita>();
-        var stagingHoras = new List<StagingBizneoHora>();
+        var stagingHoras = new List<StagingBizneoAbsence>();
         var stagingEmps = new List<StagingBizneoEmpleado>();
         var stagingFichajes = new List<StagingIntratimeFichaje>();
         var stagingGastos = new List<StagingPayHawkGasto>();
@@ -395,7 +395,7 @@ public class DataSeeder : ISeedService
         }
         _db.StagingBizneoEmpleados.AddRange(stagingEmps);
         _db.StagingCeleroVisitas.AddRange(stagingVisitas);
-        _db.StagingBizneoHoras.AddRange(stagingHoras);
+        _db.StagingBizneoAbsences.AddRange(stagingHoras);
         _db.StagingIntratimeFichajes.AddRange(stagingFichajes);
         _db.StagingPayHawkGastos.AddRange(stagingGastos);
         await _db.SaveChangesAsync(ct);
@@ -425,23 +425,23 @@ public class DataSeeder : ISeedService
         return list;
     }
 
-    private static List<StagingBizneoHora> GenerateHoras(Project p, Period period, List<User> users, int hashOffset)
+    private static List<StagingBizneoAbsence> GenerateHoras(Project p, Period period, List<User> users, int hashOffset)
     {
-        var list = new List<StagingBizneoHora>();
+        var list = new List<StagingBizneoAbsence>();
         int num = 8 + (p.Id + period.Id) % 5;
         for (int i = 0; i < num; i++)
         {
             var rec = users.Skip(11).Take(4).ToList()[i % 4];
             var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 1000).Next(0, 27));
             if (date > period.FechaFin) date = period.FechaFin;
-            var h = new StagingBizneoHora
+            var h = new StagingBizneoAbsence
             {
-                RegistroIdExterno = $"BH-{p.Id:00}{period.Id:00}{i:00}",
+                RegistroIdExterno = $"BA-{p.Id:00}{period.Id:00}{i:00}",
                 UserId = rec.Id, ProjectId = p.Id, Fecha = date, Horas = 4 + (i % 5),
                 FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
             };
             h.PayloadJson = JsonSerializer.Serialize(new { h.RegistroIdExterno, h.UserId, h.ProjectId, h.Fecha, h.Horas });
-            h.Hash = Sha256($"hora-{hashOffset + i}");
+            h.Hash = Sha256($"absence-{hashOffset + i}");
             list.Add(h);
         }
         return list;

@@ -50,7 +50,7 @@ public class BizneoClient : IBizneoClient
         }
     }
 
-    public async Task<IReadOnlyList<BizneoHoraDto>> GetHorasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
+    public async Task<IReadOnlyList<BizneoAbsenceDto>> GetAbsencesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
         try
         {
@@ -59,9 +59,8 @@ public class BizneoClient : IBizneoClient
             var data = await _httpClient.GetFromJsonAsync<BizneoAbsencesResponse>(url, ct);
             var count = data?.Absences?.Count ?? 0;
             _logger?.LogInformation($"[Bizneo] Respuesta: {count} ausencias");
-            // Mapper simple: convertir absencias a horas (mismo DTO por ahora)
-            if (data?.Absences == null) return Array.Empty<BizneoHoraDto>();
-            return data.Absences.Select(a => new BizneoHoraDto(
+            if (data?.Absences == null) return Array.Empty<BizneoAbsenceDto>();
+            return data.Absences.Select(a => new BizneoAbsenceDto(
                 a.Id?.ToString() ?? "",
                 a.UserId,
                 0,
@@ -72,7 +71,7 @@ public class BizneoClient : IBizneoClient
         catch (Exception ex)
         {
             _logger?.LogError($"[Bizneo] Error: {ex.Message}");
-            return Array.Empty<BizneoHoraDto>();
+            return Array.Empty<BizneoAbsenceDto>();
         }
     }
 

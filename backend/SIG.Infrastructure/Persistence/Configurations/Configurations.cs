@@ -361,9 +361,9 @@ public class StagingBizneoEmpleadoConfiguration : IEntityTypeConfiguration<Stagi
     }
 }
 
-public class StagingBizneoHoraConfiguration : IEntityTypeConfiguration<StagingBizneoHora>
+public class StagingBizneoAbsenceConfiguration : IEntityTypeConfiguration<StagingBizneoAbsence>
 {
-    public void Configure(EntityTypeBuilder<StagingBizneoHora> b)
+    public void Configure(EntityTypeBuilder<StagingBizneoAbsence> b)
     {
         b.HasIndex(s => s.Hash).IsUnique();
         b.Property(s => s.Hash).HasMaxLength(100).IsRequired();

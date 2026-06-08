@@ -77,18 +77,18 @@ public class BizneoFakeClient : IBizneoClient
         return Task.FromResult<IReadOnlyList<BizneoEmpleadoDto>>(list);
     }
 
-    public Task<IReadOnlyList<BizneoHoraDto>> GetHorasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
+    public Task<IReadOnlyList<BizneoAbsenceDto>> GetAbsencesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
-        var faker = new Faker<BizneoHoraDto>()
-            .CustomInstantiator(f => new BizneoHoraDto(
-                $"BH-{f.Random.AlphaNumeric(8).ToUpper()}",
+        var faker = new Faker<BizneoAbsenceDto>()
+            .CustomInstantiator(f => new BizneoAbsenceDto(
+                $"BA-{f.Random.AlphaNumeric(8).ToUpper()}",
                 f.Random.Int(1, 15),
                 f.Random.Int(1, 8),
                 DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue))),
                 Math.Round(f.Random.Decimal(1, 10), 2)
             ));
         var list = faker.Generate(80);
-        return Task.FromResult<IReadOnlyList<BizneoHoraDto>>(list);
+        return Task.FromResult<IReadOnlyList<BizneoAbsenceDto>>(list);
     }
 }
 
