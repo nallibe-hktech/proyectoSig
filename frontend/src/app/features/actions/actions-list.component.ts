@@ -1,14 +1,18 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, switchMap, startWith } from 'rxjs/operators';
 import { ActionService } from '../../core/api/actions.service';
 import { ActionListItemDto } from '../../models/dtos';
 
 @Component({
   selector: 'app-actions-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, ReactiveFormsModule, MatIconModule, MatPaginatorModule],
   template: `
     <div class="sig-list-page">
       <div class="sig-list-topbar">
@@ -27,24 +31,10 @@ import { ActionListItemDto } from '../../models/dtos';
         <div class="sig-filter-bar">
           <div class="sig-search-wrap">
             <mat-icon>search</mat-icon>
-            <input class="sig-search-input" [(ngModel)]="searchQ" placeholder="Buscar accion..." (input)="onFilter()"/>
+            <input class="sig-search-input" [formControl]="searchCtrl" placeholder="Buscar acción, proyecto, departamento..."/>
           </div>
-          <select class="sig-select" [(ngModel)]="filterProyecto" (change)="onFilter()">
-            <option value="">Proyecto</option>
-            <option *ngFor="let p of proyectos" [value]="p">{{p}}</option>
-          </select>
-          <select class="sig-select" [(ngModel)]="filterCliente" (change)="onFilter()">
-            <option value="">Cliente</option>
-            <option *ngFor="let c of clientes" [value]="c">{{c}}</option>
-          </select>
-          <select class="sig-select" [(ngModel)]="filterEstado" (change)="onFilter()">
-            <option value="">Estado</option>
-            <option value="Activa">Activa</option>
-            <option value="Inactiva">Inactiva</option>
-          </select>
-          <button class="sig-btn-filter" (click)="onFilter()">Filtrar</button>
-          <button class="sig-btn-limpiar" (click)="clearFilters()">Limpiar</button>
-          <span class="sig-filter-right">{{ filtered().length }} acciones</span>
+          <button class="sig-btn-limpiar" (click)="clearSearch()">Limpiar</button>
+          <span class="sig-filter-right">{{ items().length }} acciones de {{ total() }}</span>
         </div>
       </div>
 
@@ -62,7 +52,7 @@ import { ActionListItemDto } from '../../models/dtos';
               </tr>
             </thead>
             <tbody>
-              @for (a of filtered(); track a.id) {
+              @for (a of items(); track a.id) {
                 <tr (click)="selectRow(a)" [class.selected]="selected()?.id === a.id">
                   <td>
                     <div class="col-id">{{ a.id }}</div>
@@ -88,12 +78,12 @@ import { ActionListItemDto } from '../../models/dtos';
               }
             </tbody>
           </table>
-          <div class="sig-pagination">
-            <span>Mostrando {{ filtered().length }} de {{ total() }} acciones</span>
-            <button class="sig-page-btn" disabled>&#8249;</button>
-            <div class="sig-page-current">1</div>
-            <button class="sig-page-btn" disabled>&#8250;</button>
-          </div>
+          <mat-paginator
+            [length]="total()"
+            [pageSize]="pageSize()"
+            [pageSizeOptions]="[10, 25, 50]"
+            (page)="onPageChange($event)">
+          </mat-paginator>
         </div>
 
         @if (selected()) {
@@ -259,34 +249,127 @@ import { ActionListItemDto } from '../../models/dtos';
 })
 export class ActionsListComponent implements OnInit {
   private readonly svc = inject(ActionService);
-  protected readonly actions  = signal<ActionListItemDto[]>([]);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+
+  protected readonly searchCtrl = new FormControl('', { nonNullable: true });
+  protected readonly items = signal<ActionListItemDto[]>([]);
   protected readonly selected = signal<ActionListItemDto | null>(null);
-  protected searchQ      = '';
-  protected filterProyecto = '';
-  protected filterCliente  = '';
-  protected filterEstado   = '';
-  protected proyectos: string[] = [];
-  protected clientes:  string[] = [];
-  protected readonly total    = computed(() => this.actions().length);
-  protected readonly filtered = computed(() => {
-    let list = this.actions();
-    if (this.searchQ) list = list.filter(a => a.nombre.toLowerCase().includes(this.searchQ.toLowerCase()));
-    if (this.filterProyecto) list = list.filter(a => a.projectNombre === this.filterProyecto);
-    return list;
-  });
+  protected readonly total = signal(0);
+  protected readonly page = signal(1);
+  protected readonly pageSize = signal(25);
+  protected readonly loading = signal(false);
+
   ngOnInit(): void {
-    this.svc.list(1, 100).subscribe({
-      next: (res: any) => {
-        const d: ActionListItemDto[] = res?.items ?? res ?? [];
-        this.actions.set(d);
-        this.proyectos = [...new Set(d.map(a => a.projectNombre).filter(Boolean))] as string[];
+    this.searchCtrl.valueChanges
+      .pipe(
+        startWith(''),
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap(search => {
+          this.loading.set(true);
+          this.page.set(1);
+          return this.svc.list(this.page(), this.pageSize(), undefined, search || undefined);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (res) => {
+          this.items.set(res?.items ?? []);
+          this.total.set(res?.total ?? 0);
+          if (!this.selected() && res?.items?.length) {
+            this.selected.set(res.items[0]);
+          }
+          this.loading.set(false);
+        },
+        error: (err) => {
+          console.error('Error cargando acciones:', err);
+          this.items.set([]);
+          this.loading.set(false);
+        }
+      });
+
+    this.loadInitial();
+  }
+
+  private loadInitial(): void {
+    this.loading.set(true);
+    this.svc.list(this.page(), this.pageSize(), undefined, this.searchCtrl.value || undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.items.set(res?.items ?? []);
+          this.total.set(res?.total ?? 0);
+          if (!this.selected() && res?.items?.length) {
+            this.selected.set(res.items[0]);
+          }
+          this.loading.set(false);
+        },
+        error: (err) => {
+          console.error('Error cargando acciones:', err);
+          this.items.set([]);
+          this.loading.set(false);
+        }
+      });
+  }
+
+  protected onPageChange(event: PageEvent): void {
+    this.page.set(event.pageIndex + 1);
+    this.pageSize.set(event.pageSize);
+    this.loadPage();
+  }
+
+  private loadPage(): void {
+    this.loading.set(true);
+    this.svc.list(this.page(), this.pageSize(), undefined, this.searchCtrl.value || undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.items.set(res?.items ?? []);
+          this.total.set(res?.total ?? 0);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          console.error('Error cargando acciones:', err);
+          this.items.set([]);
+          this.loading.set(false);
+        }
+      });
+  }
+
+  protected clearSearch(): void {
+    this.searchCtrl.reset('');
+  }
+
+  protected selectRow(a: ActionListItemDto): void {
+    this.selected.set(a);
+  }
+
+  protected openNew(): void {
+    this.router.navigate(['/actions/nuevo']);
+  }
+
+  protected openEdit(a: ActionListItemDto): void {
+    this.router.navigate([`/actions/${a.id}/editar`]);
+  }
+
+  protected deleteRow(a: ActionListItemDto): void {
+    if (!confirm(`¿Estás seguro de que deseas eliminar la acción "${a.nombre}"?`)) {
+      return;
+    }
+    this.svc.delete(a.id).subscribe({
+      next: () => {
+        this.selected.set(null);
+        this.loadPage();
       },
-      error: () => this.actions.set([]),
+      error: (err) => {
+        console.error('Error eliminando acción:', err);
+        alert('Error al eliminar la acción');
+      }
     });
   }
-  protected selectRow(a: ActionListItemDto): void { this.selected.set(a); }
-  protected onFilter(): void { }
-  protected clearFilters(): void { this.searchQ = ''; this.filterProyecto = ''; this.filterCliente = ''; this.filterEstado = ''; }
-  protected openNew():  void { }
-  protected exportCsv(): void { }
+
+  protected exportCsv(): void {
+    // TODO: implementar exportación CSV
+  }
 }
