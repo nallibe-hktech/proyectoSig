@@ -225,49 +225,61 @@ public class IntratimeClient : IIntratimeClient
                 return Array.Empty<IntratimeFichajeDto>();
             }
 
-            // 2. EXTRAER TOKEN DEL PRIMER USUARIO
-            var firstUser = usersArray[0];
-            if (!firstUser.TryGetProperty("USER_TOKEN", out var tokenElem))
-            {
-                _logger.LogError("[Intratime] USER_TOKEN no encontrado en respuesta de login");
-                return Array.Empty<IntratimeFichajeDto>();
-            }
-
-            var userToken = tokenElem.GetString();
-            _logger.LogInformation($"[Intratime] ✅ Token de usuario obtenido: {userToken?.Substring(0, 20)}...");
-
-            // 3. OBTENER FICHAJES
+            // 2. ITERAR SOBRE TODOS LOS USUARIOS Y OBTENER SUS FICHAJES
+            var allClockings = new List<IntratimeClockingDto>();
             var clockingsUrl = "https://newapi.intratime.es/api/user/clockings";
             var fromDateTime = desde.ToDateTime(TimeOnly.MinValue);
             var fromEncoded = Uri.EscapeDataString(fromDateTime.ToString("yyyy-MM-dd HH:mm:ss"));
             var clockingsUrlWithParams = $"{clockingsUrl}?from={fromEncoded}&type=0,1,2,3";
 
-            var clockingsRequest = new HttpRequestMessage(HttpMethod.Get, clockingsUrlWithParams);
-            clockingsRequest.Headers.Add("Accept", "application/vnd.apiintratime.v1+json");
-            clockingsRequest.Headers.Add("token", userToken);
+            _logger.LogInformation($"[Intratime] Iterando sobre {usersArray.GetArrayLength()} usuarios...");
 
-            var clockingsResponse = await _httpClient.SendAsync(clockingsRequest, ct);
-            if (!clockingsResponse.IsSuccessStatusCode)
+            for (int i = 0; i < usersArray.GetArrayLength(); i++)
             {
-                _logger.LogError($"[Intratime] GetClockings falló: {clockingsResponse.StatusCode}");
+                var user = usersArray[i];
+                if (!user.TryGetProperty("USER_TOKEN", out var tokenElem))
+                    continue;
+
+                var userToken = tokenElem.GetString();
+                if (string.IsNullOrEmpty(userToken))
+                    continue;
+
+                try
+                {
+                    var clockingsRequest = new HttpRequestMessage(HttpMethod.Get, clockingsUrlWithParams);
+                    clockingsRequest.Headers.Add("Accept", "application/vnd.apiintratime.v1+json");
+                    clockingsRequest.Headers.Add("token", userToken);
+
+                    var clockingsResponse = await _httpClient.SendAsync(clockingsRequest, ct);
+                    if (!clockingsResponse.IsSuccessStatusCode)
+                        continue;
+
+                    var clockingsJson = await clockingsResponse.Content.ReadAsStringAsync(ct);
+                    var clockingsArray = JsonSerializer.Deserialize<List<IntratimeClockingDto>>(clockingsJson);
+
+                    if (clockingsArray != null && clockingsArray.Count > 0)
+                    {
+                        allClockings.AddRange(clockingsArray);
+                        _logger.LogInformation($"[Intratime] Usuario {i}: {clockingsArray.Count} eventos obtenidos");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"[Intratime] Error obteniendo fichajes para usuario {i}: {ex.Message}");
+                }
+            }
+
+            if (allClockings.Count == 0)
+            {
+                _logger.LogWarning($"[Intratime] GetFichajes: 0 eventos obtenidos después de iterar {usersArray.GetArrayLength()} usuarios");
                 return Array.Empty<IntratimeFichajeDto>();
             }
 
-            var clockingsJson = await clockingsResponse.Content.ReadAsStringAsync(ct);
-            _logger.LogInformation($"[Intratime] Response JSON: {clockingsJson.Substring(0, Math.Min(500, clockingsJson.Length))}");
+            var clockingsArray2 = allClockings;
+            _logger.LogInformation($"[Intratime] ✅ Total {clockingsArray2.Count} eventos obtenidos de todos los usuarios");
 
-            var clockingsArray = JsonSerializer.Deserialize<List<IntratimeClockingDto>>(clockingsJson);
-
-            if (clockingsArray == null || clockingsArray.Count == 0)
-            {
-                _logger.LogWarning($"[Intratime] GetFichajes: 0 eventos obtenidos. Response was: {clockingsJson}");
-                return Array.Empty<IntratimeFichajeDto>();
-            }
-
-            _logger.LogInformation($"[Intratime] ✅ {clockingsArray.Count} eventos obtenidos");
-
-            // 4. AGRUPAR POR USUARIO+DÍA Y EMPAREJAR ENTRADA/SALIDA
-            var fichajes = clockingsArray
+            // 3. AGRUPAR POR USUARIO+DÍA Y EMPAREJAR ENTRADA/SALIDA
+            var fichajes = clockingsArray2
                 .Where(c => c.USER_ID.HasValue && !string.IsNullOrEmpty(c.CLOCKING_TIME))
                 .GroupBy(c => (UserId: c.USER_ID!.Value, Dia: DateOnly.FromDateTime(DateTime.Parse(c.CLOCKING_TIME))))
                 .SelectMany(g =>
