@@ -61,7 +61,7 @@ public class DataSeeder : ISeedService
                 closures,
                 staging_pay_hawk_gastos,
                 staging_intratime_fichajes,
-                staging_bizneo_horas,
+                staging_bizneo_absences,
                 staging_bizneo_empleados,
                 staging_celero_visitas,
                 refresh_tokens,

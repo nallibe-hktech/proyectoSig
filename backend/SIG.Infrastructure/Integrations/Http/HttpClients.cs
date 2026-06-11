@@ -205,7 +205,7 @@ public class IntratimeClient : IIntratimeClient
             var loginBody = new StringContent(
                 $"user={Uri.EscapeDataString(_userEmail)}&password={Uri.EscapeDataString(_userPassword)}",
                 Encoding.UTF8,
-                "application/x-www-form-urlencoded; charset:utf8"
+                "application/x-www-form-urlencoded"
             );
 
             var loginResponse = await _httpClient.PostAsync(loginUrl, loginBody, ct);
