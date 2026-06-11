@@ -19,7 +19,7 @@ public class MediapostExcelClient : IMediapostClient
     {
         _logger = logger;
         // Ruta de los archivos de ejemplo (en producción sería carpeta SharePoint o API HTTP)
-        _basePath = @"C:\Projects\workspaces\SIG-es\Mediapost";
+        _basePath = @"C:\Projects\workspaces\SIG-es\Mediapost\Mediapost\Documentación";
     }
 
     public async Task<IReadOnlyList<MediapostPedidoDto>> GetPedidosAsync(DateTime desde, DateTime hasta, CancellationToken ct)
