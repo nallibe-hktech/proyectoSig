@@ -238,7 +238,8 @@ public class IntratimeClient : IIntratimeClient
 
             // 3. OBTENER FICHAJES
             var clockingsUrl = "https://newapi.intratime.es/api/user/clockings";
-            var clockingsUrlWithParams = $"{clockingsUrl}?from={desde:yyyy-MM-dd}&to={hasta:yyyy-MM-dd}&type=0,1,2,3";
+            var fromEncoded = Uri.EscapeDataString(desde.ToString("yyyy-MM-dd HH:mm:ss"));
+            var clockingsUrlWithParams = $"{clockingsUrl}?from={fromEncoded}&type=0,1,2,3";
 
             var clockingsRequest = new HttpRequestMessage(HttpMethod.Get, clockingsUrlWithParams);
             clockingsRequest.Headers.Add("Accept", "application/vnd.apiintratime.v1+json");
