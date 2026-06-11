@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SIG.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c660c689ebdc712c9f5cad5c4cec26ab70df8a6a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4e22fbecf1183a8ccba42341b938eff7300e20e0")]
 [assembly: System.Reflection.AssemblyProductAttribute("SIG.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SIG.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

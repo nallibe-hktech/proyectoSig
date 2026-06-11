@@ -279,29 +279,41 @@ public class IntratimeClient : IIntratimeClient
             _logger.LogInformation($"[Intratime] ✅ Total {clockingsArray2.Count} eventos obtenidos de todos los usuarios");
 
             // 3. AGRUPAR POR USUARIO+DÍA Y EMPAREJAR ENTRADA/SALIDA
-            var fichajes = clockingsArray2
+            var filtered = clockingsArray2
                 .Where(c => c.USER_ID.HasValue && !string.IsNullOrEmpty(c.CLOCKING_TIME))
+                .ToList();
+            _logger.LogInformation($"[Intratime] Después de filtrar: {filtered.Count} eventos válidos");
+
+            var grouped = filtered
                 .GroupBy(c => (UserId: c.USER_ID!.Value, Dia: DateOnly.FromDateTime(DateTime.Parse(c.CLOCKING_TIME))))
-                .SelectMany(g =>
+                .ToList();
+            _logger.LogInformation($"[Intratime] Después de agrupar: {grouped.Count} grupos usuario+día");
+
+            var fichajes = new List<IntratimeFichajeDto>();
+            foreach (var g in grouped)
+            {
+                try
                 {
                     var ordered = g.OrderBy(c => DateTime.Parse(c.CLOCKING_TIME)).ToList();
-                    if (ordered.Count == 0) return Enumerable.Empty<IntratimeFichajeDto>();
+                    if (ordered.Count == 0) continue;
 
                     var entrada = ordered.FirstOrDefault(c => c.CLOCKING_IN_OUT == 0) ?? ordered.First();
                     var salida = ordered.LastOrDefault(c => c.CLOCKING_IN_OUT == 1);
 
-                    return new[]
-                    {
-                        new IntratimeFichajeDto(
-                            entrada.CLOCKING_ID,
-                            entrada.USER_ID!.Value.ToString(),
-                            DateTime.Parse(entrada.CLOCKING_TIME),
-                            salida != null ? DateTime.Parse(salida.CLOCKING_TIME) : null
-                        )
-                    };
-                })
-                .ToList();
+                    fichajes.Add(new IntratimeFichajeDto(
+                        entrada.CLOCKING_ID,
+                        entrada.USER_ID!.Value.ToString(),
+                        DateTime.Parse(entrada.CLOCKING_TIME),
+                        salida != null ? DateTime.Parse(salida.CLOCKING_TIME) : null
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"[Intratime] Error procesando grupo usuario {g.Key.UserId}: {ex.Message}");
+                }
+            }
 
+            _logger.LogInformation($"[Intratime] ✅ Fichajes finales creados: {fichajes.Count}");
             return fichajes;
         }
         catch (Exception ex)
