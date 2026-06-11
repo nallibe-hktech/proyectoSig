@@ -256,7 +256,7 @@ public class IntratimeClient : IIntratimeClient
             var clockingsJson = await clockingsResponse.Content.ReadAsStringAsync(ct);
             _logger.LogInformation($"[Intratime] Response JSON: {clockingsJson.Substring(0, Math.Min(500, clockingsJson.Length))}");
 
-            var clockingsArray = JsonSerializer.Deserialize<List<IntratimeClockingEventDto>>(clockingsJson);
+            var clockingsArray = JsonSerializer.Deserialize<List<IntratimeClockingDto>>(clockingsJson);
 
             if (clockingsArray == null || clockingsArray.Count == 0)
             {
@@ -268,23 +268,23 @@ public class IntratimeClient : IIntratimeClient
 
             // 4. AGRUPAR POR USUARIO+DÍA Y EMPAREJAR ENTRADA/SALIDA
             var fichajes = clockingsArray
-                .Where(c => c.INOUT_USER_ID.HasValue && !string.IsNullOrEmpty(c.INOUT_DATE))
-                .GroupBy(c => (UserId: c.INOUT_USER_ID!.Value, Dia: DateOnly.FromDateTime(DateTime.Parse(c.INOUT_DATE))))
+                .Where(c => c.USER_ID.HasValue && !string.IsNullOrEmpty(c.CLOCKING_TIME))
+                .GroupBy(c => (UserId: c.USER_ID!.Value, Dia: DateOnly.FromDateTime(DateTime.Parse(c.CLOCKING_TIME))))
                 .SelectMany(g =>
                 {
-                    var ordered = g.OrderBy(c => DateTime.Parse(c.INOUT_DATE)).ToList();
+                    var ordered = g.OrderBy(c => DateTime.Parse(c.CLOCKING_TIME)).ToList();
                     if (ordered.Count == 0) return Enumerable.Empty<IntratimeFichajeDto>();
 
-                    var entrada = ordered.First(c => c.INOUT_TYPE == 0) ?? ordered.First();
-                    var salida = ordered.LastOrDefault(c => c.INOUT_TYPE == 1);
+                    var entrada = ordered.FirstOrDefault(c => c.CLOCKING_IN_OUT == 0) ?? ordered.First();
+                    var salida = ordered.LastOrDefault(c => c.CLOCKING_IN_OUT == 1);
 
                     return new[]
                     {
                         new IntratimeFichajeDto(
-                            entrada.INOUT_ID?.ToString() ?? "",
-                            entrada.INOUT_USER_ID!.Value.ToString(),
-                            DateTime.Parse(entrada.INOUT_DATE),
-                            salida != null ? DateTime.Parse(salida.INOUT_DATE) : null
+                            entrada.CLOCKING_ID,
+                            entrada.USER_ID!.Value.ToString(),
+                            DateTime.Parse(entrada.CLOCKING_TIME),
+                            salida != null ? DateTime.Parse(salida.CLOCKING_TIME) : null
                         )
                     };
                 })
@@ -339,6 +339,8 @@ public class IntratimeClient : IIntratimeClient
         public string? CLOCKING_TIME { get; set; }
         [JsonPropertyName("CLOCKING_DEVICE")]
         public string? CLOCKING_DEVICE { get; set; }
+        [JsonPropertyName("CLOCKING_IN_OUT")]
+        public int? CLOCKING_IN_OUT { get; set; }  // 0=entrada, 1=salida
     }
 
     private class IntratimeClockingRequestResponse
