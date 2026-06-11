@@ -142,6 +142,19 @@ psql -h localhost -p 5433 -U postgres -d sig_plataforma_dev  # Connect directly
 4. **Migrations**: Create new, never modify applied. Delete unapplied with `Remove-Migration`
 5. **External APIs**: Staging tables + `DataProcessorService` → productive
 6. **Entity Configs**: `SIG.Infrastructure/Persistence/Configurations/`
+7. **DateTime & PostgreSQL** (**CRITICAL**): When persisting external data to `timestamp with time zone` columns, ALWAYS wrap DateTime with `DateTime.SpecifyKind(value, DateTimeKind.Utc)`. Npgsql requires Kind=Utc or sync will fail with "Cannot write DateTime with Kind=Unspecified". This applies to all sync operations in `SyncService` (DashboardCalcSyncAudit.cs).
+
+## Frontend: Auto-Sync on File Upload (11 June 2026)
+
+**Galán & Mediapost dashboards now auto-trigger sync after file upload** — users upload file → sync runs → data visible in tabs.
+
+**Implementation**:
+- Dashboard components inject `SyncService` (from `core/api/misc.service`) and `NotifyService` (from `core/notify.service`)
+- On successful upload, `uploadFile()` calls `syncManual()` which invokes `syncSvc.sync('galan'|'mediapost')`
+- Spinner appears during sync, toast shows "Sincronizado: X registros nuevos"
+- Manual "Sincronizar" button in page header allows re-sync without uploading
+- Files modified: `frontend/src/app/features/galan/components/galan-dashboard.component.ts` + same for mediapost
+- **Import paths**: NotifyService is at `core/notify.service` (NOT `core/services/notify.service`)
 
 ## Key Services
 

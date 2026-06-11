@@ -186,6 +186,11 @@ public class SyncService : ISyncService
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo;
     private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo;
     private readonly IStagingRepository<StagingSgpvProducto> _sgpvProductoRepo;
+    private readonly IStagingRepository<StagingGalanEntrada> _galanEntradaRepo;
+    private readonly IStagingRepository<StagingGalanSalida> _galanSalidaRepo;
+    private readonly IStagingRepository<StagingGalanStock> _galanStockRepo;
+    private readonly IStagingRepository<StagingMediapostPedido> _mediapostPedidoRepo;
+    private readonly IStagingRepository<StagingMediapostRecepcion> _mediapostRecepcionRepo;
     private readonly IUserRepository _userRepo;
     private readonly IProjectRepository _projectRepo;
     private readonly IActionRepository _actionRepo;
@@ -204,6 +209,11 @@ public class SyncService : ISyncService
         IStagingRepository<StagingPayHawkGasto> gastoRepo,
         IStagingRepository<StagingSgpvVisita> sgpvRepo,
         IStagingRepository<StagingSgpvProducto> sgpvProductoRepo,
+        IStagingRepository<StagingGalanEntrada> galanEntradaRepo,
+        IStagingRepository<StagingGalanSalida> galanSalidaRepo,
+        IStagingRepository<StagingGalanStock> galanStockRepo,
+        IStagingRepository<StagingMediapostPedido> mediapostPedidoRepo,
+        IStagingRepository<StagingMediapostRecepcion> mediapostRecepcionRepo,
         IUserRepository userRepo,
         IProjectRepository projectRepo,
         IActionRepository actionRepo,
@@ -229,6 +239,11 @@ public class SyncService : ISyncService
         _gastoRepo = gastoRepo;
         _sgpvRepo = sgpvRepo;
         _sgpvProductoRepo = sgpvProductoRepo;
+        _galanEntradaRepo = galanEntradaRepo;
+        _galanSalidaRepo = galanSalidaRepo;
+        _galanStockRepo = galanStockRepo;
+        _mediapostPedidoRepo = mediapostPedidoRepo;
+        _mediapostRecepcionRepo = mediapostRecepcionRepo;
         _mappingRepo = mappingRepo;
     }
 
@@ -633,10 +648,93 @@ public class SyncService : ISyncService
             {
                 var desdeG = DateTime.UtcNow.AddDays(-30);
                 var hastaG = DateTime.UtcNow;
+
+                // Entradas
                 var entradas = await _galan.GetEntradasAsync(desdeG, hastaG, ct);
+                foreach (var e in entradas)
+                {
+                    var json = JsonSerializer.Serialize(e);
+                    var hash = Sha256(json);
+                    if (await _galanEntradaRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _galanEntradaRepo.AddRangeAsync(new[] { new StagingGalanEntrada
+                    {
+                        CodigoArticulo = e.CodigoArticulo,
+                        CodigoDepartamento = e.CodigoDepartamento,
+                        CodigoFamilia = e.CodigoFamilia,
+                        Descripcion = e.Descripcion,
+                        Fecha = DateTime.SpecifyKind(e.Fecha, DateTimeKind.Utc),
+                        Unidades = e.Unidades,
+                        Empresa = e.Empresa,
+                        Almacen = e.Almacen,
+                        Celda = e.Celda,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _galanEntradaRepo.SaveChangesAsync(ct);
+
+                // Salidas
                 var salidas = await _galan.GetSalidasAsync(desdeG, hastaG, ct);
+                foreach (var s in salidas)
+                {
+                    var json = JsonSerializer.Serialize(s);
+                    var hash = Sha256(json);
+                    if (await _galanSalidaRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _galanSalidaRepo.AddRangeAsync(new[] { new StagingGalanSalida
+                    {
+                        Albaran = s.Albaran,
+                        NumeroPedidoTercero = s.NumeroPedidoTercero,
+                        CodigoArticulo = s.CodigoArticulo,
+                        CodigoDepartamento = s.CodigoDepartamento,
+                        CodigoFamilia = s.CodigoFamilia,
+                        Descripcion = s.Descripcion,
+                        Unidades = s.Unidades,
+                        CodigoTransporte = s.CodigoTransporte,
+                        Matricula = s.Matricula,
+                        Fecha = DateTime.SpecifyKind(s.Fecha, DateTimeKind.Utc),
+                        Destinatario = s.Destinatario,
+                        Almacen = s.Almacen,
+                        Celda = s.Celda,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _galanSalidaRepo.SaveChangesAsync(ct);
+
+                // Stock
                 var stock = await _galan.GetStockAsync(ct);
-                ins = entradas.Count + salidas.Count + stock.Count;
+                foreach (var st in stock)
+                {
+                    var json = JsonSerializer.Serialize(st);
+                    var hash = Sha256(json);
+                    if (await _galanStockRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _galanStockRepo.AddRangeAsync(new[] { new StagingGalanStock
+                    {
+                        CodigoArticulo = st.CodigoArticulo,
+                        CodigoDepartamento = st.CodigoDepartamento,
+                        CodigoFamilia = st.CodigoFamilia,
+                        CodigoCelda = st.CodigoCelda,
+                        StockB = st.StockB,
+                        StockA = st.StockA,
+                        Stock = st.Stock,
+                        Almacen = st.Almacen,
+                        Familia = st.Familia,
+                        SubFamilia = st.SubFamilia,
+                        Descripcion = st.Descripcion,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _galanStockRepo.SaveChangesAsync(ct);
                 break;
             }
             case "galan-entradas":
@@ -644,8 +742,31 @@ public class SyncService : ISyncService
                 var desdeG = DateTime.UtcNow.AddDays(-30);
                 var hastaG = DateTime.UtcNow;
                 var data = await _galan.GetEntradasAsync(desdeG, hastaG, ct);
-                // Sincronizando entradas de Galán
-                ins = data.Count;
+
+                foreach (var e in data)
+                {
+                    var json = JsonSerializer.Serialize(e);
+                    var hash = Sha256(json);
+                    if (await _galanEntradaRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _galanEntradaRepo.AddRangeAsync(new[] { new StagingGalanEntrada
+                    {
+                        CodigoArticulo = e.CodigoArticulo,
+                        CodigoDepartamento = e.CodigoDepartamento,
+                        CodigoFamilia = e.CodigoFamilia,
+                        Descripcion = e.Descripcion,
+                        Fecha = DateTime.SpecifyKind(e.Fecha, DateTimeKind.Utc),
+                        Unidades = e.Unidades,
+                        Empresa = e.Empresa,
+                        Almacen = e.Almacen,
+                        Celda = e.Celda,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _galanEntradaRepo.SaveChangesAsync(ct);
                 break;
             }
             case "galan-salidas":
@@ -653,24 +774,129 @@ public class SyncService : ISyncService
                 var desdeG = DateTime.UtcNow.AddDays(-30);
                 var hastaG = DateTime.UtcNow;
                 var data = await _galan.GetSalidasAsync(desdeG, hastaG, ct);
-                // Sincronizando salidas de Galán
-                ins = data.Count;
+
+                foreach (var s in data)
+                {
+                    var json = JsonSerializer.Serialize(s);
+                    var hash = Sha256(json);
+                    if (await _galanSalidaRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _galanSalidaRepo.AddRangeAsync(new[] { new StagingGalanSalida
+                    {
+                        Albaran = s.Albaran,
+                        NumeroPedidoTercero = s.NumeroPedidoTercero,
+                        CodigoArticulo = s.CodigoArticulo,
+                        CodigoDepartamento = s.CodigoDepartamento,
+                        CodigoFamilia = s.CodigoFamilia,
+                        Descripcion = s.Descripcion,
+                        Unidades = s.Unidades,
+                        CodigoTransporte = s.CodigoTransporte,
+                        Matricula = s.Matricula,
+                        Fecha = DateTime.SpecifyKind(s.Fecha, DateTimeKind.Utc),
+                        Destinatario = s.Destinatario,
+                        Almacen = s.Almacen,
+                        Celda = s.Celda,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _galanSalidaRepo.SaveChangesAsync(ct);
                 break;
             }
             case "galan-stock":
             {
                 var data = await _galan.GetStockAsync(ct);
-                // Sincronizando stock de Galán
-                ins = data.Count;
+
+                foreach (var st in data)
+                {
+                    var json = JsonSerializer.Serialize(st);
+                    var hash = Sha256(json);
+                    if (await _galanStockRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _galanStockRepo.AddRangeAsync(new[] { new StagingGalanStock
+                    {
+                        CodigoArticulo = st.CodigoArticulo,
+                        CodigoDepartamento = st.CodigoDepartamento,
+                        CodigoFamilia = st.CodigoFamilia,
+                        CodigoCelda = st.CodigoCelda,
+                        StockB = st.StockB,
+                        StockA = st.StockA,
+                        Stock = st.Stock,
+                        Almacen = st.Almacen,
+                        Familia = st.Familia,
+                        SubFamilia = st.SubFamilia,
+                        Descripcion = st.Descripcion,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _galanStockRepo.SaveChangesAsync(ct);
                 break;
             }
             case "mediapost":
             {
                 var desdeM = DateTime.UtcNow.AddDays(-30);
                 var hastaM = DateTime.UtcNow;
+
+                // Pedidos
                 var pedidos = await _mediapost.GetPedidosAsync(desdeM, hastaM, ct);
+                foreach (var p in pedidos)
+                {
+                    var json = JsonSerializer.Serialize(p);
+                    var hash = Sha256(json);
+                    if (await _mediapostPedidoRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _mediapostPedidoRepo.AddRangeAsync(new[] { new StagingMediapostPedido
+                    {
+                        PedidoId = p.PedidoId,
+                        ReferenciaPedido = p.ReferenciaPedido,
+                        CodigoArticulo = p.CodigoArticulo,
+                        FechaPedido = DateTime.SpecifyKind(p.FechaPedido, DateTimeKind.Utc),
+                        Cantidad = p.Cantidad,
+                        Estado = p.Estado,
+                        DestinatarioNombre = p.DestinatarioNombre,
+                        DireccionEntrega = p.DireccionEntrega,
+                        CodigoPostal = p.CodigoPostal,
+                        Ciudad = p.Ciudad,
+                        Provincia = p.Provincia,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _mediapostPedidoRepo.SaveChangesAsync(ct);
+
+                // Recepciones
                 var recepciones = await _mediapost.GetRecepcionesAsync(desdeM, hastaM, ct);
-                ins = pedidos.Count + recepciones.Count;
+                foreach (var r in recepciones)
+                {
+                    var json = JsonSerializer.Serialize(r);
+                    var hash = Sha256(json);
+                    if (await _mediapostRecepcionRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _mediapostRecepcionRepo.AddRangeAsync(new[] { new StagingMediapostRecepcion
+                    {
+                        RecepcionId = r.RecepcionId,
+                        ReferenciaRecepcion = r.ReferenciaRecepcion,
+                        CodigoArticulo = r.CodigoArticulo,
+                        FechaRecepcion = DateTime.SpecifyKind(r.FechaRecepcion, DateTimeKind.Utc),
+                        Cantidad = r.Cantidad,
+                        CantidadDañada = r.CantidadDañada,
+                        Estado = r.Estado,
+                        Almacen = r.Almacen,
+                        Observaciones = r.Observaciones,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _mediapostRecepcionRepo.SaveChangesAsync(ct);
                 break;
             }
             case "mediapost-pedidos":
@@ -678,8 +904,33 @@ public class SyncService : ISyncService
                 var desdeM = DateTime.UtcNow.AddDays(-30);
                 var hastaM = DateTime.UtcNow;
                 var data = await _mediapost.GetPedidosAsync(desdeM, hastaM, ct);
-                // Sincronizando pedidos de Mediapost
-                ins = data.Count;
+
+                foreach (var p in data)
+                {
+                    var json = JsonSerializer.Serialize(p);
+                    var hash = Sha256(json);
+                    if (await _mediapostPedidoRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _mediapostPedidoRepo.AddRangeAsync(new[] { new StagingMediapostPedido
+                    {
+                        PedidoId = p.PedidoId,
+                        ReferenciaPedido = p.ReferenciaPedido,
+                        CodigoArticulo = p.CodigoArticulo,
+                        FechaPedido = DateTime.SpecifyKind(p.FechaPedido, DateTimeKind.Utc),
+                        Cantidad = p.Cantidad,
+                        Estado = p.Estado,
+                        DestinatarioNombre = p.DestinatarioNombre,
+                        DireccionEntrega = p.DireccionEntrega,
+                        CodigoPostal = p.CodigoPostal,
+                        Ciudad = p.Ciudad,
+                        Provincia = p.Provincia,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _mediapostPedidoRepo.SaveChangesAsync(ct);
                 break;
             }
             case "mediapost-recepciones":
@@ -687,8 +938,31 @@ public class SyncService : ISyncService
                 var desdeM = DateTime.UtcNow.AddDays(-30);
                 var hastaM = DateTime.UtcNow;
                 var data = await _mediapost.GetRecepcionesAsync(desdeM, hastaM, ct);
-                // Sincronizando recepciones de Mediapost
-                ins = data.Count;
+
+                foreach (var r in data)
+                {
+                    var json = JsonSerializer.Serialize(r);
+                    var hash = Sha256(json);
+                    if (await _mediapostRecepcionRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _mediapostRecepcionRepo.AddRangeAsync(new[] { new StagingMediapostRecepcion
+                    {
+                        RecepcionId = r.RecepcionId,
+                        ReferenciaRecepcion = r.ReferenciaRecepcion,
+                        CodigoArticulo = r.CodigoArticulo,
+                        FechaRecepcion = DateTime.SpecifyKind(r.FechaRecepcion, DateTimeKind.Utc),
+                        Cantidad = r.Cantidad,
+                        CantidadDañada = r.CantidadDañada,
+                        Estado = r.Estado,
+                        Almacen = r.Almacen,
+                        Observaciones = r.Observaciones,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _mediapostRecepcionRepo.SaveChangesAsync(ct);
                 break;
             }
             case "a3innuva":

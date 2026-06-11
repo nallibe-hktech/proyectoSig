@@ -16,6 +16,8 @@ import { HttpClient } from '@angular/common/http';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MediapostService, MediapostPedidoDto, MediapostRecepcionDto } from '../services/mediapost.service';
+import { SyncService } from '../../../core/api/misc.service';
+import { NotifyService } from '../../../core/notify.service';
 
 interface FileType {
   key: string;
@@ -51,6 +53,14 @@ type MediapostRecepcion = MediapostRecepcionDto;
     <div class="sig-page">
       <div class="page-header">
         <h1>Distribución — Mediapost</h1>
+        <button mat-stroked-button (click)="syncManual()" [disabled]="syncing()">
+          @if (syncing()) {
+            <mat-spinner diameter="18"></mat-spinner>
+          } @else {
+            <mat-icon>sync</mat-icon>
+          }
+          Sincronizar
+        </button>
       </div>
 
       <!-- KPI Cards -->
@@ -246,11 +256,25 @@ type MediapostRecepcion = MediapostRecepcionDto;
 
     .page-header {
       margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
 
       h1 {
         margin: 0;
         font-size: 28px;
         font-weight: 500;
+      }
+
+      button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      mat-spinner {
+        display: inline-block;
       }
     }
 
@@ -446,6 +470,8 @@ type MediapostRecepcion = MediapostRecepcionDto;
 export class MediapostDashboardComponent implements OnInit {
   private readonly mediapostSvc = inject(MediapostService);
   private readonly http = inject(HttpClient);
+  private readonly syncSvc = inject(SyncService);
+  private readonly notify = inject(NotifyService);
 
   // Dummy property for template type checking
   protected row: MediapostPedido | MediapostRecepcion | any;
@@ -460,6 +486,7 @@ export class MediapostDashboardComponent implements OnInit {
 
   pedidosLoading = signal(false);
   recepcionesLoading = signal(false);
+  syncing = signal(false);
 
   uploadingTypes: { [key: string]: boolean } = {};
   uploadStatus: { [key: string]: string } = {};
@@ -531,7 +558,7 @@ export class MediapostDashboardComponent implements OnInit {
 
   private uploadFile(file: File, tipoKey: string) {
     if (!file.name.endsWith('.xlsx')) {
-      alert('Solo se aceptan archivos .xlsx');
+      this.notify.error('Solo se aceptan archivos .xlsx');
       return;
     }
 
@@ -546,13 +573,12 @@ export class MediapostDashboardComponent implements OnInit {
         setTimeout(() => {
           delete this.uploadStatus[tipoKey];
         }, 5000);
-        // Recargar datos después de upload
-        this.loadPedidos();
-        this.loadRecepciones();
+        // Sincronizar automáticamente después del upload
+        this.syncManual();
       },
       error: (err) => {
         this.uploadingTypes[tipoKey] = false;
-        alert('Error al cargar archivo: ' + err.error?.error || err.message);
+        this.notify.error('Error al cargar archivo: ' + (err.error?.error || err.message));
       },
     });
   }
@@ -581,6 +607,22 @@ export class MediapostDashboardComponent implements OnInit {
       error: () => {
         this.recepciones.set([]);
         this.recepcionesLoading.set(false);
+      },
+    });
+  }
+
+  protected syncManual(): void {
+    this.syncing.set(true);
+    this.syncSvc.sync('mediapost').subscribe({
+      next: (r) => {
+        this.syncing.set(false);
+        this.notify.success(`Sincronizado: ${r.registrosInsertados} registros nuevos`);
+        this.loadPedidos();
+        this.loadRecepciones();
+      },
+      error: (err) => {
+        this.syncing.set(false);
+        this.notify.error(err?.error?.title ?? 'No se pudo sincronizar');
       },
     });
   }

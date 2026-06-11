@@ -81,20 +81,38 @@ public class MediapostController : ControllerBase
 
         try
         {
-            // Por ahora, retornamos un mensaje de éxito
-            // En producción: guardar archivo en _basePath y procesar
+            // Guardar archivo en la carpeta de Mediapost que monitorea MediapostExcelClient
+            var baseDir = @"C:\Projects\workspaces\SIG-es\Mediapost\Mediapost\Documentación";
+            Directory.CreateDirectory(baseDir);
+
+            // Generar nombre de archivo con timestamp para evitar duplicados
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            var fileName = tipo switch
+            {
+                "pedidos" => $"infpedsit11_{timestamp}.xlsx",
+                "recepciones" => $"infrecep07_{timestamp}.xlsx",
+                _ => $"Upload_{tipo}_{timestamp}.xlsx"
+            };
+
+            var filePath = Path.Combine(baseDir, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream, ct);
+            }
+
             return Ok(new
             {
                 success = true,
-                mensaje = $"Archivo '{file.FileName}' recibido. En producción se procesaría automáticamente.",
-                nombre = file.FileName,
+                mensaje = $"Archivo '{fileName}' cargado exitosamente. Será procesado en la próxima sincronización.",
+                nombre = fileName,
                 tipo = tipo,
-                tamaño = file.Length
+                tamaño = file.Length,
+                ruta = filePath
             });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = $"Error procesando archivo: {ex.Message}" });
+            return StatusCode(500, new { error = $"Error guardando archivo: {ex.Message}" });
         }
     }
 }

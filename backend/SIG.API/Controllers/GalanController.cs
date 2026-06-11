@@ -83,7 +83,7 @@ public class GalanController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Carga un archivo Excel de Galán para procesamiento</summary>
+    /// <summary>Carga un archivo CSV/Excel de Galán para procesamiento</summary>
     [HttpPost("upload")]
     [Authorize(Roles = "Administrator,Admin SIG")]
     [Consumes("multipart/form-data")]
@@ -92,25 +92,48 @@ public class GalanController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "No se proporcionó archivo" });
 
-        if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { error = "Solo se aceptan archivos .xlsx" });
+        var validExtensions = new[] { ".xlsx", ".csv" };
+        var ext = Path.GetExtension(file.FileName);
+        if (!validExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))
+            return BadRequest(new { error = "Solo se aceptan archivos .xlsx o .csv" });
 
         try
         {
-            // Por ahora, retornamos un mensaje de éxito
-            // En producción: guardar archivo en _basePath y procesar
+            // Guardar archivo en la carpeta de Galán que monitorea GalanCsvClient
+            var baseDir = @"C:\Projects\workspaces\SIG-es\Galán\Galán";
+            Directory.CreateDirectory(baseDir);
+
+            // Generar nombre de archivo con timestamp para evitar duplicados
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            var fileName = tipo switch
+            {
+                "entradas" => $"Entradas_{timestamp}{ext}",
+                "salidas" => $"Salidas_{timestamp}{ext}",
+                "stock" => $"STOCK_celda_{timestamp}{ext}",
+                "almacenaje" => $"ALMACENAJE SIG {timestamp}{ext}",
+                "facturas" => $"FACT_MENSUAL_{timestamp}{ext}",
+                _ => $"Upload_{tipo}_{timestamp}{ext}"
+            };
+
+            var filePath = Path.Combine(baseDir, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream, ct);
+            }
+
             return Ok(new
             {
                 success = true,
-                mensaje = $"Archivo '{file.FileName}' recibido. En producción se procesaría automáticamente.",
-                nombre = file.FileName,
+                mensaje = $"Archivo '{fileName}' cargado exitosamente. Será procesado en la próxima sincronización.",
+                nombre = fileName,
                 tipo = tipo,
-                tamaño = file.Length
+                tamaño = file.Length,
+                ruta = filePath
             });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = $"Error procesando archivo: {ex.Message}" });
+            return StatusCode(500, new { error = $"Error guardando archivo: {ex.Message}" });
         }
     }
 }

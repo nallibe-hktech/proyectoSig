@@ -26,12 +26,17 @@ public class SyncServiceTests
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo = Substitute.For<IStagingRepository<StagingPayHawkGasto>>();
     private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo = Substitute.For<IStagingRepository<StagingSgpvVisita>>();
     private readonly IStagingRepository<StagingSgpvProducto> _sgpvProductoRepo = Substitute.For<IStagingRepository<StagingSgpvProducto>>();
+    private readonly IStagingRepository<StagingGalanEntrada> _galanEntradaRepo = Substitute.For<IStagingRepository<StagingGalanEntrada>>();
+    private readonly IStagingRepository<StagingGalanSalida> _galanSalidaRepo = Substitute.For<IStagingRepository<StagingGalanSalida>>();
+    private readonly IStagingRepository<StagingGalanStock> _galanStockRepo = Substitute.For<IStagingRepository<StagingGalanStock>>();
+    private readonly IStagingRepository<StagingMediapostPedido> _mediapostPedidoRepo = Substitute.For<IStagingRepository<StagingMediapostPedido>>();
+    private readonly IStagingRepository<StagingMediapostRecepcion> _mediapostRecepcionRepo = Substitute.For<IStagingRepository<StagingMediapostRecepcion>>();
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly IProjectRepository _projectRepo = Substitute.For<IProjectRepository>();
     private readonly IActionRepository _actionRepo = Substitute.For<IActionRepository>();
     private readonly ICeleroMappingRepository _mappingRepo = Substitute.For<ICeleroMappingRepository>();
 
-    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _sgpv, _galan, _mediapost, _celeroRepo, _empRepo, _absenceRepo, _ficRepo, _intratimeEmpRepo, _clkReqRepo, _expenseRepo, _gastoRepo, _sgpvRepo, _sgpvProductoRepo, _userRepo, _projectRepo, _actionRepo, _mappingRepo);
+    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _sgpv, _galan, _mediapost, _celeroRepo, _empRepo, _absenceRepo, _ficRepo, _intratimeEmpRepo, _clkReqRepo, _expenseRepo, _gastoRepo, _sgpvRepo, _sgpvProductoRepo, _galanEntradaRepo, _galanSalidaRepo, _galanStockRepo, _mediapostPedidoRepo, _mediapostRecepcionRepo, _userRepo, _projectRepo, _actionRepo, _mappingRepo);
 
     [Fact]
     public async Task SyncAsync_SistemaDesconocido_LanzaIntegrationException()
