@@ -111,7 +111,7 @@ export class SyncComponent {
   protected readonly systems: { id: System; label: string; desc: string; icon: string }[] = [
     { id: 'celero', label: 'Celero', desc: 'CRM — Visitas', icon: 'storefront' },
     { id: 'bizneo', label: 'Bizneo', desc: 'RRHH — Empleados y horas', icon: 'badge' },
-    { id: 'intratime', label: 'Intratime', desc: 'Fichajes', icon: 'schedule' },
+    { id: 'intratime', label: 'Intratime Fichajes', desc: 'Registros de tiempo', icon: 'schedule' },
     { id: 'payhawk', label: 'PayHawk', desc: 'Gastos', icon: 'payments' },
     { id: 'sgpv', label: 'SGPV', desc: 'Visitas', icon: 'location_on' },
     { id: 'sgpv-productos', label: 'SGPV Productos', desc: 'Catálogo', icon: 'inventory_2' },

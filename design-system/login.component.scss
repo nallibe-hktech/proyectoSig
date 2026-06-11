@@ -1,0 +1,194 @@
+// ═══════════════════════════════════════════════════════════
+// SIG-ES · Login Page — login.component.scss
+// ═══════════════════════════════════════════════════════════
+@use 'variables' as *;
+
+// ── Full-page wrapper ────────────────────────────────────────
+.sig-login {
+  min-height:       100vh;
+  background-color: $bg-app;
+  display:          flex;
+  align-items:      center;
+  justify-content:  center;
+  position:         relative;
+  overflow:         hidden;
+  padding:          24px;
+
+  // ── Decorative glows ──────────────────────────────────────
+  &__bg-glow {
+    position:      absolute;
+    border-radius: 50%;
+    filter:        blur(120px);
+    opacity:       .18;
+    pointer-events: none;
+
+    &--1 {
+      width:      500px;
+      height:     500px;
+      background: $accent-blue;
+      top:        -160px;
+      left:       -160px;
+    }
+
+    &--2 {
+      width:      400px;
+      height:     400px;
+      background: $accent-teal;
+      bottom:     -120px;
+      right:      -100px;
+    }
+  }
+
+  // ── Card ──────────────────────────────────────────────────
+  &__card {
+    width:            100%;
+    max-width:        400px;
+    background-color: $bg-card;
+    border:           1px solid $border-color;
+    border-radius:    $radius-xl;
+    padding:          40px 36px;
+    box-shadow:       $shadow-card, 0 0 60px rgba(0,0,0,.4);
+    position:         relative;
+    z-index:          1;
+  }
+
+  // ── Header ────────────────────────────────────────────────
+  &__header {
+    text-align:    center;
+    margin-bottom: 32px;
+  }
+
+  &__logo {
+    display:         inline-flex;
+    align-items:     center;
+    justify-content: center;
+    margin-bottom:   14px;
+  }
+
+  &__title {
+    font-size:      $font-size-2xl;
+    font-weight:    800;
+    color:          $text-heading;
+    letter-spacing: -.02em;
+    margin:         0 0 4px;
+
+    span { color: $accent-teal; }
+  }
+
+  &__subtitle {
+    font-size:  $font-size-sm;
+    color:      $text-muted;
+    margin:     0;
+    letter-spacing: .01em;
+  }
+
+  // ── Form ──────────────────────────────────────────────────
+  &__form {
+    display:        flex;
+    flex-direction: column;
+    gap:            20px;
+  }
+
+  &__field {
+    display:        flex;
+    flex-direction: column;
+    gap:            6px;
+  }
+
+  &__label {
+    font-size:   $font-size-sm;
+    font-weight: 500;
+    color:       $text-secondary;
+  }
+
+  &__input-wrap {
+    position: relative;
+  }
+
+  &__input {
+    width:            100%;
+    box-sizing:       border-box;
+    padding:          10px 14px;
+    background-color: $bg-card-alt;
+    border:           1px solid $border-color;
+    border-radius:    $radius-md;
+    color:            $text-primary;
+    font-size:        $font-size-base;
+    font-family:      $font-family;
+    outline:          none;
+    transition:       border-color $transition-fast, box-shadow $transition-fast;
+
+    &::placeholder { color: $text-muted; }
+
+    &:focus {
+      border-color: $border-focus;
+      box-shadow:   0 0 0 3px rgba(37, 99, 235, .18);
+    }
+
+    &.error {
+      border-color: $status-inactive;
+    }
+  }
+
+  &__eye {
+    position:   absolute;
+    right:      10px;
+    top:        50%;
+    transform:  translateY(-50%);
+    background: none;
+    border:     none;
+    cursor:     pointer;
+    color:      $text-muted;
+    padding:    4px;
+    display:    flex;
+    align-items: center;
+    transition: color $transition-fast;
+
+    &:hover { color: $text-secondary; }
+
+    mat-icon { font-size: 18px; }
+  }
+
+  &__field-error {
+    font-size: $font-size-xs;
+    color:     $status-inactive;
+  }
+
+  // ── Error banner ──────────────────────────────────────────
+  &__error-banner {
+    display:       flex;
+    align-items:   center;
+    gap:           8px;
+    padding:       10px 14px;
+    background:    $status-inactive-bg;
+    border:        1px solid rgba($status-inactive, .3);
+    border-radius: $radius-md;
+    color:         $status-inactive;
+    font-size:     $font-size-sm;
+
+    mat-icon { font-size: 18px; flex-shrink: 0; }
+  }
+
+  // ── Submit button ─────────────────────────────────────────
+  &__submit {
+    width:       100%;
+    padding:     12px;
+    font-size:   $font-size-base;
+    font-weight: 600;
+    margin-top:  4px;
+    display:     flex;
+    align-items: center;
+    justify-content: center;
+    gap:         8px;
+
+    mat-spinner { --mdc-circular-progress-active-indicator-color: #fff; }
+  }
+
+  // ── Footer text ───────────────────────────────────────────
+  &__footer-text {
+    margin-top:  24px;
+    text-align:  center;
+    font-size:   $font-size-xs;
+    color:       $text-muted;
+  }
+}

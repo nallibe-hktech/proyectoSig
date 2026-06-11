@@ -229,7 +229,50 @@ CRUD simple. Tabla (Nombre, Estado). Formulario inline o dialog.
 
 ### 2.14 Admin — Roles (`/roles`)
 
-Listado de solo lectura (seed fijo). Muestra Nombre + Descripción + Usuarios asignados.
+Fuente visual: `frontend/public/penpot-design-roles.svg` (cambio aplicado vía `docs/CAMBIO-VISUAL-roles.md`).
+
+| Atributo | Valor |
+|----------|-------|
+| Rutas | `/roles` |
+| Roles backend | `Administrator` (CRUD), `Auditor` (lectura) — el MVP expone únicamente `GET /api/roles`; el resto se prepara visualmente |
+| Componente | `RolesListComponent` (`frontend/src/app/features/roles/roles-list.component.ts`) |
+| data-testid | `roles-table`, `roles-row-{rolName}`, `roles-detail-panel`, `roles-detail-close` |
+
+**Layout (2 columnas):** A la izquierda la tabla principal de roles; a la derecha un detail panel lateral (`width: 360px`) con la matriz completa de permisos del rol seleccionado.
+
+**Topbar:**
+- Título con `mat-icon verified_user` color `--sig-teal` + chip total `{{ roles().length }}` con badge teal.
+- CTA `Nuevo Rol` (outline blue) — solo visible para `Administrator`; oculto para `Auditor`.
+
+**Filter bar:** input búsqueda (icono `search`), selects `Vista` y `Ámbito` (Global / Proyecto), botones `Filtrar` (primary) y `Limpiar` (ghost), contador `TOTAL N` alineado a la derecha.
+
+**Tabla principal — columnas:**
+1. `TIPO DE ROL` — nombre del rol, peso 600.
+2. `VISTA` — `sig-scope-badge` con dos variantes: `scope--global` (teal `#00d4c4`) y `scope--proyecto` (azul `#3b82f6`).
+3. `PAGOS`, `FACTURACIONES`, `USUARIOS`, `ROLES` — texto coloreado por nivel: `Control total` (teal), `Sin permisos` (muted), `Ver / Validar / Editar` (texto primary).
+
+Fila seleccionada: fondo `rgba(0,212,196,.06)`. Hover: `--sig-bg-hover`. Click en fila abre el detail panel.
+
+Pie de tabla: nota fina (`--sig-text-muted`, 11px): "El permiso 'Editar' incluye Eliminar · Los datos de Ceco / Cliente / Proyecto / Acción se alimentan de Celero".
+
+**Detail panel (sig-detail-panel):**
+- Header azul (`--sig-blue`) con icono `verified_user` + título "Detalle del Rol" + botón cerrar `×`.
+- Cabecera del rol: ícono cuadrado teal (radius 10) + nombre del rol (15px, 700) + `sig-scope-badge` Vista.
+- **Sección "Matriz de Permisos":** lista vertical de filas (label fijo 100px + chips de permiso). Entidades cubiertas: Pagos, Facturaciones, Ceco, Departamento, Cliente, Proyecto, Acción, Usuarios, Roles. Cada permiso se renderiza como pill (`sig-perm-pill`) con clase semántica: `perm--ver` (azul), `perm--val` (amber), `perm--edit` (teal), `perm--crear` (verde), `perm--none` (rojo translúcido).
+- **Sección "Usuarios con este Rol":** lista de `sig-avatar-chip` (avatar circular color asignado + nombre + email + botón `Quitar`). CTA al final `+ Añadir Usuario` (link azul).
+- Footer: botón `Editar` (azul, fill) + botón `Eliminar` (rojo translúcido, icon-only). Ambos visibles solo para `Administrator`.
+
+**Roles seed iniciales mostrados:** Administrador (Global), Direccion (Global), FICO (Global), RRHH (Global), Facilitador (Global), Interlocutor (Proyecto), Gestor (Proyecto), Backoffice (Proyecto), Auxiliar (Proyecto).
+
+**Accesibilidad:**
+- Contraste de pills sobre fondo `--sig-bg-card` ≥ 4.5:1 (validado para teal `#00d4c4`, azul `#3b82f6`, amber `#f59e0b`).
+- Focus-visible heredado del global (`outline 2px solid var(--sig-blue)`).
+- `aria-label` en botón cerrar del panel.
+
+**Estados:**
+- Carga: `sig-skeleton-row` repetido 6 veces en la tabla.
+- Vacío: `sig-empty-state` con icono `verified_user`, texto "No hay roles configurados".
+- Sin rol seleccionado: detail panel oculto (la tabla ocupa el 100%).
 
 ### 2.15 Admin — Users (`/users`)
 

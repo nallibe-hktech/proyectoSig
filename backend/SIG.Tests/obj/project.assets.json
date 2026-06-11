@@ -57,13 +57,13 @@
           }
         }
       },
-      "ClosedXML/0.104.2": {
+      "ClosedXML/0.105.0": {
         "type": "package",
         "dependencies": {
-          "ClosedXML.Parser": "[1.2.0, 2.0.0)",
+          "ClosedXML.Parser": "2.0.0",
           "DocumentFormat.OpenXml": "[3.1.1, 4.0.0)",
           "ExcelNumberFormat": "1.1.0",
-          "RBush": "4.0.0",
+          "RBush.Signed": "4.0.0",
           "SixLabors.Fonts": "1.0.0"
         },
         "compile": {
@@ -77,7 +77,7 @@
           }
         }
       },
-      "ClosedXML.Parser/1.2.0": {
+      "ClosedXML.Parser/2.0.0": {
         "type": "package",
         "compile": {
           "lib/netstandard2.1/ClosedXML.Parser.dll": {
@@ -94,6 +94,19 @@
         "type": "package",
         "build": {
           "build/netstandard2.0/coverlet.collector.targets": {}
+        }
+      },
+      "CsvHelper/33.1.0": {
+        "type": "package",
+        "compile": {
+          "lib/net9.0/CsvHelper.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/CsvHelper.dll": {
+            "related": ".xml"
+          }
         }
       },
       "DocumentFormat.OpenXml/3.1.1": {
@@ -1634,7 +1647,7 @@
           }
         }
       },
-      "RBush/4.0.0": {
+      "RBush.Signed/4.0.0": {
         "type": "package",
         "compile": {
           "lib/net8.0/RBush.dll": {
@@ -2045,7 +2058,8 @@
         "dependencies": {
           "BCrypt.Net-Next": "4.0.3",
           "Bogus": "35.6.1",
-          "ClosedXML": "0.104.0",
+          "ClosedXML": "0.105.0",
+          "CsvHelper": "33.1.0",
           "EFCore.NamingConventions": "9.0.0",
           "Microsoft.AspNetCore.Http": "2.3.0",
           "Microsoft.AspNetCore.Http.Abstractions": "2.3.0",
@@ -2168,14 +2182,14 @@
         "readme.txt"
       ]
     },
-    "ClosedXML/0.104.2": {
-      "sha512": "gOkSjQ152MhpKmw70cBkJV+FnaZAWzDwM36luRf/7FlWYnNeH++9XYdGTd0Y4KQlVPkKVxy948M5MMsnsGC4GQ==",
+    "ClosedXML/0.105.0": {
+      "sha512": "U0hAdnYyPvF7TqHMFloxrS7pmozab79tFFF4c/bgPtqeelUs7ILpUd3r3c7C0a/DXsUZb3k1n4Pf7Q2LMyMQOg==",
       "type": "package",
-      "path": "closedxml/0.104.2",
+      "path": "closedxml/0.105.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "closedxml.0.104.2.nupkg.sha512",
+        "closedxml.0.105.0.nupkg.sha512",
         "closedxml.nuspec",
         "lib/netstandard2.0/ClosedXML.dll",
         "lib/netstandard2.0/ClosedXML.pdb",
@@ -2186,15 +2200,15 @@
         "nuget-logo.png"
       ]
     },
-    "ClosedXML.Parser/1.2.0": {
-      "sha512": "w+/0tsxABS3lkSH8EUlA7IGme+mq5T/Puf3DbOiTckmSuUpAUO2LK29oXYByCcWkBv6wcRHxgWlQb1lxkwI0Tw==",
+    "ClosedXML.Parser/2.0.0": {
+      "sha512": "ngTqjYreDYNytG1W5d3ewHsw0ukmmrgV7EKnS4/40rXoYZGt07jrBvo+N+GxT49rcageUMUiprV0jYT4nwVBHQ==",
       "type": "package",
-      "path": "closedxml.parser/1.2.0",
+      "path": "closedxml.parser/2.0.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "README.md",
-        "closedxml.parser.1.2.0.nupkg.sha512",
+        "closedxml.parser.2.0.0.nupkg.sha512",
         "closedxml.parser.nuspec",
         "lib/netstandard2.0/ClosedXML.Parser.dll",
         "lib/netstandard2.0/ClosedXML.Parser.xml",
@@ -2270,6 +2284,32 @@
         "coverlet-icon.png",
         "coverlet.collector.6.0.4.nupkg.sha512",
         "coverlet.collector.nuspec"
+      ]
+    },
+    "CsvHelper/33.1.0": {
+      "sha512": "kqfTOZGrn7NarNeXgjh86JcpTHUoeQDMB8t9NVa/ZtlSYiV1rxfRnQ49WaJsob4AiGrbK0XDzpyKkBwai4F8eg==",
+      "type": "package",
+      "path": "csvhelper/33.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "csvhelper.33.1.0.nupkg.sha512",
+        "csvhelper.nuspec",
+        "lib/net462/CsvHelper.dll",
+        "lib/net462/CsvHelper.xml",
+        "lib/net47/CsvHelper.dll",
+        "lib/net47/CsvHelper.xml",
+        "lib/net48/CsvHelper.dll",
+        "lib/net48/CsvHelper.xml",
+        "lib/net8.0/CsvHelper.dll",
+        "lib/net8.0/CsvHelper.xml",
+        "lib/net9.0/CsvHelper.dll",
+        "lib/net9.0/CsvHelper.xml",
+        "lib/netstandard2.0/CsvHelper.dll",
+        "lib/netstandard2.0/CsvHelper.xml",
+        "lib/netstandard2.1/CsvHelper.dll",
+        "lib/netstandard2.1/CsvHelper.xml"
       ]
     },
     "DocumentFormat.OpenXml/3.1.1": {
@@ -4481,10 +4521,10 @@
         "nsubstitute.nuspec"
       ]
     },
-    "RBush/4.0.0": {
-      "sha512": "j3GeRxxLUQdc+UrZnvythdQxi3bd8ayn87VDjfGXrvfodF550n9wR6SgQvpo+YiAv3GJezsu6lK0l47rRqnbdg==",
+    "RBush.Signed/4.0.0": {
+      "sha512": "aP5KQxL5RnFNGW1f0euYVBfCatkLw5iEzMRJcXKq8LWWP4Cp3+qoSq1tDDL2vvJ2rM0ychmVMa2VaEKLS6uX4w==",
       "type": "package",
-      "path": "rbush/4.0.0",
+      "path": "rbush.signed/4.0.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -4494,8 +4534,8 @@
         "lib/net8.0/RBush.xml",
         "lib/netstandard2.0/RBush.dll",
         "lib/netstandard2.0/RBush.xml",
-        "rbush.4.0.0.nupkg.sha512",
-        "rbush.nuspec",
+        "rbush.signed.4.0.0.nupkg.sha512",
+        "rbush.signed.nuspec",
         "readme.md"
       ]
     },

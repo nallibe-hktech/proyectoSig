@@ -3,9 +3,22 @@ using SIG.Domain.Enums;
 namespace SIG.Application.DTOs;
 
 // Dashboard
-public record DashboardKpisDto(int PeriodId, string PeriodNombre, int CierresCompletados, int CierresPendientes, decimal FacturacionTotal, decimal CosteTotal, decimal Margen);
+public record KpiClienteDto(int ClientId, string Nombre, decimal Facturacion, decimal Coste, decimal Margen, decimal PctTotal);
+public record EvolucionPeriodoDto(string PeriodNombre, decimal Facturacion, decimal Coste, decimal Margen);
+
+public record DashboardKpisDto(
+    int PeriodId, string PeriodNombre,
+    int CierresCompletados, int CierresPendientes,
+    decimal FacturacionTotal, decimal CosteTotal, decimal Margen, decimal MargenPct,
+    IReadOnlyList<KpiClienteDto> DesglosePorCliente,
+    IReadOnlyList<EvolucionPeriodoDto> Evolucion);
+
 public record DashboardAvisoDto(string Tipo, string Descripcion, int? EntityId);
-public record MiProyectoDto(int ProjectId, string Nombre, int ClientId, string ClientNombre, int? ClosureId, EstadoClosure? Estado, ApprovalStep? PasoActual);
+
+public record MiProyectoDto(
+    int ProjectId, string Nombre, int ClientId, string ClientNombre,
+    int? ClosureId, EstadoClosure? Estado, ApprovalStep? PasoActual,
+    decimal? CosteTotal, decimal? FacturacionTotal, decimal? Margen);
 
 // Calculation
 public record CalculationDetailDto(int ClosureLineId, int ConceptId, string ConceptNombre, string FormulaSnapshotJson, string InputsJson, decimal Resultado, string? Incidencias, string SistemaOrigen, DateTime Timestamp);
@@ -44,3 +57,13 @@ public record SgpvProductoDto(
     string PVPRecomendado,
     string Competencia,
     bool Activo);
+
+// Intratime Discrepancies
+public record DiscrepanciaIntratimeDto(
+    int UserId,
+    decimal HorasIntratime,
+    int VisitasCelero,
+    decimal HorasSgpv,
+    decimal HorasEsperadas,
+    decimal Diferencia,
+    bool TieneDiscrepancia);

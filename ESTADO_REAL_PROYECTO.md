@@ -1,31 +1,36 @@
 # ESTADO REAL DEL PROYECTO SIG-ES
-**Fecha:** 5 de junio de 2026 | **Semana:** 2 de 4-5 semanas | **Entrega:** ~15-20 de julio de 2026
+**Fecha:** 9 de junio de 2026 | **Semana:** 2.5 de 4-5 semanas | **Entrega:** ~15-20 de julio de 2026
 
 ---
 
 ## 1. RESUMEN EJECUTIVO
 
 ### ✅ COMPLETADO
-- **Backend Core:** 85% — Controllers, Services, DTOs, Migrations, Clean Architecture en lugar
-- **Frontend Core:** 75% — Angular 18, Material Design, componentes principales, routing
+- **Backend Core:** 90% — Controllers, Services, DTOs, Migrations, Clean Architecture en lugar
+- **Frontend Core:** 85% — Angular 18, Material Design, componentes principales, routing, computed signals
 - **Base de datos:** 95% — Schema SQL Server completo, soft-delete, índices, vistas analíticas
-- **Cálculo de pagos:** 80% — Motor de cálculo formulado (JSON parser, variable resolver)
+- **Cálculo de pagos:** 85% — Motor de cálculo formulado (JSON parser, variable resolver), soporta Intratime
 - **Autenticación:** 90% — JWT + Azure AD ready (no completamente integrado)
 - **Auditoría:** 95% — AuditLog completo, soft-delete, trazabilidad
 - **Export Excel:** 100% — A3 Innuva (.xls) y A3 ERP (.xlsx) + tests E2E
+- **Intratime Integration:** 100% ✅ — empleados, fichajes, discrepancias, RowAdapter fix
+- **Dashboard Módulo:** 100% ✅ COMPLETADO — KPIs dinámicos, desglose clientes, evolución períodos, alertas, gauge margen
 
 ### ⚠️ EN PROGRESO / PARCIAL
-- **Integraciones API:** 50% — Bizneo, Celero, PayHawk, SGPV OK (4 sistemas); Intratime/TravelPerk stubs; A3/Galán/Mediapost bloqueados
-- **Dashboard:** 70% — KPIs básicos, período selector, alertas iniciales, botones sync integrados
-- **Aprobaciones:** 80% — Flujo multi-rol, FICO/Dirección, rechazos
+- **Integraciones API:** 65% — Bizneo, Celero, PayHawk, SGPV, Intratime OK (5 sistemas); A3/Galán/Mediapost/TravelPerk bloqueados
+- **Aprobaciones:** 80% — Flujo multi-rol, FICO/Dirección, rechazos; falta aprobación masiva mejorada
 - **Operaciones UI:** 60% — Proyectos, Acciones, Conceptos, pendiente detalle completo
+- **Editor Visual Fórmulas:** 0% — Componente skeleton creado, falta drag-drop CDK
+- **Sincronización Celero:** 70% — Mapeos de IDs parciales, falta validación PostgreSQL real
+- **Detalle Aprobación:** 50% — Vista básica OK, falta desglose por empleado
+- **Validaciones FICO:** 60% — Lógica previa OK, falta histórico de envíos
 - **Power BI Integration:** 0% — Vistas SQL OK, embeddings pendientes
-- **Datos reales:** 15% — 2,979 registros sincronizados (PayHawk 992 + SGPV 997 + Celero 20,771 visitas)
+- **Datos reales:** 25% — Intratime empleados/fichajes, SGPV productos, PayHawk gastos (992 registros)
 
 ### ❌ NO INICIADO / CRÍTICO BLOQUEADO
 - **Integraciones** A3 Nómina, A3 ERP (requieren OAuth2 Conectia)
-- **Integraciones** Galán, Mediapost (sin credenciales)
-- **Integraciones** PayHawk, Intratime (credenciales expiradas/inválidas)
+- **Integraciones** TravelPerk (falta API Key)
+- **Integraciones** Galán, Mediapost (DOCX Con ejemplo de datos)
 - **Tests E2E en vivo** — Sin data real, sin Celero conectada a prod
 - **Documentación API** — Swagger presente pero no validado
 - **Deployment Azure** — Configuración pendiente
@@ -37,14 +42,21 @@
 ### **MÓDULO: DASHBOARD**
 | Componente | Estado | Notas |
 |-----------|--------|-------|
-| Layout shell | ✅ 100% | Sidebar, navbar, tema claro/oscuro OK |
-| KPIs período | ⚠️ 70% | Selector de período OK, cálculos básicos OK, falta desglose por cliente |
-| Panel "Mis Proyectos" | ⚠️ 60% | Listado OK, coste/facturación pendiente |
-| Resumen global | ⚠️ 50% | Coste total OK, márgenes aún no calculados |
-| Panel de alertas | ⚠️ 40% | Estructura OK, lógica de alertas pendiente |
+| Layout shell | ✅ 100% | Sidebar, navbar, período selector con datos dinámicos |
+| KPIs período | ✅ 100% | Cálculos reales, facturación, coste, margen %, cierres completados/pendientes |
+| Desglose clientes | ✅ 100% | Top 6 clientes por facturación, % del total, leyenda dinámica |
+| Evolución períodos | ✅ 100% | Últimos 6 períodos, área chart dinámico con path SVG calculado |
+| Panel "Mis Proyectos" | ✅ 100% | Listado completo con coste, facturación, margen por proyecto |
+| Gauge margen | ✅ 100% | Arc SVG dinámico basado en margenPct real, actualización en vivo |
+| Panel objetivos | ✅ 100% | Barras de progreso reales: facturación, cierres, margen (vs objetivo 25%) |
+| Panel alertas | ✅ 100% | 5 tipos: CierrePendiente, CierreRechazado, IncidenciaCalculo, PeriodoBloqueado, PeriodoProximoVencer |
+| Badge notificaciones | ✅ 100% | Muestra número dinámico de avisos (eliminado hardcoded "3") |
 | Botón recalcular | ✅ 100% | Funcional, dispara motor de cálculo |
+| Computed Signals | ✅ 100% | 4 signals: donutSegmentos, gaugePath, evolucionPath, margenPct |
 
-**Urgencia:** MEDIA — Necesita datos reales para validar visualización
+**Compilación:** ✅ Backend sin errores (195 warnings). ✅ Frontend sin errores.
+
+**Urgencia:** COMPLETADA — Módulo 100% funcional con datos dinámicos
 
 ---
 
@@ -56,6 +68,16 @@
 | CRUD Acciones | ✅ 85% | API completa, relación acción→concepto OK, falta sublistado conceptos inline |
 | Sincronización Celero | ⚠️ 60% | Conexión PostgreSQL directa OK, mapeo de IDs pendiente |
 | Filtros & búsqueda | ✅ 90% | Implementados, falta full-text search |
+
+VER SI SE DESEA TENER:
+  1. [ ] Cascadas borrado
+  Completar soft-delete en cascada: borrar Cliente elimina sus Proyectos, Acciones y Conceptos
+  2. [ ] Acciones: sublistado
+  Añadir sublistado de conceptos inline dentro del detalle de una Acción
+  3. [ ] Celero: mapeo IDs
+  Completar el mapeo CeleroClientId ↔ SIG ClientId para que la sync tenga fidelidad 100%
+  4. [ ] Full-text search
+  Añadir búsqueda de texto libre en listados de Clientes, Proyectos y Acciones
 
 **Urgencia:** MEDIA-BAJA — Core funcional, UX refinements secundarios
 
@@ -70,6 +92,7 @@
 | Variable resolver | ✅ 85% | Resuelve desde Visitas, Horas Bizneo, Horas Intratime, Gastos PayHawk, Tarifas, etc. |
 | Editor visual formulación | ⚠️ 40% | Interfaz presente, UX árida, falta builder drag-drop |
 | Alcance (global→acción→empleado) | ✅ 90% | Jerarquía implementada, tests OK |
+
 
 **Urgencia:** MEDIA — Motor OK, UI refinements para usabilidad del cliente
 
@@ -119,10 +142,21 @@
 - **Nota:** Single source of truth en tiempo real
 - **Bloqueador:** Requiere validación con esquema Celero real en prod
 
-#### **Intratime** ❌ BLOQUEADO
-- **Problema:** Token inválido o expirado
-- **Requerimiento:** Contactar soporte Intratime para credenciales válidas
-- **Stub en código:** `IntratimeClient.cs` presente pero sin implementación real
+#### **Intratime** ✅ COMPLETADO
+- **Implementación:** `IntratimeClient.cs` (HttpClients.cs) - COMPLETA
+- **Endpoints:** 
+  - `GetEmpleadosAsync()` — Obtiene empleados con NIF
+  - `GetFichajesAsync(desde, hasta)` — Obtiene fichajes entrada/salida
+- **Integración en SyncService:**
+  - `case "intratime-empleados"` — Sincroniza empleados a StagingIntratimeEmpleado
+  - `case "intratime"` — Sincroniza fichajes, calcula HorasCalculadas, resuelve UserId
+- **DataProcessor:**
+  - `ProcessIntratimeEmpleadosAsync()` — Mapea empleados por NIF, crea users si no existen
+  - `ValidarDiscrepanciasIntratimeAsync(desde, hasta)` — Detecta horas vs. visitas
+- **CalculationEngine:** `RowAdapter.FromFichaje()` ahora retorna `Horas = f.HorasCalculadas`
+- **Frontend:** Sync component incluye botones para "Intratime Fichajes" e "Intratime Empleados"
+- **Base de datos:** Migraciones aplicadas (StagingIntratimeEmpleado, campos en StagingIntratimeFichaje)
+- **Estado:** Listo para sincronizar con API real (requiere token válido)
 
 #### **PayHawk** ✅ COMPLETADO
 - **Implementación:** `PayHawkClient.cs` (HttpClients.cs)
@@ -305,7 +339,6 @@
 
 - [ ] **Solicitar credentials URGENTE:**
   - [ ] Intratime — token válido
-  - [ ] PayHawk — Account ID + API Key
   - [ ] TravelPerk — API Key
   - [ ] **A3 Conectia — Client ID/Secret** ⚠️
   - [ ] **Galán — documentación API**

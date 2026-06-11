@@ -203,6 +203,81 @@ public class DataProcessorService : IDataProcessorService
     }
 
     /// <summary>
+    /// Procesa empleados desde Intratime staging → productivo
+    /// Crea/actualiza usuarios basado en NIF
+    /// Resuelve retroactivamente fichajes sin UserId
+    /// </summary>
+    public async Task<(int Processed, int Errors)> ProcessIntratimeEmpleadosAsync(CancellationToken ct)
+    {
+        var pendientes = await _db.StagingIntratimeEmpleados
+            .Where(x => !x.FlagProcesado)
+            .OrderBy(x => x.Id)
+            .ToListAsync(ct);
+
+        _logger.LogInformation($"[Intratime Empleados] Encontrados {pendientes.Count} registros pendientes");
+
+        int processed = 0, errors = 0;
+
+        foreach (var staging in pendientes)
+        {
+            try
+            {
+                // Buscar usuario por NIF
+                var usuario = (await _userRepo.ListAsync(ct)).FirstOrDefault(u => u.NIF == staging.NIF);
+
+                if (usuario == null)
+                {
+                    // Crear nuevo usuario
+                    var partes = staging.Nombre.Split(',');
+                    usuario = new User
+                    {
+                        Nombre = partes.Length > 1 ? partes[1].Trim() : staging.Nombre,
+                        Apellidos = partes.Length > 0 ? partes[0].Trim() : "",
+                        NIF = staging.NIF,
+                        Email = staging.Email,
+                        PasswordHash = "temp",
+                        IsDeleted = false,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _db.Users.Add(usuario);
+                    await _db.SaveChangesAsync(ct); // para obtener el Id
+                    _logger.LogDebug($"[Intratime] Nuevo usuario: {staging.Nombre} ({staging.NIF})");
+                }
+                else
+                {
+                    usuario.Email = staging.Email;
+                    usuario.UpdatedAt = DateTime.UtcNow;
+                    _logger.LogDebug($"[Intratime] Usuario actualizado: {staging.Nombre} ({staging.NIF})");
+                }
+
+                staging.UserId = usuario.Id;
+                staging.FlagProcesado = true;
+                staging.ErrorProcesamiento = null;
+
+                // Retroactivo: resolver fichajes sin UserId de este empleado
+                var fichajesSinResolver = await _db.StagingIntratimeFichajes
+                    .Where(f => f.UserIdExterno == staging.UserIdExterno && !f.UserId.HasValue)
+                    .ToListAsync(ct);
+                foreach (var f in fichajesSinResolver)
+                    f.UserId = usuario.Id;
+
+                processed++;
+            }
+            catch (Exception ex)
+            {
+                staging.ErrorProcesamiento = ex.Message;
+                errors++;
+                _logger.LogError($"[Intratime] Error procesando {staging.Nombre}: {ex.Message}");
+            }
+        }
+
+        await _db.SaveChangesAsync(ct);
+        _logger.LogInformation($"[Intratime Empleados] Resultado: {processed} procesados, {errors} errores");
+        return (processed, errors);
+    }
+
+    /// <summary>
     /// Valida y marca como procesados los registros de otros sistemas
     /// (ausencias, gastos, fiches, viajes) que no tienen mapeo directo a tablas productivas
     /// </summary>
@@ -230,11 +305,14 @@ public class DataProcessorService : IDataProcessorService
 
         // Procesar fichajes Intratime
         var fichajesPendientes = await _db.StagingIntratimeFichajes
-            .Where(x => !x.FlagProcesado && x.UserId > 0)
+            .Where(x => !x.FlagProcesado && x.UserId.HasValue)
             .ToListAsync(ct);
 
         foreach (var f in fichajesPendientes)
         {
+            // Calcular HorasCalculadas si es null (para fichajes importados antes del fix)
+            if (!f.HorasCalculadas.HasValue && f.Salida.HasValue)
+                f.HorasCalculadas = (decimal)(f.Salida.Value - f.Entrada).TotalHours;
             f.FlagProcesado = true;
         }
 
@@ -251,6 +329,61 @@ public class DataProcessorService : IDataProcessorService
         var total = absencesPendientes.Count + gastosPendientes.Count + fichajesPendientes.Count + viajesPendientes.Count;
         await _db.SaveChangesAsync(ct);
         return (total, 0);
+    }
+
+    /// <summary>
+    /// Valida discrepancias entre horas Intratime y visitas Celero/SGPV
+    /// Compara horas registradas vs. horas facturables
+    /// </summary>
+    public async Task<IReadOnlyList<DiscrepanciaIntratimeDto>> ValidarDiscrepanciasIntratimeAsync(
+        DateOnly desde, DateOnly hasta, CancellationToken ct)
+    {
+        // Horas por usuario en el período (Intratime)
+        var horasPorUsuario = await _db.StagingIntratimeFichajes
+            .Where(f => f.UserId.HasValue
+                && f.Entrada >= desde.ToDateTime(TimeOnly.MinValue)
+                && f.Entrada <= hasta.ToDateTime(TimeOnly.MaxValue)
+                && f.HorasCalculadas.HasValue)
+            .GroupBy(f => f.UserId!.Value)
+            .Select(g => new { UserId = g.Key, TotalHoras = g.Sum(f => f.HorasCalculadas!.Value) })
+            .ToListAsync(ct);
+
+        if (horasPorUsuario.Count == 0)
+            return Array.Empty<DiscrepanciaIntratimeDto>();
+
+        // Visitas por usuario en el período (Celero)
+        var visitasCelero = await _db.StagingCeleroVisitas
+            .Where(v => v.UserId.HasValue && v.Fecha >= desde && v.Fecha <= hasta)
+            .GroupBy(v => v.UserId!.Value)
+            .Select(g => new { UserId = g.Key, TotalVisitas = g.Count() })
+            .ToListAsync(ct);
+
+        // Horas por usuario en el período (SGPV)
+        var visitasSgpv = await _db.StagingSgpvVisitas
+            .Where(v => v.UserId.HasValue && v.Fecha >= desde && v.Fecha <= hasta)
+            .GroupBy(v => v.UserId!.Value)
+            .Select(g => new { UserId = g.Key, TotalHorasSgpv = g.Sum(v => v.HorasDuracion ?? 0) })
+            .ToListAsync(ct);
+
+        // Calcular discrepancias
+        var resultado = horasPorUsuario.Select(h =>
+        {
+            var totalVisitas = visitasCelero.FirstOrDefault(v => v.UserId == h.UserId)?.TotalVisitas ?? 0;
+            var horasSgpv = visitasSgpv.FirstOrDefault(v => v.UserId == h.UserId)?.TotalHorasSgpv ?? 0;
+            var horasEsperadas = totalVisitas * 8m + horasSgpv;
+            var diferencia = h.TotalHoras - horasEsperadas;
+            return new DiscrepanciaIntratimeDto(
+                UserId: h.UserId,
+                HorasIntratime: h.TotalHoras,
+                VisitasCelero: totalVisitas,
+                HorasSgpv: horasSgpv,
+                HorasEsperadas: horasEsperadas,
+                Diferencia: diferencia,
+                TieneDiscrepancia: Math.Abs(diferencia) > 4m  // umbral: 4 horas
+            );
+        }).ToList();
+
+        return resultado;
     }
 
     /// <summary>
@@ -273,6 +406,10 @@ public class DataProcessorService : IDataProcessorService
             var a3 = await ProcessA3InnuvaEmpleadosAsync(ct);
             systems["a3innuva_empleados"] = a3;
 
+            // Empleados de Intratime
+            var intratimeEmp = await ProcessIntratimeEmpleadosAsync(ct);
+            systems["intratime_empleados"] = intratimeEmp;
+
             // Productos de SGPV
             var sgpvProductos = await ProcessSgpvProductosAsync(ct);
             systems["sgpv_productos"] = sgpvProductos;
@@ -281,8 +418,8 @@ public class DataProcessorService : IDataProcessorService
             var otros = await ProcessHorasYGastosAsync(ct);
             systems["otros"] = otros;
 
-            totalProcessed = bizneo.Processed + a3.Processed + sgpvProductos.Processed + otros.Processed;
-            totalErrors = bizneo.Errors + a3.Errors + sgpvProductos.Errors + otros.Errors;
+            totalProcessed = bizneo.Processed + a3.Processed + intratimeEmp.Processed + sgpvProductos.Processed + otros.Processed;
+            totalErrors = bizneo.Errors + a3.Errors + intratimeEmp.Errors + sgpvProductos.Errors + otros.Errors;
         }
         catch (Exception ex)
         {

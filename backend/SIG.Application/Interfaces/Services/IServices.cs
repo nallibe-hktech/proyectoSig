@@ -171,6 +171,7 @@ public interface ISyncService
 public interface IDataProcessorService
 {
     Task<ProcessingResultDto> ProcessAllPendingAsync(CancellationToken ct);
+    Task<IReadOnlyList<DiscrepanciaIntratimeDto>> ValidarDiscrepanciasIntratimeAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
 }
 
 public interface IExportService

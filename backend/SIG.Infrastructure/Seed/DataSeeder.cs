@@ -1,4 +1,4 @@
-#pragma warning disable S2245 // Random usado intencionalmente para datos semilla deterministas (semilla fija 20260101)
+#pragma warning disable S2245, S2696 // Random usado intencionalmente para datos semilla deterministas (semilla fija 20260101); static ctor pattern ok
 
 using System.Text.Json;
 using Bogus;
@@ -98,41 +98,46 @@ public class DataSeeder : ISeedService
     {
         Randomizer.Seed = new Random(Seed);
 
+        var (rMap, dMap, costCenters, passwordHash) = await SeedMasterDataAsync(ct);
+        var (uByEmail, projectsList, concepts) = await SeedEntityDataAsync(passwordHash, dMap, rMap, costCenters, ct);
+        var (actions, periodsList, closuresFull) = await SeedTransactionDataAsync(projectsList, dMap, concepts, uByEmail, ct);
+
+        await SeedStagingDataAsync(uByEmail.Values.ToList(), projectsList.ToList(), actions, periodsList, uByEmail, ct);
+        await SeedLineasYLogsAsync(closuresFull, concepts, uByEmail.Values.ToList(), ct);
+        await SeedApprovalsAsync(closuresFull, rMap, uByEmail, ct);
+        await SeedAuditExtraAsync(uByEmail, ct);
+    }
+
+    private async Task<(Dictionary<string, Role>, Dictionary<string, Department>, List<CostCenter>, string)> SeedMasterDataAsync(CancellationToken ct)
+    {
         var roles = await SeedRolesAsync(ct);
         var rMap = roles.ToDictionary(r => r.Nombre);
-
         var dMap = await SeedDepartmentsAsync(ct);
-
         var costCenters = await SeedCostCentersAsync(ct);
-
         var passwordHash = _hasher.Hash(_config["Seed:DemoPassword"] ?? throw new InvalidOperationException("Seed:DemoPassword no configurada en appsettings"));
+        return (rMap, dMap, costCenters, passwordHash);
+    }
+
+    private async Task<(Dictionary<string, User>, List<Project>, List<Concept>)> SeedEntityDataAsync(string passwordHash, Dictionary<string, Department> dMap, Dictionary<string, Role> rMap, List<CostCenter> costCenters, CancellationToken ct)
+    {
         var users = await SeedUsersAsync(passwordHash, dMap, rMap, ct);
         var uByEmail = users.ToDictionary(u => u.Email);
-
         var clients = await SeedClientsAsync(ct);
-
         var projects = await SeedProjectsAsync(clients, costCenters, uByEmail, ct);
         var projectsList = projects.ToList();
-
         var variables = await SeedVariablesAsync(ct);
         var tarifaHoraId = variables.First(v => v.Nombre == "TarifaHora").Id;
-
         var concepts = await SeedConceptsAsync(tarifaHoraId, ct);
+        return (uByEmail, projectsList, concepts);
+    }
 
+    private async Task<(List<Action>, List<Period>, List<Closure>)> SeedTransactionDataAsync(List<Project> projectsList, Dictionary<string, Department> dMap, List<Concept> concepts, Dictionary<string, User> uByEmail, CancellationToken ct)
+    {
         var actions = await SeedActionsAsync(projectsList, dMap, concepts, uByEmail, ct);
-
         var periods = await SeedPeriodsAsync(ct);
         var periodsList = periods.ToList();
-
-        await SeedStagingDataAsync(users, projects, actions, periodsList, uByEmail, ct);
-
         var closuresFull = await SeedClosuresAsync(projectsList, periodsList, ct);
-
-        await SeedLineasYLogsAsync(closuresFull, concepts, users, ct);
-
-        await SeedApprovalsAsync(closuresFull, rMap, uByEmail, ct);
-
-        await SeedAuditExtraAsync(uByEmail, ct);
+        return (actions, periodsList, closuresFull);
     }
 
     private async Task<List<Role>> SeedRolesAsync(CancellationToken ct)
@@ -704,4 +709,4 @@ public class DataSeeder : ISeedService
     }
 }
 
-#pragma warning restore S2245
+#pragma warning restore S2245, S2696

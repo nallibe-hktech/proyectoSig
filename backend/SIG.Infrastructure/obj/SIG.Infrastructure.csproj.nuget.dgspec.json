@@ -764,7 +764,11 @@
             },
             "ClosedXML": {
               "target": "Package",
-              "version": "[0.104.*, )"
+              "version": "[0.105.0, )"
+            },
+            "CsvHelper": {
+              "target": "Package",
+              "version": "[33.1.0, )"
             },
             "EFCore.NamingConventions": {
               "target": "Package",

@@ -1,0 +1,99 @@
+<div class="container">
+  <div class="header">
+    <h1>Dashboard Galán - Logística e Inventario</h1>
+    <div class="controls">
+      <mat-form-field appearance="outline">
+        <mat-label>Desde</mat-label>
+        <input matInput [formControl]="dateFromControl" type="date" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Hasta</mat-label>
+        <input matInput [formControl]="dateToControl" type="date" />
+      </mat-form-field>
+      <button mat-raised-button color="primary" (click)="refreshDashboard()" [disabled]="loading">
+        <mat-icon>refresh</mat-icon>
+        Actualizar
+      </button>
+    </div>
+  </div>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
+
+  <div *ngIf="dashboard" class="kpi-section">
+    <div class="kpi-card">
+      <h3>Stock Total</h3>
+      <p class="kpi-value">€{{ dashboard.stockTotalValue | number: '1.2-2' }}</p>
+      <p class="kpi-label">Valor de inventario</p>
+    </div>
+
+    <div class="kpi-card">
+      <h3>Entradas</h3>
+      <p class="kpi-value">{{ dashboard.entradasCount }}</p>
+      <p class="kpi-label">Registros en período</p>
+    </div>
+
+    <div class="kpi-card">
+      <h3>Salidas</h3>
+      <p class="kpi-value">{{ dashboard.salidasCount }}</p>
+      <p class="kpi-label">Despachos en período</p>
+    </div>
+
+    <div class="kpi-card">
+      <h3>Costo Logístico</h3>
+      <p class="kpi-value">€{{ dashboard.costoLogisticoTotal | number: '1.2-2' }}</p>
+      <p class="kpi-label">Estimado total</p>
+    </div>
+
+    <div class="kpi-card">
+      <h3>Artículos</h3>
+      <p class="kpi-value">{{ dashboard.articulosDiferentes }}</p>
+      <p class="kpi-label">SKUs únicos</p>
+    </div>
+
+    <div class="kpi-card">
+      <h3>Volumen Movido</h3>
+      <p class="kpi-value">{{ dashboard.volumenMovido }}</p>
+      <p class="kpi-label">Unidades (E+S)</p>
+    </div>
+  </div>
+
+  <mat-tab-group>
+    <mat-tab label="Entradas">
+      <app-galan-entradas-list></app-galan-entradas-list>
+    </mat-tab>
+
+    <mat-tab label="Salidas">
+      <app-galan-salidas-list></app-galan-salidas-list>
+    </mat-tab>
+
+    <mat-tab label="Stock">
+      <app-galan-stock-list></app-galan-stock-list>
+    </mat-tab>
+
+    <mat-tab label="Alertas Stock Bajo" *ngIf="(dashboard?.alertasStockBajo || []).length > 0">
+      <div class="alerts-section">
+        <h3>Artículos con Stock Bajo (< {{ (dashboard?.alertasStockBajo || [])[0]?.umbraloAlerta }})</h3>
+        <mat-table [dataSource]="dashboard?.alertasStockBajo || []" class="alerts-table">
+          <ng-container matColumnDef="codigoArticulo">
+            <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.codigoArticulo }}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="descripcion">
+            <mat-header-cell *matHeaderCellDef>Descripción</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.descripcion }}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="stockActual">
+            <mat-header-cell *matHeaderCellDef>Stock Actual</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.stockActual }}</mat-cell>
+          </ng-container>
+
+          <mat-header-row *matHeaderRowDef="['codigoArticulo', 'descripcion', 'stockActual']"></mat-header-row>
+          <mat-row *matRowDef="let row; columns: ['codigoArticulo', 'descripcion', 'stockActual']"></mat-row>
+        </mat-table>
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
+</div>

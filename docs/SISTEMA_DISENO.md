@@ -189,6 +189,29 @@
 
 ---
 
+### 6.1 Permission pills (Roles · `/roles`)
+
+Componente: `sig-perm-pill` (pildora pequeña 11px / radius 4px) usado en la matriz de permisos del detail panel.
+
+| Modificador | Uso | Background | Color texto |
+|-------------|-----|------------|-------------|
+| `perm--ver` | Permiso "Ver" | `rgba(59,130,246,.12)` | `#3b82f6` (azul) |
+| `perm--val` | Permiso "Validar" | `rgba(245,158,11,.12)` | `#f59e0b` (amber) |
+| `perm--edit` | Permiso "Editar" / "Control total" | `rgba(0,212,196,.12)` | `#00d4c4` (teal) |
+| `perm--crear` | Permiso "Crear" | `rgba(34,197,94,.12)` | `#22c55e` (verde) |
+| `perm--none` | "Sin permisos" | `rgba(239,68,68,.10)` | `#ef4444` (rojo) |
+
+### 6.2 Scope badges (Roles · ámbito)
+
+| Modificador | Uso | Background | Color texto |
+|-------------|-----|------------|-------------|
+| `scope--global` | Rol con ámbito global | `rgba(0,212,196,.12)` | `#00d4c4` |
+| `scope--proyecto` | Rol acotado a proyecto | `rgba(59,130,246,.12)` | `#3b82f6` |
+
+Convención `data-testid`: `roles-table`, `roles-row-{rolName}`, `roles-detail-panel`, `roles-detail-close`, `roles-perm-pill-{entity}-{permission}`.
+
+---
+
 ## 7. Accesibilidad (WCAG 2.1 AA)
 
 - Contraste mínimo 4.5:1 para texto normal, 3:1 para texto grande
@@ -204,3 +227,85 @@
 - **Shell**: `mat-sidenav-container` 100vh, sidebar 256px, AppBar sticky 64px
 - **Page**: `.sig-page` con padding 24px, header flexbox con título + acciones
 - **Responsive**: breakpoint 600px para versión mobile (sidebar overlay, padding reducido)
+
+---
+
+## 9. Dark theme (Modo oscuro — default)
+
+Implementado en `styles.scss` como tema por defecto. La clase `body.sig-light` cambia a modo claro.
+
+### 9.1 Dark palette CSS (extraída de styles.scss)
+
+```css
+/* Surface oscura */
+--mat-sys-surface:                  #0d1b2a;
+--mat-sys-on-surface:               #e8f0f9;
+--mat-sys-surface-variant:          #13243a;
+--mat-sys-on-surface-variant:       #94a3b8;
+
+/* Primary para dark — azul brillante legible sobre fondo oscuro */
+--mat-sys-primary:                  #2563eb;
+--mat-sys-on-primary:               #ffffff;
+--mat-sys-primary-container:        #1e3a5c;
+--mat-sys-on-primary-container:     #93c5fd;
+
+/* Secondary — teal accent */
+--mat-sys-secondary:                #00d4c4;
+--mat-sys-on-secondary:             #003733;
+--mat-sys-secondary-container:      #00d4c41a;
+
+/* Tertiary — amber */
+--mat-sys-tertiary:                 #f59e0b;
+--mat-sys-on-tertiary:              #3b2800;
+--mat-sys-tertiary-container:       #f59e0b1a;
+
+/* Error */
+--mat-sys-error:                    #ef4444;
+--mat-sys-on-error:                 #ffffff;
+--mat-sys-error-container:          #ef44441a;
+
+/* SIG backgrounds dark */
+--sig-bg-app:         #0d1b2a;
+--sig-bg-sidebar:     #091523;
+--sig-bg-card:        #13243a;
+--sig-bg-hover:       #1a3050;
+
+/* SIG text dark */
+--sig-text-primary:   #e8f0f9;
+--sig-text-heading:   #ffffff;
+--sig-text-muted:     #5a7a9a;
+
+/* SIG status dark — tonos adaptados para fondo oscuro */
+--sig-success:        #22c55e;
+--sig-success-bg:     #22c55e1a;
+--sig-warning:        #f59e0b;
+--sig-warning-bg:     #f59e0b1a;
+--sig-danger:         #ef4444;
+--sig-danger-bg:      #ef44441a;
+```
+
+### 9.2 Light theme CSS (body.sig-light — fiel a paleta Penpot)
+
+```css
+body.sig-light {
+  --mat-sys-surface:               #f0f4f8;
+  --mat-sys-on-surface:            #1a2b3c;
+  --mat-sys-primary:               #1F4E78;   /* Azul corporativo */
+  --mat-sys-on-primary:            #FFFFFF;
+  --mat-sys-secondary:             #2E5C8A;
+  --mat-sys-tertiary:              #C9A961;
+  --mat-sys-error:                 #D32F2F;
+
+  --sig-bg-app:         #f0f4f8;
+  --sig-bg-card:        #ffffff;
+  --sig-text-primary:   #1a2b3c;
+  --sig-text-heading:   #0f1f2e;
+
+  --sig-success:        #70AD47;
+  --sig-success-bg:     #dcfce7;
+  --sig-warning:        #FFC107;
+  --sig-warning-bg:     #fef3c7;
+  --sig-danger:         #D32F2F;
+  --sig-danger-bg:      #fee2e2;
+}
+```

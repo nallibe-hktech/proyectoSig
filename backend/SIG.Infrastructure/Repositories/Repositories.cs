@@ -51,7 +51,8 @@ public class UserRepository : IUserRepository
         var q = _db.Users.AsNoTracking().Include(u => u.UserRoles).ThenInclude(ur => ur.Role).AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
         {
-            q = q.Where(u => u.Email.Contains(search) || u.Nombre.Contains(search) || u.Apellidos.Contains(search) || u.NIF.Contains(search));
+            var searchTerm = $"%{search.Trim()}%";
+            q = q.Where(u => EF.Functions.ILike(u.Email, searchTerm) || EF.Functions.ILike(u.Nombre, searchTerm) || EF.Functions.ILike(u.Apellidos, searchTerm) || EF.Functions.ILike(u.NIF, searchTerm));
         }
         var total = await q.CountAsync(ct);
         var items = await q.OrderBy(u => u.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
@@ -125,7 +126,10 @@ public class ClientRepository : IClientRepository
             q = q.Where(c => allowedClientIds.Contains(c.Id));
         }
         if (!string.IsNullOrWhiteSpace(search))
-            q = q.Where(c => c.Nombre.Contains(search) || c.NIF.Contains(search) || (c.Ciudad != null && c.Ciudad.Contains(search)));
+        {
+            var searchTerm = $"%{search.Trim()}%";
+            q = q.Where(c => EF.Functions.ILike(c.Nombre, searchTerm) || EF.Functions.ILike(c.NIF, searchTerm) || (c.Ciudad != null && EF.Functions.ILike(c.Ciudad, searchTerm)));
+        }
         var total = await q.CountAsync(ct);
         var items = await q.OrderBy(c => c.Nombre).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return new PagedResult<Client>(items, total, page, pageSize);
@@ -180,7 +184,11 @@ public class ProjectRepository : IProjectRepository
             q = q.Where(p => projectIds.Contains(p.Id));
         }
         if (clientId.HasValue) q = q.Where(p => p.ClientId == clientId.Value);
-        if (!string.IsNullOrWhiteSpace(search)) q = q.Where(p => p.Nombre.Contains(search));
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = $"%{search.Trim()}%";
+            q = q.Where(p => EF.Functions.ILike(p.Nombre, searchTerm) || EF.Functions.ILike(p.Client.Nombre, searchTerm));
+        }
         var total = await q.CountAsync(ct);
         var items = await q.OrderBy(p => p.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return new PagedResult<Project>(items, total, page, pageSize);
@@ -230,14 +238,20 @@ public class ActionRepository : IActionRepository
 
     public async Task<PagedResult<Action>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? projectId, string? search, CancellationToken ct)
     {
-        var q = _db.Actions.AsNoTracking().Include(a => a.Project).AsQueryable();
+        var q = _db.Actions.AsNoTracking().Include(a => a.Project).Include(a => a.Department).AsQueryable();
         if (!await IsPrivilegedAsync(usuarioId, ct))
         {
             var projectIds = await _userRepo.ListProjectIdsForUserAsync(usuarioId, ct);
             q = q.Where(a => projectIds.Contains(a.ProjectId));
         }
         if (projectId.HasValue) q = q.Where(a => a.ProjectId == projectId.Value);
-        if (!string.IsNullOrWhiteSpace(search)) q = q.Where(a => a.Nombre.Contains(search));
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = $"%{search.Trim()}%";
+            q = q.Where(a => EF.Functions.ILike(a.Nombre, searchTerm)
+                          || EF.Functions.ILike(a.Project.Nombre, searchTerm)
+                          || (a.Department != null && EF.Functions.ILike(a.Department.Nombre, searchTerm)));
+        }
         var total = await q.CountAsync(ct);
         var items = await q.OrderBy(a => a.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return new PagedResult<Action>(items, total, page, pageSize);
@@ -263,7 +277,11 @@ public class ConceptRepository : IConceptRepository
     {
         var q = _db.Concepts.AsNoTracking().AsQueryable();
         if (tipo.HasValue) q = q.Where(c => c.Tipo == tipo.Value);
-        if (!string.IsNullOrWhiteSpace(search)) q = q.Where(c => c.Nombre.Contains(search));
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = $"%{search.Trim()}%";
+            q = q.Where(c => EF.Functions.ILike(c.Nombre, searchTerm));
+        }
         var total = await q.CountAsync(ct);
         var items = await q.OrderBy(c => c.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return new PagedResult<Concept>(items, total, page, pageSize);

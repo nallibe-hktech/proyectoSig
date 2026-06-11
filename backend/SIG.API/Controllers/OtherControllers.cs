@@ -101,6 +101,13 @@ public class SyncController : ControllerBase
 
         return Ok(stats ?? new { totalVisitas = 0, conUsuario = 0, conProyecto = 0, conAccion = 0, porcentajeResuelto = 0.0 });
     }
+
+    [HttpGet("intratime/discrepancias")]
+    public async Task<IActionResult> GetIntratimeDiscrepancias(
+        [FromQuery] DateOnly desde,
+        [FromQuery] DateOnly hasta,
+        CancellationToken ct) =>
+        Ok(await _processor.ValidarDiscrepanciasIntratimeAsync(desde, hasta, ct));
 }
 
 [ApiController]

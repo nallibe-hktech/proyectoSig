@@ -238,3 +238,189 @@ public class CeleroMissionMappingsController : ControllerBase
 public record CeleroResourceMappingRequest(string CeleroNif, int UserId, string? Descripcion);
 public record CeleroServiceMappingRequest(string CeleroServiceName, int ProjectId, string? Descripcion);
 public record CeleroMissionMappingRequest(string CeleroMissionName, int ActionId, string? Descripcion);
+
+// Gestión de valores pendientes de mapeo
+[ApiController]
+[Route("api/celero-mappings")]
+[Authorize(Roles = "Administrator")]
+public class CeleroMapeosPendientesController : ControllerBase
+{
+    private readonly AppDbContext _db;
+
+    public CeleroMapeosPendientesController(AppDbContext db) => _db = db;
+
+    /// <summary>
+    /// Obtiene los valores únicos de staging sin mapear y su estado
+    /// </summary>
+    [HttpGet("pendientes")]
+    public async Task<IActionResult> GetPendientes(CancellationToken ct)
+    {
+        // Recursos (NIF) únicos en staging
+        var resourcesInStaging = await _db.StagingCeleroVisitas
+            .Where(s => !string.IsNullOrEmpty(s.ResourceNif))
+            .GroupBy(s => s.ResourceNif)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var mappedResources = await _db.CeleroResourceMappings
+            .Select(m => m.CeleroNif)
+            .ToListAsync(ct);
+
+        var pendingResources = resourcesInStaging
+            .Select(r => new CeleroMapeosPendientesDto.PendingValue
+            {
+                Valor = r.Value,
+                Cantidad = r.Count,
+                EstaMapado = mappedResources.Contains(r.Value)
+            })
+            .OrderByDescending(r => r.Cantidad)
+            .ToList();
+
+        // Servicios únicos en staging
+        var servicesInStaging = await _db.StagingCeleroVisitas
+            .Where(s => !string.IsNullOrEmpty(s.ServiceName))
+            .GroupBy(s => s.ServiceName)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var mappedServices = await _db.CeleroServiceMappings
+            .Select(m => m.CeleroServiceName)
+            .ToListAsync(ct);
+
+        var pendingServices = servicesInStaging
+            .Select(s => new CeleroMapeosPendientesDto.PendingValue
+            {
+                Valor = s.Value,
+                Cantidad = s.Count,
+                EstaMapado = mappedServices.Contains(s.Value)
+            })
+            .OrderByDescending(s => s.Cantidad)
+            .ToList();
+
+        // Misiones únicas en staging
+        var missionsInStaging = await _db.StagingCeleroVisitas
+            .Where(s => !string.IsNullOrEmpty(s.MissionName))
+            .GroupBy(s => s.MissionName)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var mappedMissions = await _db.CeleroMissionMappings
+            .Select(m => m.CeleroMissionName)
+            .ToListAsync(ct);
+
+        var pendingMissions = missionsInStaging
+            .Select(m => new CeleroMapeosPendientesDto.PendingValue
+            {
+                Valor = m.Value,
+                Cantidad = m.Count,
+                EstaMapado = mappedMissions.Contains(m.Value)
+            })
+            .OrderByDescending(m => m.Cantidad)
+            .ToList();
+
+        return Ok(new CeleroMapeosPendientesDto
+        {
+            Recursos = pendingResources,
+            Servicios = pendingServices,
+            Misiones = pendingMissions,
+            TotalVisitasSinMapear = await _db.StagingCeleroVisitas
+                .CountAsync(s => s.UserId == null || s.ProjectId == null, cancellationToken: ct)
+        });
+    }
+
+    /// <summary>
+    /// Reprocesa las visitas sin mapear usando los mapeos existentes
+    /// </summary>
+    [HttpPost("reprocesar")]
+    public async Task<IActionResult> Reprocesar(CancellationToken ct)
+    {
+        // Cargar mapeos actuales en memoria
+        var resourceMappings = await _db.CeleroResourceMappings
+            .AsNoTracking()
+            .ToDictionaryAsync(m => m.CeleroNif, m => m.UserId, ct);
+
+        var serviceMappings = await _db.CeleroServiceMappings
+            .AsNoTracking()
+            .ToDictionaryAsync(m => m.CeleroServiceName, m => m.ProjectId, ct);
+
+        var missionMappings = await _db.CeleroMissionMappings
+            .AsNoTracking()
+            .ToDictionaryAsync(m => m.CeleroMissionName, m => m.ActionId, ct);
+
+        // Obtener visitas sin mapear completo
+        var visitasSinMapear = await _db.StagingCeleroVisitas
+            .Where(v => v.UserId == null || v.ProjectId == null)
+            .ToListAsync(ct);
+
+        int procesados = 0, resueltos = 0;
+
+        foreach (var visita in visitasSinMapear)
+        {
+            bool cambio = false;
+
+            // Intentar resolver UserId
+            if (visita.UserId == null && !string.IsNullOrEmpty(visita.ResourceNif))
+            {
+                if (resourceMappings.TryGetValue(visita.ResourceNif, out var userId))
+                {
+                    visita.UserId = userId;
+                    cambio = true;
+                }
+            }
+
+            // Intentar resolver ProjectId
+            if (visita.ProjectId == null && !string.IsNullOrEmpty(visita.ServiceName))
+            {
+                if (serviceMappings.TryGetValue(visita.ServiceName, out var projectId))
+                {
+                    visita.ProjectId = projectId;
+                    cambio = true;
+                }
+            }
+
+            // Intentar resolver ActionId (misionName → actionId)
+            if (visita.ActionId == null && !string.IsNullOrEmpty(visita.MissionName))
+            {
+                if (missionMappings.TryGetValue(visita.MissionName, out var actionId))
+                {
+                    visita.ActionId = actionId;
+                    cambio = true;
+                }
+            }
+
+            if (cambio && visita.UserId.HasValue && visita.ProjectId.HasValue)
+            {
+                resueltos++;
+            }
+
+            procesados++;
+        }
+
+        // Guardar cambios en batch
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            procesados,
+            resueltos,
+            sinResolver = procesados - resueltos,
+            mensaje = $"Se reprocesaron {procesados} visitas: {resueltos} se resolvieron completamente, {procesados - resueltos} aún requieren mapeo."
+        });
+    }
+}
+
+// DTOs para respuestas
+public class CeleroMapeosPendientesDto
+{
+    public List<PendingValue> Recursos { get; set; } = [];
+    public List<PendingValue> Servicios { get; set; } = [];
+    public List<PendingValue> Misiones { get; set; } = [];
+    public int TotalVisitasSinMapear { get; set; }
+
+    public class PendingValue
+    {
+        public string Valor { get; set; } = string.Empty;
+        public int Cantidad { get; set; }
+        public bool EstaMapado { get; set; }
+    }
+}

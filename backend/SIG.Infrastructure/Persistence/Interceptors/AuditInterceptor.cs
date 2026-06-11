@@ -42,16 +42,11 @@ public class AuditInterceptor : SaveChangesInterceptor
 
         var logs = new List<AuditLog>();
         var ip = _currentUser.Ip;
-
-        int? userId = null;
-        try { userId = _currentUser.UserId; }
-        catch { }
-
         var now = DateTime.UtcNow;
 
         foreach (var entry in entries)
         {
-            var log = BuildAuditLog(entry, userId, ip, now);
+            var log = BuildAuditLog(entry, GetUserId(), ip, now);
             if (log is not null)
                 logs.Add(log);
         }
@@ -60,45 +55,20 @@ public class AuditInterceptor : SaveChangesInterceptor
             context.Set<AuditLog>().Add(log);
     }
 
+    private int? GetUserId()
+    {
+        try { return _currentUser.UserId; }
+        catch { return null; }
+    }
+
     private static AuditLog? BuildAuditLog(EntityEntry entry, int? userId, string? ip, DateTime now)
     {
-        var action = entry.State switch
-        {
-            EntityState.Added => AuditAction.Create,
-            EntityState.Modified => AuditAction.Update,
-            EntityState.Deleted => AuditAction.Delete,
-            _ => AuditAction.Update
-        };
+        var action = MapAuditAction(entry.State);
 
         var typeName = entry.Entity.GetType().Name;
         var idVal = entry.Properties.FirstOrDefault(p => p.Metadata.IsPrimaryKey())?.CurrentValue?.ToString() ?? "?";
 
-        string? oldJson = null, newJson = null;
-        try
-        {
-            if (entry.State == EntityState.Modified)
-            {
-                var oldVals = entry.Properties.Where(p => p.IsModified && !ExcludedFields.Contains(p.Metadata.Name))
-                    .ToDictionary(p => p.Metadata.Name, p => p.OriginalValue);
-                var newVals = entry.Properties.Where(p => p.IsModified && !ExcludedFields.Contains(p.Metadata.Name))
-                    .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
-                oldJson = JsonSerializer.Serialize(oldVals);
-                newJson = JsonSerializer.Serialize(newVals);
-            }
-            else if (entry.State == EntityState.Added)
-            {
-                var newVals = entry.Properties.Where(p => !ExcludedFields.Contains(p.Metadata.Name))
-                    .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
-                newJson = JsonSerializer.Serialize(newVals);
-            }
-            else if (entry.State == EntityState.Deleted)
-            {
-                var oldVals = entry.Properties.Where(p => !ExcludedFields.Contains(p.Metadata.Name))
-                    .ToDictionary(p => p.Metadata.Name, p => p.OriginalValue);
-                oldJson = JsonSerializer.Serialize(oldVals);
-            }
-        }
-        catch { /* ignore json errors */ }
+        var (oldJson, newJson) = SerializeChanges(entry);
 
         return new AuditLog
         {
@@ -111,5 +81,58 @@ public class AuditInterceptor : SaveChangesInterceptor
             Timestamp = now,
             Ip = ip
         };
+    }
+
+    private static AuditAction MapAuditAction(EntityState state)
+    {
+        return state switch
+        {
+            EntityState.Added => AuditAction.Create,
+            EntityState.Modified => AuditAction.Update,
+            EntityState.Deleted => AuditAction.Delete,
+            _ => AuditAction.Update
+        };
+    }
+
+    private static (string? oldJson, string? newJson) SerializeChanges(EntityEntry entry)
+    {
+        try
+        {
+            return MapSerialization(entry);
+        }
+        catch { return (null, null); }
+    }
+
+    private static (string? oldJson, string? newJson) MapSerialization(EntityEntry entry)
+    {
+        return entry.State switch
+        {
+            EntityState.Modified => SerializeModified(entry),
+            EntityState.Added => SerializeAdded(entry),
+            EntityState.Deleted => SerializeDeleted(entry),
+            _ => (null, null)
+        };
+    }
+
+    private static (string? oldJson, string? newJson) SerializeModified(EntityEntry entry)
+    {
+        var filter = entry.Properties.Where(p => p.IsModified && !ExcludedFields.Contains(p.Metadata.Name));
+        var oldVals = filter.ToDictionary(p => p.Metadata.Name, p => p.OriginalValue);
+        var newVals = filter.ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
+        return (JsonSerializer.Serialize(oldVals), JsonSerializer.Serialize(newVals));
+    }
+
+    private static (string? oldJson, string? newJson) SerializeAdded(EntityEntry entry)
+    {
+        var newVals = entry.Properties.Where(p => !ExcludedFields.Contains(p.Metadata.Name))
+            .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
+        return (null, JsonSerializer.Serialize(newVals));
+    }
+
+    private static (string? oldJson, string? newJson) SerializeDeleted(EntityEntry entry)
+    {
+        var oldVals = entry.Properties.Where(p => !ExcludedFields.Contains(p.Metadata.Name))
+            .ToDictionary(p => p.Metadata.Name, p => p.OriginalValue);
+        return (JsonSerializer.Serialize(oldVals), null);
     }
 }

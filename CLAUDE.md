@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **SIG-ES** ("Sistema Integral de Gestión - Empresa Específica") is a multi-system integration platform for financial closures and business process management. It connects multiple external APIs (Bizneo, SGPV, Celero, Intratime, PayHawk, TravelPerk, A3 Innuva) with a custom calculation engine and approval workflow.
 
-**Status**: Active development (4-5 week project, currently week 2). Backend 85% complete, frontend 75% complete. Uses .NET 10 + Angular 21.
+**Status**: Active development. Uses .NET 10 + Angular 21. Most integrations complete. **Recently added**: Galán (warehouse/logistics) and Mediapost (distribution/delivery) modules with full CRUD, dashboards, and UI.
 
 ## Tech Stack
 
@@ -35,6 +35,86 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - PostgreSQL: 5433
 - **CORS**: Configured for localhost:4200
 
+## Galán & Mediapost Integration (NEW — June 2026)
+
+### Overview
+Two new operational modules for warehouse/logistics (Galán) and distribution/delivery (Mediapost) management.
+
+### Backend Endpoints
+
+**Galán** (`/api/galan`):
+- `GET /entradas?page=1&pageSize=50&search=...` — Warehouse entries (paginated, searchable)
+- `GET /salidas?page=1&pageSize=50&search=...` — Warehouse exits/dispatches (paginated, searchable)
+- `GET /stock` — Full inventory snapshot
+- `GET /entradas/{id}`, `GET /salidas/{id}`, `GET /stock/{id}` — Detail endpoints
+- `GET /dashboard?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` — KPI dashboard (stock value, logistics cost, low-stock alerts)
+
+**Mediapost** (`/api/mediapost`):
+- `GET /pedidos?page=1&pageSize=50&search=...&estado=...` — Orders (paginated, filtrable by estado)
+- `GET /recepciones?page=1&pageSize=50&search=...` — Receptions (paginated, searchable)
+- `GET /pedidos/{id}`, `GET /recepciones/{id}` — Detail endpoints
+- `GET /dashboard?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` — KPI dashboard (delivery rate, damage tracking, pending orders)
+
+### Implementation Files
+
+**Backend**:
+- `SIG.Infrastructure/Services/GalanService.cs` — Data access layer (EF Core queries, pagination, search)
+- `SIG.Infrastructure/Services/MediapostService.cs` — Data access layer (EF Core queries, pagination, search)
+- `SIG.API/Controllers/GalanController.cs` — HTTP endpoints
+- `SIG.API/Controllers/MediapostController.cs` — HTTP endpoints
+- `SIG.Infrastructure/DependencyInjection.cs` — Service registration
+
+**Frontend**:
+- `src/app/features/galan/components/galan-dashboard.component.ts` — Dashboard with KPI cards + 4 tabs
+- `src/app/features/galan/components/galan-entradas-list.component.ts` — Entradas list (search + pagination)
+- `src/app/features/galan/components/galan-salidas-list.component.ts` — Salidas list (search + pagination)
+- `src/app/features/galan/components/galan-stock-list.component.ts` — Stock list (full, no pagination)
+- `src/app/features/galan/services/galan.service.ts` — HTTP client
+- `src/app/features/mediapost/components/mediapost-dashboard.component.ts` — Dashboard with 8 KPI cards + 3 tabs
+- `src/app/features/mediapost/components/mediapost-pedidos-list.component.ts` — Pedidos list (search + estado filter + pagination)
+- `src/app/features/mediapost/components/mediapost-recepciones-list.component.ts` — Recepciones list (search + pagination)
+- `src/app/features/mediapost/services/mediapost.service.ts` — HTTP client
+
+### Routes
+```
+/galan           → Galán dashboard + warehouse management
+/mediapost       → Mediapost dashboard + delivery tracking
+```
+
+### Key Features
+- **Search**: Full-text with debounce(300ms) on all lists
+- **Pagination**: Material paginator with 10/25/50 options
+- **Date Filtering**: Dashboard KPIs by date range (desde/hasta)
+- **Status Tracking**: Color-coded delivery/movement status
+- **Alerts**: Low stock warnings (< 5 units), damage tracking in recepciones
+- **All Components**: Standalone (modern Angular pattern)
+
+### Architecture Notes
+- Service implementations in **Infrastructure** layer (depend on EF Core + AppDbContext)
+- Service interfaces in **Application** layer (abstraction boundary)
+- Controllers in **API** layer (HTTP concerns only)
+- Pagination uses existing `PagedResult<T>` pattern from `SIG.Application/Common/PagedResult.cs`
+- Dashboard KPI calculations done in-memory after querying staging tables (not SQL aggregates)
+
+### Next Steps
+- **SharePoint Integration** (Step 5): Replace local CSV/Excel file paths with SharePoint SDK for real data sync
+- Chart visualizations (currently removed to focus on CRUD + KPIs; can be re-added with ng2-charts if needed)
+
+## Code Style & Formatting
+
+### Frontend (Angular)
+- **Formatter**: Prettier (configured in `frontend/.prettierrc`)
+  - Single quotes: `true`
+  - Print width: `100` characters
+  - HTML parser: Angular (`*.html` files)
+- **Component generation**: By default skips tests (configure in `angular.json`: `schematics.@schematics/angular:component.skipTests: true`)
+- **Styles**: SCSS (configured in `angular.json`). Generate components with: `ng generate component name --skip-tests`
+
+### Backend (.NET)
+- Follow standard C# conventions (PascalCase for public members, camelCase for locals)
+- EditorConfig enforced across solution (check `.editorconfig` if present)
+- Format on save is recommended (Visual Studio default)
+
 ## Development Commands
 
 ### Backend (.NET)
@@ -54,11 +134,20 @@ dotnet build backend -warnaserror
 # Run API server (listens on port 5180)
 cd backend/SIG.API && dotnet run
 
-# Run specific test file
-dotnet test backend/SIG.Tests --filter "TestClassName=ClassName"
+# Run all tests
+dotnet test backend
 
-# Run all tests with coverage
+# Run specific test class
+dotnet test backend/SIG.Tests --filter "FullyQualifiedName~SIG.Tests.Unit.Services.AuthServiceTests"
+
+# Run specific test method
+dotnet test backend/SIG.Tests --filter "Name=TestMethodName"
+
+# Run tests with coverage
 dotnet test backend --logger "trx;LogFileName=results.trx" /p:CollectCoverage=true
+
+# Run integration tests only
+dotnet test backend/SIG.Tests --filter "Category=Integration"
 
 # Entity Framework: apply pending migrations
 cd backend/SIG.API && dotnet ef database update
@@ -84,14 +173,46 @@ npm start
 # Build for production
 npm run build
 
-# Run unit tests (Jasmine + Karma)
+# Watch mode during development (triggers rebuild on file changes)
+npm run watch
+```
+
+**Unit Tests** (Karma + Jasmine):
+```bash
+cd frontend
+
+# Run tests once
 npm test
 
-# Run E2E tests (Playwright)
-npm run e2e  # or: npx playwright test
+# Run tests in watch mode
+npm test -- --watch
 
-# Watch mode during development
-npm run watch
+# Run tests with coverage
+npm test -- --code-coverage
+
+# Run specific test file
+npm test -- --browsers=Chrome --include="**/auth.service.spec.ts"
+```
+
+**E2E Tests** (Playwright):
+```bash
+# Prerequisites: backend running (port 5180), frontend dev server running (port 4200)
+cd frontend
+
+# Install Playwright browsers (first time only)
+npx playwright install chromium
+
+# Run all E2E tests
+npx playwright test
+
+# Run tests in headed mode (see browser)
+npx playwright test --headed
+
+# Run specific test file
+npx playwright test e2e/auth.spec.ts
+
+# Debug mode (interactive)
+npx playwright test --debug
 ```
 
 ### Database
@@ -241,7 +362,7 @@ The system connects to 7 external APIs via HTTP clients:
 - `AuthService` — Token storage, login/logout
 - `AppState` — Optional state management (if using NGRX or custom)
 
-## Database Connection
+## Database Connection & Initialization
 
 **Local development** (Docker Compose):
 ```
@@ -259,34 +380,68 @@ Password: SigEs@2026
 }
 ```
 
-**Schema**: 33+ tables including entities, staging tables, audit logs.
+**Database Setup**:
+1. Start PostgreSQL: `docker-compose up -d`
+2. Apply migrations: `cd backend/SIG.API && dotnet ef database update`
+3. Seeding: In **Development** environment, the API auto-seeds demo data on startup (configured in `appsettings.Development.json` with `Seed.AutoRun: true`). Demo user password is `Demo#2026!`.
 
-## Testing
+**Schema**: 33+ tables including entities, staging tables, audit logs. Migrations are applied at startup; no manual migration scripts needed for local development.
+
+## Testing Strategy
 
 ### Backend (xUnit, Moq, InMemoryDatabase)
 
-- **Unit tests**: Service logic with mocked dependencies
-- **Integration tests**: Against InMemoryDatabase or real PostgreSQL
-- Run: `dotnet test backend`
-- Coverage: Use `/p:CollectCoverage=true` flag
+- **Location**: `backend/SIG.Tests/` (Unit and Integration subdirectories)
+- **Unit tests**: Service logic with mocked dependencies (no database)
+- **Integration tests**: Against real PostgreSQL (uses test database via `appsettings.Testing.json`)
+- **Fixtures**: Shared test data in `Fixtures/` directory
+- **Test runner**: xUnit (via `dotnet test`)
 
-### Frontend (Jasmine, Karma, Playwright)
+### Frontend (Karma + Jasmine for units, Playwright for E2E)
 
-- **Unit tests**: Components, services, pipes
-- **Karma (UI)**: `npm test` (watches for changes)
-- **Playwright (E2E)**: `npm run e2e` (full user flows in real browser)
+- **Unit tests**: Located as `*.spec.ts` files adjacent to source
+  - Test runner: Karma (headless Chrome by default)
+  - Framework: Jasmine
+  - Coverage: Use `npm test -- --code-coverage` 
+  - Components skip test generation by default (edit `angular.json` to change)
 
-## Configuration & Secrets
+- **E2E tests**: Located in `frontend/e2e/` directory
+  - Test runner: Playwright (Chrome, Firefox, Safari configured)
+  - Prerequisites: Both backend (5180) and frontend dev server (4200) must be running
+  - Timeout: 30 seconds per test, 1 automatic retry on failure
+  
+**Note**: The Frontend README mentions Vitest, but the project uses Karma + Jasmine. Ignore Vitest references in generated documentation.
 
-### Backend (appsettings.json)
+## Configuration & Environment Files
+
+### Backend (appsettings.*.json)
+
+Located in `backend/SIG.API/`:
+- `appsettings.json` — Base configuration (committed)
+- `appsettings.Development.json` — Local dev overrides (includes demo credentials, auto-seeding)
+- `appsettings.Testing.json` — Test database connection
+- `appsettings.E2E.json` — E2E test configuration
+
+**Key settings**:
 - `ConnectionStrings:DefaultConnection` — PostgreSQL connection
 - `JwtSettings:SigningKey` — JWT secret (must be >32 chars)
-- `JwtSettings:Issuer` — Token issuer claim
-- `JwtSettings:Audience` — Token audience claim
-- External API credentials (Bizneo, SGPV, etc.) — stored in `user-secrets` for dev, environment variables in production
+- `Integrations` — External API credentials (Bizneo, SGPV, PayHawk, etc.)
+- `Seed:AutoRun` — Enable auto-seeding on startup (true in Development)
+- `Features:AllowSeedRegeneration` — Allow re-running seeds via API
+
+For local development, appsettings.Development.json is applied automatically when `ASPNETCORE_ENVIRONMENT=Development`. In production, use environment variables.
 
 ### Frontend (environment.ts, environment.prod.ts)
-- `apiUrl` — Backend API base URL (e.g., `http://localhost:5180`)
+
+Located in `frontend/src/environments/`:
+- `environment.ts` — Development configuration
+- `environment.prod.ts` — Production configuration
+
+**Key settings**:
+- `apiUrl` — Backend API base URL (e.g., `http://localhost:5180` for dev)
+- Any feature flags or configuration needed by services
+
+**Note**: Environment configurations are swapped during build based on the target configuration (see `angular.json` `fileReplacements`).
 
 ## Important Patterns & Constraints
 
@@ -333,10 +488,81 @@ Password: SigEs@2026
 - Check Network tab to inspect API calls and response payloads
 - Use Angular DevTools extension for component tree inspection
 
+## Development Workflows & Debugging
+
+### Full Local Stack Startup
+
+```bash
+# Terminal 1: Start PostgreSQL
+docker-compose up -d
+
+# Terminal 2: Start backend API (auto-applies migrations, auto-seeds on first run)
+cd backend/SIG.API
+ASPNETCORE_ENVIRONMENT=Development dotnet run  # Listens on http://localhost:5180
+
+# Terminal 3: Start frontend dev server (with hot reload)
+cd frontend
+npm start  # Listens on http://localhost:4200
+
+# Terminal 4 (optional): Run tests
+cd frontend && npm test
+# OR
+cd backend && dotnet test
+```
+
+### Backend Debugging
+
+- **Swagger UI**: http://localhost:5180/swagger (test endpoints directly)
+- **EF Core logging**: Check `appsettings.Development.json` for `Logging:LogLevel` (set Microsoft.EntityFrameworkCore.Database.Command to Information to see SQL)
+- **Exception details**: Enabled in Development by default; turned off in production
+- **Database state**: Use `psql` or pgAdmin to inspect tables directly (password: `SigEs@2026`)
+
+### Frontend Debugging
+
+- **Browser DevTools**: Press F12 (Console, Network, Sources tabs useful)
+- **Angular DevTools extension**: Inspect component tree, change properties at runtime
+- **Network tab**: See API requests/responses, check JWT tokens in headers
+- **Hot reload**: Changes to `.ts` and `.html` files auto-reload during `npm start`
+- **Environment check**: Verify `environment.ts` `apiUrl` points to running backend
+
+### Running Tests During Development
+
+```bash
+# Backend: Run tests in watch mode (re-runs on code changes)
+cd backend && dotnet watch test
+
+# Frontend: Run unit tests in watch mode
+cd frontend && npm test -- --watch
+
+# Frontend: Debug single test in browser
+cd frontend && npm test -- --browsers=Chrome --watch
+```
+
+### Stopping & Cleaning Up
+
+```bash
+# Stop backend (Ctrl+C in terminal)
+# Stop frontend (Ctrl+C in terminal)
+
+# Stop PostgreSQL container
+docker-compose down
+
+# (Optional) Reset database completely
+docker-compose down -v    # -v removes volumes
+docker-compose up -d      # Re-create empty database
+dotnet ef database update # Re-apply migrations
+```
+
 ## When to Ask the User
 
-- If a refactoring affects architectural layers (e.g., moving logic from Domain to Application)
-- If adding new external integrations (requires understanding of API auth + staging schema)
-- If modifying authentication/JWT claim handling
-- If making database schema changes beyond simple column additions
-- If changing the approval workflow or calculation logic
+Before making significant changes, ask if:
+
+1. **Architecture**: Refactoring across Domain/Application/Infrastructure layers (affects DI and contracts)
+2. **Integrations**: Adding new external APIs (requires understanding auth patterns, staging tables, sync flow)
+3. **Authentication**: Modifying JWT claims, token refresh logic, or role-based authorization
+4. **Database**: Schema changes beyond simple column additions (affects migrations and may break integration tests)
+5. **Calculation/Approval**: Changes to formula evaluation or the multi-role approval workflow
+6. **Frontend routing or state**: Major refactoring of feature modules or service dependencies
+7. **UI/UX**: Significant layout or interaction pattern changes (test in browser before reporting done)
+
+If unsure about scope, ask rather than assuming.

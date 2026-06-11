@@ -1484,6 +1484,252 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("staging_celero_visitas", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingIntratimeClockingRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ErrorProcesamiento")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error_procesamiento");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("FechaRequest")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_request");
+
+                    b.Property<DateTime>("FechaUltimaSincronizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_ultima_sincronizacion");
+
+                    b.Property<bool>("FlagProcesado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("flag_procesado");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("HoraDesde")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("hora_desde");
+
+                    b.Property<string>("HoraHasta")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("hora_hasta");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<string>("Razon")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("razon");
+
+                    b.Property<string>("RequestIdExterno")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("request_id_externo");
+
+                    b.Property<string>("TipoRequest")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tipo_request");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("UserIdExterno")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("user_id_externo");
+
+                    b.HasKey("Id")
+                        .HasName("pk_staging_intratime_clocking_requests");
+
+                    b.HasIndex("Hash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_staging_intratime_clocking_requests_hash");
+
+                    b.ToTable("staging_intratime_clocking_requests", (string)null);
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingIntratimeEmpleado", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Affiliation")
+                        .HasColumnType("text")
+                        .HasColumnName("affiliation");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("ErrorProcesamiento")
+                        .HasColumnType("text")
+                        .HasColumnName("error_procesamiento");
+
+                    b.Property<DateTime>("FechaUltimaSincronizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_ultima_sincronizacion");
+
+                    b.Property<bool>("FlagProcesado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("flag_procesado");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("NIF")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nif");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_json");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer")
+                        .HasColumnName("role");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("UserIdExterno")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id_externo");
+
+                    b.HasKey("Id")
+                        .HasName("pk_staging_intratime_empleados");
+
+                    b.ToTable("staging_intratime_empleados", (string)null);
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingIntratimeExpense", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Cantidad")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("cantidad");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("ErrorProcesamiento")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error_procesamiento");
+
+                    b.Property<string>("ExpenseIdExterno")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("expense_id_externo");
+
+                    b.Property<DateTime>("FechaExpense")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_expense");
+
+                    b.Property<DateTime>("FechaUltimaSincronizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_ultima_sincronizacion");
+
+                    b.Property<bool>("FlagProcesado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("flag_procesado");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("NombreExpense")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nombre_expense");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<int?>("ProjectId")
+                        .HasColumnType("integer")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("ProyectoNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("proyecto_nombre");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("UserIdExterno")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("user_id_externo");
+
+                    b.HasKey("Id")
+                        .HasName("pk_staging_intratime_expenses");
+
+                    b.HasIndex("Hash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_staging_intratime_expenses_hash");
+
+                    b.ToTable("staging_intratime_expenses", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingIntratimeFichaje", b =>
                 {
                     b.Property<int>("Id")
@@ -1522,6 +1768,10 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("hash");
 
+                    b.Property<decimal?>("HorasCalculadas")
+                        .HasColumnType("numeric")
+                        .HasColumnName("horas_calculadas");
+
                     b.Property<string>("PayloadJson")
                         .IsRequired()
                         .HasColumnType("jsonb")
@@ -1531,9 +1781,14 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("salida");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("integer")
                         .HasColumnName("user_id");
+
+                    b.Property<string>("UserIdExterno")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id_externo");
 
                     b.HasKey("Id")
                         .HasName("pk_staging_intratime_fichajes");

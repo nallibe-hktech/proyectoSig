@@ -1,0 +1,85 @@
+// ═══════════════════════════════════════════════════════════════
+// SIG-ES DESIGN TOKENS — fiel a mockups Penpot
+// ═══════════════════════════════════════════════════════════════
+
+// ── Backgrounds ─────────────────────────────────────────────────
+$bg-app:        #0d1b2a;   // fondo global de la app
+$bg-sidebar:    #091523;   // sidebar lateral
+$bg-card:       #13243a;   // cards, paneles, tablas
+$bg-card-alt:   #162033;   // fondo alterno filas, inputs
+$bg-hover:      #1a3050;   // hover sobre filas/items
+$bg-active:     #1e3a5c;   // item activo en sidebar
+$bg-header:     #0a1828;   // cabecera de tabla
+$bg-overlay:    #0d1b2aCC; // overlay modales
+
+// ── Text ────────────────────────────────────────────────────────
+$text-primary:   #e8f0f9;  // texto principal
+$text-secondary: #94a3b8;  // texto secundario / labels
+$text-muted:     #5a7a9a;  // texto muted / placeholders
+$text-heading:   #ffffff;  // títulos de página
+
+// ── Accent & Brand ──────────────────────────────────────────────
+$accent-teal:    #00d4c4;  // estado activo sidebar, iconos activos
+$accent-teal-bg: #00d4c41a;
+$accent-blue:    #2563eb;  // botón primario, links
+$accent-blue-light: #3b82f6;
+
+// ── Status ──────────────────────────────────────────────────────
+$status-active:    #22c55e; // ACTIVO
+$status-active-bg: #22c55e1a;
+$status-review:    #f59e0b; // REVISIÓN
+$status-review-bg: #f59e0b1a;
+$status-inactive:  #ef4444; // INACTIVO / BLOQUEADO
+$status-inactive-bg: #ef44441a;
+$status-pending:   #94a3b8; // PENDIENTE
+
+// ── Type badges ─────────────────────────────────────────────────
+$badge-pago:     #2563eb;
+$badge-factura:  #8b5cf6;
+$badge-global:   #00d4c4;
+$badge-proyecto: #f59e0b;
+
+// ── Borders ─────────────────────────────────────────────────────
+$border-color:    #1e3a5c;
+$border-light:    #243b55;
+$border-focus:    #2563eb;
+
+// ── Formula Builder tokens ──────────────────────────────────────
+$token-variable:  #00d4c4;
+$token-numero:    #4ade80;
+$token-operacion: #94a3b8;
+$token-payhawk:   #f59e0b;
+$token-celero:    #3b82f6;
+$token-bizneo:    #a78bfa;
+$token-intratime: #fb923c;
+
+// ── Spacing ─────────────────────────────────────────────────────
+$sidebar-width:       168px;
+$detail-panel-width:  296px;
+$header-height:       56px;
+$filter-bar-height:   64px;
+
+// ── Typography ──────────────────────────────────────────────────
+$font-family: 'Inter', 'Roboto', -apple-system, sans-serif;
+$font-size-xs:   11px;
+$font-size-sm:   12px;
+$font-size-base: 14px;
+$font-size-md:   15px;
+$font-size-lg:   18px;
+$font-size-xl:   22px;
+$font-size-2xl:  28px;
+
+// ── Shadows ─────────────────────────────────────────────────────
+$shadow-card:  0 2px 12px rgba(0,0,0,.35);
+$shadow-panel: 4px 0 24px rgba(0,0,0,.4);
+
+// ── Radius ──────────────────────────────────────────────────────
+$radius-sm:  4px;
+$radius-md:  6px;
+$radius-lg:  10px;
+$radius-xl:  14px;
+$radius-pill:50px;
+
+// ── Transitions ─────────────────────────────────────────────────
+$transition-fast: 150ms ease;
+$transition-base: 220ms ease;

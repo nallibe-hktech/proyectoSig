@@ -15,7 +15,11 @@ public interface IBizneoClient
 
 public interface IIntratimeClient
 {
+    Task<IReadOnlyList<IntratimeEmpleadoDto>> GetEmpleadosAsync(CancellationToken ct);
     Task<IReadOnlyList<IntratimeFichajeDto>> GetFichajesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
+    Task<IReadOnlyList<IntratimeClockingRequestDto>> GetClockingRequestsAsync(int year, CancellationToken ct);
+    Task<IReadOnlyList<IntratimeExpenseDto>> GetExpensesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
+    Task<IReadOnlyList<IntratimeProyectoDto>> GetProyectosAsync(CancellationToken ct);
 }
 
 public interface IPayHawkClient
@@ -37,4 +41,17 @@ public interface IA3InnuvaClient
 public interface ITravelPerkClient
 {
     Task<IReadOnlyList<TravelPerkViajeDto>> GetViajesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
+}
+
+public interface IGalanClient
+{
+    Task<IReadOnlyList<GalanEntradaDto>> GetEntradasAsync(DateTime desde, DateTime hasta, CancellationToken ct);
+    Task<IReadOnlyList<GalanSalidaDto>> GetSalidasAsync(DateTime desde, DateTime hasta, CancellationToken ct);
+    Task<IReadOnlyList<GalanStockDto>> GetStockAsync(CancellationToken ct);
+}
+
+public interface IMediapostClient
+{
+    Task<IReadOnlyList<MediapostPedidoDto>> GetPedidosAsync(DateTime desde, DateTime hasta, CancellationToken ct);
+    Task<IReadOnlyList<MediapostRecepcionDto>> GetRecepcionesAsync(DateTime desde, DateTime hasta, CancellationToken ct);
 }

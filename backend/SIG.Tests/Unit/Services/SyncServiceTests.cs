@@ -14,10 +14,15 @@ public class SyncServiceTests
     private readonly IIntratimeClient _intratime = Substitute.For<IIntratimeClient>();
     private readonly IPayHawkClient _payhawk = Substitute.For<IPayHawkClient>();
     private readonly ISgpvClient _sgpv = Substitute.For<ISgpvClient>();
+    private readonly IGalanClient _galan = Substitute.For<IGalanClient>();
+    private readonly IMediapostClient _mediapost = Substitute.For<IMediapostClient>();
     private readonly IStagingRepository<StagingCeleroVisita> _celeroRepo = Substitute.For<IStagingRepository<StagingCeleroVisita>>();
     private readonly IStagingRepository<StagingBizneoEmpleado> _empRepo = Substitute.For<IStagingRepository<StagingBizneoEmpleado>>();
     private readonly IStagingRepository<StagingBizneoAbsence> _absenceRepo = Substitute.For<IStagingRepository<StagingBizneoAbsence>>();
     private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo = Substitute.For<IStagingRepository<StagingIntratimeFichaje>>();
+    private readonly IStagingRepository<StagingIntratimeEmpleado> _intratimeEmpRepo = Substitute.For<IStagingRepository<StagingIntratimeEmpleado>>();
+    private readonly IStagingRepository<StagingIntratimeClockingRequest> _clkReqRepo = Substitute.For<IStagingRepository<StagingIntratimeClockingRequest>>();
+    private readonly IStagingRepository<StagingIntratimeExpense> _expenseRepo = Substitute.For<IStagingRepository<StagingIntratimeExpense>>();
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo = Substitute.For<IStagingRepository<StagingPayHawkGasto>>();
     private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo = Substitute.For<IStagingRepository<StagingSgpvVisita>>();
     private readonly IStagingRepository<StagingSgpvProducto> _sgpvProductoRepo = Substitute.For<IStagingRepository<StagingSgpvProducto>>();
@@ -26,7 +31,7 @@ public class SyncServiceTests
     private readonly IActionRepository _actionRepo = Substitute.For<IActionRepository>();
     private readonly ICeleroMappingRepository _mappingRepo = Substitute.For<ICeleroMappingRepository>();
 
-    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _sgpv, _celeroRepo, _empRepo, _absenceRepo, _ficRepo, _gastoRepo, _sgpvRepo, _sgpvProductoRepo, _userRepo, _projectRepo, _actionRepo, _mappingRepo);
+    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _sgpv, _galan, _mediapost, _celeroRepo, _empRepo, _absenceRepo, _ficRepo, _intratimeEmpRepo, _clkReqRepo, _expenseRepo, _gastoRepo, _sgpvRepo, _sgpvProductoRepo, _userRepo, _projectRepo, _actionRepo, _mappingRepo);
 
     [Fact]
     public async Task SyncAsync_SistemaDesconocido_LanzaIntegrationException()
@@ -111,9 +116,10 @@ public class SyncServiceTests
         _intratime.GetFichajesAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
-                new IntratimeFichajeDto("f1", 1, new DateTime(2026, 3, 1, 8, 0, 0, DateTimeKind.Unspecified), new DateTime(2026, 3, 1, 17, 0, 0, DateTimeKind.Unspecified)),
+                new IntratimeFichajeDto("f1", "20875", new DateTime(2026, 3, 1, 8, 0, 0, DateTimeKind.Unspecified), new DateTime(2026, 3, 1, 17, 0, 0, DateTimeKind.Unspecified)),
             });
         _ficRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+        _intratimeEmpRepo.ListAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<StagingIntratimeEmpleado>());
 
         var sut = CreateSut();
         var result = await sut.SyncAsync("intratime", CancellationToken.None);

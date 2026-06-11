@@ -1,8 +1,18 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDividerModule } from '@angular/material/divider';
 import { FormulaBuilderService } from '../services/formula-builder.service';
 import { EditorState, FormulaNode, Formula, ExportResult } from '../models/formula.model';
+import { FormulaCanvasToolbarComponent } from './formula-canvas-toolbar.component';
+import { FormulaPaletteComponent } from './formula-palette.component';
+import { FormulaCanvasComponent } from './formula-canvas.component';
+import { FormulaPropertyInspectorComponent } from './formula-property-inspector.component';
 
 /**
  * Componente principal del Editor Visual de Fórmulas
@@ -14,9 +24,23 @@ import { EditorState, FormulaNode, Formula, ExportResult } from '../models/formu
   templateUrl: './formula-editor.component.html',
   styleUrls: ['./formula-editor.component.scss'],
   standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    MatDividerModule,
+    FormulaCanvasToolbarComponent,
+    FormulaPaletteComponent,
+    FormulaCanvasComponent,
+    FormulaPropertyInspectorComponent,
+  ],
 })
 export class FormulaEditorComponent implements OnInit, OnDestroy {
   @ViewChild('canvas', { static: false }) canvasRef?: ElementRef<HTMLDivElement>;
+
+  private formulaService = inject(FormulaBuilderService);
 
   // Estado observable
   editorState$ = this.formulaService.getState$();
@@ -24,8 +48,12 @@ export class FormulaEditorComponent implements OnInit, OnDestroy {
 
   // Datos para vistas
   paletteItems = this.formulaService.getPaletteItems();
+  entities = this.formulaService.getEntities();
+  operations = this.formulaService.getOperations();
+
   selectedNodeId: string | undefined;
   selectedNode: FormulaNode | undefined;
+  selectedConnectionId: string | undefined;
   exportedFormula: Formula | null = null;
   isFormulaValid = false;
   canUndoAction = false;
@@ -36,14 +64,15 @@ export class FormulaEditorComponent implements OnInit, OnDestroy {
   loadJsonInput = '';
   loadJsonError = '';
 
+  // Current state
+  currentState: EditorState | null = null;
+  nodes: FormulaNode[] = [];
+  connections: any[] = [];
+
   // Drag-drop
   draggedItem: any = null;
-  draggedNode: FormulaNode | null = null;
-  dragOffset = { x: 0, y: 0 };
 
   private destroy$ = new Subject<void>();
-
-  constructor(private formulaService: FormulaBuilderService) {}
 
   ngOnInit(): void {
     // Escuchar cambios de estado
@@ -127,12 +156,8 @@ export class FormulaEditorComponent implements OnInit, OnDestroy {
 
   // ===== PALETTE DRAG-DROP =====
 
-  onPaletteItemDragStart(event: DragEvent, item: any): void {
+  onPaletteItemDragStart(item: any, event: DragEvent): void {
     this.draggedItem = item;
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'copy';
-      event.dataTransfer.setData('application/json', JSON.stringify(item.template));
-    }
   }
 
   onPaletteItemDragEnd(): void {
@@ -141,71 +166,43 @@ export class FormulaEditorComponent implements OnInit, OnDestroy {
 
   // ===== CANVAS DRAG-DROP =====
 
-  onCanvasDragOver(event: DragEvent): void {
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'copy';
-    }
-  }
-
-  onCanvasDrop(event: DragEvent): void {
-    event.preventDefault();
-
-    if (!this.canvasRef) return;
-
-    const rect = this.canvasRef.nativeElement.getBoundingClientRect();
-    const x = (event.clientX || 0) - rect.left;
-    const y = (event.clientY || 0) - rect.top;
-
-    try {
-      const jsonData = event.dataTransfer?.getData('application/json');
-      if (jsonData) {
-        const template = JSON.parse(jsonData);
-        this.formulaService.createNode(template.type, x, y, template.data);
-      }
-    } catch (error) {
-      console.error('Error dropping item:', error);
-    }
+  onCanvasDrop(event: { templateData: any; x: number; y: number }): void {
+    const { templateData, x, y } = event;
+    this.formulaService.createNode(templateData.type, x, y, templateData.data);
   }
 
   // ===== NODE INTERACTIONS =====
 
-  onNodeClick(nodeId: string, event: MouseEvent): void {
-    event.stopPropagation();
+  onNodeClick(nodeId: string): void {
     this.formulaService.selectNode(nodeId);
   }
 
-  onNodeDoubleClick(nodeId: string, event: MouseEvent): void {
-    event.stopPropagation();
-    // Activar edición inline (futuro)
+  onNodeDoubleClick(nodeId: string): void {
     console.log('Double click node:', nodeId);
+    // Inline edit activation can be added here
   }
 
   onNodeDelete(nodeId: string): void {
     this.formulaService.deleteNode(nodeId);
   }
 
-  onNodeDragStart(node: FormulaNode, event: DragEvent): void {
-    this.draggedNode = node;
-    this.dragOffset = {
-      x: (event.clientX || 0) - node.posX,
-      y: (event.clientY || 0) - node.posY,
-    };
-    event.stopPropagation();
+  onNodeDuplicate(nodeId: string): void {
+    const state = this.formulaService.getCurrentState();
+    const node = state.nodes.get(nodeId);
+
+    if (!node) return;
+
+    this.formulaService.createNode(node.type, node.posX + 50, node.posY + 50, node.data);
   }
 
-  onNodeDragEnd(): void {
-    this.draggedNode = null;
+  onCanvasClicked(): void {
+    this.formulaService.selectNode(undefined);
   }
 
-  onCanvasMouseMove(event: MouseEvent): void {
-    if (this.draggedNode && this.canvasRef) {
-      const rect = this.canvasRef.nativeElement.getBoundingClientRect();
-      const x = (event.clientX || 0) - rect.left - this.dragOffset.x;
-      const y = (event.clientY || 0) - rect.top - this.dragOffset.y;
+  // ===== CONNECTION INTERACTIONS =====
 
-      this.formulaService.updateNode(this.draggedNode.id, { posX: x, posY: y });
-    }
+  onConnectionSelected(connId: string): void {
+    this.selectedConnectionId = connId;
   }
 
   // ===== INSPECTOR ACTIONS =====
@@ -236,18 +233,13 @@ export class FormulaEditorComponent implements OnInit, OnDestroy {
     this.formulaService.updateNode(nodeId, { data: node.data });
   }
 
-  onNodeDuplicate(nodeId: string): void {
-    const state = this.formulaService.getCurrentState();
-    const node = state.nodes.get(nodeId);
-
-    if (!node) return;
-
-    this.formulaService.createNode(node.type, node.posX + 50, node.posY + 50, node.data);
-  }
-
   // ===== PRIVATE HELPERS =====
 
   private onStateChanged(state: EditorState): void {
+    this.currentState = state;
+    this.nodes = Array.from(state.nodes.values());
+    this.connections = Array.from(state.connections.values());
+
     this.selectedNodeId = state.selectedNodeId;
     this.selectedNode = this.selectedNodeId ? state.nodes.get(this.selectedNodeId) : undefined;
     this.isFormulaValid = state.validationErrors.length === 0;
@@ -277,18 +269,5 @@ export class FormulaEditorComponent implements OnInit, OnDestroy {
   getFormattedJson(): string {
     if (!this.exportedFormula) return '';
     return JSON.stringify(this.exportedFormula, null, 2);
-  }
-
-  getNodeColor(nodeType: string): string {
-    switch (nodeType) {
-      case 'numero':
-        return '#1F4E78'; // primary
-      case 'variable':
-        return '#70AD47'; // success
-      case 'operacion':
-        return '#FFC107'; // warning
-      default:
-        return '#D0D0D0'; // outline
-    }
   }
 }

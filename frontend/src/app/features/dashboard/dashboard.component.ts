@@ -1,17 +1,22 @@
 import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatTableModule } from '@angular/material/table';
+import { MatCardModule } from '@angular/material/card';
 import { DashboardService } from '../../core/api/dashboard.service';
 import { PeriodService } from '../../core/api/periods.service';
 import { NotifyService } from '../../core/notify.service';
 import { DashboardKpisDto, DashboardAvisoDto, MiProyectoDto } from '../../models/dtos';
+import { EstadoClosure, ApprovalStep } from '../../models/enums';
+import { StateBadgeComponent } from '../../shared/state-badge.component';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
+  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatTableModule, MatCardModule, StateBadgeComponent],
   template: `
     <div class="sig-exec-page">
 
@@ -22,23 +27,25 @@ import { environment } from '../../../environments/environment';
           <p class="sig-exec-sub">Per&iacute;odo &middot; {{ kpis()?.periodNombre ?? 'Cargando...' }}</p>
         </div>
         <div class="sig-exec-actions">
-          <button (click)="regenerate()" mat-icon-button class="sig-exec-icon-btn" title="Regenerar datos de sincronización" [disabled]="regenerating()">
+          <button (click)="regenerate()" mat-icon-button class="sig-exec-icon-btn" title="Regenerar datos de sincronización" [disabled]="regenerating()" data-testid="btn-recalcular">
             <mat-icon>{{ regenerating() ? 'hourglass_empty' : 'refresh' }}</mat-icon>
           </button>
-          <div class="sig-period-chip">
+          <div class="sig-period-chip" data-testid="period-selector">
             <mat-icon style="font-size:16px;width:16px;height:16px;">schedule</mat-icon>
             <span>{{ kpis()?.periodNombre ?? '...' }}</span>
             <mat-icon style="font-size:14px;width:14px;height:14px;">expand_more</mat-icon>
           </div>
           <button mat-icon-button class="sig-exec-icon-btn sig-notif-btn" aria-label="Notificaciones" data-testid="btn-notificaciones">
             <mat-icon>notifications</mat-icon>
-            <span class="sig-notif-badge">3</span>
+            @if (avisos().length > 0) {
+              <span class="sig-notif-badge">{{ avisos().length }}</span>
+            }
           </button>
         </div>
       </div>
 
       <!-- KPI Cards -->
-      <div class="sig-kpi-grid">
+      <div class="sig-kpi-grid" data-testid="dashboard-kpis">
 
         <div class="sig-kpi" data-testid="kpi-facturacion">
           <div class="sig-kpi-body">
@@ -166,26 +173,24 @@ import { environment } from '../../../environments/environment';
             <line x1="0" y1="80"  x2="600" y2="80"  stroke="var(--sig-border)" stroke-width="1"/>
             <line x1="0" y1="40"  x2="600" y2="40"  stroke="var(--sig-border)" stroke-width="1"/>
             <!-- Y labels -->
-            <text x="8" y="164" fill="var(--sig-text-muted)" font-size="11">270K</text>
-            <text x="8" y="124" fill="var(--sig-text-muted)" font-size="11">370K</text>
-            <text x="8" y="84"  fill="var(--sig-text-muted)" font-size="11">420K</text>
-            <text x="8" y="44"  fill="var(--sig-text-muted)" font-size="11">470K</text>
+            <text x="8" y="164" fill="var(--sig-text-muted)" font-size="11">&mdash;</text>
+            <text x="8" y="124" fill="var(--sig-text-muted)" font-size="11">&mdash;</text>
+            <text x="8" y="84"  fill="var(--sig-text-muted)" font-size="11">&mdash;</text>
+            <text x="8" y="44"  fill="var(--sig-text-muted)" font-size="11">&mdash;</text>
             <!-- Area -->
-            <path d="M50 155 L116 148 L182 142 L248 130 L314 120 L380 105 L446 88 L512 70 L578 50 L578 170 L50 170Z" fill="url(#areaGrad)"/>
+            <path [attr.d]="evolucionPath() ? 'M50 155 ' + evolucionPath() + ' L578 170 L50 170Z' : ''" fill="url(#areaGrad)"/>
             <!-- Line -->
-            <path d="M50 155 L116 148 L182 142 L248 130 L314 120 L380 105 L446 88 L512 70 L578 50" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <!-- End dot -->
-            <circle cx="578" cy="50" r="4" fill="#3b82f6"/>
+            <path [attr.d]="evolucionPath() ? 'M50 155 ' + evolucionPath() : ''" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- End dot (if we have data) -->
+            @if (kpis()?.evolucion && kpis()!.evolucion!.length > 0) {
+              <circle cx="578" cy="50" r="4" fill="#3b82f6"/>
+            }
             <!-- X labels -->
-            <text x="44"  y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">Jun</text>
-            <text x="116" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">Jul</text>
-            <text x="182" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">Ago</text>
-            <text x="248" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">Sep</text>
-            <text x="314" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">Oct</text>
-            <text x="380" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">Nov</text>
-            <text x="446" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">Dic</text>
-            <text x="512" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">Ene</text>
-            <text x="578" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">May</text>
+            @for (evo of kpis()?.evolucion ?? []; track evo.periodNombre; let i = $index) {
+              @if ((kpis()?.evolucion?.length ?? 0) > 0) {
+                <text [attr.x]="50 + (i / Math.max(1, (kpis()?.evolucion?.length ?? 1) - 1)) * 460" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">{{ evo.periodNombre.substring(0, 3) }}</text>
+              }
+            }
           </svg>
         </div>
 
@@ -201,42 +206,94 @@ import { environment } from '../../../environments/environment';
             <svg class="sig-donut" viewBox="0 0 180 180">
               <!-- Background ring -->
               <circle cx="90" cy="90" r="68" fill="none" stroke="var(--sig-border)" stroke-width="24"/>
-              <!-- American Express 58% = 208.8deg -->
-              <circle cx="90" cy="90" r="68" fill="none" stroke="#3b82f6" stroke-width="24"
-                      stroke-dasharray="247 178" stroke-dashoffset="0"
-                      transform="rotate(-90 90 90)"/>
-              <!-- Granini 27% = 97.2deg -->
-              <circle cx="90" cy="90" r="68" fill="none" stroke="#00d4c4" stroke-width="24"
-                      stroke-dasharray="115 310" stroke-dashoffset="-247"
-                      transform="rotate(-90 90 90)"/>
-              <!-- Otros 15% = 54deg -->
-              <circle cx="90" cy="90" r="68" fill="none" stroke="#475569" stroke-width="24"
-                      stroke-dasharray="64 361" stroke-dashoffset="-362"
-                      transform="rotate(-90 90 90)"/>
+              <!-- Dynamic segments -->
+              @for (seg of donutSegmentos(); track seg.clientId) {
+                <circle cx="90" cy="90" r="68" fill="none" [attr.stroke]="seg.color" stroke-width="24"
+                        [attr.stroke-dasharray]="seg.dash + ' ' + seg.gap" [attr.stroke-dashoffset]="'-' + seg.offset"
+                        transform="rotate(-90 90 90)"/>
+              }
               <!-- Center text -->
-              <text x="90" y="84" text-anchor="middle" fill="var(--sig-text-heading)" font-size="22" font-weight="700">&euro; 450K</text>
+              <text x="90" y="84" text-anchor="middle" fill="var(--sig-text-heading)" font-size="22" font-weight="700">&euro; {{ facturacionK() }}K</text>
               <text x="90" y="102" text-anchor="middle" fill="var(--sig-text-muted)" font-size="11">Total</text>
             </svg>
             <div class="sig-donut-legend">
-              <div class="sig-donut-item">
-                <span class="sig-donut-dot" style="background:#3b82f6;"></span>
-                <span class="sig-donut-label">American Express</span>
-                <span class="sig-donut-pct">58%</span>
-              </div>
-              <div class="sig-donut-item">
-                <span class="sig-donut-dot" style="background:#00d4c4;"></span>
-                <span class="sig-donut-label">Granini</span>
-                <span class="sig-donut-pct">27%</span>
-              </div>
-              <div class="sig-donut-item">
-                <span class="sig-donut-dot" style="background:#475569;"></span>
-                <span class="sig-donut-label">Otros clientes</span>
-                <span class="sig-donut-pct">15%</span>
-              </div>
+              @for (seg of donutSegmentos(); track seg.clientId) {
+                <div class="sig-donut-item">
+                  <span class="sig-donut-dot" [style.background]="seg.color"></span>
+                  <span class="sig-donut-label">{{ seg.nombre }}</span>
+                  <span class="sig-donut-pct">{{ seg.pctTotal | number:'1.1-1' }}%</span>
+                </div>
+              }
             </div>
           </div>
         </div>
 
+      </div>
+
+      <!-- Mis Proyectos Table -->
+      <div class="sig-table-section" data-testid="dashboard-mis-proyectos">
+        <div class="sig-section-hdr">
+          <div class="sig-chart-icon"><mat-icon>assignment</mat-icon></div>
+          <span class="sig-chart-title">Mis Proyectos</span>
+        </div>
+        @if (loadingMis()) {
+          <div class="sig-table-skeleton">
+            @for (_ of [0,1,2]; track _) {
+              <div class="sig-skeleton" style="height:16px;width:100%;border-radius:4px;margin-bottom:8px;"></div>
+            }
+          </div>
+        } @else if (misProyectos().length === 0) {
+          <div class="sig-empty-table">No hay proyectos asignados en el per&iacute;odo activo.</div>
+        } @else {
+          <table mat-table [dataSource]="misProyectos()" class="sig-mat-table">
+            <ng-container matColumnDef="nombre">
+              <th mat-header-cell *matHeaderCellDef> Proyecto </th>
+              <td mat-cell *matCellDef="let p">
+                <span class="sig-cell-link" [routerLink]="['/projects', p.projectId]">{{ p.nombre }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="cliente">
+              <th mat-header-cell *matHeaderCellDef> Cliente </th>
+              <td mat-cell *matCellDef="let p">{{ p.clientNombre }}</td>
+            </ng-container>
+            <ng-container matColumnDef="costeBruto">
+              <th mat-header-cell *matHeaderCellDef> Coste Bruto </th>
+              <td mat-cell *matCellDef="let p" class="sig-cell-mono">{{ p.costeTotal !== null && p.costeTotal !== undefined ? (p.costeTotal | number:'1.0-0') + ' €' : '—' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="facturacion">
+              <th mat-header-cell *matHeaderCellDef> Facturaci&oacute;n </th>
+              <td mat-cell *matCellDef="let p" class="sig-cell-mono">{{ p.facturacionTotal !== null && p.facturacionTotal !== undefined ? (p.facturacionTotal | number:'1.0-0') + ' €' : '—' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="margen">
+              <th mat-header-cell *matHeaderCellDef> Margen </th>
+              <td mat-cell *matCellDef="let p" class="sig-cell-mono">{{ p.margen !== null && p.margen !== undefined ? (p.margen | number:'1.0-0') + ' €' : '—' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="estado">
+              <th mat-header-cell *matHeaderCellDef> Estado </th>
+              <td mat-cell *matCellDef="let p">
+                @if (p.estado && p.pasoActual) {
+                  <sig-state-badge [estado]="p.estado" [paso]="p.pasoActual" />
+                } @else {
+                  <span class="sig-text-muted">Sin cierre</span>
+                }
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="accion">
+              <th mat-header-cell *matHeaderCellDef> Acci&oacute;n </th>
+              <td mat-cell *matCellDef="let p">
+                @if (p.closureId) {
+                  <a mat-icon-button [routerLink]="['/closures', p.closureId]" class="sig-row-action" aria-label="Ir al cierre">
+                    <mat-icon>launch</mat-icon>
+                  </a>
+                } @else {
+                  <span class="sig-text-muted">&mdash;</span>
+                }
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="sig-data-row"></tr>
+          </table>
+        }
       </div>
 
       <!-- Bottom row: Gauge + Objectives + Alerts -->
@@ -247,15 +304,14 @@ import { environment } from '../../../environments/environment';
           <div class="sig-chart-icon"><mat-icon>donut_large</mat-icon></div>
           <span class="sig-chart-title">Margen vs Objetivo</span>
           <svg class="sig-gauge" viewBox="0 0 200 130">
+            <!-- Background arc -->
             <path d="M20 110 A80 80 0 0 1 180 110" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="18" stroke-linecap="round"/>
-            <!-- 28%/100% of 180deg = 50.4deg arc -->
-            <path d="M20 110 A80 80 0 0 1 180 110" fill="none" stroke="rgba(255,255,255,.04)" stroke-width="18" stroke-linecap="round"/>
-            <!-- Gauge fill 28% -->
-            <path d="M20 110 A80 80 0 0 1 127 40" fill="none" stroke="#3b82f6" stroke-width="18" stroke-linecap="round"/>
+            <!-- Gauge fill (dynamic) -->
+            <path [attr.d]="gaugePath()" fill="none" stroke="#3b82f6" stroke-width="18" stroke-linecap="round"/>
             <!-- Target marker at 25% -->
             <line x1="115" y1="44" x2="103" y2="32" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
             <!-- Center text -->
-            <text x="100" y="98" text-anchor="middle" fill="var(--sig-text-heading)" font-size="28" font-weight="700">28%</text>
+            <text x="100" y="98" text-anchor="middle" fill="var(--sig-text-heading)" font-size="28" font-weight="700">{{ margenPct() | number:'1.1-1' }}%</text>
             <text x="100" y="116" text-anchor="middle" fill="var(--sig-text-muted)" font-size="12">Objetivo 25%</text>
           </svg>
         </div>
@@ -268,24 +324,28 @@ import { environment } from '../../../environments/environment';
             <div class="sig-obj-item">
               <div class="sig-obj-icon sig-obj-icon--blue"><mat-icon>attach_money</mat-icon></div>
               <div class="sig-obj-body">
-                <div class="sig-obj-vals"><span class="sig-obj-current">&euro; 450K / 400K</span></div>
-                <div class="sig-obj-track"><div class="sig-obj-fill" style="width:100%;background:#3b82f6;"></div></div>
+                @if (kpis()) {
+                  <div class="sig-obj-vals"><span class="sig-obj-current">&euro; {{ facturacionK() }}K / 400K</span></div>
+                  <div class="sig-obj-track"><div class="sig-obj-fill" [style.width]="Math.min(100, (kpis()!.facturacionTotal / 400000) * 100) + '%'" style="background:#3b82f6;"></div></div>
+                }
                 <div class="sig-obj-sub">Facturaci&oacute;n objetivo</div>
               </div>
             </div>
             <div class="sig-obj-item">
               <div class="sig-obj-icon sig-obj-icon--teal"><mat-icon>task_alt</mat-icon></div>
               <div class="sig-obj-body">
-                <div class="sig-obj-vals"><span class="sig-obj-current">12 / 14</span></div>
-                <div class="sig-obj-track"><div class="sig-obj-fill" style="width:86%;background:#00d4c4;"></div></div>
-                <div class="sig-obj-sub">Cierres planificados</div>
+                @if (kpis()) {
+                  <div class="sig-obj-vals"><span class="sig-obj-current">{{ kpis()!.cierresCompletados }} / {{ kpis()!.cierresCompletados + kpis()!.cierresPendientes }}</span></div>
+                  <div class="sig-obj-track"><div class="sig-obj-fill" [style.width]="(kpis()!.cierresCompletados / (kpis()!.cierresCompletados + kpis()!.cierresPendientes || 1)) * 100 + '%'" style="background:#00d4c4;"></div></div>
+                }
+                <div class="sig-obj-sub">Cierres completados</div>
               </div>
             </div>
             <div class="sig-obj-item">
               <div class="sig-obj-icon sig-obj-icon--green"><mat-icon>percent</mat-icon></div>
               <div class="sig-obj-body">
-                <div class="sig-obj-vals"><span class="sig-obj-current">28% / 25%</span></div>
-                <div class="sig-obj-track"><div class="sig-obj-fill" style="width:100%;background:#22c55e;"></div></div>
+                <div class="sig-obj-vals"><span class="sig-obj-current">{{ margenPct() | number:'1.1-1' }}% / 25%</span></div>
+                <div class="sig-obj-track"><div class="sig-obj-fill" [style.width]="Math.min(100, margenPct()) + '%'" style="background:#22c55e;"></div></div>
                 <div class="sig-obj-sub">Margen objetivo</div>
               </div>
             </div>
@@ -293,7 +353,7 @@ import { environment } from '../../../environments/environment';
         </div>
 
         <!-- Alerts -->
-        <div class="sig-bottom-card" data-testid="panel-alertas">
+        <div class="sig-bottom-card" data-testid="dashboard-alertas">
           <div class="sig-chart-icon sig-chart-icon--warn"><mat-icon>warning_amber</mat-icon></div>
           <span class="sig-chart-title">Alertas</span>
           @if (loadingAvisos()) {
@@ -312,22 +372,6 @@ import { environment } from '../../../environments/environment';
                 <span class="sig-alert-text">{{ a.descripcion }}</span>
               </div>
             }
-            <!-- Demo alerts if empty -->
-          }
-          <!-- Demo static alerts when no backend -->
-          @if (!loadingAvisos() && avisos().length === 0) {
-            <div class="sig-alert-item sig-alert--warn">
-              <mat-icon class="sig-alert-icon">warning</mat-icon>
-              <span class="sig-alert-text">3 proyectos pendientes de aprobaci&oacute;n FICO</span>
-            </div>
-            <div class="sig-alert-item sig-alert--warn">
-              <mat-icon class="sig-alert-icon">cancel</mat-icon>
-              <span class="sig-alert-text">1 per&iacute;odo bloqueado &mdash; validaci&oacute;n contabilidad</span>
-            </div>
-            <div class="sig-alert-item sig-alert--success">
-              <mat-icon class="sig-alert-icon" style="color:var(--sig-success)">check_circle</mat-icon>
-              <span class="sig-alert-text">Cierre de abril aprobado por FICO</span>
-            </div>
           }
         </div>
 
@@ -563,6 +607,80 @@ import { environment } from '../../../environments/environment';
       color: #f59e0b !important; flex-shrink: 0; margin-top: 1px;
     }
     .sig-alert-text { font-size: 12px; color: var(--sig-text-primary); line-height: 1.4; }
+
+    /* Mis Proyectos Table */
+    .sig-table-section {
+      background: var(--sig-bg-card);
+      border: 1px solid var(--sig-border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+    .sig-section-hdr {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 16px;
+    }
+    .sig-mat-table {
+      width: 100%;
+      background: transparent;
+      border-collapse: collapse;
+      th.mat-mdc-header-cell {
+        color: var(--sig-text-muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+        border-bottom-color: var(--sig-border);
+        padding: 8px 12px;
+      }
+      td.mat-mdc-cell {
+        color: var(--sig-text-primary);
+        font-size: 13px;
+        border-bottom-color: var(--sig-border);
+        padding: 10px 12px;
+      }
+    }
+    .sig-data-row {
+      cursor: pointer;
+      transition: background 150ms;
+      &:hover { background: var(--sig-bg-hover); }
+    }
+    .sig-cell-link {
+      color: #3b82f6;
+      text-decoration: none;
+      font-weight: 500;
+      &:hover { text-decoration: underline; }
+    }
+    .sig-cell-mono {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 12px;
+      color: var(--sig-text-muted);
+    }
+    .sig-empty-table {
+      padding: 24px 12px;
+      text-align: center;
+      color: var(--sig-text-muted);
+      font-size: 13px;
+    }
+    .sig-table-skeleton {
+      padding: 12px;
+    }
+    .sig-row-action {
+      color: var(--sig-text-secondary) !important;
+    }
+    .sig-skeleton {
+      background: rgba(255,255,255,.06);
+      animation: sig-shimmer 1.4s infinite;
+    }
+    @keyframes sig-shimmer {
+      0% { opacity: .4; }
+      50% { opacity: .8; }
+      100% { opacity: .4; }
+    }
+    .sig-text-muted {
+      color: var(--sig-text-muted);
+      font-size: 12px;
+    }
 `],
 })
 export class DashboardComponent implements OnInit {
@@ -578,6 +696,10 @@ export class DashboardComponent implements OnInit {
   protected readonly loadingMis    = signal(true);
   protected readonly regenerating  = signal(false);
 
+  protected readonly displayedColumns = ['nombre', 'cliente', 'costeBruto', 'facturacion', 'margen', 'estado', 'accion'];
+
+  protected readonly Math = Math; // expose Math to template
+
   private readonly activePeriod = this.periodSvc.activeId;
 
   protected readonly facturacionK = computed(() => {
@@ -588,8 +710,38 @@ export class DashboardComponent implements OnInit {
 
   protected readonly margenPct = computed(() => {
     const k = this.kpis();
-    if (!k || k.facturacionTotal === 0) return '0';
-    return Math.round((k.margen / k.facturacionTotal) * 100).toString();
+    return k?.margenPct ?? 0;
+  });
+
+  protected readonly donutSegmentos = computed(() => {
+    const clientes = this.kpis()?.desglosePorCliente ?? [];
+    const C = 2 * Math.PI * 54; // circumference with radius 54
+    const COLORS = ['#3b82f6','#00d4c4','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+    let offset = 0;
+    return clientes.map((c, i) => {
+      const dash = (c.pctTotal / 100) * C;
+      const seg = { ...c, dash, gap: C - dash, offset, color: COLORS[i % COLORS.length] };
+      offset += dash;
+      return seg;
+    });
+  });
+
+  protected readonly gaugePath = computed(() => {
+    const pct = Math.min(this.margenPct(), 100) / 100;
+    const a = pct * Math.PI;
+    const x = 60 + 50 * Math.cos(Math.PI - a);
+    const y = 60 - 50 * Math.sin(Math.PI - a);
+    return `M 10 60 A 50 50 0 ${pct > 0.5 ? 1 : 0} 1 ${x} ${y}`;
+  });
+
+  protected readonly evolucionPath = computed(() => {
+    const pts = this.kpis()?.evolucion ?? [];
+    if (pts.length < 2) return '';
+    const maxF = Math.max(...pts.map(p => p.facturacion), 1);
+    const W = 460, H = 100;
+    return pts.map((p, i) =>
+      `${i === 0 ? 'M' : 'L'} ${(i / (pts.length - 1)) * W} ${H - (p.facturacion / maxF) * H * 0.85}`
+    ).join(' ');
   });
 
   constructor() {
@@ -621,10 +773,13 @@ export class DashboardComponent implements OnInit {
 
   protected avisoIcon(tipo: string): string {
     switch (tipo) {
-      case 'CierrePendiente':   return 'warning';
-      case 'PeriodoBloqueado':  return 'cancel';
-      case 'ErrorSync':         return 'error';
-      default:                  return 'info';
+      case 'CierrePendiente':     return 'warning';
+      case 'CierreRechazado':     return 'cancel';
+      case 'PeriodoBloqueado':    return 'cancel';
+      case 'PeriodoProximoVencer': return 'hourglass_empty';
+      case 'IncidenciaCalculo':   return 'warning_amber';
+      case 'ErrorSync':           return 'error';
+      default:                    return 'info';
     }
   }
 

@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -46,7 +47,13 @@ interface SelectOption {
   template: `
     <div class="sig-page">
       <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Visitas Celero' }]" />
-      <div class="sig-page__header"><h1 class="sig-page__title">Visitas Celero</h1></div>
+      <div class="sig-page__header">
+        <h1 class="sig-page__title">Visitas Celero</h1>
+        <button mat-raised-button color="accent" (click)="irAMapeos()" class="mapeos-button">
+          <mat-icon>settings</mat-icon>
+          Gestión de Mapeos
+        </button>
+      </div>
 
       <div class="filters">
         <mat-form-field>
@@ -116,6 +123,15 @@ interface SelectOption {
     </div>
   `,
   styles: [`
+    .sig-page__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .mapeos-button {
+      margin-left: auto;
+    }
     .filters { display: flex; gap: 16px; margin-bottom: 24px; }
     mat-form-field { width: 200px; }
     table { width: 100%; margin-top: 24px; }
@@ -128,6 +144,7 @@ export class CeleroVisitasComponent {
   private http = inject(HttpClient);
   private notify = inject(NotifyService);
   private dialog = inject(MatDialog);
+  private router = inject(Router);
 
   searchNif = '';
   searchService = '';
@@ -214,6 +231,10 @@ export class CeleroVisitasComponent {
   getProjectName(projectId?: number) {
     if (!projectId) return null;
     return this.proyectos().find(p => p.id === projectId)?.nombre;
+  }
+
+  irAMapeos() {
+    this.router.navigate(['/celero-mapeos']);
   }
 }
 

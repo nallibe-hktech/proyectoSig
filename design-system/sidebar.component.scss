@@ -1,0 +1,167 @@
+// ═══════════════════════════════════════════════════════════
+// SIG-ES · Sidebar — sidebar.component.scss
+// ═══════════════════════════════════════════════════════════
+@use 'variables' as *;
+
+.sig-sidebar {
+  width:            $sidebar-width;
+  min-width:        $sidebar-width;
+  height:           100vh;
+  background-color: $bg-sidebar;
+  border-right:     1px solid $border-color;
+  display:          flex;
+  flex-direction:   column;
+  overflow-y:       auto;
+  overflow-x:       hidden;
+  position:         sticky;
+  top:              0;
+  box-shadow:       $shadow-panel;
+
+  // Scrollbar thin
+  &::-webkit-scrollbar       { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: $border-color; border-radius: 2px; }
+
+  // ── Brand / Logo ──────────────────────────────────────────
+  &__brand {
+    display:     flex;
+    align-items: center;
+    gap:         10px;
+    padding:     18px 16px 14px;
+    border-bottom: 1px solid $border-color;
+    flex-shrink: 0;
+  }
+
+  &__logo {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    flex-shrink:     0;
+  }
+
+  &__brand-name {
+    font-size:      $font-size-lg;
+    font-weight:    700;
+    color:          $text-heading;
+    letter-spacing: -.01em;
+
+    span { color: $accent-teal; }
+  }
+
+  // ── Nav section ───────────────────────────────────────────
+  &__section {
+    padding:    12px 0 4px;
+    flex-shrink: 0;
+
+    &--admin {
+      margin-top:    8px;
+      border-top:    1px solid $border-color;
+      padding-top:   12px;
+    }
+  }
+
+  &__section-label {
+    display:         block;
+    padding:         0 16px 6px;
+    font-size:       $font-size-xs;
+    font-weight:     600;
+    letter-spacing:  .08em;
+    color:           $text-muted;
+    text-transform:  uppercase;
+    user-select:     none;
+  }
+
+  // ── Nav item ──────────────────────────────────────────────
+  &__item {
+    display:        flex;
+    align-items:    center;
+    gap:            10px;
+    padding:        8px 16px;
+    margin:         1px 8px;
+    border-radius:  $radius-md;
+    cursor:         pointer;
+    text-decoration: none;
+    color:          $text-secondary;
+    font-size:      $font-size-sm;
+    font-weight:    500;
+    transition:     background $transition-fast, color $transition-fast;
+    position:       relative;
+
+    &:hover {
+      background-color: $bg-hover;
+      color:            $text-primary;
+
+      .sig-sidebar__icon { color: $text-primary; }
+    }
+
+    &.active {
+      background-color: $bg-active;
+      color:            $text-heading;
+
+      // Teal left indicator
+      &::before {
+        content:       '';
+        position:      absolute;
+        left:          0;
+        top:           50%;
+        transform:     translateY(-50%);
+        width:         3px;
+        height:        20px;
+        background:    $accent-teal;
+        border-radius: 0 2px 2px 0;
+      }
+
+      .sig-sidebar__icon { color: $accent-teal; }
+    }
+  }
+
+  &__icon {
+    font-size:   18px;
+    width:       18px;
+    height:      18px;
+    color:       $text-muted;
+    flex-shrink: 0;
+    transition:  color $transition-fast;
+  }
+
+  // ── Footer / User chip ────────────────────────────────────
+  &__footer {
+    margin-top:    auto;
+    padding:       12px 10px;
+    border-top:    1px solid $border-color;
+    flex-shrink:   0;
+  }
+
+  &__user {
+    display:       flex;
+    align-items:   center;
+    gap:           10px;
+    padding:       8px;
+    border-radius: $radius-md;
+    cursor:        pointer;
+    transition:    background $transition-fast;
+
+    &:hover { background: $bg-hover; }
+  }
+
+  &__user-info {
+    display:       flex;
+    flex-direction: column;
+    min-width:     0;
+  }
+
+  &__user-name {
+    font-size:     $font-size-sm;
+    font-weight:   600;
+    color:         $text-primary;
+    white-space:   nowrap;
+    overflow:      hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__user-role {
+    font-size:  $font-size-xs;
+    color:      $text-muted;
+    margin-top: 1px;
+  }
+}

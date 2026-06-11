@@ -38,6 +38,9 @@ public class AppDbContext : DbContext
     public DbSet<StagingBizneoEmpleado> StagingBizneoEmpleados => Set<StagingBizneoEmpleado>();
     public DbSet<StagingBizneoAbsence> StagingBizneoAbsences => Set<StagingBizneoAbsence>();
     public DbSet<StagingIntratimeFichaje> StagingIntratimeFichajes => Set<StagingIntratimeFichaje>();
+    public DbSet<StagingIntratimeEmpleado> StagingIntratimeEmpleados => Set<StagingIntratimeEmpleado>();
+    public DbSet<StagingIntratimeClockingRequest> StagingIntratimeClockingRequests => Set<StagingIntratimeClockingRequest>();
+    public DbSet<StagingIntratimeExpense> StagingIntratimeExpenses => Set<StagingIntratimeExpense>();
     public DbSet<StagingPayHawkGasto> StagingPayHawkGastos => Set<StagingPayHawkGasto>();
     public DbSet<CeleroResourceMapping> CeleroResourceMappings => Set<CeleroResourceMapping>();
     public DbSet<CeleroServiceMapping> CeleroServiceMappings => Set<CeleroServiceMapping>();
@@ -46,6 +49,15 @@ public class AppDbContext : DbContext
     public DbSet<StagingSgpvProducto> StagingSgpvProductos => Set<StagingSgpvProducto>();
     public DbSet<StagingA3InnuvaEmpleado> StagingA3InnuvaEmpleados => Set<StagingA3InnuvaEmpleado>();
     public DbSet<StagingTravelPerkViaje> StagingTravelPerkViajes => Set<StagingTravelPerkViaje>();
+
+    // GALÁN - Logística
+    public DbSet<StagingGalanEntrada> StagingGalanEntradas => Set<StagingGalanEntrada>();
+    public DbSet<StagingGalanSalida> StagingGalanSalidas => Set<StagingGalanSalida>();
+    public DbSet<StagingGalanStock> StagingGalanStocks => Set<StagingGalanStock>();
+
+    // MEDIAPOST - Distribución
+    public DbSet<StagingMediapostPedido> StagingMediapostPedidos => Set<StagingMediapostPedido>();
+    public DbSet<StagingMediapostRecepcion> StagingMediapostRecepciones => Set<StagingMediapostRecepcion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

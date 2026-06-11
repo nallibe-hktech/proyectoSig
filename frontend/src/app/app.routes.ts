@@ -88,6 +88,13 @@ export const routes: Routes = [
 
       // Celero Visitas (Administrator)
       { path: 'celero-visitas', loadComponent: () => import('./features/celero-visitas/celero-visitas.component').then((m) => m.CeleroVisitasComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Visitas Celero — SIG' },
+      { path: 'celero-mapeos', loadComponent: () => import('./features/celero-visitas/celero-mapeos.component').then((m) => m.CeleroMapeosComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Gestión de Mapeos Celero — SIG' },
+
+      // Galán — Logística e Inventario
+      { path: 'galan', loadComponent: () => import('./features/galan/components/galan-dashboard.component').then((m) => m.GalanDashboardComponent), title: 'Logística Galán — SIG' },
+
+      // Mediapost — Distribución y Entregas
+      { path: 'mediapost', loadComponent: () => import('./features/mediapost/components/mediapost-dashboard.component').then((m) => m.MediapostDashboardComponent), title: 'Distribución Mediapost — SIG' },
 
       // Reports
       { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then((m) => m.ReportsComponent), title: 'Reports — SIG' },

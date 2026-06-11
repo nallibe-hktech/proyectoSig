@@ -1,0 +1,137 @@
+<!-- ═══════════════════════════════════════════════════════════
+     SIG-ES · Sidebar — sidebar.component.html
+     ═══════════════════════════════════════════════════════════ -->
+<nav class="sig-sidebar">
+
+  <!-- Logo / Brand -->
+  <div class="sig-sidebar__brand">
+    <div class="sig-sidebar__logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="6" fill="#2563eb"/>
+        <path d="M7 14.5L11.5 19L21 9" stroke="white" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="sig-sidebar__brand-name">SIG<span>-ES</span></span>
+  </div>
+
+  <!-- ── PRINCIPAL section ─────────────────────────────────── -->
+  <div class="sig-sidebar__section">
+    <span class="sig-sidebar__section-label">PRINCIPAL</span>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'dashboard'"
+       (click)="navigate.emit('dashboard')" routerLink="/dashboard">
+      <mat-icon class="sig-sidebar__icon">dashboard</mat-icon>
+      <span>Dashboard</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'clientes'"
+       (click)="navigate.emit('clientes')" routerLink="/clientes">
+      <mat-icon class="sig-sidebar__icon">business</mat-icon>
+      <span>Clientes</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'proyectos'"
+       (click)="navigate.emit('proyectos')" routerLink="/proyectos">
+      <mat-icon class="sig-sidebar__icon">folder_open</mat-icon>
+      <span>Proyectos</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'acciones'"
+       (click)="navigate.emit('acciones')" routerLink="/acciones">
+      <mat-icon class="sig-sidebar__icon">bolt</mat-icon>
+      <span>Acciones</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'conceptos'"
+       (click)="navigate.emit('conceptos')" routerLink="/conceptos">
+      <mat-icon class="sig-sidebar__icon">calculate</mat-icon>
+      <span>Conceptos</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'periodos'"
+       (click)="navigate.emit('periodos')" routerLink="/periodos">
+      <mat-icon class="sig-sidebar__icon">date_range</mat-icon>
+      <span>Periodos</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'aprobaciones'"
+       (click)="navigate.emit('aprobaciones')" routerLink="/aprobaciones">
+      <mat-icon class="sig-sidebar__icon">task_alt</mat-icon>
+      <span>Aprobaciones</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'contabilidad'"
+       (click)="navigate.emit('contabilidad')" routerLink="/contabilidad">
+      <mat-icon class="sig-sidebar__icon">account_balance</mat-icon>
+      <span>Contabilidad</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'informes'"
+       (click)="navigate.emit('informes')" routerLink="/informes">
+      <mat-icon class="sig-sidebar__icon">bar_chart</mat-icon>
+      <span>Informes</span>
+    </a>
+  </div>
+
+  <!-- ── ADMINISTRACIÓN section ─────────────────────────────── -->
+  <div class="sig-sidebar__section sig-sidebar__section--admin">
+    <span class="sig-sidebar__section-label">ADMINISTRACIÓN</span>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'cecos'"
+       (click)="navigate.emit('cecos')" routerLink="/admin/cecos">
+      <mat-icon class="sig-sidebar__icon">account_tree</mat-icon>
+      <span>CECOs</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'departamentos'"
+       (click)="navigate.emit('departamentos')" routerLink="/admin/departamentos">
+      <mat-icon class="sig-sidebar__icon">corporate_fare</mat-icon>
+      <span>Departamentos</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'roles'"
+       (click)="navigate.emit('roles')" routerLink="/admin/roles">
+      <mat-icon class="sig-sidebar__icon">manage_accounts</mat-icon>
+      <span>Roles</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'usuarios'"
+       (click)="navigate.emit('usuarios')" routerLink="/admin/usuarios">
+      <mat-icon class="sig-sidebar__icon">group</mat-icon>
+      <span>Usuarios</span>
+    </a>
+
+    <a class="sig-sidebar__item"
+       [class.active]="currentModule === 'auditoria'"
+       (click)="navigate.emit('auditoria')" routerLink="/auditoria">
+      <mat-icon class="sig-sidebar__icon">history</mat-icon>
+      <span>Auditoría</span>
+    </a>
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────── -->
+  <div class="sig-sidebar__footer">
+    <div class="sig-sidebar__user">
+      <div class="sig-avatar">{{ userInitials }}</div>
+      <div class="sig-sidebar__user-info">
+        <span class="sig-sidebar__user-name">{{ userName }}</span>
+        <span class="sig-sidebar__user-role">{{ userRole }}</span>
+      </div>
+    </div>
+  </div>
+
+</nav>

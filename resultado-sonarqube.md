@@ -1,17 +1,19 @@
 ﻿# Analisis SonarQube
 
-Proyecto: SIG-es (clave: SIG-es)
-Fecha: 2026-06-02 09:09:38
-Scanner ejecutado: SI  (directorio: C:\Projects\workspaces\SIG-es\backend)
+Proyecto: SIG-es
+Fecha: 2026-06-09 14:03:54
+Scanner ejecutado: SI
 
 ## SONAR-QUALITY-GATE: FAILED
 
-Estado del Quality Gate: FAILED
+Estado: ERROR
 
+## Condiciones
 
-## Condiciones evaluadas
-
-- (sin condiciones registradas)
+- new_coverage: OK (actual=0.0 umbral=0)
+- new_duplicated_lines_density: OK (actual=5.37606 umbral=12)
+- new_security_hotspots_reviewed: ERROR (actual=0.0 umbral=20)
+- new_violations: ERROR (actual=273 umbral=200)
 
 ## Dashboard
 

@@ -1,0 +1,123 @@
+<div class="container">
+  <div class="header">
+    <h1>Dashboard Mediapost - Distribución y Entregas</h1>
+    <div class="controls">
+      <mat-form-field appearance="outline">
+        <mat-label>Desde</mat-label>
+        <input matInput [formControl]="dateFromControl" type="date" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Hasta</mat-label>
+        <input matInput [formControl]="dateToControl" type="date" />
+      </mat-form-field>
+      <button mat-raised-button color="primary" (click)="refreshDashboard()" [disabled]="loading">
+        <mat-icon>refresh</mat-icon>
+        Actualizar
+      </button>
+    </div>
+  </div>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
+
+  <div *ngIf="dashboard" class="kpi-section">
+    <div class="kpi-card">
+      <h3>Pedidos Total</h3>
+      <p class="kpi-value">{{ dashboard.pedidosTotal }}</p>
+      <p class="kpi-label">En período</p>
+    </div>
+
+    <div class="kpi-card success">
+      <h3>Entregados</h3>
+      <p class="kpi-value">{{ dashboard.pedidosEntregados }}</p>
+      <p class="kpi-label">Exitosos</p>
+    </div>
+
+    <div class="kpi-card warning">
+      <h3>Pendientes</h3>
+      <p class="kpi-value">{{ dashboard.pedidosPendientes }}</p>
+      <p class="kpi-label">En tránsito</p>
+    </div>
+
+    <div class="kpi-card danger">
+      <h3>Rechazados</h3>
+      <p class="kpi-value">{{ dashboard.pedidosRechazados }}</p>
+      <p class="kpi-label">Devueltos</p>
+    </div>
+
+    <div class="kpi-card">
+      <h3>Tasa Entrega</h3>
+      <p class="kpi-value">{{ dashboard.tasaEntrega | number: '1.1-1' }}%</p>
+      <p class="kpi-label">Éxito operacional</p>
+    </div>
+
+    <div class="kpi-card">
+      <h3>Costo Distribución</h3>
+      <p class="kpi-value">€{{ dashboard.costoDistribucion | number: '1.2-2' }}</p>
+      <p class="kpi-label">Estimado total</p>
+    </div>
+
+    <div class="kpi-card">
+      <h3>Recepciones</h3>
+      <p class="kpi-value">{{ dashboard.recepcionesTotal }}</p>
+      <p class="kpi-label">Registros</p>
+    </div>
+
+    <div class="kpi-card">
+      <h3>Unidades Dañadas</h3>
+      <p class="kpi-value danger-text">{{ dashboard.unidadesDestrozadas }}</p>
+      <p class="kpi-label">En recepciones</p>
+    </div>
+  </div>
+
+  <mat-tab-group>
+    <mat-tab label="Pedidos">
+      <app-mediapost-pedidos-list></app-mediapost-pedidos-list>
+    </mat-tab>
+
+    <mat-tab label="Recepciones">
+      <app-mediapost-recepciones-list></app-mediapost-recepciones-list>
+    </mat-tab>
+
+    <mat-tab label="Pendientes" *ngIf="(dashboard?.pedidosPendientesDetalle || []).length > 0">
+      <div class="pending-section">
+        <h3>Pedidos Pendientes (Top 20 por días en tránsito)</h3>
+        <mat-table [dataSource]="dashboard?.pedidosPendientesDetalle || []" class="pending-table">
+          <ng-container matColumnDef="pedidoId">
+            <mat-header-cell *matHeaderCellDef>Pedido ID</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.pedidoId }}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="referenciaPedido">
+            <mat-header-cell *matHeaderCellDef>Referencia</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.referenciaPedido }}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="destinatarioNombre">
+            <mat-header-cell *matHeaderCellDef>Destinatario</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.destinatarioNombre }}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="estado">
+            <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+            <mat-cell *matCellDef="let element">
+              <span [ngClass]="element.estado === 'Pendiente' ? 'status-pending' : 'status-in-transit'">
+                {{ element.estado }}
+              </span>
+            </mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="diasEnTransito">
+            <mat-header-cell *matHeaderCellDef>Días en Tránsito</mat-header-cell>
+            <mat-cell *matCellDef="let element" [ngClass]="element.diasEnTransito > 7 ? 'days-alert' : ''">
+              {{ element.diasEnTransito }}
+            </mat-cell>
+          </ng-container>
+
+          <mat-header-row *matHeaderRowDef="['pedidoId', 'referenciaPedido', 'destinatarioNombre', 'estado', 'diasEnTransito']"></mat-header-row>
+          <mat-row *matRowDef="let row; columns: ['pedidoId', 'referenciaPedido', 'destinatarioNombre', 'estado', 'diasEnTransito']"></mat-row>
+        </mat-table>
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
+</div>

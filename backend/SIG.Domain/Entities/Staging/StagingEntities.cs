@@ -66,9 +66,11 @@ public class StagingIntratimeFichaje : IStagingRow
 {
     public int Id { get; set; }
     public string FichajeIdExterno { get; set; } = null!;
-    public int UserId { get; set; }
+    public string UserIdExterno { get; set; } = null!;  // ID externo de Intratime (ej: "20875")
+    public int? UserId { get; set; }                    // ID interno SIG-ES resuelto por NIF
     public DateTime Entrada { get; set; }
     public DateTime? Salida { get; set; }
+    public decimal? HorasCalculadas { get; set; }       // (Salida - Entrada) en horas
     public string PayloadJson { get; set; } = null!;
     public string Hash { get; set; } = null!;
     public DateTime FechaUltimaSincronizacion { get; set; }
@@ -199,6 +201,174 @@ public class StagingSgpvProducto : IStagingRow
     public string? PVPRecomendado { get; set; }
     public string? Competencia { get; set; }
     public bool Activo { get; set; }
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+public class StagingIntratimeEmpleado : IStagingRow
+{
+    public int Id { get; set; }
+    public string UserIdExterno { get; set; } = null!;  // USER_ID externo de Intratime
+    public int? UserId { get; set; }                    // Id interno SIG-ES resuelto por NIF
+    public string Nombre { get; set; } = null!;
+    public string Email { get; set; } = null!;
+    public string NIF { get; set; } = null!;
+    public string? Affiliation { get; set; }
+    public int Role { get; set; }
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+public class StagingIntratimeClockingRequest : IStagingRow
+{
+    public int Id { get; set; }
+    public string RequestIdExterno { get; set; } = null!;  // REQUEST_ID
+    public string UserIdExterno { get; set; } = null!;     // USER_ID
+    public int? UserId { get; set; }                       // Id interno SIG-ES
+    public DateTime FechaRequest { get; set; }             // REQUEST_DATE
+    public string TipoRequest { get; set; } = null!;       // REQUEST_TYPE: "Ajuste", "Corrección"
+    public string Estado { get; set; } = null!;            // REQUEST_STATUS: "Pendiente", "Aprobado", "Rechazado"
+    public string? Razon { get; set; }                     // REQUEST_REASON
+    public string? HoraDesde { get; set; }                 // REQUESTED_TIME_FROM
+    public string? HoraHasta { get; set; }                 // REQUESTED_TIME_TO
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+public class StagingIntratimeExpense : IStagingRow
+{
+    public int Id { get; set; }
+    public string ExpenseIdExterno { get; set; } = null!;  // INOUT_EXPENSE_ID
+    public string? UserIdExterno { get; set; }             // INOUT_USER_ID (puede no existir)
+    public int? UserId { get; set; }                       // Id interno SIG-ES resuelto por NIF
+    public DateTime FechaExpense { get; set; }             // INOUT_DATE
+    public decimal Cantidad { get; set; }                  // INOUT_AMOUNT (en centavos, dividir por 100)
+    public string NombreExpense { get; set; } = null!;     // INOUT_EXPENSE_NAME (ej: "Comidas")
+    public string? Descripcion { get; set; }               // INOUT_COMMENTS
+    public string? ProyectoNombre { get; set; }            // INOUT_PROJECT_NAME (fallback si no hay ProjectId)
+    public int? ProjectId { get; set; }                    // Resuelto del nombre del proyecto
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+// GALÁN - Logística y Almacenes
+public class StagingGalanEntrada : IStagingRow
+{
+    public int Id { get; set; }
+    public string CodigoArticulo { get; set; } = null!;
+    public string CodigoDepartamento { get; set; } = null!;
+    public string CodigoFamilia { get; set; } = null!;
+    public string Descripcion { get; set; } = null!;
+    public DateTime Fecha { get; set; }
+    public int Unidades { get; set; }
+    public string Empresa { get; set; } = null!;
+    public string Almacen { get; set; } = null!;
+    public string Celda { get; set; } = null!;
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+public class StagingGalanSalida : IStagingRow
+{
+    public int Id { get; set; }
+    public string Albaran { get; set; } = null!;
+    public string? NumeroPedidoTercero { get; set; }
+    public string CodigoArticulo { get; set; } = null!;
+    public string CodigoDepartamento { get; set; } = null!;
+    public string CodigoFamilia { get; set; } = null!;
+    public string Descripcion { get; set; } = null!;
+    public int Unidades { get; set; }
+    public string? CodigoTransporte { get; set; }
+    public string? Matricula { get; set; }
+    public DateTime Fecha { get; set; }
+    public string? Destinatario { get; set; }
+    public string Almacen { get; set; } = null!;
+    public string Celda { get; set; } = null!;
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+public class StagingGalanStock : IStagingRow
+{
+    public int Id { get; set; }
+    public string CodigoArticulo { get; set; } = null!;
+    public string CodigoDepartamento { get; set; } = null!;
+    public string CodigoFamilia { get; set; } = null!;
+    public string CodigoCelda { get; set; } = null!;
+    public decimal StockB { get; set; }
+    public decimal StockA { get; set; }
+    public decimal Stock { get; set; }
+    public string Almacen { get; set; } = null!;
+    public string Familia { get; set; } = null!;
+    public string SubFamilia { get; set; } = null!;
+    public string Descripcion { get; set; } = null!;
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+// MEDIAPOST - Distribución
+public class StagingMediapostPedido : IStagingRow
+{
+    public int Id { get; set; }
+    public string PedidoId { get; set; } = null!;
+    public string ReferenciaPedido { get; set; } = null!;
+    public string CodigoArticulo { get; set; } = null!;
+    public DateTime FechaPedido { get; set; }
+    public int Cantidad { get; set; }
+    public string Estado { get; set; } = null!;
+    public string? DestinatarioNombre { get; set; }
+    public string? DireccionEntrega { get; set; }
+    public string? CodigoPostal { get; set; }
+    public string? Ciudad { get; set; }
+    public string? Provincia { get; set; }
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+public class StagingMediapostRecepcion : IStagingRow
+{
+    public int Id { get; set; }
+    public string RecepcionId { get; set; } = null!;
+    public string ReferenciaRecepcion { get; set; } = null!;
+    public string CodigoArticulo { get; set; } = null!;
+    public DateTime FechaRecepcion { get; set; }
+    public int Cantidad { get; set; }
+    public int? CantidadDañada { get; set; }
+    public string Estado { get; set; } = null!;
+    public string? Almacen { get; set; }
+    public string? Observaciones { get; set; }
+    // IStagingRow
     public string PayloadJson { get; set; } = null!;
     public string Hash { get; set; } = null!;
     public DateTime FechaUltimaSincronizacion { get; set; }

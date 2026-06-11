@@ -1,56 +1,14 @@
-# BLOQUEANTES — SIG · Plataforma Operativa Integral
+# BLOQUEANTES
 
-> **4 tests de integración fallidos — QA-GATE: BLOCKED**
-
----
-
-## Bloqueantes Activos
-
-### [BACKEND-BUG-001] Falta migración EF Core para columnas en `staging_celero_visitas`
-
-**Severidad:** ALTA  
-**Tags:** `[BACKEND-BUG]`
-
-**Descripción:** La entidad `StagingCeleroVisita` (`SIG.Domain/Entities/Staging/StagingEntities.cs:22-25`) tiene 4 propiedades que no existen como columnas en la tabla real de PostgreSQL:
-- `notas` (string?)
-- `mapeado_por` (int?)
-- `fecha_mapeo` (DateTime?)
-- `estado_mapeo` (string?)
-
-El modelo de EF (`20260529084625_AddConceptProjectAndColumnaA3.Designer.cs`) incluye estas columnas en el snapshot, pero NINGUNA migración generó los `AddColumn` correspondientes. Las 7 migraciones existentes nunca ejecutan un `ALTER TABLE staging_celero_visitas ADD COLUMN` para estas 4 columnas.
-
-**Impacto:** Causa `DbUpdateException` (PostgreSQL column not found) en cualquier operación INSERT/UPDATE sobre `staging_celero_visitas`, lo que cascada en 4 tests fallidos.
-
-**Tests afectados:**
-1. `PostRegenerarSeed_ComoAdminEnTesting_Devuelve200` — seed regenera datos pero falla al insertar staging (HTTP 500 vs 200)
-2. `PostSyncCelero_ComoAdmin_Devuelve200ConResumen` — sync inserta staging rows pero falla (HTTP 500 vs 200)
-3. `PostSyncCelero_DosVecesSeguidas_DevuelveDuplicadosEnSegundoIntentoConHashSHA256` — ambos syncs fallan
-4. `GetClosures_FiltradoPorEstadoAprobado_FuncionaParaAdmin` — **cascading**: seed falla ANTES de insertar closures (que se guardan después del staging), por lo tanto nunca hay closures en BD para filtrar
-
-**Solución:** Generar migración EF Core:
-```bash
-dotnet ef migrations add AddMissingStagingColumns
-```
-que ejecute:
-```sql
-ALTER TABLE staging_celero_visitas 
-  ADD COLUMN notas text,
-  ADD COLUMN mapeado_por integer,
-  ADD COLUMN fecha_mapeo timestamp with time zone,
-  ADD COLUMN estado_mapeo text;
-```
-
-**Evidence:**
-- Entidad: `SIG.Domain/Entities/Staging/StagingEntities.cs:22-25`
-- INSERT fallido (log): columna `estado_mapeo` referenciada en INSERT pero no existe en tabla
-- Seed falla en: `DataSeeder.cs:403-407` (antes de llegar a closures en línea 453-454)
-- Migraciones revisadas: 7 archivos, ninguno tiene AddColumn para estas 4 columnas
-
----
-
-## Historial
-
-| Fecha | Descripción | Estado |
-|-------|-------------|--------|
-| 2026-06-01 | QA Gate: 4 tests integración fallidos por columnas faltantes en `staging_celero_visitas` | Activo |
-| — | No se detectaron bloqueantes. Environment probe OK (PostgreSQL local con password `admin`). | Resuelto |
+| ID | Severidad | Archivo | Descripción | Causa raíz | Acción requerida |
+|---|---|---|---|---|---|
+| B-01 | MEDIA | SIG.Tests/Integration/*.cs | Integration tests fallan con `Npgsql.PostgresException : 42501: permission denied to create database` | El usuario `postgres` de PostgreSQL local no tiene permiso `CREATEDB`. Los tests de integración intentan crear `sig_plataforma_test` con `EnsureCreated`. | Automatizable: conceder `CREATEDB` al usuario `postgres` vía `ALTER USER postgres CREATEDB;` o crear la base de datos `sig_plataforma_test` manualmente. |
+| B-02 | ALTA | SIG.Tests/Unit/Services/DataProcessorServiceTests.cs | [BACKEND-BUG] 2 tests fallan: `ProcessStaging_WithValidData_ProcessesCorrectly` y `ProcessStaging_WhenBizneoFails_LogsErrorAndContinues` | `Substitute.For<AppDbContext>()` no puede mockear EF Core DbContext porque contiene miembros no virtuales (NSubstitute limitation). Crash en constructor línea 11. | Reemplazar mock con `InMemoryDatabase` o refactorizar tests para usar `DbSet` virtual. |
+| B-03 | ALTA | SIG.Tests/Integration/OtherEndpointsTests.cs | [BACKEND-BUG] `PostRegenerarSeed_ComoAdminEnTesting_Devuelve200`: espera 200 pero recibe otro status | La migración de BD de tests (`EnsureCreated`) falla por B-01, o el endpoint retorna código diferente. | Verificar si B-01 es la causa raíz; si no, revisar lógica del endpoint. |
+| B-04 | ALTA | SIG.Tests/Integration/OtherEndpointsTests.cs | [BACKEND-BUG] `PostSyncCelero_DosVecesSeguidas_DevuelveDuplicadosEnSegundoIntentoConHashSHA256`: crash por propiedades faltantes | SyncResultDto no contiene `RegistrosActualizados`/`RegistrosInsertados` (el DTO real usa `FilasInsertadas`/`FilasDuplicadasIgnoradas`). | Actualizar el test para usar los nombres de propiedad reales del DTO. |
+| B-05 | ALTA | SIG.Tests/Integration/ClosuresControllerTests.cs | [BACKEND-BUG] `GetClosures_FiltradoPorEstadoAprobado_FuncionaParaAdmin`: `body!.Items.Should().OnlyContain(c => c.Estado == EstadoClosure.Aprobado)` falla | No hay closures con `EstadoClosure.Aprobado` en el seed de tests, o el parámetro query `estado` vs `Estado` no coincide. | Añadir closure con estado Aprobado al seed de test o corregir el test. |
+| B-06 | MEDIA | frontend/src/app/auth/login/login.component.html | [FRONTEND-BUG] Test unitario `renderiza la tarjeta de login` falla: `querySelector('[data-testid=login-card]')` encuentra `null` | El componente de login no tiene el atributo `data-testid="login-card"` en su template HTML. | Añadir `data-testid="login-card"` al contenedor principal del login card. |
+| B-07 | MEDIA | frontend/e2e/auth.spec.ts:47 | [E2E-BUG] Test `credenciales inválidas: muestra mensaje de error y NO navega` falla: `getByText(/incorrect|credenciales|invalid/i)` resuelve a 2 elementos | La regex es demasiado amplia: coincide con "Introduce tus credenciales" (subtítulo) y "Credenciales demo" (título demo). | Acotar la regex para que solo coincida con el mensaje de error real (e.g., "incorrect" o mensaje específico de error). |
+| B-08 | ALTA | frontend/e2e/components-visual-test.spec.ts | [E2E-BUG] Tests 1-6 (Dashboard, Approvals, Closures, Override, Search, Import) fallan: todos se quedan en `/login` | El `beforeEach` realiza login pero la navegación a dashboard no funciona. Las pruebas verifican elementos que nunca se renderizan porque el usuario no está autenticado. | Depurar el flujo de login en el beforeEach: verificar que el token se recibe y la redirección ocurre. |
+| B-09 | ALTA | frontend/e2e/exports.spec.ts:94 | [E2E-BUG] Test `Descargar A3 Innuva (.xls)` excede timeout de 30s | La descarga del archivo .xls no se completa dentro del timeout. Puede ser lentitud del backend o problema con el endpoint de export. | Aumentar timeout o investigar latencia del endpoint de exportación. |
+| B-10 | CRITICAL | SonarQube Quality Gate | [INFRA-BUG] Quality Gate: **ERROR**. 593 issues totales: 106 CRITICAL, 115 MAJOR, 223 MINOR, 149 INFO. Coverage: 0.0%. Tech debt: 899min (~15h). | 268 code smells (vs 129 en ejecución anterior). Falta configuración de cobertura en SonarQube. Posible inclusión de archivos de tests en análisis. | Revisar `sonar.exclusions` para excluir tests. Configurar reporte de cobertura. Abordar code smells CRITICAL. |

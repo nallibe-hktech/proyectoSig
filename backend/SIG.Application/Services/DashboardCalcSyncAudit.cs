@@ -30,7 +30,7 @@ public class DashboardService : IDashboardService
     {
         Period? period = periodId.HasValue ? await _periodRepo.GetByIdAsync(periodId.Value, ct)
                                             : await _periodRepo.GetActivoAsync(ct);
-        if (period is null) return new DashboardKpisDto(0, "", 0, 0, 0, 0, 0);
+        if (period is null) return new DashboardKpisDto(0, "", 0, 0, 0, 0, 0, 0, new List<KpiClienteDto>(), new List<EvolucionPeriodoDto>());
 
         var filter = new ApprovalFilterRequest(period.Id, null, null, null, null, null, null, null, 1, int.MaxValue);
         var closures = await _closureRepo.ListPaginatedForUserAsync(usuarioId, filter, ct);
@@ -39,7 +39,41 @@ public class DashboardService : IDashboardService
         decimal fact = closures.Items.Sum(c => c.FacturacionTotal);
         decimal coste = closures.Items.Sum(c => c.CosteTotal);
         decimal margen = fact - coste;
-        return new DashboardKpisDto(period.Id, period.Nombre, completados, pendientes, fact, coste, margen);
+        decimal margenPct = fact > 0 ? Math.Round(margen / fact * 100, 1) : 0;
+
+        // Desglose por cliente (top 6)
+        var desglose = closures.Items
+            .Where(c => c.Project?.Client != null)
+            .GroupBy(c => new { c.Project!.ClientId, c.Project.Client!.Nombre })
+            .Select(g => {
+                var f = g.Sum(c => c.FacturacionTotal);
+                var co = g.Sum(c => c.CosteTotal);
+                return new KpiClienteDto(g.Key.ClientId, g.Key.Nombre,
+                    f, co, f - co, fact > 0 ? Math.Round(f / fact * 100, 1) : 0);
+            })
+            .OrderByDescending(x => x.Facturacion)
+            .Take(6)
+            .ToList();
+
+        // Evolución últimos 6 períodos
+        var allPeriods = (await _periodRepo.ListAsync(ct))
+            .Where(p => p.Estado != EstadoPeriodo.Abierto)
+            .OrderByDescending(p => p.Id)
+            .Take(6)
+            .Reverse()
+            .ToList();
+
+        var evolucion = new List<EvolucionPeriodoDto>();
+        foreach (var p in allPeriods)
+        {
+            var pFilter = new ApprovalFilterRequest(p.Id, null, null, null, null, null, null, null, 1, int.MaxValue);
+            var pClosures = await _closureRepo.ListPaginatedForUserAsync(usuarioId, pFilter, ct);
+            var pFact = pClosures.Items.Sum(c => c.FacturacionTotal);
+            var pCoste = pClosures.Items.Sum(c => c.CosteTotal);
+            evolucion.Add(new EvolucionPeriodoDto(p.Nombre, pFact, pCoste, pFact - pCoste));
+        }
+
+        return new DashboardKpisDto(period.Id, period.Nombre, completados, pendientes, fact, coste, margen, margenPct, desglose, evolucion);
     }
 
     public async Task<IReadOnlyList<DashboardAvisoDto>> GetAvisosAsync(int usuarioId, CancellationToken ct)
@@ -47,11 +81,29 @@ public class DashboardService : IDashboardService
         var avisos = new List<DashboardAvisoDto>();
         var filter = new ApprovalFilterRequest(null, null, null, null, null, null, null, null, 1, int.MaxValue);
         var closures = await _closureRepo.ListPaginatedForUserAsync(usuarioId, filter, ct);
+
+        // Cierres pendientes
         foreach (var c in closures.Items.Where(x => x.Estado == EstadoClosure.EnAprobacion || x.Estado == EstadoClosure.Borrador).Take(10))
             avisos.Add(new DashboardAvisoDto("CierrePendiente", $"Cierre #{c.Id} {c.Project?.Nombre} pendiente en paso {c.PasoActual}", c.Id));
+
+        // Cierres rechazados
+        foreach (var c in closures.Items.Where(x => x.Estado == EstadoClosure.Rechazado).Take(5))
+            avisos.Add(new DashboardAvisoDto("CierreRechazado", $"Cierre #{c.Id} {c.Project?.Nombre} fue rechazado", c.Id));
+
+        // Incidencias en líneas de cálculo
+        foreach (var c in closures.Items.Where(c => c.Lines.Any(l => l.TieneIncidencia)).Take(5))
+            avisos.Add(new DashboardAvisoDto("IncidenciaCalculo", $"Cierre #{c.Id} {c.Project?.Nombre} tiene líneas con incidencias", c.Id));
+
+        // Períodos bloqueados y próximos a vencer
         var periods = await _periodRepo.ListAsync(ct);
-        foreach (var p in periods.Where(p => p.Estado == EstadoPeriodo.Bloqueado))
+        foreach (var p in periods.Where(p => p.Estado == EstadoPeriodo.Bloqueado).Take(5))
             avisos.Add(new DashboardAvisoDto("PeriodoBloqueado", $"Período {p.Nombre} bloqueado", p.Id));
+
+        // Período próximo a vencer (FechaFin <= 7 días)
+        var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+        foreach (var p in periods.Where(p => p.FechaFin <= hoy.AddDays(7) && p.Estado != EstadoPeriodo.Cerrado).Take(5))
+            avisos.Add(new DashboardAvisoDto("PeriodoProximoVencer", $"Período {p.Nombre} vence en {(p.FechaFin.ToDateTime(TimeOnly.MinValue) - hoy.ToDateTime(TimeOnly.MinValue)).Days} días", p.Id));
+
         return avisos;
     }
 
@@ -60,13 +112,22 @@ public class DashboardService : IDashboardService
         var period = periodId.HasValue ? await _periodRepo.GetByIdAsync(periodId.Value, ct)
                                        : await _periodRepo.GetActivoAsync(ct);
         var projects = await _projectRepo.ListPaginatedForUserAsync(usuarioId, 1, int.MaxValue, null, null, ct);
-        var items = new List<MiProyectoDto>();
-        foreach (var p in projects.Items)
+
+        // Cargar todos los cierres del período de una sola vez (fix N+1 query)
+        var allClosures = period is null
+            ? new Dictionary<int, Closure>()
+            : (await _closureRepo.ListPaginatedForUserAsync(usuarioId,
+                 new ApprovalFilterRequest(period.Id, null, null, null, null, null, null, null, 1, int.MaxValue), ct))
+               .Items.ToDictionary(c => c.ProjectId);
+
+        var items = projects.Items.Select(p =>
         {
-            Closure? c = period is null ? null : await _closureRepo.GetByProjectAndPeriodAsync(p.Id, period.Id, ct);
-            items.Add(new MiProyectoDto(p.Id, p.Nombre, p.ClientId, p.Client?.Nombre ?? "",
-                c?.Id, c?.Estado, c?.PasoActual));
-        }
+            allClosures.TryGetValue(p.Id, out var c);
+            return new MiProyectoDto(p.Id, p.Nombre, p.ClientId, p.Client?.Nombre ?? "",
+                c?.Id, c?.Estado, c?.PasoActual,
+                c?.CosteTotal, c?.FacturacionTotal, c?.Margen);
+        }).ToList();
+
         return items;
     }
 }
@@ -113,10 +174,15 @@ public class SyncService : ISyncService
     private readonly IIntratimeClient _intratime;
     private readonly IPayHawkClient _payhawk;
     private readonly ISgpvClient _sgpv;
+    private readonly IGalanClient _galan;
+    private readonly IMediapostClient _mediapost;
     private readonly IStagingRepository<StagingCeleroVisita> _celeroRepo;
     private readonly IStagingRepository<StagingBizneoEmpleado> _empRepo;
     private readonly IStagingRepository<StagingBizneoAbsence> _absenceRepo;
     private readonly IStagingRepository<StagingIntratimeFichaje> _ficRepo;
+    private readonly IStagingRepository<StagingIntratimeEmpleado> _intratimeEmpRepo;
+    private readonly IStagingRepository<StagingIntratimeClockingRequest> _clkReqRepo;
+    private readonly IStagingRepository<StagingIntratimeExpense> _expenseRepo;
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo;
     private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo;
     private readonly IStagingRepository<StagingSgpvProducto> _sgpvProductoRepo;
@@ -127,10 +193,14 @@ public class SyncService : ISyncService
 
     public SyncService(
         ICeleroClient celero, IBizneoClient bizneo, IIntratimeClient intratime, IPayHawkClient payhawk, ISgpvClient sgpv,
+        IGalanClient galan, IMediapostClient mediapost,
         IStagingRepository<StagingCeleroVisita> celeroRepo,
         IStagingRepository<StagingBizneoEmpleado> empRepo,
         IStagingRepository<StagingBizneoAbsence> absenceRepo,
         IStagingRepository<StagingIntratimeFichaje> ficRepo,
+        IStagingRepository<StagingIntratimeEmpleado> intratimeEmpRepo,
+        IStagingRepository<StagingIntratimeClockingRequest> clkReqRepo,
+        IStagingRepository<StagingIntratimeExpense> expenseRepo,
         IStagingRepository<StagingPayHawkGasto> gastoRepo,
         IStagingRepository<StagingSgpvVisita> sgpvRepo,
         IStagingRepository<StagingSgpvProducto> sgpvProductoRepo,
@@ -144,6 +214,8 @@ public class SyncService : ISyncService
         _intratime = intratime;
         _payhawk = payhawk;
         _sgpv = sgpv;
+        _galan = galan;
+        _mediapost = mediapost;
         _celeroRepo = celeroRepo;
         _userRepo = userRepo;
         _projectRepo = projectRepo;
@@ -151,6 +223,9 @@ public class SyncService : ISyncService
         _empRepo = empRepo;
         _absenceRepo = absenceRepo;
         _ficRepo = ficRepo;
+        _intratimeEmpRepo = intratimeEmpRepo;
+        _clkReqRepo = clkReqRepo;
+        _expenseRepo = expenseRepo;
         _gastoRepo = gastoRepo;
         _sgpvRepo = sgpvRepo;
         _sgpvProductoRepo = sgpvProductoRepo;
@@ -275,22 +350,62 @@ public class SyncService : ISyncService
             case "intratime":
             {
                 var data = await _intratime.GetFichajesAsync(desde, hasta, ct);
+                // Para resolver UserId interno, buscar en staging empleados
+                var empleados = await _intratimeEmpRepo.ListAsync(ct);
+                var empleadoLookup = empleados
+                    .Where(e => e.UserId.HasValue)
+                    .ToDictionary(e => e.UserIdExterno, e => e.UserId!.Value);
+
                 foreach (var f in data)
                 {
                     var json = JsonSerializer.Serialize(f);
                     var hash = Sha256(json);
                     if (await _ficRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+
+                    var horasCalculadas = f.Salida.HasValue
+                        ? (decimal)(f.Salida.Value - f.Entrada).TotalHours
+                        : null as decimal?;
+
+                    empleadoLookup.TryGetValue(f.UserIdExterno, out var userId);
+
                     await _ficRepo.AddRangeAsync(new[] { new StagingIntratimeFichaje
                     {
-                        FichajeIdExterno = f.FichajeIdExterno, UserId = f.UserId,
+                        FichajeIdExterno = f.FichajeIdExterno,
+                        UserIdExterno = f.UserIdExterno,
+                        UserId = userId,
                         Entrada = DateTime.SpecifyKind(f.Entrada, DateTimeKind.Utc),
                         Salida = f.Salida.HasValue ? DateTime.SpecifyKind(f.Salida.Value, DateTimeKind.Utc) : null,
+                        HorasCalculadas = horasCalculadas,
                         PayloadJson = json, Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
                     } }, ct);
                     ins++;
                 }
                 await _ficRepo.SaveChangesAsync(ct);
+                break;
+            }
+            case "intratime-empleados":
+            {
+                var data = await _intratime.GetEmpleadosAsync(ct);
+                foreach (var u in data)
+                {
+                    var json = JsonSerializer.Serialize(u);
+                    var hash = Sha256(json);
+                    if (await _intratimeEmpRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    await _intratimeEmpRepo.AddRangeAsync(new[] { new StagingIntratimeEmpleado
+                    {
+                        UserIdExterno = u.UserIdExterno,
+                        Nombre = u.Nombre,
+                        Email = u.Email,
+                        NIF = u.NIF,
+                        Affiliation = u.Affiliation,
+                        Role = u.Role,
+                        PayloadJson = json, Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _intratimeEmpRepo.SaveChangesAsync(ct);
                 break;
             }
             case "payhawk":
@@ -411,11 +526,157 @@ public class SyncService : ISyncService
                 await _sgpvProductoRepo.SaveChangesAsync(ct);
                 break;
             }
+            case "intratime-clocking-requests":
+            {
+                var year = DateTime.UtcNow.Year;
+                var data = await _intratime.GetClockingRequestsAsync(year, ct);
+
+                // Cargar empleados de Intratime para resolver UserId
+                var empleados = await _intratimeEmpRepo.ListAsync(ct);
+                var empleadoLookup = empleados
+                    .Where(e => e.UserId.HasValue)
+                    .ToDictionary(e => e.UserIdExterno, e => e.UserId!.Value);
+
+                foreach (var cr in data)
+                {
+                    var json = JsonSerializer.Serialize(cr);
+                    var hash = Sha256(json);
+                    if (await _clkReqRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+
+                    empleadoLookup.TryGetValue(cr.UserIdExterno, out var userId);
+
+                    await _clkReqRepo.AddRangeAsync(new[] { new StagingIntratimeClockingRequest
+                    {
+                        RequestIdExterno = cr.RequestIdExterno,
+                        UserIdExterno = cr.UserIdExterno,
+                        UserId = userId,
+                        FechaRequest = cr.FechaRequest,
+                        TipoRequest = cr.TipoRequest,
+                        Estado = cr.Estado,
+                        Razon = cr.Razon,
+                        HoraDesde = cr.HoraDesde,
+                        HoraHasta = cr.HoraHasta,
+                        PayloadJson = json, Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _clkReqRepo.SaveChangesAsync(ct);
+                break;
+            }
+            case "intratime-expenses":
+            {
+                var data = await _intratime.GetExpensesAsync(desde, hasta, ct);
+
+                // Cargar empleados de Intratime para resolver UserId
+                var empleados = await _intratimeEmpRepo.ListAsync(ct);
+                var empleadoLookup = empleados
+                    .Where(e => e.UserId.HasValue && !string.IsNullOrEmpty(e.UserIdExterno))
+                    .ToDictionary(e => e.UserIdExterno, e => e.UserId!.Value);
+
+                // Cargar proyectos para resolver ProjectId por nombre
+                var projects = await _projectRepo.ListAsync(ct);
+                var projectNameLookup = projects
+                    .Where(p => !p.IsDeleted)
+                    .ToDictionary(p => p.Nombre, p => p.Id);
+
+                foreach (var e in data)
+                {
+                    var json = JsonSerializer.Serialize(e);
+                    var hash = Sha256(json);
+                    if (await _expenseRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+
+                    // Resolver UserId
+                    int? userId = null;
+                    if (!string.IsNullOrEmpty(e.UserIdExterno))
+                    {
+                        empleadoLookup.TryGetValue(e.UserIdExterno, out var uid);
+                        userId = uid;
+                    }
+
+                    // Resolver ProjectId por nombre
+                    int? projectId = null;
+                    if (!string.IsNullOrEmpty(e.ProyectoNombre))
+                    {
+                        projectNameLookup.TryGetValue(e.ProyectoNombre, out var pid);
+                        projectId = pid;
+                    }
+
+                    await _expenseRepo.AddRangeAsync(new[] { new StagingIntratimeExpense
+                    {
+                        ExpenseIdExterno = e.ExpenseIdExterno,
+                        UserIdExterno = e.UserIdExterno,
+                        UserId = userId,
+                        FechaExpense = e.FechaExpense,
+                        Cantidad = e.Cantidad,
+                        NombreExpense = e.NombreExpense,
+                        Descripcion = e.Descripcion,
+                        ProyectoNombre = e.ProyectoNombre,
+                        ProjectId = projectId,
+                        PayloadJson = json, Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _expenseRepo.SaveChangesAsync(ct);
+                break;
+            }
+            case "intratime-proyectos":
+            {
+                var data = await _intratime.GetProyectosAsync(ct);
+                // Los proyectos de Intratime son información de referencia
+                // Se devuelven sin persistencia en staging (no se mapean a SIG-es aún)
+                ins = data.Count;
+                break;
+            }
+            case "galan-entradas":
+            {
+                var desdeG = DateTime.UtcNow.AddDays(-30);
+                var hastaG = DateTime.UtcNow;
+                var data = await _galan.GetEntradasAsync(desdeG, hastaG, ct);
+                // Sincronizando entradas de Galán
+                ins = data.Count;
+                break;
+            }
+            case "galan-salidas":
+            {
+                var desdeG = DateTime.UtcNow.AddDays(-30);
+                var hastaG = DateTime.UtcNow;
+                var data = await _galan.GetSalidasAsync(desdeG, hastaG, ct);
+                // Sincronizando salidas de Galán
+                ins = data.Count;
+                break;
+            }
+            case "galan-stock":
+            {
+                var data = await _galan.GetStockAsync(ct);
+                // Sincronizando stock de Galán
+                ins = data.Count;
+                break;
+            }
+            case "mediapost-pedidos":
+            {
+                var desdeM = DateTime.UtcNow.AddDays(-30);
+                var hastaM = DateTime.UtcNow;
+                var data = await _mediapost.GetPedidosAsync(desdeM, hastaM, ct);
+                // Sincronizando pedidos de Mediapost
+                ins = data.Count;
+                break;
+            }
+            case "mediapost-recepciones":
+            {
+                var desdeM = DateTime.UtcNow.AddDays(-30);
+                var hastaM = DateTime.UtcNow;
+                var data = await _mediapost.GetRecepcionesAsync(desdeM, hastaM, ct);
+                // Sincronizando recepciones de Mediapost
+                ins = data.Count;
+                break;
+            }
             case "a3innuva":
             case "travelperk":
                 throw new IntegrationException(sistema, "Sistema aún no implementado en modo sincronización.");
             default:
-                throw new IntegrationException(sistema, "Sistema no soportado. Use celero, bizneo, intratime, payhawk, sgpv, sgpv-productos, a3innuva, travelperk.");
+                throw new IntegrationException(sistema, "Sistema no soportado. Use celero, bizneo, intratime-*, payhawk, sgpv*, a3innuva, travelperk, galan-*, mediapost-*.");
         }
         return new SyncResultDto(
             Sistema: sistema,

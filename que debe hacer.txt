@@ -1,0 +1,67 @@
+ARQUITECTURA TÉCNICA DEFINIDA
+Se ha completado el diseño de la arquitectura técnica con los siguientes componentes:
+• Backend: .NET Core 8 (C#) • Frontend: Angular 18 (TypeScript) • Base de Datos: PostgreSQL local + PostgreSQL (Celero) • Infraestructura: Microsoft Azure • Autenticación: Azure Active Directory (AD) • Reporting: Power BI (en planificación)
+3. ESTADO DE INTEGRACIONES CON APIs
+Hemos identificado y comenzado a integrar 10 sistemas. El estado actual es:
+API / Sistema	Estado	Bloqueo / Problema
+Bizneo	✓ EN CURSO	Ninguno. 2 endpoints funcionales (Users, Absences)
+Celero One	✓ EN CURSO	Ninguno. Conexión directa a PostgreSQL establecida
+SGPV	⚠ EN CURSO	Necesita especificar formato JSON de exportación
+Intratime	✅ IMPLEMENTADO	Completamente integrado: empleados, fichajes, discrepancias, cálculo de horas
+PayHawk	⚠ PENDIENTE	Falta Account ID del portal
+TravelPerk	⚠ PENDIENTE	Falta API Key del portal
+A3 Nomina	✗ BLOQUEADO	Falta acceso a Conectia (OAuth2 - Client ID/Secret)
+A3 ERP	✗ BLOQUEADO	Falta acceso a Conectia (OAuth2 - Client ID/Secret)
+Galán	✓ EN CURSO	Tenemos datos en el documento: Documentación PowerBi Logistica_2026.docx
+Mediapost	✗ BLOQUEADO	Sin información de acceso
+
+4. DATOS QUE APORTA CADA API A LA HERRAMIENTA
+Cada API integrada proporciona datos específicos que alimentan diferentes módulos de la plataforma:
+🔷 BIZNEO (Sistema de Gestión de RRHH)
+Datos que aporta: • Lista de usuarios / empleados (ID, Email, Nombre, Foto) • Ausencias y vacaciones (fechas de inicio/fin, tipo de ausencia) • Información de personal activo  Qué hace la herramienta con estos datos: ✓ Mantiene un registro actualizado de todos los empleados ✓ Sincroniza automáticamente cambios en empleados (altas, bajas, cambios) ✓ Calcula disponibilidad real de personal (excluye vacaciones/bajas) ✓ Asigna tareas/visitas solo a empleados disponibles ✓ Integra datos en reportes de productividad por persona
+🔷 CELERO ONE (Sistema de Gestión de Proyectos y Visitas)
+Datos que aporta: • Proyectos activos (ID, nombre, cliente, presupuesto) • Visitas planificadas y realizadas • Feedback de clientes • Información geográfica (ubicaciones) • Asignación de empleados a proyectos  Qué hace la herramienta con estos datos: ✓ Carga en tiempo real información de proyectos ✓ Sincroniza estado de visitas (planificada, realizada, cancelada) ✓ Valida datos antes de calcular pagos y facturación ✓ Usa geolocalización para validar incidencias ✓ Base para calcular métricas de efectividad
+🔷 INTRATIME (Sistema de Registro de Tiempos - PENDIENTE)
+Datos que aporta: • Horas trabajadas por empleado • Asistencia y puntualidad • Tiempo dedicado a proyectos  Qué hace la herramienta con estos datos: ✓ Valida horas registradas vs. horas facturables ✓ Detecta discrepancias (horas registradas vs. visitas realizadas) ✓ Calcula bases de pago por proyecto
+🔷 PAYHAWK (Sistema de Gastos Corporativos - PENDIENTE)
+Datos que aporta: • Gastos realizados por empleados (restaurante, hotel, transporte) • Recibos y justificantes • Datos del empleado y proyecto asociado  Qué hace la herramienta con estos datos: ✓ Registra gastos por empleado y proyecto ✓ Valida que los gastos cumplan políticas de empresa ✓ Incluye gastos en cálculo de dietas/reembolsos ✓ Genera informes de gastos por proyecto para facturación
+🔷 A3 NÓMINA (Sistema de Nóminas - BLOQUEADO)
+Datos que aporta: • Estructura de nómina por empleado • Conceptos salariales (base, complementos, retenciones) • Datos de plantilla  Qué hace la herramienta con estos datos: ✓ Valida si pagos a empleados cumplen estructura de nómina ✓ Integra conceptos extras (dietas, incentivos) en nómina ✓ Genera base para previsión de costos salariales
+🔷 A3 ERP (Sistema de Facturación - BLOQUEADO)
+Datos que aporta: • Clientes de la empresa • Tarifas y políticas de facturación • Cuentas contables  Qué hace la herramienta con estos datos: ✓ Valida clientes antes de facturar ✓ Aplica tarifas correctas según cliente/proyecto ✓ Genera facturas con datos válidos ✓ Integración con contabilidad
+🔷 TRAVELPERK (Sistema de Viajes - PENDIENTE)
+Datos que aporta: • Viajes reservados y realizados • Costos de transporte (vuelos, hoteles) • Empleado, proyecto y fechas  Qué hace la herramienta con estos datos: ✓ Registra costos de viaje en proyecto ✓ Valida que viajes sean justificables ✓ Suma costos de viaje en presupuesto del proyecto
+🔷 GALÁN (Sistema de Logística y Almacenes - BLOQUEADO)
+Datos que aporta: • Stock de productos en almacén • Entradas y salidas diarias • Costos logísticos (manipulación, almacenaje, transporte) • Información de transporte y entregas  Qué hace la herramienta con estos datos: ✓ Sincroniza inventario en tiempo real ✓ Valida disponibilidad de stock antes de compromisos ✓ Incluye costos logísticos en facturas a clientes ✓ Genera alertas de stock bajo
+🔷 SGPV (Sistema de Gestión de Planificación - PENDIENTE)
+Datos que aporta: • Datos de planificación y control de proyectos • Hitos y deadlines  Qué hace la herramienta con estos datos: ✓ Valida cumplimiento de plazos ✓ Genera alertas de retraso ✓ Integra en reportes ejecutivos
+🔷 MEDIAPOST (Sistema de Distribución - BLOQUEADO)
+Datos que aporta: • Información de envíos y entregas  Qué hace la herramienta con estos datos: ✓ Registra seguimiento de entregas ✓ Valida cumplimiento de entregas ✓ Incluye costos de distribución
+5. FUNCIONALIDADES PRINCIPALES DE LA HERRAMIENTA
+La herramienta SIG-ES integrará todos estos datos para automatizar procesos críticos:
+A) GESTIÓN OPERATIVA (Operaciones + Proyectos)
+• Consolida información de proyectos (Celero) y empleados (Bizneo) • Visualiza qué empleados están disponibles y para qué proyectos • Asigna tareas considerando vacaciones, ausencias y tiempos registrados • Detecta problemas: visitas planificadas vs. horas trabajadas • Genera alertas si hay desviaciones
+B) CÁLCULO DE PAGOS Y DIETAS (RRHH + Finanzas)
+• Combina datos de:   - Bizneo: empleados y ausencias   - Intratime: horas trabajadas   - Celero: proyectos donde trabajó   - PayHawk: gastos realizados   - A3 Nómina: estructura salarial • Automatiza cálculo de:   - Dietas (según horas trabajadas)   - Kilometraje   - Reembolsos de gastos   - Gratificaciones extras   - Incentivos por visitas realizadas • Valida que todo cumpla políticas y nómina
+C) FACTURACIÓN A CLIENTES (Finanzas + Operaciones)
+• Integra datos de:   - Celero: visitas realizadas, proyectos   - A3 ERP: tarifas y clientes   - Galán: costos logísticos   - TravelPerk: costos de viaje • Calcula automáticamente:   - Precio por visita/proyecto   - Gastos asociados al cliente   - Costos logísticos imputables   - Márgenes por cliente • Genera facturas con A3 ERP
+D) REPORTING Y ANÁLISIS (BI/Dirección)
+• Consolida TODOS los datos en dashboards • KPIs por proyecto:   - Rentabilidad (ingresos vs. costos)   - Desviaciones presupuestarias   - Productividad por empleado   - Tasa de cumplimiento de proyectos • KPIs por cliente:   - Márgenes   - Cumplimiento de SLA • Power BI: exporta datos limpios para análisis avanzado
+6. DATOS QUE NECESITAMOS DEL CLIENTE (ACCIONES URGENTES)
+Para continuar sin bloqueos, necesitamos lo siguiente:
+Sistema	Qué necesitamos	Urgencia
+Intratime	Contactar al soporte para obtener un token válido y activo	ALTA ⚡
+A3 Innuva	1. Registrar empresa en Conectia\n2. Obtener Client ID y Client Secret\n3. Confirmar acceso OAuth2	ALTA ⚡
+PayHawk	1. Acceder a https://portal.payhawk.com/\n2. Obtener Account ID de la URL\n3. Confirmar API Key	MEDIA
+TravelPerk	1. Acceder a https://app.travelperk.com/\n2. Settings > Developer > API Keys\n3. Copiar o crear API Key	MEDIA
+SGPV	Especificar formato exacto del JSON que exporta (esquema)	MEDIA
+Galán	1. Mecanismo de entrega (SFTP/FTP/email/carpeta compartida)\n2. Credenciales de acceso\n3. Esquema exacto del JSON diario	ALTA ⚡
+Mediapost	1. Endpoint o mecanismo de acceso\n2. Credenciales\n3. Formato de datos	MEDIA
+
+7. PLAN DE ACCIÓN - PRÓXIMAS 2 SEMANAS
+Prioridad 1 - Esta semana (semana del 5 de junio):
+☐ Implementar adaptador .NET para Bizneo (Users y Absences endpoints) ☐ Contactar Intratime para obtener token válido ☐ Contactar Celero para verificar conexión PostgreSQL en Azure
+Prioridad 2 - Segunda semana (semana del 12 de junio):
+☐ Obtener Account ID de PayHawk ☐ Obtener API Key de TravelPerk ☐ Recibir especificación de formato SGPV ☐ Recibir mecanismo de entrega y esquema de Galán ☐ Implementar adaptador para Celero One en C#
+Prioridad 3 - Tercera semana (semana del 19 de junio):
+☐ Registrar empresa en Conectia y obtener acceso A3 Innuva ☐ Implementar adaptadores para PayHawk, TravelPerk, Galán ☐ Comenzar pruebas de integración end-to-end ☐ Diseñar base de datos consolidada

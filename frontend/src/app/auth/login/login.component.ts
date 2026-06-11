@@ -57,7 +57,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
 
         <!-- RIGHT: Login card -->
         <div class="sig-login-right">
-          <div class="sig-login-card">
+          <div class="sig-login-card" data-testid="login-card">
             <h2 class="sig-card-title">&iexcl;Bienvenido de nuevo!</h2>
             <p class="sig-card-sub">Introduce tus credenciales para acceder a la plataforma.</p>
 

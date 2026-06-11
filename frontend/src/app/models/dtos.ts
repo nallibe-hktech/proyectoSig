@@ -6,6 +6,8 @@ import type {
   EstadoClosure, ApprovalStep, EstadoApproval, AuditAction
 } from './enums';
 
+export type { EstadoClosure, ApprovalStep, EstadoApproval, AuditAction };
+
 // ------------------ Paginación ------------------
 export interface PagedResult<T> {
   items: T[];
@@ -222,6 +224,9 @@ export interface ClosureListItemDto {
   projectNombre: string;
   periodId: number;
   periodNombre: string;
+  periodo?: string; // Alias para periodNombre
+  clientId?: number;
+  clientNombre?: string;
   costeTotal: number;
   facturacionTotal: number;
   margen: number;
@@ -239,6 +244,9 @@ export interface ClosureLineDto {
   tieneIncidencia: boolean;
   rowVersion: number;
 }
+
+// Alias para compatibilidad (algunos componentes usan ClosureLine en lugar de ClosureLineDto)
+export type ClosureLine = ClosureLineDto;
 export interface ApprovalDto {
   id: number;
   paso: ApprovalStep;
@@ -310,6 +318,20 @@ export interface ApprovalHistoryDto {
 }
 
 // ------------------ Dashboard ------------------
+export interface KpiClienteDto {
+  clientId: number;
+  nombre: string;
+  facturacion: number;
+  coste: number;
+  margen: number;
+  pctTotal: number;
+}
+export interface EvolucionPeriodoDto {
+  periodNombre: string;
+  facturacion: number;
+  coste: number;
+  margen: number;
+}
 export interface DashboardKpisDto {
   periodId: number;
   periodNombre: string;
@@ -318,6 +340,9 @@ export interface DashboardKpisDto {
   facturacionTotal: number;
   costeTotal: number;
   margen: number;
+  margenPct: number;
+  desglosePorCliente: KpiClienteDto[];
+  evolucion: EvolucionPeriodoDto[];
 }
 export interface DashboardAvisoDto {
   tipo: string;
@@ -332,6 +357,9 @@ export interface MiProyectoDto {
   closureId?: number | null;
   estado?: EstadoClosure | null;
   pasoActual?: ApprovalStep | null;
+  costeTotal?: number | null;
+  facturacionTotal?: number | null;
+  margen?: number | null;
 }
 
 // ------------------ Calculation / Sync / Audit / Variable ------------------

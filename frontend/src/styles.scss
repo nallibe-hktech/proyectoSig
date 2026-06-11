@@ -846,7 +846,27 @@ html {
 body.sig-light {
   color-scheme: light;
 
-  // M3 surface tokens
+  // M3 tokens — paleta fiel a Penpot (light mode)
+  --mat-sys-primary:               #1F4E78;
+  --mat-sys-on-primary:            #FFFFFF;
+  --mat-sys-primary-container:     #D6DFF3;
+  --mat-sys-on-primary-container:  #0D1B30;
+
+  --mat-sys-secondary:             #2E5C8A;
+  --mat-sys-on-secondary:          #FFFFFF;
+  --mat-sys-secondary-container:   #DBEAFE;
+  --mat-sys-on-secondary-container:#1E3A5F;
+
+  --mat-sys-tertiary:              #C9A961;
+  --mat-sys-on-tertiary:           #3B2800;
+  --mat-sys-tertiary-container:    #F5E8C2;
+  --mat-sys-on-tertiary-container: #4A3500;
+
+  --mat-sys-error:                 #D32F2F;
+  --mat-sys-on-error:              #FFFFFF;
+  --mat-sys-error-container:       #FFDAD6;
+  --mat-sys-on-error-container:    #410002;
+
   --mat-sys-surface:               #f0f4f8;
   --mat-sys-on-surface:            #1a2b3c;
   --mat-sys-surface-variant:       #ffffff;
@@ -872,25 +892,25 @@ body.sig-light {
   --sig-text-muted:     #7a94a8;
   --sig-text-heading:   #0f1f2e;
 
-  // SIG accents stay the same
+  // SIG accents
   --sig-teal:           #0097a7;
   --sig-teal-bg:        #e0f7fa;
-  --sig-blue:           #2563eb;
-  --sig-blue-light:     #3b82f6;
+  --sig-blue:           #1F4E78;
+  --sig-blue-light:     #2E5C8A;
 
-  // Status
-  --sig-success:        #16a34a;
+  // Status — Penpot corporate palette
+  --sig-success:        #70AD47;
   --sig-success-bg:     #dcfce7;
-  --sig-warning:        #d97706;
+  --sig-warning:        #FFC107;
   --sig-warning-bg:     #fef3c7;
-  --sig-danger:         #dc2626;
+  --sig-danger:         #D32F2F;
   --sig-danger-bg:      #fee2e2;
   --sig-pending:        #64748b;
 
   // Borders
   --sig-border:         #cdd8e3;
   --sig-border-light:   #dde6ef;
-  --sig-border-focus:   #2563eb;
+  --sig-border-focus:   #1F4E78;
 
   // Shadows
   --shadow-card:  0 2px 12px rgba(0,0,0,.08);
@@ -900,9 +920,9 @@ body.sig-light {
   --sig-text-dark:          #1a2b3c;
   --sig-text-light:         #7a94a8;
   --sig-text-lighter:       #4a6278;
-  --sig-primary-light:      #3b82f6;
-  --sig-primary-dark:       #dbeafe;
-  --sig-warning-dark:       #b45309;
+  --sig-primary-light:      #2E5C8A;
+  --sig-primary-dark:       #163A52;
+  --sig-warning-dark:       #d97706;
   --sig-warning-container:  #fef3c7;
   --sig-success-container:  #dcfce7;
   --sig-danger-container:   #fee2e2;

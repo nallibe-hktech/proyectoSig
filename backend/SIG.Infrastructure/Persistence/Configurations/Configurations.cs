@@ -433,6 +433,41 @@ public class CeleroMissionMappingConfiguration : IEntityTypeConfiguration<Celero
     }
 }
 
+public class StagingIntratimeClockingRequestConfiguration : IEntityTypeConfiguration<StagingIntratimeClockingRequest>
+{
+    public void Configure(EntityTypeBuilder<StagingIntratimeClockingRequest> b)
+    {
+        b.HasIndex(s => s.Hash).IsUnique();
+        b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
+        b.Property(s => s.RequestIdExterno).HasMaxLength(255).IsRequired();
+        b.Property(s => s.UserIdExterno).HasMaxLength(50).IsRequired();
+        b.Property(s => s.TipoRequest).HasMaxLength(100).IsRequired();
+        b.Property(s => s.Estado).HasMaxLength(50).IsRequired();
+        b.Property(s => s.Razon).HasMaxLength(500);
+        b.Property(s => s.HoraDesde).HasMaxLength(20);
+        b.Property(s => s.HoraHasta).HasMaxLength(20);
+        b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();
+        b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
+    }
+}
+
+public class StagingIntratimeExpenseConfiguration : IEntityTypeConfiguration<StagingIntratimeExpense>
+{
+    public void Configure(EntityTypeBuilder<StagingIntratimeExpense> b)
+    {
+        b.HasIndex(s => s.Hash).IsUnique();
+        b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
+        b.Property(s => s.ExpenseIdExterno).HasMaxLength(255).IsRequired();
+        b.Property(s => s.UserIdExterno).HasMaxLength(50);
+        b.Property(s => s.Cantidad).HasPrecision(18, 4);
+        b.Property(s => s.NombreExpense).HasMaxLength(200).IsRequired();
+        b.Property(s => s.Descripcion).HasMaxLength(500);
+        b.Property(s => s.ProyectoNombre).HasMaxLength(200);
+        b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();
+        b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
+    }
+}
+
 public class StagingSgpvVisitaConfiguration : IEntityTypeConfiguration<StagingSgpvVisita>
 {
     public void Configure(EntityTypeBuilder<StagingSgpvVisita> b)

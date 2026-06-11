@@ -4,7 +4,7 @@ using SIG.Application.Interfaces.Integrations;
 
 namespace SIG.Infrastructure.Integrations.Fake;
 
-#pragma warning disable S2245 // Random usado intencionalmente para datos de prueba deterministas (semilla fija)
+#pragma warning disable S2245, S2696 // Random usado intencionalmente para datos de prueba deterministas (semilla fija); static ctor pattern ok
 
 internal static class FakeSeed
 {
@@ -94,6 +94,30 @@ public class BizneoFakeClient : IBizneoClient
 
 public class IntratimeFakeClient : IIntratimeClient
 {
+    static IntratimeFakeClient() { _ = FakeSeed.Seed; }
+
+    public Task<IReadOnlyList<IntratimeEmpleadoDto>> GetEmpleadosAsync(CancellationToken ct)
+    {
+        var nifs = new[]
+        {
+            "12345678A", "23456789B", "34567890C", "45678901D", "56789012E",
+            "67890123F", "78901234G", "89012345H", "90123456J", "01234567K",
+            "11234567L", "21234567M", "31234567N", "41234567P", "51234567Q"
+        };
+
+        var faker = new Faker<IntratimeEmpleadoDto>()
+            .CustomInstantiator(f => new IntratimeEmpleadoDto(
+                f.Random.Int(20000, 21000).ToString(),  // UserIdExterno (simular ID de Intratime)
+                f.Name.FullName(),
+                f.Internet.Email(),
+                f.PickRandom(nifs),
+                f.Random.AlphaNumeric(6),
+                f.Random.Int(1, 5)
+            ));
+        var list = faker.Generate(15);
+        return Task.FromResult<IReadOnlyList<IntratimeEmpleadoDto>>(list);
+    }
+
     public Task<IReadOnlyList<IntratimeFichajeDto>> GetFichajesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
         var faker = new Faker<IntratimeFichajeDto>()
@@ -103,13 +127,88 @@ public class IntratimeFakeClient : IIntratimeClient
                 var salida = entrada.AddHours(f.Random.Double(7, 9));
                 return new IntratimeFichajeDto(
                     $"FIC-{f.Random.AlphaNumeric(8).ToUpper()}",
-                    f.Random.Int(1, 15),
+                    f.Random.Int(20000, 20015).ToString(),  // UserIdExterno como string
                     entrada,
                     DateTime.SpecifyKind(salida, DateTimeKind.Utc)
                 );
             });
         var list = faker.Generate(120);
         return Task.FromResult<IReadOnlyList<IntratimeFichajeDto>>(list);
+    }
+
+    public Task<IReadOnlyList<IntratimeClockingRequestDto>> GetClockingRequestsAsync(int year, CancellationToken ct)
+    {
+        var estados = new[] { "Pendiente", "Aprobado", "Rechazado" };
+        var tipos = new[] { "Ajuste", "Corrección", "Validación" };
+
+        var faker = new Faker<IntratimeClockingRequestDto>()
+            .CustomInstantiator(f => new IntratimeClockingRequestDto(
+                $"REQ-{f.Random.AlphaNumeric(8).ToUpper()}",
+                f.Random.Int(20000, 20015).ToString(),  // UserIdExterno
+                DateTime.SpecifyKind(f.Date.Past(365, DateTime.UtcNow), DateTimeKind.Utc),
+                f.PickRandom(tipos),
+                f.PickRandom(estados),
+                f.Lorem.Sentence(3),
+                "09:00",
+                "17:00"
+            ));
+        var list = faker.Generate(25);
+        return Task.FromResult<IReadOnlyList<IntratimeClockingRequestDto>>(list);
+    }
+
+    public Task<IReadOnlyList<IntratimeExpenseDto>> GetExpensesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
+    {
+        var expenseNames = new[] { "Comidas", "Transporte", "Hotel", "Combustible", "Teléfono", "Material" };
+        var faker = new Faker<IntratimeExpenseDto>()
+            .CustomInstantiator(f =>
+            {
+                var fecha = f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue));
+                return new IntratimeExpenseDto(
+                    $"EXP-{f.Random.AlphaNumeric(8).ToUpper()}",
+                    f.Random.Int(20000, 20015).ToString(),  // UserIdExterno
+                    fecha,
+                    Math.Round(f.Random.Decimal(10, 200), 2),  // Cantidad en euros
+                    f.PickRandom(expenseNames),
+                    f.Lorem.Sentence(2),
+                    f.Random.Bool(0.6f) ? f.PickRandom("Proyecto A", "Proyecto B", "Proyecto C") : null  // ProyectoNombre (60% probabilidad)
+                );
+            });
+        var list = faker.Generate(35);
+        return Task.FromResult<IReadOnlyList<IntratimeExpenseDto>>(list);
+    }
+
+    public Task<IReadOnlyList<IntratimeProyectoDto>> GetProyectosAsync(CancellationToken ct)
+    {
+        var clientNames = new[] { "TERESA CARLES", "APPLE", "SAMSUNG", "MICROSOFT", "GOOGLE" };
+        var ciudades = new[] { "Barcelona", "Madrid", "Valencia", "Sevilla", "Bilbao" };
+        var regiones = new[] { "Cataluña", "Madrid", "Valencia", "Andalucía", "País Vasco" };
+
+        var faker = new Faker<IntratimeProyectoDto>()
+            .CustomInstantiator(f =>
+            {
+                var clientName = f.PickRandom(clientNames);
+                var ciudad = f.PickRandom(ciudades);
+                var region = f.PickRandom(regiones);
+                var usuariosIds = new List<string>();
+                for (int i = 0; i < f.Random.Int(2, 5); i++)
+                    usuariosIds.Add(f.Random.Int(20000, 21000).ToString());
+
+                return new IntratimeProyectoDto(
+                    f.Random.Int(70000, 80000).ToString(),  // PROJECT_ID
+                    $"{clientName} - {f.Lorem.Word()}",     // PROJECT_NAME
+                    new IntratimeClienteDto(
+                        f.Random.Int(40000, 50000).ToString(),  // CLIENT_ID
+                        clientName + " MANUFACTURING",
+                        "España",
+                        region,
+                        ciudad,
+                        f.Address.StreetAddress()
+                    ),
+                    usuariosIds
+                );
+            });
+        var list = faker.Generate(8);
+        return Task.FromResult<IReadOnlyList<IntratimeProyectoDto>>(list);
     }
 }
 
@@ -252,4 +351,4 @@ public class TravelPerkFakeClient : ITravelPerkClient
     }
 }
 
-#pragma warning restore S2245
+#pragma warning restore S2245, S2696

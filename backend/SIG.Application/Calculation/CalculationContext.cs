@@ -175,7 +175,7 @@ public class RowAdapter
     };
     public static RowAdapter FromFichaje(StagingIntratimeFichaje f) => new()
     {
-        UserId = f.UserId, Entrada = f.Entrada, Salida = f.Salida
+        UserId = f.UserId, Entrada = f.Entrada, Salida = f.Salida, Horas = f.HorasCalculadas
     };
     public static RowAdapter FromTarifa(TarifaProyecto t) => new()
     {

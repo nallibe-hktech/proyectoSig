@@ -1,0 +1,88 @@
+<!-- ═══════════════════════════════════════════════════════════
+     SIG-ES · Login Page — login.component.html
+     ═══════════════════════════════════════════════════════════ -->
+<div class="sig-login">
+
+  <!-- Background gradient decoration -->
+  <div class="sig-login__bg-glow sig-login__bg-glow--1"></div>
+  <div class="sig-login__bg-glow sig-login__bg-glow--2"></div>
+
+  <!-- Login card -->
+  <div class="sig-login__card">
+
+    <!-- Logo & Title -->
+    <div class="sig-login__header">
+      <div class="sig-login__logo">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="10" fill="#2563eb"/>
+          <path d="M10 21L17 28L30 13" stroke="white" stroke-width="3"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1 class="sig-login__title">SIG<span>-ES</span></h1>
+      <p class="sig-login__subtitle">Gestión Integral de Operaciones</p>
+    </div>
+
+    <!-- Form -->
+    <form class="sig-login__form" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+
+      <div class="sig-login__field">
+        <label class="sig-login__label" for="email">Correo electrónico</label>
+        <input
+          id="email"
+          type="email"
+          class="sig-login__input"
+          [class.error]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+          formControlName="email"
+          placeholder="usuario@sigespana.es"
+          autocomplete="email">
+        <span class="sig-login__field-error"
+              *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+          Introduce un correo válido
+        </span>
+      </div>
+
+      <div class="sig-login__field">
+        <label class="sig-login__label" for="password">Contraseña</label>
+        <div class="sig-login__input-wrap">
+          <input
+            id="password"
+            [type]="showPassword ? 'text' : 'password'"
+            class="sig-login__input"
+            [class.error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+            formControlName="password"
+            placeholder="••••••••"
+            autocomplete="current-password">
+          <button type="button" class="sig-login__eye" (click)="showPassword = !showPassword" tabindex="-1">
+            <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </div>
+        <span class="sig-login__field-error"
+              *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+          La contraseña es obligatoria
+        </span>
+      </div>
+
+      <!-- Error banner -->
+      <div class="sig-login__error-banner" *ngIf="loginError">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ loginError }}</span>
+      </div>
+
+      <button
+        type="submit"
+        class="sig-btn sig-btn--primary sig-login__submit"
+        [disabled]="loginForm.invalid || loading">
+        <mat-spinner *ngIf="loading" diameter="18"></mat-spinner>
+        <span *ngIf="!loading">Iniciar sesión</span>
+        <span *ngIf="loading">Autenticando…</span>
+      </button>
+
+    </form>
+
+    <p class="sig-login__footer-text">
+      SIG Europa · h&amp;k consulting · v1.0
+    </p>
+  </div>
+
+</div>
