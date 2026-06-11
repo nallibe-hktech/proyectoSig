@@ -252,11 +252,13 @@ public class IntratimeClient : IIntratimeClient
             }
 
             var clockingsJson = await clockingsResponse.Content.ReadAsStringAsync(ct);
+            _logger.LogInformation($"[Intratime] Response JSON: {clockingsJson.Substring(0, Math.Min(500, clockingsJson.Length))}");
+
             var clockingsArray = JsonSerializer.Deserialize<List<IntratimeClockingEventDto>>(clockingsJson);
 
             if (clockingsArray == null || clockingsArray.Count == 0)
             {
-                _logger.LogInformation("[Intratime] GetFichajes: 0 eventos obtenidos");
+                _logger.LogWarning($"[Intratime] GetFichajes: 0 eventos obtenidos. Response was: {clockingsJson}");
                 return Array.Empty<IntratimeFichajeDto>();
             }
 
