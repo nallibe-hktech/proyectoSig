@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using CsvHelper;
+using CsvHelper.Configuration;
 using Microsoft.Extensions.Logging;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Integrations;
@@ -9,6 +11,7 @@ namespace SIG.Infrastructure.Integrations.Fake;
 /// <summary>
 /// Cliente para leer datos de Galán desde archivos CSV locales o SharePoint
 /// Por ahora lee desde carpeta local. En producción usaría SFTP/SharePoint SDK.
+/// Implementa parseo flexible que acepta múltiples variantes de nombres de columnas sin validación estricta.
 /// </summary>
 public class GalanCsvClient : IGalanClient
 {
@@ -38,9 +41,19 @@ public class GalanCsvClient : IGalanClient
             }
 
             using var reader = new StreamReader(files);
-            using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+            var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                IgnoreBlankLines = true,
+                TrimOptions = TrimOptions.Trim,
+                HeaderValidated = null
+            };
+            using var csv = new CsvReader(reader, config);
 
-            var records = csv.GetRecords<GalanEntradaRawCsv>().ToList();
+            var records = csv.GetRecords<dynamic>()
+                .Select(r => NormalizarEntrada(r))
+                .Where(r => r != null)
+                .Cast<GalanEntradaRawCsv>()
+                .ToList();
 
             var dtos = records
                 .Where(r => r.Fecha >= desde && r.Fecha <= hasta)
@@ -82,9 +95,19 @@ public class GalanCsvClient : IGalanClient
             }
 
             using var reader = new StreamReader(files);
-            using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+            var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                IgnoreBlankLines = true,
+                TrimOptions = TrimOptions.Trim,
+                HeaderValidated = null
+            };
+            using var csv = new CsvReader(reader, config);
 
-            var records = csv.GetRecords<GalanSalidaRawCsv>().ToList();
+            var records = csv.GetRecords<dynamic>()
+                .Select(r => NormalizarSalida(r))
+                .Where(r => r != null)
+                .Cast<GalanSalidaRawCsv>()
+                .ToList();
 
             var dtos = records
                 .Where(r => r.Fecha >= desde && r.Fecha <= hasta)
@@ -130,9 +153,19 @@ public class GalanCsvClient : IGalanClient
             }
 
             using var reader = new StreamReader(files);
-            using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+            var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                IgnoreBlankLines = true,
+                TrimOptions = TrimOptions.Trim,
+                HeaderValidated = null
+            };
+            using var csv = new CsvReader(reader, config);
 
-            var records = csv.GetRecords<GalanStockRawCsv>().ToList();
+            var records = csv.GetRecords<dynamic>()
+                .Select(r => NormalizarStock(r))
+                .Where(r => r != null)
+                .Cast<GalanStockRawCsv>()
+                .ToList();
 
             var dtos = records
                 .Select(r => new GalanStockDto(
@@ -158,6 +191,160 @@ public class GalanCsvClient : IGalanClient
             _logger.LogError(ex, "Error leyendo stock de Galán");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Normaliza un registro dinámico del CSV a GalanEntradaRawCsv mapeando flexiblemente los nombres de columnas.
+    /// Este método es tolerante con variaciones de nombres (prefijos, espacios, mayúsculas, acentos).
+    /// </summary>
+    private GalanEntradaRawCsv? NormalizarEntrada(dynamic row)
+    {
+        try
+        {
+            var dict = (IDictionary<string, object>)row;
+            var normalized = NormalizarKeys(dict);
+
+            return new GalanEntradaRawCsv
+            {
+                CodigoDeArticulo = ObtenerValor(normalized, "codigoDeArticulo", "codigo", "articulo") ?? "",
+                CódigoDeDepartamento = ObtenerValor(normalized, "codigodeDepartamento", "departamento") ?? "",
+                CodigoDeFamily = ObtenerValor(normalized, "codigodefamily", "familia") ?? "",
+                Descripcion2 = ObtenerValor(normalized, "descripcion2", "descripcion"),
+                Fecha = DateTime.TryParse(ObtenerValor(normalized, "fecha") ?? "", out var fecha) ? fecha : DateTime.MinValue,
+                Unidades = int.TryParse(ObtenerValor(normalized, "unidades") ?? "0", out var unidades) ? unidades : 0,
+                Empresa = ObtenerValor(normalized, "empresa") ?? "",
+                Almacen = ObtenerValor(normalized, "almacen") ?? "",
+                Celda = ObtenerValor(normalized, "celda") ?? ""
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error normalizando registro de Entradas");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Normaliza un registro dinámico del CSV a GalanSalidaRawCsv.
+    /// </summary>
+    private GalanSalidaRawCsv? NormalizarSalida(dynamic row)
+    {
+        try
+        {
+            var dict = (IDictionary<string, object>)row;
+            var normalized = NormalizarKeys(dict);
+
+            return new GalanSalidaRawCsv
+            {
+                Albaran = ObtenerValor(normalized, "albaran") ?? "",
+                NumeroDePedidoDeTercero = ObtenerValor(normalized, "numerodepedidodetercero", "pedido"),
+                CodigoDeArticulo = ObtenerValor(normalized, "codigoDeArticulo") ?? "",
+                CódigoDeDepartamento = ObtenerValor(normalized, "codigodeDepartamento") ?? "",
+                CódigoDeFamily = ObtenerValor(normalized, "codigodefamily") ?? "",
+                Descripcion1 = ObtenerValor(normalized, "descripcion1"),
+                Unidades = int.TryParse(ObtenerValor(normalized, "unidades") ?? "0", out var unidades) ? unidades : 0,
+                CodigoDeServicioDeTransporte = ObtenerValor(normalized, "codigodeserviciodetransporte", "transporte"),
+                Matricula = ObtenerValor(normalized, "matricula"),
+                Fecha = DateTime.TryParse(ObtenerValor(normalized, "fecha") ?? "", out var fecha) ? fecha : DateTime.MinValue,
+                Destinatario = ObtenerValor(normalized, "destinatario"),
+                Almacen = ObtenerValor(normalized, "almacen") ?? "",
+                Celda = ObtenerValor(normalized, "celda") ?? ""
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error normalizando registro de Salidas");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Normaliza un registro dinámico del CSV a GalanStockRawCsv.
+    /// </summary>
+    private GalanStockRawCsv? NormalizarStock(dynamic row)
+    {
+        try
+        {
+            var dict = (IDictionary<string, object>)row;
+            var normalized = NormalizarKeys(dict);
+
+            return new GalanStockRawCsv
+            {
+                CodigoDeArticulo = ObtenerValor(normalized, "codigoDeArticulo") ?? "",
+                CódigoDeDepartamento = ObtenerValor(normalized, "codigodeDepartamento") ?? "",
+                CódigoDeFamily = ObtenerValor(normalized, "codigodefamily") ?? "",
+                CodigoDeCelda = ObtenerValor(normalized, "codigoDecelda", "celda") ?? "",
+                StockB = ObtenerValor(normalized, "stockb"),
+                StockA = ObtenerValor(normalized, "stocka"),
+                Stock = ObtenerValor(normalized, "stock"),
+                ALM = ObtenerValor(normalized, "alm", "almacen") ?? "",
+                Familia = ObtenerValor(normalized, "familia") ?? "",
+                Subfamilia = ObtenerValor(normalized, "subfamilia") ?? "",
+                Descripcion = ObtenerValor(normalized, "descripcion") ?? ""
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error normalizando registro de Stock");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Normaliza las claves del diccionario removiendo prefijos numéricos, espacios y acentos.
+    /// </summary>
+    private Dictionary<string, string> NormalizarKeys(IDictionary<string, object> original)
+    {
+        var resultado = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var kvp in original)
+        {
+            var key = kvp.Key
+                .Trim()
+                .ToLower()
+                .Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u")
+                .Replace("ñ", "n")
+                .Replace(" ", "")
+                .Replace(".", "");
+
+            // Remover prefijos numéricos SOLO si hay letras después (ej: "2codigoDeArticulo" -> "codigoDeArticulo")
+            // Pero no si es solo números (ej: "0029597" se deja como está)
+            var withoutPrefix = Regex.Replace(key, @"^(\d+)(?=[a-z])", "");
+            key = withoutPrefix.Length > 0 ? withoutPrefix : key;
+
+            var value = kvp.Value?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(key))
+            {
+                resultado[key] = value;
+            }
+        }
+
+        return resultado;
+    }
+
+    /// <summary>
+    /// Obtiene un valor del diccionario normalizado intentando múltiples claves alternativas.
+    /// </summary>
+    private string? ObtenerValor(Dictionary<string, string> normalized, params string[] claves)
+    {
+        foreach (var clave in claves)
+        {
+            var keyLower = clave.ToLower()
+                .Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u")
+                .Replace(" ", "")
+                .Replace(".", "");
+
+            // Remover prefijos numéricos SOLO si hay letras después (para consistencia con NormalizarKeys)
+            var withoutPrefix = Regex.Replace(keyLower, @"^(\d+)(?=[a-z])", "");
+            keyLower = withoutPrefix.Length > 0 ? withoutPrefix : keyLower;
+
+            if (normalized.TryGetValue(keyLower, out var valor) && !string.IsNullOrWhiteSpace(valor))
+            {
+                return valor;
+            }
+        }
+
+        return null;
     }
 }
 
@@ -205,4 +392,61 @@ public class GalanStockRawCsv
     public string Familia { get; set; } = "";
     public string Subfamilia { get; set; } = "";
     public string Descripcion { get; set; } = "";
+}
+
+// ===== ClassMaps flexibles (mantienen compatibilidad aunque no se usen) =====
+
+/// <summary>
+/// Mapeo flexible para Entradas (heredado, mantiene compatibilidad)
+/// </summary>
+public sealed class GalanEntradaMap : ClassMap<GalanEntradaRawCsv>
+{
+    public GalanEntradaMap()
+    {
+        // Mapeos de compatibilidad - aunque no se usan con el nuevo método dinámico
+    }
+}
+
+/// <summary>
+/// Mapeo flexible para Salidas que acepta variaciones de nombres
+/// </summary>
+public sealed class GalanSalidaMap : ClassMap<GalanSalidaRawCsv>
+{
+    public GalanSalidaMap()
+    {
+        Map(m => m.Albaran).Name("Albaran", "Albarán");
+        Map(m => m.NumeroDePedidoDeTercero).Name("NumeroDePedidoDeTercero", "Número de Pedido de Tercero");
+        Map(m => m.CodigoDeArticulo).Name("CodigoDeArticulo", "Código de Artículo");
+        Map(m => m.CódigoDeDepartamento).Name("CódigoDeDepartamento", "Código del Departamento");
+        Map(m => m.CódigoDeFamily).Name("CódigoDeFamily", "Código de Familia");
+        Map(m => m.Descripcion1).Name("Descripcion1", "Descripción 1");
+        Map(m => m.Unidades).Name("Unidades");
+        Map(m => m.CodigoDeServicioDeTransporte).Name("CodigoDeServicioDeTransporte", "Código de Servicio de Transporte");
+        Map(m => m.Matricula).Name("Matricula", "Matrícula");
+        Map(m => m.Fecha).Name("Fecha", "FECHA");
+        Map(m => m.Destinatario).Name("Destinatario");
+        Map(m => m.Almacen).Name("Almacen", "Almacén");
+        Map(m => m.Celda).Name("Celda");
+    }
+}
+
+/// <summary>
+/// Mapeo flexible para Stock que acepta variaciones de nombres
+/// </summary>
+public sealed class GalanStockMap : ClassMap<GalanStockRawCsv>
+{
+    public GalanStockMap()
+    {
+        Map(m => m.CodigoDeArticulo).Name("CodigoDeArticulo", "Código de Artículo");
+        Map(m => m.CódigoDeDepartamento).Name("CódigoDeDepartamento", "Código del Departamento");
+        Map(m => m.CódigoDeFamily).Name("CódigoDeFamily", "Código de Familia");
+        Map(m => m.CodigoDeCelda).Name("CodigoDeCelda", "Código de Celda");
+        Map(m => m.StockB).Name("StockB", "Stock B");
+        Map(m => m.StockA).Name("StockA", "Stock A");
+        Map(m => m.Stock).Name("Stock");
+        Map(m => m.ALM).Name("ALM", "Almacen", "Almacén");
+        Map(m => m.Familia).Name("Familia");
+        Map(m => m.Subfamilia).Name("Subfamilia");
+        Map(m => m.Descripcion).Name("Descripcion", "Descripción");
+    }
 }
