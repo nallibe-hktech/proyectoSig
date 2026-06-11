@@ -96,6 +96,15 @@ export const routes: Routes = [
       // Mediapost — Distribución y Entregas
       { path: 'mediapost', loadComponent: () => import('./features/mediapost/components/mediapost-dashboard.component').then((m) => m.MediapostDashboardComponent), title: 'Distribución Mediapost — SIG' },
 
+      // Bizneo — Gestión RRHH
+      { path: 'bizneo', loadComponent: () => import('./features/bizneo/components/bizneo-dashboard.component').then((m) => m.BizneoDashboardComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Bizneo RRHH — SIG' },
+
+      // Intratime — Control de Fichajes
+      { path: 'intratime', loadComponent: () => import('./features/intratime/components/intratime-dashboard.component').then((m) => m.IntratimedashboardComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Intratime Fichajes — SIG' },
+
+      // PayHawk — Gestión de Gastos
+      { path: 'payhawk', loadComponent: () => import('./features/payhawk/components/payhawk-dashboard.component').then((m) => m.PayHawkDashboardComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Fico'] }, title: 'PayHawk Gastos — SIG' },
+
       // Reports
       { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then((m) => m.ReportsComponent), title: 'Reports — SIG' },
 

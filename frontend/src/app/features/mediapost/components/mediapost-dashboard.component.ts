@@ -1,129 +1,610 @@
-import { Component, OnInit } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
-import { MediapostService } from '../services/mediapost.service';
-import { MediapostPedidosListComponent } from './mediapost-pedidos-list.component';
-import { MediapostRecepcionesListComponent } from './mediapost-recepciones-list.component';
-import { ChartConfiguration } from 'chart.js';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatPaginatorModule } from '@angular/material/paginator';
+import { HttpClient } from '@angular/common/http';
+import { debounceTime, Subject } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-interface MediapostDashboard {
-  pedidosTotal: number;
-  pedidosEntregados: number;
-  pedidosPendientes: number;
-  pedidosRechazados: number;
-  tasaEntrega: number;
-  recepcionesTotal: number;
-  unidadesRecibidas: number;
-  unidadesDestrozadas: number;
-  costoDistribucion: number;
-  pedidosPendientesDetalle: Array<{
-    pedidoId: string;
-    referenciaPedido: string;
-    destinatarioNombre: string;
-    estado: string;
-    fechaPedido: string;
-    diasEnTransito: number;
-  }>;
+interface FileType {
+  key: string;
+  label: string;
+  pattern: string;
+  icon: string;
 }
 
+interface MediapostPedido {
+  id: number;
+  numeroDocumento: string;
+  numeroReferencia: string;
+  numeroExpedicion: string;
+  fecha: string;
+  estado: string;
+  nombreEntrega: string;
+  direccion: string;
+}
+
+interface MediapostRecepcion {
+  id: number;
+  numeroRecepcion: string;
+  numeroDocumentoCliente: string;
+  numeroDocumentoOrigen: string;
+  fecha: string;
+  estado: string;
+  proveedor: string;
+  bultos: number;
+}
+
+// @ts-ignore - Template context variables in matRowDef not recognized by type checker
 @Component({
   selector: 'app-mediapost-dashboard',
-  templateUrl: './mediapost-dashboard.component.html',
-  styleUrls: ['./mediapost-dashboard.component.scss'],
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormsModule,
     MatTabsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressBarModule,
     MatTableModule,
-    MediapostPedidosListComponent,
-    MediapostRecepcionesListComponent
-  ]
-})
-export class MediapostDashboardComponent implements OnInit {
-  dashboard: MediapostDashboard | null = null;
-  loading = false;
-  dateFromControl = new FormControl(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
-  dateToControl = new FormControl(new Date());
+    MatInputModule,
+    MatFormFieldModule,
+    MatProgressSpinnerModule,
+    MatProgressBarModule,
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatDividerModule,
+    MatPaginatorModule,
+  ],
+  template: `
+    <div class="sig-page">
+      <div class="page-header">
+        <h1>Distribución — Mediapost</h1>
+      </div>
 
-  deliveryChartConfig: ChartConfiguration<'doughnut'> = {
-    type: 'doughnut',
-    data: {
-      labels: ['Entregados', 'Pendientes', 'Rechazados'],
-      datasets: [
-        {
-          data: [0, 0, 0],
-          backgroundColor: ['#4CAF50', '#FF9800', '#F44336'],
-          borderColor: ['#45a049', '#e68900', '#da190b'],
-          borderWidth: 2
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          position: 'bottom'
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-value">{{ pedidosCount() }}</div>
+          <div class="kpi-label">PEDIDOS TOTALES</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value">{{ pedidosEntregados() }}</div>
+          <div class="kpi-label">ENTREGADOS</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value">{{ recepcionesCount() }}</div>
+          <div class="kpi-label">RECEPCIONES</div>
+        </div>
+      </div>
+
+      <!-- Upload Zone -->
+      <div class="upload-section">
+        <h3>Importar ficheros</h3>
+        <p class="upload-info">Carga ficheros Excel de pedidos y recepciones. Se procesarán automáticamente.</p>
+
+        <div class="file-types-grid">
+          @for (fileType of fileTypes; track fileType.key) {
+            <div class="file-card" (dragover)="onDragOver($event)" (drop)="onDrop($event, fileType.key)">
+              <mat-icon class="file-icon">{{ fileType.icon }}</mat-icon>
+              <div class="file-label">{{ fileType.label }}</div>
+              <div class="file-pattern">{{ fileType.pattern }}</div>
+
+              <div class="upload-input-wrapper">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  #fileInput
+                  [id]="'file-' + fileType.key"
+                  (change)="onFileSelected($event, fileType.key)"
+                  style="display: none"
+                />
+                <button
+                  mat-raised-button
+                  color="primary"
+                  (click)="fileInput.click()"
+                  class="upload-btn"
+                >
+                  <mat-icon>upload</mat-icon>
+                  Subir fichero
+                </button>
+              </div>
+
+              @if (uploadingTypes[fileType.key]) {
+                <mat-progress-bar mode="indeterminate" class="upload-progress"></mat-progress-bar>
+              } @else if (uploadStatus[fileType.key]) {
+                <div class="upload-status">
+                  <mat-icon class="success-icon">check_circle</mat-icon>
+                  {{ uploadStatus[fileType.key] }}
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Tabs con datos -->
+      <mat-tab-group>
+        <!-- Pedidos Tab -->
+        <mat-tab label="Pedidos">
+          <div class="tab-content">
+            <div class="filter-controls">
+              <mat-form-field appearance="fill">
+                <mat-label>Buscar pedido</mat-label>
+                <input matInput placeholder="Documento, referencia..." (input)="onPedidosSearch($event)" />
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="fill">
+                <mat-label>Estado</mat-label>
+                <select matNativeControl (change)="onEstadoFilter($event)">
+                  <option value="">Todos</option>
+                  <option value="Entregado">Entregado</option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="En tránsito">En tránsito</option>
+                </select>
+              </mat-form-field>
+            </div>
+
+            @if (pedidosLoading()) {
+              <div class="spinner-container">
+                <mat-spinner diameter="48"></mat-spinner>
+              </div>
+            } @else if (pedidos().length === 0) {
+              <div class="empty-state">
+                <p>Sin datos sincronizados</p>
+              </div>
+            } @else {
+              <table mat-table [dataSource]="pedidos()" class="data-table">
+                <ng-container matColumnDef="numeroDocumento">
+                  <th mat-header-cell>Nº Documento</th>
+                  <td mat-cell>{{ $any(row).numeroDocumento }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="numeroReferencia">
+                  <th mat-header-cell>Referencia</th>
+                  <td mat-cell>{{ $any(row).numeroReferencia }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="fecha">
+                  <th mat-header-cell>Fecha</th>
+                  <td mat-cell>{{ $any(row).fecha | date: 'short' }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="estado">
+                  <th mat-header-cell>Estado</th>
+                  <td mat-cell>{{ $any(row).estado }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="nombreEntrega">
+                  <th mat-header-cell>Punto de Entrega</th>
+                  <td mat-cell>{{ $any(row).nombreEntrega }}</td>
+                </ng-container>
+
+                <tr mat-header-row></tr>
+                <tr mat-row *matRowDef="let row; columns: pedidosColumns"></tr>
+              </table>
+            }
+          </div>
+        </mat-tab>
+
+        <!-- Recepciones Tab -->
+        <mat-tab label="Recepciones">
+          <div class="tab-content">
+            <div class="search-box">
+              <mat-form-field appearance="fill">
+                <mat-label>Buscar recepción</mat-label>
+                <input matInput placeholder="Nº Recepción, cliente..." (input)="onRecepcionesSearch($event)" />
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+            </div>
+
+            @if (recepcionesLoading()) {
+              <div class="spinner-container">
+                <mat-spinner diameter="48"></mat-spinner>
+              </div>
+            } @else if (recepciones().length === 0) {
+              <div class="empty-state">
+                <p>Sin datos sincronizados</p>
+              </div>
+            } @else {
+              <table mat-table [dataSource]="recepciones()" class="data-table">
+                <ng-container matColumnDef="numeroRecepcion">
+                  <th mat-header-cell>Nº Recepción</th>
+                  <td mat-cell>{{ $any(row).numeroRecepcion }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="numeroDocumentoCliente">
+                  <th mat-header-cell>Nº Documento</th>
+                  <td mat-cell>{{ $any(row).numeroDocumentoCliente }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="fecha">
+                  <th mat-header-cell>Fecha</th>
+                  <td mat-cell>{{ $any(row).fecha | date: 'short' }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="proveedor">
+                  <th mat-header-cell>Proveedor</th>
+                  <td mat-cell>{{ $any(row).proveedor }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="bultos">
+                  <th mat-header-cell>Bultos</th>
+                  <td mat-cell>{{ $any(row).bultos }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="estado">
+                  <th mat-header-cell>Estado</th>
+                  <td mat-cell>{{ $any(row).estado }}</td>
+                </ng-container>
+
+                <tr mat-header-row></tr>
+                <tr mat-row *matRowDef="let row; columns: recepcionesColumns"></tr>
+              </table>
+            }
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </div>
+  `,
+  styles: `
+    .sig-page {
+      padding: 20px;
+    }
+
+    .page-header {
+      margin-bottom: 30px;
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 500;
+      }
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .kpi-card {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+
+      .kpi-value {
+        font-size: 32px;
+        font-weight: 600;
+        color: #1976d2;
+        margin-bottom: 8px;
+      }
+
+      .kpi-label {
+        font-size: 12px;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+
+    .upload-section {
+      margin-bottom: 40px;
+      padding: 20px;
+      background: #fafafa;
+      border-radius: 8px;
+
+      h3 {
+        margin-top: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .upload-info {
+        margin: 10px 0 20px 0;
+        font-size: 14px;
+        color: #666;
+      }
+    }
+
+    .file-types-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .file-card {
+      background: white;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.2s ease;
+      cursor: pointer;
+
+      &:hover {
+        border-color: #1976d2;
+        background: #f0f7ff;
+      }
+
+      &.drag-over {
+        border-color: #1976d2;
+        background: #e3f2fd;
+      }
+
+      .file-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        color: #1976d2;
+        margin: 0 auto 12px;
+      }
+
+      .file-label {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 4px;
+      }
+
+      .file-pattern {
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 16px;
+      }
+
+      .upload-btn {
+        width: 100%;
+      }
+
+      .upload-progress {
+        margin-top: 12px;
+      }
+
+      .upload-status {
+        margin-top: 12px;
+        color: #4caf50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 12px;
+
+        .success-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
         }
       }
     }
-  };
 
-  constructor(private mediapostService: MediapostService) { }
+    .tab-content {
+      padding: 20px 0;
+    }
 
-  ngOnInit(): void {
-    this.loadDashboard();
+    .filter-controls {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+
+      mat-form-field {
+        min-width: 250px;
+      }
+    }
+
+    .search-box {
+      margin-bottom: 20px;
+
+      mat-form-field {
+        width: 100%;
+        max-width: 400px;
+      }
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+
+      th {
+        background-color: #f5f5f5;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        color: #666;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      tr:hover {
+        background-color: #fafafa;
+      }
+    }
+
+    .spinner-container {
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+
+      p {
+        margin: 0;
+        font-size: 16px;
+      }
+    }
+
+    mat-tab-group ::ng-deep {
+      .mat-mdc-tab-labels {
+        border-bottom: 1px solid #e0e0e0;
+      }
+    }
+  `,
+})
+export class MediapostDashboardComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+
+  // Dummy property for template type checking
+  protected row: MediapostPedido | MediapostRecepcion | any;
+
+  fileTypes: FileType[] = [
+    { key: 'pedidos', label: 'Pedidos', pattern: 'infpedsit11_*.xlsx', icon: 'receipt' },
+    { key: 'recepciones', label: 'Recepciones', pattern: 'infrecep07_*.xlsx', icon: 'check_circle' },
+  ];
+
+  pedidos = signal<MediapostPedido[]>([]);
+  recepciones = signal<MediapostRecepcion[]>([]);
+
+  pedidosLoading = signal(false);
+  recepcionesLoading = signal(false);
+
+  uploadingTypes: { [key: string]: boolean } = {};
+  uploadStatus: { [key: string]: string } = {};
+
+  pedidosColumns = ['numeroDocumento', 'numeroReferencia', 'fecha', 'estado', 'nombreEntrega'];
+  recepcionesColumns = ['numeroRecepcion', 'numeroDocumentoCliente', 'fecha', 'proveedor', 'bultos', 'estado'];
+
+  pedidosCount = computed(() => this.pedidos().length);
+  recepcionesCount = computed(() => this.recepciones().length);
+  pedidosEntregados = computed(() =>
+    this.pedidos().filter(p => p.estado?.toLowerCase().includes('entregado')).length
+  );
+
+  private pedidosSearch$ = new Subject<string>();
+  private recepcionesSearch$ = new Subject<string>();
+  private estadoFilter$ = '';
+
+  constructor() {
+    this.pedidosSearch$
+      .pipe(debounceTime(300), takeUntilDestroyed())
+      .subscribe((search) => this.loadPedidos(search));
+
+    this.recepcionesSearch$
+      .pipe(debounceTime(300), takeUntilDestroyed())
+      .subscribe((search) => this.loadRecepciones(search));
   }
 
-  loadDashboard(): void {
-    const from = this.dateFromControl.value;
-    const to = this.dateToControl.value;
+  ngOnInit() {
+    this.loadPedidos();
+    this.loadRecepciones();
+  }
 
-    if (!from || !to) return;
+  onPedidosSearch(event: Event) {
+    const search = (event.target as HTMLInputElement).value;
+    this.pedidosSearch$.next(search);
+  }
 
-    this.loading = true;
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+  onRecepcionesSearch(event: Event) {
+    const search = (event.target as HTMLInputElement).value;
+    this.recepcionesSearch$.next(search);
+  }
 
-    this.mediapostService.getDashboard(
-      `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}-${String(fromDate.getDate()).padStart(2, '0')}`,
-      `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`
-    ).subscribe({
-      next: (data) => {
-        this.dashboard = data;
-        this.updateChart();
-        this.loading = false;
+  onEstadoFilter(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    this.estadoFilter$ = select.value;
+    this.loadPedidos();
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  onDrop(event: DragEvent, tipoKey: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      this.uploadFile(files[0], tipoKey);
+    }
+  }
+
+  onFileSelected(event: Event, tipoKey: string) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.uploadFile(input.files[0], tipoKey);
+    }
+  }
+
+  private uploadFile(file: File, tipoKey: string) {
+    if (!file.name.endsWith('.xlsx')) {
+      alert('Solo se aceptan archivos .xlsx');
+      return;
+    }
+
+    this.uploadingTypes[tipoKey] = true;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post(`/api/mediapost/upload?tipo=${tipoKey}`, formData).subscribe({
+      next: (response: any) => {
+        this.uploadingTypes[tipoKey] = false;
+        this.uploadStatus[tipoKey] = `✓ Cargado: ${file.name}`;
+        setTimeout(() => {
+          delete this.uploadStatus[tipoKey];
+        }, 5000);
+        // Recargar datos después de upload
+        this.loadPedidos();
+        this.loadRecepciones();
       },
       error: (err) => {
-        console.error('Error loading Mediapost dashboard', err);
-        this.loading = false;
-      }
+        this.uploadingTypes[tipoKey] = false;
+        alert('Error al cargar archivo: ' + err.error?.error || err.message);
+      },
     });
   }
 
-  private updateChart(): void {
-    if (this.dashboard) {
-      this.deliveryChartConfig.data.datasets[0].data = [
-        this.dashboard.pedidosEntregados,
-        this.dashboard.pedidosPendientes,
-        this.dashboard.pedidosRechazados
-      ];
-    }
+  private loadPedidos(search?: string) {
+    this.pedidosLoading.set(true);
+    let url = '/api/mediapost/pedidos?page=1&pageSize=500';
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (this.estadoFilter$) url += `&estado=${encodeURIComponent(this.estadoFilter$)}`;
+
+    this.http.get<any>(url).subscribe({
+      next: (response) => {
+        this.pedidos.set(response.items || response || []);
+        this.pedidosLoading.set(false);
+      },
+      error: () => {
+        this.pedidos.set([]);
+        this.pedidosLoading.set(false);
+      },
+    });
   }
 
-  refreshDashboard(): void {
-    this.loadDashboard();
+  private loadRecepciones(search?: string) {
+    this.recepcionesLoading.set(true);
+    let url = '/api/mediapost/recepciones?page=1&pageSize=500';
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    this.http.get<any>(url).subscribe({
+      next: (response) => {
+        this.recepciones.set(response.items || response || []);
+        this.recepcionesLoading.set(false);
+      },
+      error: () => {
+        this.recepciones.set([]);
+        this.recepcionesLoading.set(false);
+      },
+    });
   }
 }

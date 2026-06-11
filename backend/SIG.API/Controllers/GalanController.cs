@@ -82,4 +82,35 @@ public class GalanController : ControllerBase
         var result = await _service.GetDashboardAsync(desde, hasta, ct);
         return Ok(result);
     }
+
+    /// <summary>Carga un archivo Excel de Galán para procesamiento</summary>
+    [HttpPost("upload")]
+    [Authorize(Roles = "Administrator,Admin SIG")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string tipo, CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "No se proporcionó archivo" });
+
+        if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { error = "Solo se aceptan archivos .xlsx" });
+
+        try
+        {
+            // Por ahora, retornamos un mensaje de éxito
+            // En producción: guardar archivo en _basePath y procesar
+            return Ok(new
+            {
+                success = true,
+                mensaje = $"Archivo '{file.FileName}' recibido. En producción se procesaría automáticamente.",
+                nombre = file.FileName,
+                tipo = tipo,
+                tamaño = file.Length
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Error procesando archivo: {ex.Message}" });
+        }
+    }
 }

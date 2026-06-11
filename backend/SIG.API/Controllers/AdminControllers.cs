@@ -424,3 +424,83 @@ public class CeleroMapeosPendientesDto
         public bool EstaMapado { get; set; }
     }
 }
+
+// Datos de integraciones externas (Bizneo, Intratime, PayHawk)
+[ApiController]
+[Route("api/bizneo")]
+[Authorize(Roles = "Administrator,Admin SIG")]
+public class BizneoController : ControllerBase
+{
+    private readonly AppDbContext _db;
+    public BizneoController(AppDbContext db) { _db = db; }
+
+    [HttpGet("empleados")]
+    public async Task<IActionResult> Empleados([FromQuery] string? search, CancellationToken ct)
+    {
+        var q = _db.StagingBizneoEmpleados.AsNoTracking();
+        if (!string.IsNullOrEmpty(search))
+            q = q.Where(e => e.Nombre.Contains(search));
+        return Ok(await q.OrderBy(e => e.Nombre).ToListAsync(ct));
+    }
+
+    [HttpGet("ausencias")]
+    public async Task<IActionResult> Ausencias([FromQuery] string? search, CancellationToken ct)
+    {
+        var q = _db.StagingBizneoAbsences.AsNoTracking();
+        if (!string.IsNullOrEmpty(search))
+            q = q.Where(a => a.UserId.ToString().Contains(search));
+        return Ok(await q.OrderByDescending(a => a.Fecha).ToListAsync(ct));
+    }
+}
+
+[ApiController]
+[Route("api/intratime")]
+[Authorize(Roles = "Administrator,Admin SIG")]
+public class IntratimeController : ControllerBase
+{
+    private readonly AppDbContext _db;
+    public IntratimeController(AppDbContext db) { _db = db; }
+
+    [HttpGet("fichajes")]
+    public async Task<IActionResult> Fichajes(
+        [FromQuery] string? search,
+        [FromQuery] DateOnly? desde,
+        [FromQuery] DateOnly? hasta,
+        CancellationToken ct)
+    {
+        var q = _db.StagingIntratimeFichajes.AsNoTracking();
+        if (!string.IsNullOrEmpty(search))
+            q = q.Where(f => f.UserIdExterno.Contains(search));
+        if (desde.HasValue)
+            q = q.Where(f => DateOnly.FromDateTime(f.Entrada) >= desde.Value);
+        if (hasta.HasValue)
+            q = q.Where(f => DateOnly.FromDateTime(f.Entrada) <= hasta.Value);
+        return Ok(await q.OrderByDescending(f => f.Entrada).ToListAsync(ct));
+    }
+}
+
+[ApiController]
+[Route("api/payhawk")]
+[Authorize(Roles = "Administrator,Admin SIG,Fico")]
+public class PayHawkController : ControllerBase
+{
+    private readonly AppDbContext _db;
+    public PayHawkController(AppDbContext db) { _db = db; }
+
+    [HttpGet("gastos")]
+    public async Task<IActionResult> Gastos(
+        [FromQuery] string? search,
+        [FromQuery] DateOnly? desde,
+        [FromQuery] DateOnly? hasta,
+        CancellationToken ct)
+    {
+        var q = _db.StagingPayHawkGastos.AsNoTracking();
+        if (!string.IsNullOrEmpty(search))
+            q = q.Where(g => g.Categoria.Contains(search));
+        if (desde.HasValue)
+            q = q.Where(g => g.Fecha >= desde.Value);
+        if (hasta.HasValue)
+            q = q.Where(g => g.Fecha <= hasta.Value);
+        return Ok(await q.OrderByDescending(g => g.Fecha).ToListAsync(ct));
+    }
+}
