@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 export interface StagingPayHawkGasto {
   id: number;
@@ -16,7 +17,7 @@ export interface StagingPayHawkGasto {
 @Injectable({ providedIn: 'root' })
 export class PayHawkService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = '/api/payhawk';
+  private readonly apiUrl = `${environment.apiUrl}/payhawk`;
 
   getGastos(
     search?: string,

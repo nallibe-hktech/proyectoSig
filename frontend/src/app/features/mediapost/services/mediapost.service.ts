@@ -60,7 +60,7 @@ export interface MediapostDashboardDto {
   providedIn: 'root'
 })
 export class MediapostService {
-  private readonly apiUrl = `${environment.apiUrl}/api/mediapost`;
+  private readonly apiUrl = `${environment.apiUrl}/mediapost`;
 
   constructor(private http: HttpClient) { }
 

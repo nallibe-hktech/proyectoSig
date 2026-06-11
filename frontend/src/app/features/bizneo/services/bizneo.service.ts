@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 export interface StagingBizneoEmpleado {
   id: number;
@@ -24,7 +25,7 @@ export interface StagingBizneoAbsence {
 @Injectable({ providedIn: 'root' })
 export class BizneoService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = '/api/bizneo';
+  private readonly apiUrl = `${environment.apiUrl}/bizneo`;
 
   getEmpleados(search?: string): Observable<StagingBizneoEmpleado[]> {
     let url = `${this.apiUrl}/empleados`;

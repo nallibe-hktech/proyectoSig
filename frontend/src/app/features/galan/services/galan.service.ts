@@ -71,7 +71,7 @@ export interface GalanDashboardDto {
   providedIn: 'root'
 })
 export class GalanService {
-  private readonly apiUrl = `${environment.apiUrl}/api/galan`;
+  private readonly apiUrl = `${environment.apiUrl}/galan`;
 
   constructor(private http: HttpClient) { }
 
