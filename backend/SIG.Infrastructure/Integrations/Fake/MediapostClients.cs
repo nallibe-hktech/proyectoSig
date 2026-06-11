@@ -41,56 +41,106 @@ public class MediapostExcelClient : IMediapostClient
 
             using (var workbook = new XLWorkbook(files))
             {
-                var worksheet = workbook.Worksheets.FirstOrDefault();
+                // Los archivos Mediapost tienen 2 worksheets: "Parametros" y "Report"
+                // Necesitamos leer el worksheet "Report"
+                var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("Report", StringComparison.OrdinalIgnoreCase));
                 if (worksheet == null)
                 {
-                    _logger.LogWarning("No hay worksheets en {File}", files);
+                    // Fallback: tomar el segundo worksheet si no existe "Report"
+                    worksheet = workbook.Worksheets.Skip(1).FirstOrDefault();
+                }
+
+                if (worksheet == null)
+                {
+                    _logger.LogWarning("No hay worksheet 'Report' en {File}", files);
                     return dtos;
                 }
 
-                // Excel tiene múltiples secciones: skip metadata (primeras ~3-4 filas) y leer datos
                 var rows = worksheet.Rows().ToList();
-                int dataStartIndex = 4; // Típicamente: fila 1=título, 2=empresa, 3=headers, 4+=datos
+                _logger.LogInformation("Excel '{Name}' total filas: {Count}", worksheet.Name, rows.Count);
 
-                _logger.LogInformation("Leyendo pedidos desde fila {StartRow} del archivo {File}", dataStartIndex + 1, files);
+                // El worksheet "Report" tiene:
+                // Fila 1: nombre del reporte (infpedsit11)
+                // Fila 2: título
+                // Fila 3: empresa
+                // Fila 4: headers
+                // Fila 5+: datos
 
-                // Leer datos desde fila 4 en adelante
+                // Buscar fila de headers
+                int headerRowIndex = 3; // Por defecto, fila 4 (índice 3)
+                for (int i = 0; i < Math.Min(10, rows.Count); i++)
+                {
+                    var cellA = rows[i].Cell(1).Value.ToString()?.ToLower() ?? "";
+                    if (cellA.Contains("nº") && cellA.Contains("documento"))
+                    {
+                        headerRowIndex = i;
+                        _logger.LogInformation("Headers detectados en fila {RowNum}", i + 1);
+                        break;
+                    }
+                }
+
+                int dataStartIndex = headerRowIndex + 1;
+                _logger.LogInformation("Leyendo datos desde fila {StartRow} (después de headers)", dataStartIndex + 1);
+
+                // Leer datos desde fila siguiente a headers
                 for (int i = dataStartIndex; i < rows.Count; i++)
                 {
                     var row = rows[i];
                     var cell1 = row.Cell(1).Value.ToString() ?? "";
 
-                    // Detener si encontramos otra sección (línea que empieza con ";") o vacía
-                    if (string.IsNullOrWhiteSpace(cell1) || cell1.StartsWith(";"))
+                    // Detener si encontramos fila vacía
+                    if (string.IsNullOrWhiteSpace(cell1))
                         break;
 
                     try
                     {
-                        // Nº documento cliente está en Cell(1), Fecha expedición en Cell(12)
-                        var fechaStr = row.Cell(12).Value.ToString() ?? "";
+                        // Estructura del Report:
+                        // A: Nº documento cliente
+                        // B: No. referencia transporte
+                        // C: No. expedición transporte
+                        // D: Nombre punto entrega
+                        // E: Dirección punto entrega
+                        // F: C.P. Punto entrega
+                        // G: Población punto entrega
+                        // H: Provincia punto entrega
+                        // I: País Punto entrega
+                        // J: Comentarios
+                        // K: Fecha preparación
+                        // L: Fecha de expedición
+                        // M: Estado
+                        // N: Fecha última situación
+                        // O: Descripción última situación
+                        // P: Agencia de transporte
+                        // Q: Servicio Trans.
+                        // R: URL seguimiento
+                        // S: Localizador
+
+                        var fechaStr = row.Cell(12).Value.ToString() ?? ""; // L = columna 12
                         if (!DateTime.TryParse(fechaStr, out var fechaPedido))
                             fechaPedido = DateTime.Now;
 
                         if (fechaPedido >= desde && fechaPedido <= hasta)
                         {
-                            dtos.Add(new MediapostPedidoDto(
-                                cell1,
-                                row.Cell(2).Value.ToString() ?? "",
-                                row.Cell(3).Value.ToString() ?? "",
-                                fechaPedido,
-                                int.TryParse(row.Cell(5).Value.ToString(), out var qty) ? qty : 0,
-                                row.Cell(13).Value.ToString() ?? "Pendiente",
-                                row.Cell(6).Value.ToString(),
-                                row.Cell(7).Value.ToString(),
-                                row.Cell(8).Value.ToString(),
-                                row.Cell(9).Value.ToString(),
-                                row.Cell(10).Value.ToString()
-                            ));
+                            var pedido = new MediapostPedidoDto(
+                                cell1,                              // A: Nº documento
+                                row.Cell(2).Value.ToString() ?? "",  // B: referencia
+                                row.Cell(3).Value.ToString() ?? "",  // C: expedición
+                                fechaPedido,                         // L: fecha
+                                0, // Mediapost no tiene cantidad, usar 0
+                                row.Cell(13).Value.ToString() ?? "Pendiente", // M: estado
+                                row.Cell(4).Value.ToString(),        // D: nombre entrega
+                                row.Cell(5).Value.ToString(),        // E: dirección
+                                row.Cell(6).Value.ToString(),        // F: CP
+                                row.Cell(7).Value.ToString(),        // G: población
+                                row.Cell(8).Value.ToString()         // H: provincia
+                            );
+                            dtos.Add(pedido);
+                            _logger.LogInformation("Pedido: {NroDocumento} - {Estado} ({Fecha})", cell1, pedido.Estado, fechaPedido.Date);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error leyendo fila {RowNum} de pedidos en {File}", i + 1, files);
+                        _logger.LogWarning(ex, "Error leyendo fila {RowNum} de pedidos", i + 1);
                         continue;
                     }
                 }
@@ -125,49 +175,101 @@ public class MediapostExcelClient : IMediapostClient
 
             using (var workbook = new XLWorkbook(files))
             {
-                var worksheet = workbook.Worksheets.FirstOrDefault();
+                // Los archivos Mediapost tienen múltiples worksheets: "Parametros", "Report", "Hoja1", etc.
+                // Necesitamos leer el worksheet "Report"
+                var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("Report", StringComparison.OrdinalIgnoreCase));
                 if (worksheet == null)
                 {
-                    _logger.LogWarning("No hay worksheets en {File}", files);
+                    // Fallback: tomar el segundo worksheet si no existe "Report"
+                    worksheet = workbook.Worksheets.Skip(1).FirstOrDefault();
+                }
+
+                if (worksheet == null)
+                {
+                    _logger.LogWarning("No hay worksheet 'Report' en {File}", files);
                     return dtos;
                 }
 
-                // Usar RangeUsed con un rango más flexible
-                var rangeUsed = worksheet.RangeUsed();
-                if (rangeUsed == null)
+                var rows = worksheet.Rows().ToList();
+                _logger.LogInformation("Excel '{Name}' total filas: {Count}", worksheet.Name, rows.Count);
+
+                // El worksheet "Report" tiene:
+                // Fila 1: nombre del reporte (infrecep07)
+                // Fila 2: título
+                // Fila 3: vacía
+                // Fila 4: empresa
+                // Fila 5: headers
+                // Fila 6+: datos
+
+                // Buscar fila de headers
+                int headerRowIndex = 4; // Por defecto, fila 5 (índice 4)
+                for (int i = 0; i < Math.Min(10, rows.Count); i++)
                 {
-                    _logger.LogWarning("Hoja vacía en {File}", files);
-                    return dtos;
+                    var cellA = rows[i].Cell(1).Value.ToString()?.ToLower() ?? "";
+                    if (cellA.Contains("nº") && cellA.Contains("recepción"))
+                    {
+                        headerRowIndex = i;
+                        _logger.LogInformation("Headers detectados en fila {RowNum}", i + 1);
+                        break;
+                    }
                 }
 
-                var rows = rangeUsed.RowsUsed().Skip(1); // Skip header
-                var rowList = rows.ToList();
-                _logger.LogInformation("Leyendo {RowCount} filas desde {File}", rowList.Count, files);
+                int dataStartIndex = headerRowIndex + 1;
+                _logger.LogInformation("Leyendo datos desde fila {StartRow}", dataStartIndex + 1);
 
-                foreach (var row in rowList)
+                // Leer datos desde fila siguiente a headers
+                for (int i = dataStartIndex; i < rows.Count; i++)
                 {
+                    var row = rows[i];
+                    var cell1 = row.Cell(1).Value.ToString() ?? "";
+
+                    // Detener si encontramos fila vacía
+                    if (string.IsNullOrWhiteSpace(cell1))
+                        break;
+
                     try
                     {
-                        var fechaRecepcion = DateTime.TryParse(row.Cell(1).Value.ToString(), out var fecha) ? fecha : DateTime.Now;
+                        // Estructura del Report (recepciones):
+                        // A: Nº Recepción
+                        // B: Nº Documento Cliente
+                        // C: Nº Documento Origen
+                        // D: Nº Documento Proveedor
+                        // E: Tipo de Recepción
+                        // F: Código Operativa Recepción
+                        // G: Fecha confirmación SGA
+                        // H: Nombre Proveedor
+                        // I: Observaciones
+                        // J: Nº Bultos recibidos
+                        // K: Nº de palets recibidos
+                        // L: Peso Facturable
+                        // M: Volumen
+                        // N: Recepción Especial
+                        // O: Cód. Producto interno
+
+                        var fechaStr = row.Cell(7).Value.ToString() ?? ""; // G = columna 7
+                        if (!DateTime.TryParse(fechaStr, out var fechaRecepcion))
+                            fechaRecepcion = DateTime.Now;
 
                         if (fechaRecepcion >= desde && fechaRecepcion <= hasta)
                         {
-                            dtos.Add(new MediapostRecepcionDto(
-                                row.Cell(1).Value.ToString() ?? Guid.NewGuid().ToString(),
-                                row.Cell(2).Value.ToString() ?? "",
-                                row.Cell(3).Value.ToString() ?? "",
-                                fechaRecepcion,
-                                int.TryParse(row.Cell(4).Value.ToString(), out var qty) ? qty : 0,
-                                int.TryParse(row.Cell(5).Value.ToString(), out var dmg) ? dmg : null,
-                                row.Cell(6).Value.ToString() ?? "Recibida",
-                                row.Cell(7).Value.ToString(),
-                                row.Cell(8).Value.ToString()
-                            ));
+                            var recepcion = new MediapostRecepcionDto(
+                                cell1,                               // A: Nº Recepción
+                                row.Cell(2).Value.ToString() ?? "",  // B: Nº Documento Cliente
+                                row.Cell(3).Value.ToString() ?? "",  // C: Nº Documento Origen
+                                fechaRecepcion,                      // G: Fecha
+                                int.TryParse(row.Cell(10).Value.ToString(), out var bultos) ? bultos : 0, // J: Bultos
+                                null, // Mediapost no tiene daño/pérdida en recepciones
+                                row.Cell(5).Value.ToString() ?? "Recibida", // E: Tipo de recepción
+                                row.Cell(8).Value.ToString(),       // H: Proveedor
+                                row.Cell(9).Value.ToString()        // I: Observaciones
+                            );
+                            dtos.Add(recepcion);
+                            _logger.LogInformation("Recepción: {NroRecepcion} - {Estado} ({Fecha})", cell1, recepcion.Estado, fechaRecepcion.Date);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error leyendo fila de recepción en {File}", files);
+                        _logger.LogWarning(ex, "Error leyendo fila {RowNum} de recepción", i + 1);
                         continue;
                     }
                 }
