@@ -19,7 +19,7 @@ public class GalanCsvClient : IGalanClient
     {
         _logger = logger;
         // Ruta de los archivos de ejemplo (en producción sería carpeta SharePoint)
-        _basePath = @"C:\Users\NallibeRiveraGrisale\proyecto SIG ES\Galán\Galán";
+        _basePath = @"C:\Projects\workspaces\SIG-es\Galán";
     }
 
     public async Task<IReadOnlyList<GalanEntradaDto>> GetEntradasAsync(DateTime desde, DateTime hasta, CancellationToken ct)
