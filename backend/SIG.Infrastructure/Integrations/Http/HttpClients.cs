@@ -243,7 +243,6 @@ public class IntratimeClient : IIntratimeClient
             var clockingsRequest = new HttpRequestMessage(HttpMethod.Get, clockingsUrlWithParams);
             clockingsRequest.Headers.Add("Accept", "application/vnd.apiintratime.v1+json");
             clockingsRequest.Headers.Add("token", userToken);
-            clockingsRequest.Content = new StringContent("", Encoding.UTF8, "application/x-www-form-urlencoded; charset:utf8");
 
             var clockingsResponse = await _httpClient.SendAsync(clockingsRequest, ct);
             if (!clockingsResponse.IsSuccessStatusCode)

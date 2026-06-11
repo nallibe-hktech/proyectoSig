@@ -465,7 +465,9 @@ public class DataSeeder : ISeedService
             var f = new StagingIntratimeFichaje
             {
                 FichajeIdExterno = $"FIC-{p.Id:00}{period.Id:00}{i:00}",
-                UserId = rec.Id, Entrada = dt,
+                UserId = rec.Id,
+                UserIdExterno = (1000 + rec.Id).ToString(), // Intratime user ID
+                Entrada = dt,
                 Salida = DateTime.SpecifyKind(dt.AddHours(8), DateTimeKind.Utc),
                 FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
             };
