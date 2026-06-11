@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using SIG.Application.DTOs;
@@ -75,44 +77,6 @@ public class BizneoClient : IBizneoClient
         }
     }
 
-    private class BizneoEmpleadosResponse
-    {
-        [JsonPropertyName("employees")]
-        public List<BizneoEmpleadoResponse>? Employees { get; set; }
-    }
-
-    private class BizneoEmpleadoResponse
-    {
-        [JsonPropertyName("id")]
-        public string Id { get; set; } = "";
-        [JsonPropertyName("nif")]
-        public string Nif { get; set; } = "";
-        [JsonPropertyName("full_name")]
-        public string FullName { get; set; } = "";
-        [JsonPropertyName("department")]
-        public string? Department { get; set; }
-    }
-
-    private class BizneoHorasResponse
-    {
-        [JsonPropertyName("timesheets")]
-        public List<BizneoHoraResponse>? Timesheets { get; set; }
-    }
-
-    private class BizneoHoraResponse
-    {
-        [JsonPropertyName("id")]
-        public string Id { get; set; } = "";
-        [JsonPropertyName("user_id")]
-        public string UserId { get; set; } = "";
-        [JsonPropertyName("project_id")]
-        public string ProjectId { get; set; } = "";
-        [JsonPropertyName("date")]
-        public string Date { get; set; } = "";
-        [JsonPropertyName("hours")]
-        public decimal Hours { get; set; }
-    }
-
     private class BizneoUsersResponse
     {
         [JsonPropertyName("users")]
@@ -157,54 +121,318 @@ public class BizneoClient : IBizneoClient
 public class IntratimeClient : IIntratimeClient
 {
     private readonly HttpClient _httpClient;
-    private readonly string _token;
     private readonly int _companyId;
+    private readonly string? _userEmail;
+    private readonly string? _userPassword;
+    private readonly ILogger<IntratimeClient> _logger;
 
-    public IntratimeClient(HttpClient httpClient, string token, int companyId)
+    public IntratimeClient(HttpClient httpClient, string token, int companyId, ILogger<IntratimeClient> logger, string? userEmail = null, string? userPassword = null)
     {
         _httpClient = httpClient;
-        _token = token;
         _companyId = companyId;
-        _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+        _userEmail = userEmail;
+        _userPassword = userPassword;
+        _logger = logger;
+
+        _httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.apiintratime.v1+json");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Add("token", token);
+            _logger.LogInformation($"[Intratime] ✅ Token empresa configurado: {token.Substring(0, 15)}...");
+        }
+
+        if (!string.IsNullOrEmpty(userEmail) && !string.IsNullOrEmpty(userPassword))
+        {
+            _logger.LogInformation($"[Intratime] ✅ Credenciales usuario configuradas: {userEmail}");
+        }
+    }
+
+    public async Task<IReadOnlyList<IntratimeEmpleadoDto>> GetEmpleadosAsync(CancellationToken ct)
+    {
+        try
+        {
+            // GET /api/user/ — headers ya configurados en constructor
+            var data = await _httpClient.GetFromJsonAsync<List<IntratimeUsuarioResponse>>("user/", ct);
+            if (data == null) return Array.Empty<IntratimeEmpleadoDto>();
+            return data
+                .Where(u => !string.IsNullOrEmpty(u.UserNif))
+                .Select(u => new IntratimeEmpleadoDto(
+                    u.UserId.ToString(),
+                    u.UserName ?? "",
+                    u.UserEmail ?? "",
+                    u.UserNif ?? "",
+                    u.UserAffiliation,
+                    int.TryParse(u.UserRole, out var role) ? role : 0
+                )).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Intratime] Error GetEmpleados");
+            return Array.Empty<IntratimeEmpleadoDto>();
+        }
+    }
+
+    public async Task<IReadOnlyList<IntratimeClockingRequestDto>> GetClockingRequestsAsync(int year, CancellationToken ct)
+    {
+        try
+        {
+            // Endpoint: /api/user/clocking_requests no disponible en esta cuenta (permisos insuficientes)
+            _logger.LogWarning("[Intratime] GetClockingRequests: endpoint no disponible (permisos insuficientes en la cuenta de Intratime)");
+            return Array.Empty<IntratimeClockingRequestDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Intratime] Error GetClockingRequests");
+            return Array.Empty<IntratimeClockingRequestDto>();
+        }
     }
 
     public async Task<IReadOnlyList<IntratimeFichajeDto>> GetFichajesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
         try
         {
-            var data = await _httpClient.GetFromJsonAsync<IntratimeFichajesResponse>(
-                $"v1/companies/{_companyId}/fiches?start_date={desde:yyyy-MM-dd}&end_date={hasta:yyyy-MM-dd}", ct);
-            if (data?.Fiches == null) return Array.Empty<IntratimeFichajeDto>();
-            return data.Fiches.Select(f => new IntratimeFichajeDto(
-                f.Id,
-                int.TryParse(f.UserId, out var uid) ? uid : 0,
-                DateTime.Parse(f.StartTime),
-                f.EndTime != null ? DateTime.Parse(f.EndTime) : null
-            )).Where(f => f.UserId > 0).ToList();
+            if (string.IsNullOrEmpty(_userEmail) || string.IsNullOrEmpty(_userPassword))
+            {
+                _logger.LogWarning("[Intratime] GetFichajes: credenciales de usuario no configuradas");
+                return Array.Empty<IntratimeFichajeDto>();
+            }
+
+            _logger.LogInformation("[Intratime] GetFichajes: autenticando usuario...");
+
+            // 1. LOGIN para obtener token de usuario
+            var loginUrl = "https://newapi.intratime.es/api/companies/login";
+            var loginBody = new StringContent(
+                $"user={Uri.EscapeDataString(_userEmail)}&password={Uri.EscapeDataString(_userPassword)}",
+                Encoding.UTF8,
+                "application/x-www-form-urlencoded; charset:utf8"
+            );
+
+            var loginResponse = await _httpClient.PostAsync(loginUrl, loginBody, ct);
+            if (!loginResponse.IsSuccessStatusCode)
+            {
+                _logger.LogError($"[Intratime] Login falló: {loginResponse.StatusCode}");
+                return Array.Empty<IntratimeFichajeDto>();
+            }
+
+            var loginJson = await loginResponse.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(loginJson);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("users", out var usersArray) || usersArray.GetArrayLength() == 0)
+            {
+                _logger.LogWarning("[Intratime] Login exitoso pero sin usuarios en respuesta");
+                return Array.Empty<IntratimeFichajeDto>();
+            }
+
+            // 2. EXTRAER TOKEN DEL PRIMER USUARIO
+            var firstUser = usersArray[0];
+            if (!firstUser.TryGetProperty("USER_TOKEN", out var tokenElem))
+            {
+                _logger.LogError("[Intratime] USER_TOKEN no encontrado en respuesta de login");
+                return Array.Empty<IntratimeFichajeDto>();
+            }
+
+            var userToken = tokenElem.GetString();
+            _logger.LogInformation($"[Intratime] ✅ Token de usuario obtenido: {userToken?.Substring(0, 20)}...");
+
+            // 3. OBTENER FICHAJES
+            var clockingsUrl = "https://newapi.intratime.es/api/user/clockings";
+            var clockingsUrlWithParams = $"{clockingsUrl}?from={desde:yyyy-MM-dd}&to={hasta:yyyy-MM-dd}&type=0,1,2,3";
+
+            var clockingsRequest = new HttpRequestMessage(HttpMethod.Get, clockingsUrlWithParams);
+            clockingsRequest.Headers.Add("Accept", "application/vnd.apiintratime.v1+json");
+            clockingsRequest.Headers.Add("token", userToken);
+            clockingsRequest.Content = new StringContent("", Encoding.UTF8, "application/x-www-form-urlencoded; charset:utf8");
+
+            var clockingsResponse = await _httpClient.SendAsync(clockingsRequest, ct);
+            if (!clockingsResponse.IsSuccessStatusCode)
+            {
+                _logger.LogError($"[Intratime] GetClockings falló: {clockingsResponse.StatusCode}");
+                return Array.Empty<IntratimeFichajeDto>();
+            }
+
+            var clockingsJson = await clockingsResponse.Content.ReadAsStringAsync(ct);
+            var clockingsArray = JsonSerializer.Deserialize<List<IntratimeClockingEventDto>>(clockingsJson);
+
+            if (clockingsArray == null || clockingsArray.Count == 0)
+            {
+                _logger.LogInformation("[Intratime] GetFichajes: 0 eventos obtenidos");
+                return Array.Empty<IntratimeFichajeDto>();
+            }
+
+            _logger.LogInformation($"[Intratime] ✅ {clockingsArray.Count} eventos obtenidos");
+
+            // 4. AGRUPAR POR USUARIO+DÍA Y EMPAREJAR ENTRADA/SALIDA
+            var fichajes = clockingsArray
+                .Where(c => c.INOUT_USER_ID.HasValue && !string.IsNullOrEmpty(c.INOUT_DATE))
+                .GroupBy(c => (UserId: c.INOUT_USER_ID!.Value, Dia: DateOnly.FromDateTime(DateTime.Parse(c.INOUT_DATE))))
+                .SelectMany(g =>
+                {
+                    var ordered = g.OrderBy(c => DateTime.Parse(c.INOUT_DATE)).ToList();
+                    if (ordered.Count == 0) return Enumerable.Empty<IntratimeFichajeDto>();
+
+                    var entrada = ordered.First(c => c.INOUT_TYPE == 0) ?? ordered.First();
+                    var salida = ordered.LastOrDefault(c => c.INOUT_TYPE == 1);
+
+                    return new[]
+                    {
+                        new IntratimeFichajeDto(
+                            entrada.INOUT_ID?.ToString() ?? "",
+                            entrada.INOUT_USER_ID!.Value.ToString(),
+                            DateTime.Parse(entrada.INOUT_DATE),
+                            salida != null ? DateTime.Parse(salida.INOUT_DATE) : null
+                        )
+                    };
+                })
+                .ToList();
+
+            return fichajes;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "[Intratime] Error GetFichajes: {Message}", ex.Message);
             return Array.Empty<IntratimeFichajeDto>();
         }
     }
 
-    private class IntratimeFichajesResponse
+    private class IntratimeClockingEventDto
     {
-        [JsonPropertyName("fiches")]
-        public List<IntratimeFichajeResponse>? Fiches { get; set; }
+        [JsonPropertyName("INOUT_ID")]
+        public int? INOUT_ID { get; set; }
+
+        [JsonPropertyName("INOUT_USER_ID")]
+        public int? INOUT_USER_ID { get; set; }
+
+        [JsonPropertyName("INOUT_TYPE")]
+        public int INOUT_TYPE { get; set; }
+
+        [JsonPropertyName("INOUT_DATE")]
+        public string? INOUT_DATE { get; set; }
     }
 
-    private class IntratimeFichajeResponse
+    public async Task<IReadOnlyList<IntratimeExpenseDto>> GetExpensesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
-        [JsonPropertyName("id")]
-        public string Id { get; set; } = "";
-        [JsonPropertyName("user_id")]
-        public string UserId { get; set; } = "";
-        [JsonPropertyName("start_time")]
-        public string StartTime { get; set; } = "";
-        [JsonPropertyName("end_time")]
-        public string? EndTime { get; set; }
+        try
+        {
+            // Endpoint: /api/expenses no disponible en esta cuenta (permisos insuficientes)
+            _logger.LogWarning("[Intratime] GetExpenses: endpoint no disponible (permisos insuficientes en la cuenta de Intratime)");
+            return Array.Empty<IntratimeExpenseDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Intratime] Error GetExpenses");
+            return Array.Empty<IntratimeExpenseDto>();
+        }
+    }
+
+    private class IntratimeClockingDto
+    {
+        [JsonPropertyName("CLOCKING_ID")]
+        public string CLOCKING_ID { get; set; } = "";
+        [JsonPropertyName("USER_ID")]
+        public int? USER_ID { get; set; }
+        [JsonPropertyName("CLOCKING_TIME")]
+        public string? CLOCKING_TIME { get; set; }
+        [JsonPropertyName("CLOCKING_DEVICE")]
+        public string? CLOCKING_DEVICE { get; set; }
+    }
+
+    private class IntratimeClockingRequestResponse
+    {
+        [JsonPropertyName("REQUEST_ID")]
+        public string REQUEST_ID { get; set; } = "";
+        [JsonPropertyName("USER_ID")]
+        public int? USER_ID { get; set; }
+        [JsonPropertyName("REQUEST_DATE")]
+        public string? REQUEST_DATE { get; set; }
+        [JsonPropertyName("REQUEST_TYPE")]
+        public string? REQUEST_TYPE { get; set; }
+        [JsonPropertyName("REQUEST_STATUS")]
+        public string? REQUEST_STATUS { get; set; }
+        [JsonPropertyName("REQUEST_REASON")]
+        public string? REQUEST_REASON { get; set; }
+        [JsonPropertyName("REQUESTED_TIME_FROM")]
+        public string? REQUESTED_TIME_FROM { get; set; }
+        [JsonPropertyName("REQUESTED_TIME_TO")]
+        public string? REQUESTED_TIME_TO { get; set; }
+    }
+
+    private class IntratimeUsuarioResponse
+    {
+        [JsonPropertyName("USER_ID")]          public int UserId { get; set; }
+        [JsonPropertyName("USER_NAME")]        public string? UserName { get; set; }
+        [JsonPropertyName("USER_EMAIL")]       public string? UserEmail { get; set; }
+        [JsonPropertyName("USER_NIF")]         public string? UserNif { get; set; }
+        [JsonPropertyName("USER_AFFILIATION")] public string? UserAffiliation { get; set; }
+        [JsonPropertyName("USER_ROLE")]        public string? UserRole { get; set; }
+    }
+
+    private class IntratimeExpenseResponse
+    {
+        [JsonPropertyName("INOUT_EXPENSE_ID")]   public int? INOUT_EXPENSE_ID { get; set; }
+        [JsonPropertyName("INOUT_USER_ID")]      public int? INOUT_USER_ID { get; set; }
+        [JsonPropertyName("INOUT_DATE")]         public string? INOUT_DATE { get; set; }
+        [JsonPropertyName("INOUT_AMOUNT")]       public int? INOUT_AMOUNT { get; set; }  // En centavos
+        [JsonPropertyName("INOUT_EXPENSE_NAME")] public string? INOUT_EXPENSE_NAME { get; set; }
+        [JsonPropertyName("INOUT_COMMENTS")]     public string? INOUT_COMMENTS { get; set; }
+        [JsonPropertyName("INOUT_PROJECT_NAME")] public string? INOUT_PROJECT_NAME { get; set; }
+    }
+
+    public async Task<IReadOnlyList<IntratimeProyectoDto>> GetProyectosAsync(CancellationToken ct)
+    {
+        try
+        {
+            // Endpoint: /api/project/ (proyectos con clientes y usuarios asignados)
+            var data = await _httpClient.GetFromJsonAsync<List<IntratimeProyectoResponse>>("project/", ct);
+            if (data == null) return Array.Empty<IntratimeProyectoDto>();
+
+            return data.Select(p => new IntratimeProyectoDto(
+                p.PROJECT_ID?.ToString() ?? "",
+                p.PROJECT_NAME ?? "",
+                p.client != null ? new IntratimeClienteDto(
+                    p.client.CLIENT_ID?.ToString() ?? "",
+                    p.client.CLIENT_NAME ?? "",
+                    p.client.CLIENT_COUNTRY,
+                    p.client.CLIENT_REGION,
+                    p.client.CLIENT_CITY,
+                    p.client.CLIENT_ADDRESS
+                ) : new IntratimeClienteDto("", "", null, null, null, null),
+                p.users?.Select(u => u.USER_ID?.ToString() ?? "").Where(id => !string.IsNullOrEmpty(id)).ToList() ?? new List<string>()
+            )).Where(p => !string.IsNullOrEmpty(p.ProyectoIdExterno)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Intratime] Error GetProyectos");
+            return Array.Empty<IntratimeProyectoDto>();
+        }
+    }
+
+    private class IntratimeProyectoResponse
+    {
+        [JsonPropertyName("PROJECT_ID")]      public int? PROJECT_ID { get; set; }
+        [JsonPropertyName("PROJECT_NAME")]    public string? PROJECT_NAME { get; set; }
+        [JsonPropertyName("PROJECT_COMPANY")] public string? PROJECT_COMPANY { get; set; }
+        [JsonPropertyName("client")]          public IntratimeClientResponse? client { get; set; }
+        [JsonPropertyName("users")]           public List<IntratimeUsuarioProyectoResponse>? users { get; set; }
+    }
+
+    private class IntratimeClientResponse
+    {
+        [JsonPropertyName("CLIENT_ID")]       public int? CLIENT_ID { get; set; }
+        [JsonPropertyName("CLIENT_NAME")]     public string? CLIENT_NAME { get; set; }
+        [JsonPropertyName("CLIENT_COUNTRY")]  public string? CLIENT_COUNTRY { get; set; }
+        [JsonPropertyName("CLIENT_REGION")]   public string? CLIENT_REGION { get; set; }
+        [JsonPropertyName("CLIENT_CITY")]     public string? CLIENT_CITY { get; set; }
+        [JsonPropertyName("CLIENT_ADDRESS")]  public string? CLIENT_ADDRESS { get; set; }
+    }
+
+    private class IntratimeUsuarioProyectoResponse
+    {
+        [JsonPropertyName("USER_ID")]   public int? USER_ID { get; set; }
+        [JsonPropertyName("USER_NAME")] public string? USER_NAME { get; set; }
+        [JsonPropertyName("USER_EMAIL")] public string? USER_EMAIL { get; set; }
+        [JsonPropertyName("USER_NIF")]  public string? USER_NIF { get; set; }
     }
 }
 
@@ -307,18 +535,6 @@ public class PayHawkClient : IPayHawkClient
         [JsonPropertyName("createdAt")]
         public string CreatedAt { get; set; } = "";
 
-        [JsonPropertyName("type")]
-        public string? Type { get; set; }
-
-        [JsonPropertyName("status")]
-        public string? Status { get; set; }
-
-        [JsonPropertyName("isPaid")]
-        public bool IsPaid { get; set; }
-
-        [JsonPropertyName("title")]
-        public string? Title { get; set; }
-
         [JsonPropertyName("category")]
         public PayHawkCategoryResponse? Category { get; set; }
 
@@ -328,17 +544,8 @@ public class PayHawkClient : IPayHawkClient
 
     private class PayHawkUserResponse
     {
-        [JsonPropertyName("id")]
-        public string? Id { get; set; }
-
         [JsonPropertyName("email")]
         public string? Email { get; set; }
-
-        [JsonPropertyName("firstName")]
-        public string? FirstName { get; set; }
-
-        [JsonPropertyName("lastName")]
-        public string? LastName { get; set; }
 
         [JsonPropertyName("externalId")]
         public string? ExternalId { get; set; }
@@ -346,9 +553,6 @@ public class PayHawkClient : IPayHawkClient
 
     private class PayHawkCategoryResponse
     {
-        [JsonPropertyName("id")]
-        public string? Id { get; set; }
-
         [JsonPropertyName("name")]
         public string? Name { get; set; }
     }

@@ -91,6 +91,8 @@ public static class DependencyInjection
         services.AddScoped<IExportService, ExportService>();
         services.AddScoped<ISeedService, DataSeeder>();
         services.AddScoped<IDataProcessorService, DataProcessorService>();
+        services.AddScoped<IGalanService, GalanService>();
+        services.AddScoped<IMediapostService, MediapostService>();
 
         // Calculation
         services.AddScoped<IFormulaParser, FormulaParser>();
@@ -109,6 +111,8 @@ public static class DependencyInjection
             services.AddSingleton<ISgpvClient, SgpvFakeClient>();
             services.AddSingleton<IA3InnuvaClient, A3InnuvaFakeClient>();
             services.AddSingleton<ITravelPerkClient, TravelPerkFakeClient>();
+            services.AddSingleton<IGalanClient, GalanCsvClient>();
+            services.AddSingleton<IMediapostClient, MediapostExcelClient>();
         }
         else
         {
@@ -140,12 +144,16 @@ public static class DependencyInjection
             var intratimeToken = config["Integrations:Intratime:ApiToken"]
                                ?? throw new InvalidOperationException("Integrations:Intratime:ApiToken no configurada");
             var intratimeCompanyId = config.GetValue<int>("Integrations:Intratime:CompanyId");
+            var intratimeUserEmail = config["Integrations:Intratime:UserEmail"];
+            var intratimeUserPassword = config["Integrations:Intratime:UserPassword"];
+
             services.AddHttpClient("intratime", client => client.BaseAddress = new Uri(intratimeUrl));
             services.AddScoped<IIntratimeClient>(sp =>
             {
                 var factory = sp.GetRequiredService<IHttpClientFactory>();
                 var client = factory.CreateClient("intratime");
-                return new IntratimeClient(client, intratimeToken, intratimeCompanyId);
+                var logger = sp.GetRequiredService<ILogger<IntratimeClient>>();
+                return new IntratimeClient(client, intratimeToken, intratimeCompanyId, logger, intratimeUserEmail, intratimeUserPassword);
             });
 
             // PayHawk
@@ -205,6 +213,12 @@ public static class DependencyInjection
                 client.BaseAddress = new Uri(travelPerkUrl);
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {travelPerkKey}");
             });
+
+            // Galán (CSV client for local file reading)
+            services.AddSingleton<IGalanClient, GalanCsvClient>();
+
+            // Mediapost (Excel client for local file reading)
+            services.AddSingleton<IMediapostClient, MediapostExcelClient>();
         }
 
         return services;
