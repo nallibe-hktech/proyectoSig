@@ -4,63 +4,98 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**SIG-ES** is a multi-system integration platform for financial closures and business process management. .NET 10 + Angular 21. Integrations: Bizneo, SGPV, Celero, Intratime, PayHawk, TravelPerk, A3 Innuva, **Galán** (warehouse), **Mediapost** (distribution).
+**SIG-ES** is a multi-system integration platform for financial closures, payroll, and business process management. .NET 10 + Angular 21. Integrations complete for: Bizneo (HR), SGPV (Products), Celero (Sales/Projects), Intratime (Time tracking), PayHawk (Expenses), TravelPerk (Travel), A3 Innuva (ERP), **Galán** (warehouse), **Mediapost** (distribution).
 
 ## Tech Stack
 
-**Backend**: ASP.NET Core 10, PostgreSQL 16 (port 5433), EF Core 9, Clean Architecture
-**Frontend**: Angular 21, Material 21, RxJS, Prettier
-**Infrastructure**: Docker Compose, API (5180), Frontend (4200), CORS on localhost:4200
+**Backend**: ASP.NET Core 10, PostgreSQL 16, EF Core 9, Clean Architecture, JWT auth
+**Frontend**: Angular 21, Material 21, RxJS, Prettier, Karma+Jasmine, Playwright
+**Infrastructure**: Docker Compose (PostgreSQL), API (:5180), Frontend (:4200), CORS on localhost:4200
 
-## Data Source: Galán & Mediapost (✅ Integrated 11 June 2026)
+## Database (PostgreSQL)
 
-**LOCAL FILE-BASED SYSTEMS** — No external APIs, read monthly from local files:
+**Local dev connection**:
+```
+Host: localhost | Port: 5433 | Database: sig_plataforma_dev
+Username: postgres | Password: SigEs@2026
+```
+**Startup**: `docker-compose up -d`
+**Apply migrations**: `cd backend/SIG.API && dotnet ef database update`
+**Auto-seed demo**: Development env seeds demo user (demo/Demo#2026!) on first run
+**Schema**: 33+ tables (entities, staging, audit logs). Migrations auto-applied on startup.
+
+## External Integrations (Existing)
+
+| System | Type | Purpose | Client | Status |
+|--------|------|---------|--------|--------|
+| **Bizneo** | HTTP OAuth2 | HR/HCM — employees, hours, absences | DMS | ✅ Integrated |
+| **SGPV** | HTTP Basic Auth | Product catalog | DMS | ✅ Integrated |
+| **Celero** | PostgreSQL direct | Sales/projects/visits/clients | CRM | ✅ Integrated |
+| **Intratime** | HTTP (Token) | Time tracking — fichajes, attendance | DMS | ✅ Integrated |
+| **PayHawk** | HTTP API | Expense management — receipts, employee expenses | Finance | ✅ Integrated |
+| **TravelPerk** | HTTP API | Travel bookings — flights, hotels, costs | Finance | ⏳ Pending API Key |
+| **A3 Innuva** | HTTP OAuth2 | ERP — invoicing, GL, customer data | Finance | ⏳ Pending Conectia registration |
+
+**Pattern**: Each system has staging table (`staging_*`). `DataProcessorService` syncs staging → productive tables.
+**Sync endpoint**: `POST /api/sync/{system}` (requires Administrator or Admin SIG role for external APIs)
+
+## Data Sources: Galán & Mediapost (✅ Integrated 11 June 2026)
+
+**LOCAL FILE-BASED SYSTEMS** — No external APIs, monthly file updates:
 
 ### Galán (Warehouse/Logistics)
-- **Source**: CSV files from `Mediapost/Mediapost/Documentación/`
-- **Parser**: Flexible CSV parsing with `NormalizarKeys()` (removes accents, spaces, periods, numeric prefixes)
-- **Data sync**: `MediapostExcelClient.GetEntradasAsync()`, GetSalidasAsync(), GetStockAsync()
-- **Result**: 1,520 registros (entradas, salidas, stock)
-- **Endpoints**: `/api/galan/{entradas|salidas|stock}` + dashboard
-- **Auth**: NO authentication required (local files)
+- **Source**: CSV from `C:\Projects\workspaces\SIG-es\Mediapost\Mediapost\Documentación\`
+- **Parser**: `GalanCsvClient` — flexible header parsing with `NormalizarKeys()` (handles accents, spaces, periods, numeric prefixes)
+- **Data**: 1,520 registros (entradas, salidas, stock)
+- **Sync**: `POST /api/sync/galan` → calls `GalanCsvClient.GetEntradasAsync()`, GetSalidasAsync(), GetStockAsync()
+- **Endpoints**: `/api/galan/entradas`, `/api/galan/salidas`, `/api/galan/stock` + `/api/galan/dashboard`
+- **Auth**: ❌ NO authentication (local files)
 
 ### Mediapost (Distribution/Delivery)  
-- **Source**: Excel files from `Mediapost/Mediapost/Documentación/`
-  - `infpedsit11_*.xlsx` (Pedidos/Orders)
-  - `infrecep07_*.xlsx` (Recepciones/Receptions)
-- **Parser**: Multi-worksheet support (reads "Report" worksheet, not "Parametros")
-  - **Pedidos**: Headers row 4, data row 5+. Cols: A=Nº doc, L=Fecha, M=Estado
-  - **Recepciones**: Headers row 5, data row 6+. Cols: A=Nº Recepción, G=Fecha, E=Tipo
-- **Data sync**: `MediapostExcelClient.GetPedidosAsync()`, GetRecepcionesAsync()
-- **Result**: 151 registros (142 pedidos + 9 recepciones)
-- **Endpoints**: `/api/mediapost/{pedidos|recepciones}` + dashboard
-- **Auth**: NO authentication required (local files)
+- **Source**: Excel from same `Documentación/` folder:
+  - `infpedsit11_*.xlsx` → Pedidos (orders), 206 rows
+  - `infrecep07_*.xlsx` → Recepciones (receptions), 15 rows
+- **Parser**: `MediapostExcelClient` — multi-worksheet support
+  - Reads "Report" worksheet (not "Parametros" which is metadata)
+  - **Pedidos**: Headers row 4, data row 5+. Cols: A=Nº doc, L=Fecha expedición, M=Estado
+  - **Recepciones**: Headers row 5, data row 6+. Cols: A=Nº Recepción, G=Fecha, E=Tipo Recepción
+- **Data**: 151 registros (142 pedidos + 9 recepciones)
+- **Sync**: `POST /api/sync/mediapost` → calls `MediapostExcelClient.GetPedidosAsync()`, GetRecepcionesAsync()
+- **Endpoints**: `/api/mediapost/pedidos`, `/api/mediapost/recepciones` + `/api/mediapost/dashboard`
+- **Auth**: ❌ NO authentication (local files)
 
-### Authorization Pattern (SyncController)
-- `/api/sync/galan`, `/api/sync/mediapost` → **No auth** (local files)
-- All other `/api/sync/{system}` → Requires **Administrator** or **Admin SIG** role
+### Authorization (SyncController)
+- `/api/sync/galan` + `/api/sync/mediapost` → **No auth required** (local files)
+- All other `/api/sync/{system}` → **Administrator** or **Admin SIG** role required
+- See: `backend/SIG.API/Controllers/OtherControllers.cs` line 84-92
 
-## Architecture & Structure
+## Architecture & Core Services
 
 **Backend Layers** (Clean Architecture):
-1. **Domain** (SIG.Domain): Entities, value objects, domain logic
-2. **Application** (SIG.Application): Interfaces, services, DTOs, validation
-3. **Infrastructure** (SIG.Infrastructure): DB, APIs, implementations
-4. **API** (SIG.API): Controllers, middleware, HTTP
+1. **Domain** (SIG.Domain): Entities, enums, domain logic
+2. **Application** (SIG.Application): Service interfaces, DTOs, validation
+3. **Infrastructure** (SIG.Infrastructure): DB, external APIs, implementations
+4. **API** (SIG.API): Controllers, middleware, JWT
 
-**Key patterns**: 
-- Soft-delete via global query filters (`IsDeleted`, `DeletedAt`)
-- Staging tables (`staging_*`) for external API syncs
-- `DataProcessorService` migrates staging → productive
-- JWT with custom claims (see `Program.cs`)
-- FluentValidation on all request DTOs
+**Key Patterns**: 
+- Soft-delete: Global query filters exclude deleted records; `.IgnoreQueryFilters()` to override
+- Staging tables (`staging_*`) for external syncs → `DataProcessorService` migrates to productive
+- JWT: Custom claims mapping in `Program.cs`; validate before modifying auth
+- FluentValidation on all request DTOs; `ValidationFilter` catches errors
 - Named HttpClient pattern with retry policies
 
-**Database**: PostgreSQL 16, 33+ tables, migrations auto-applied on startup
-- Creds: Host=localhost, Port=5433, DB=sig_plataforma_dev, User=postgres, Pass=SigEs@2026
-- Local dev: `docker-compose up -d`
-- Apply migrations: `cd backend/SIG.API && dotnet ef database update`
-- Auto-seed demo data in Development (user=demo, pass=Demo#2026!)
+**Core Services** (SIG.Application + SIG.Infrastructure):
+- `AuthService` — JWT generation, BCrypt hashing
+- `ClientService` — CRUD + Celero sync
+- `ProjectService` — CRUD, user assignment
+- `ConceptService` — Formula evaluation (MathNet.Numerics)
+- `PeriodService` — Period CRUD + recalc
+- `ClosureService` — Multi-line closures
+- `ApprovalService` — Multi-role workflow (Gestor → FICO → Director)
+- `SyncService` — Orchestrates all external API syncs
+- `DataProcessorService` — Staging → productive migration
+- `ExcelExporter` — ClosedXML multi-format export
+- `GalanCsvClient`, `MediapostExcelClient` — Local file parsers
 
 ## Development Commands
 
