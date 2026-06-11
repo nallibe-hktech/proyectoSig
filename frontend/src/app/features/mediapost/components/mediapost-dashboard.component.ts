@@ -15,6 +15,7 @@ import { MatPaginatorModule } from '@angular/material/paginator';
 import { HttpClient } from '@angular/common/http';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MediapostService, MediapostPedidoDto, MediapostRecepcionDto } from '../services/mediapost.service';
 
 interface FileType {
   key: string;
@@ -23,27 +24,9 @@ interface FileType {
   icon: string;
 }
 
-interface MediapostPedido {
-  id: number;
-  numeroDocumento: string;
-  numeroReferencia: string;
-  numeroExpedicion: string;
-  fecha: string;
-  estado: string;
-  nombreEntrega: string;
-  direccion: string;
-}
-
-interface MediapostRecepcion {
-  id: number;
-  numeroRecepcion: string;
-  numeroDocumentoCliente: string;
-  numeroDocumentoOrigen: string;
-  fecha: string;
-  estado: string;
-  proveedor: string;
-  bultos: number;
-}
+// Using DTOs from service instead of local interfaces
+type MediapostPedido = MediapostPedidoDto;
+type MediapostRecepcion = MediapostRecepcionDto;
 
 // @ts-ignore - Template context variables in matRowDef not recognized by type checker
 @Component({
@@ -461,6 +444,7 @@ interface MediapostRecepcion {
   `,
 })
 export class MediapostDashboardComponent implements OnInit {
+  private readonly mediapostSvc = inject(MediapostService);
   private readonly http = inject(HttpClient);
 
   // Dummy property for template type checking
@@ -575,13 +559,9 @@ export class MediapostDashboardComponent implements OnInit {
 
   private loadPedidos(search?: string) {
     this.pedidosLoading.set(true);
-    let url = '/api/mediapost/pedidos?page=1&pageSize=500';
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-    if (this.estadoFilter$) url += `&estado=${encodeURIComponent(this.estadoFilter$)}`;
-
-    this.http.get<any>(url).subscribe({
+    this.mediapostSvc.getPedidos(1, 500, search || '', this.estadoFilter$ || '').subscribe({
       next: (response) => {
-        this.pedidos.set(response.items || response || []);
+        this.pedidos.set(response.items || []);
         this.pedidosLoading.set(false);
       },
       error: () => {
@@ -593,12 +573,9 @@ export class MediapostDashboardComponent implements OnInit {
 
   private loadRecepciones(search?: string) {
     this.recepcionesLoading.set(true);
-    let url = '/api/mediapost/recepciones?page=1&pageSize=500';
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-
-    this.http.get<any>(url).subscribe({
+    this.mediapostSvc.getRecepciones(1, 500, search || '').subscribe({
       next: (response) => {
-        this.recepciones.set(response.items || response || []);
+        this.recepciones.set(response.items || []);
         this.recepcionesLoading.set(false);
       },
       error: () => {

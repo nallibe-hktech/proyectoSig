@@ -14,6 +14,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { HttpClient } from '@angular/common/http';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { GalanService, GalanEntradaDto, GalanSalidaDto, GalanStockDto } from '../services/galan.service';
 
 interface FileType {
   key: string;
@@ -22,32 +23,10 @@ interface FileType {
   icon: string;
 }
 
-interface GalanEntrada {
-  id: number;
-  codigoArticulo: string;
-  descripcion: string;
-  unidades: number;
-  fecha: string;
-  almacen: string;
-}
-
-interface GalanSalida {
-  id: number;
-  albaran: string;
-  codigoArticulo: string;
-  descripcion: string;
-  unidades: number;
-  fecha: string;
-}
-
-interface GalanStock {
-  id: number;
-  codigoArticulo: string;
-  descripcion: string;
-  stock: number;
-  almacen: string;
-  familia: string;
-}
+// Using DTOs from service instead of local interfaces
+type GalanEntrada = GalanEntradaDto;
+type GalanSalida = GalanSalidaDto;
+type GalanStock = GalanStockDto;
 
 // @ts-ignore - Template context variables in matRowDef not recognized by type checker
 @Component({
@@ -491,6 +470,7 @@ interface GalanStock {
   `,
 })
 export class GalanDashboardComponent implements OnInit {
+  private readonly galanSvc = inject(GalanService);
   private readonly http = inject(HttpClient);
 
   // Dummy property for template type checking
@@ -615,12 +595,9 @@ export class GalanDashboardComponent implements OnInit {
 
   private loadEntradas(search?: string) {
     this.entradasLoading.set(true);
-    let url = '/api/galan/entradas?page=1&pageSize=500';
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-
-    this.http.get<any>(url).subscribe({
+    this.galanSvc.getEntradas(1, 500, search || '').subscribe({
       next: (response) => {
-        this.entradas.set(response.items || response || []);
+        this.entradas.set(response.items || []);
         this.entradasLoading.set(false);
       },
       error: () => {
@@ -632,12 +609,9 @@ export class GalanDashboardComponent implements OnInit {
 
   private loadSalidas(search?: string) {
     this.salidasLoading.set(true);
-    let url = '/api/galan/salidas?page=1&pageSize=500';
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-
-    this.http.get<any>(url).subscribe({
+    this.galanSvc.getSalidas(1, 500, search || '').subscribe({
       next: (response) => {
-        this.salidas.set(response.items || response || []);
+        this.salidas.set(response.items || []);
         this.salidasLoading.set(false);
       },
       error: () => {
@@ -649,10 +623,7 @@ export class GalanDashboardComponent implements OnInit {
 
   private loadStock(search?: string) {
     this.stockLoading.set(true);
-    let url = '/api/galan/stock';
-    if (search) url += `?search=${encodeURIComponent(search)}`;
-
-    this.http.get<any>(url).subscribe({
+    this.galanSvc.getStock().subscribe({
       next: (response) => {
         this.stock.set(response || []);
         this.stockLoading.set(false);
