@@ -629,6 +629,16 @@ public class SyncService : ISyncService
                 ins = data.Count;
                 break;
             }
+            case "galan":
+            {
+                var desdeG = DateTime.UtcNow.AddDays(-30);
+                var hastaG = DateTime.UtcNow;
+                var entradas = await _galan.GetEntradasAsync(desdeG, hastaG, ct);
+                var salidas = await _galan.GetSalidasAsync(desdeG, hastaG, ct);
+                var stock = await _galan.GetStockAsync(ct);
+                ins = entradas.Count + salidas.Count + stock.Count;
+                break;
+            }
             case "galan-entradas":
             {
                 var desdeG = DateTime.UtcNow.AddDays(-30);
@@ -652,6 +662,15 @@ public class SyncService : ISyncService
                 var data = await _galan.GetStockAsync(ct);
                 // Sincronizando stock de Galán
                 ins = data.Count;
+                break;
+            }
+            case "mediapost":
+            {
+                var desdeM = DateTime.UtcNow.AddDays(-30);
+                var hastaM = DateTime.UtcNow;
+                var pedidos = await _mediapost.GetPedidosAsync(desdeM, hastaM, ct);
+                var recepciones = await _mediapost.GetRecepcionesAsync(desdeM, hastaM, ct);
+                ins = pedidos.Count + recepciones.Count;
                 break;
             }
             case "mediapost-pedidos":

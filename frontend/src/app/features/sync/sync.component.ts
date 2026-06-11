@@ -9,7 +9,7 @@ import { SyncResultDto, ProcessingResultDto } from '../../models/dtos';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { NotifyService } from '../../core/notify.service';
 
-type System = 'celero' | 'bizneo' | 'intratime' | 'payhawk' | 'sgpv' | 'sgpv-productos';
+type System = 'celero' | 'bizneo' | 'intratime' | 'payhawk' | 'sgpv' | 'sgpv-productos' | 'galan' | 'mediapost';
 
 @Component({
   selector: 'app-sync',
@@ -115,6 +115,8 @@ export class SyncComponent {
     { id: 'payhawk', label: 'PayHawk', desc: 'Gastos', icon: 'payments' },
     { id: 'sgpv', label: 'SGPV', desc: 'Visitas', icon: 'location_on' },
     { id: 'sgpv-productos', label: 'SGPV Productos', desc: 'Catálogo', icon: 'inventory_2' },
+    { id: 'galan', label: 'Galán', desc: 'Almacén — Inventario', icon: 'warehouse' },
+    { id: 'mediapost', label: 'Mediapost', desc: 'Distribución — Entregas', icon: 'local_shipping' },
   ];
 
   protected readonly syncResults = signal<Partial<Record<System, SyncResultDto>>>({});
