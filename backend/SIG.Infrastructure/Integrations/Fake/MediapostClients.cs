@@ -48,22 +48,38 @@ public class MediapostExcelClient : IMediapostClient
                     return dtos;
                 }
 
-                var rows = worksheet.RangeUsed().RowsUsed().Skip(1); // Skip header
-                foreach (var row in rows)
+                // Excel tiene múltiples secciones: skip metadata (primeras ~3-4 filas) y leer datos
+                var rows = worksheet.Rows().ToList();
+                int dataStartIndex = 4; // Típicamente: fila 1=título, 2=empresa, 3=headers, 4+=datos
+
+                _logger.LogInformation("Leyendo pedidos desde fila {StartRow} del archivo {File}", dataStartIndex + 1, files);
+
+                // Leer datos desde fila 4 en adelante
+                for (int i = dataStartIndex; i < rows.Count; i++)
                 {
+                    var row = rows[i];
+                    var cell1 = row.Cell(1).Value.ToString() ?? "";
+
+                    // Detener si encontramos otra sección (línea que empieza con ";") o vacía
+                    if (string.IsNullOrWhiteSpace(cell1) || cell1.StartsWith(";"))
+                        break;
+
                     try
                     {
-                        var fechaPedido = DateTime.TryParse(row.Cell(1).Value.ToString(), out var fecha) ? fecha : DateTime.Now;
+                        // Nº documento cliente está en Cell(1), Fecha expedición en Cell(12)
+                        var fechaStr = row.Cell(12).Value.ToString() ?? "";
+                        if (!DateTime.TryParse(fechaStr, out var fechaPedido))
+                            fechaPedido = DateTime.Now;
 
                         if (fechaPedido >= desde && fechaPedido <= hasta)
                         {
                             dtos.Add(new MediapostPedidoDto(
-                                row.Cell(1).Value.ToString() ?? Guid.NewGuid().ToString(),
+                                cell1,
                                 row.Cell(2).Value.ToString() ?? "",
                                 row.Cell(3).Value.ToString() ?? "",
                                 fechaPedido,
-                                int.TryParse(row.Cell(4).Value.ToString(), out var qty) ? qty : 0,
-                                row.Cell(5).Value.ToString() ?? "Pendiente",
+                                int.TryParse(row.Cell(5).Value.ToString(), out var qty) ? qty : 0,
+                                row.Cell(13).Value.ToString() ?? "Pendiente",
                                 row.Cell(6).Value.ToString(),
                                 row.Cell(7).Value.ToString(),
                                 row.Cell(8).Value.ToString(),
@@ -74,7 +90,7 @@ public class MediapostExcelClient : IMediapostClient
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error leyendo fila de pedido en {File}", files);
+                        _logger.LogWarning(ex, "Error leyendo fila {RowNum} de pedidos en {File}", i + 1, files);
                         continue;
                     }
                 }
@@ -116,8 +132,19 @@ public class MediapostExcelClient : IMediapostClient
                     return dtos;
                 }
 
-                var rows = worksheet.RangeUsed().RowsUsed().Skip(1); // Skip header
-                foreach (var row in rows)
+                // Usar RangeUsed con un rango más flexible
+                var rangeUsed = worksheet.RangeUsed();
+                if (rangeUsed == null)
+                {
+                    _logger.LogWarning("Hoja vacía en {File}", files);
+                    return dtos;
+                }
+
+                var rows = rangeUsed.RowsUsed().Skip(1); // Skip header
+                var rowList = rows.ToList();
+                _logger.LogInformation("Leyendo {RowCount} filas desde {File}", rowList.Count, files);
+
+                foreach (var row in rowList)
                 {
                     try
                     {
