@@ -60,7 +60,6 @@ public class AuditController : ControllerBase
 
 [ApiController]
 [Route("api/sync")]
-[Authorize(Roles = "Administrator,Admin SIG")]
 public class SyncController : ControllerBase
 {
     private readonly ISyncService _svc;
@@ -73,11 +72,30 @@ public class SyncController : ControllerBase
         _db = db;
     }
 
+    /// <summary>
+    /// Sincronizar datos de sistemas externos.
+    /// Nota: 'galan' y 'mediapost' no requieren autenticación (archivos locales).
+    /// Otros sistemas requieren rol Administrator o Admin SIG.
+    /// </summary>
     [HttpPost("{system}")]
-    public async Task<IActionResult> Sync(string system, CancellationToken ct) =>
-        Ok(await _svc.SyncAsync(system, ct));
+    public async Task<IActionResult> Sync(string system, CancellationToken ct)
+    {
+        // Permitir galan y mediapost sin autenticación (archivos locales)
+        if (!system.Equals("galan", StringComparison.OrdinalIgnoreCase) &&
+            !system.Equals("mediapost", StringComparison.OrdinalIgnoreCase))
+        {
+            // Otros sistemas requieren autenticación
+            if (!User.IsInRole("Administrator") && !User.IsInRole("Admin SIG"))
+            {
+                return Unauthorized("Solo administradores pueden sincronizar sistemas externos");
+            }
+        }
+
+        return Ok(await _svc.SyncAsync(system, ct));
+    }
 
     [HttpPost("process")]
+    [Authorize(Roles = "Administrator,Admin SIG")]
     public async Task<IActionResult> ProcessPending(CancellationToken ct) =>
         Ok(await _processor.ProcessAllPendingAsync(ct));
 
