@@ -5,10 +5,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
+import { MatMenuModule } from '@angular/material/menu';
 import { DashboardService } from '../../core/api/dashboard.service';
 import { PeriodService } from '../../core/api/periods.service';
 import { NotifyService } from '../../core/notify.service';
-import { DashboardKpisDto, DashboardAvisoDto, MiProyectoDto } from '../../models/dtos';
+import { DashboardKpisDto, DashboardAvisoDto, MiProyectoDto, PeriodDto } from '../../models/dtos';
 import { EstadoClosure, ApprovalStep } from '../../models/enums';
 import { StateBadgeComponent } from '../../shared/state-badge.component';
 import { environment } from '../../../environments/environment';
@@ -16,7 +17,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatTableModule, MatCardModule, StateBadgeComponent],
+  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatTableModule, MatCardModule, MatMenuModule, StateBadgeComponent],
   template: `
     <div class="sig-exec-page">
 
@@ -30,11 +31,21 @@ import { environment } from '../../../environments/environment';
           <button (click)="regenerate()" mat-icon-button class="sig-exec-icon-btn" title="Regenerar datos de sincronización" [disabled]="regenerating()" data-testid="btn-recalcular">
             <mat-icon>{{ regenerating() ? 'hourglass_empty' : 'refresh' }}</mat-icon>
           </button>
-          <div class="sig-period-chip" data-testid="period-selector">
+          <button [matMenuTriggerFor]="periodMenu" class="sig-period-chip" data-testid="period-selector" mat-button>
             <mat-icon style="font-size:16px;width:16px;height:16px;">schedule</mat-icon>
             <span>{{ kpis()?.periodNombre ?? '...' }}</span>
             <mat-icon style="font-size:14px;width:14px;height:14px;">expand_more</mat-icon>
-          </div>
+          </button>
+          <mat-menu #periodMenu="matMenu">
+            @for (period of periodos(); track period.id) {
+              <button mat-menu-item (click)="selectPeriod(period.id)" [class.active]="period.id === activePeriodId()">
+                {{ period.nombre }}
+                @if (period.id === activePeriodId()) {
+                  <mat-icon style="margin-left: auto; margin-right: -8px;">check</mat-icon>
+                }
+              </button>
+            }
+          </mat-menu>
           <button mat-icon-button class="sig-exec-icon-btn sig-notif-btn" aria-label="Notificaciones" data-testid="btn-notificaciones">
             <mat-icon>notifications</mat-icon>
             @if (avisos().length > 0) {
@@ -695,6 +706,8 @@ export class DashboardComponent implements OnInit {
   protected readonly loadingAvisos = signal(true);
   protected readonly loadingMis    = signal(true);
   protected readonly regenerating  = signal(false);
+  protected readonly periodos      = signal<PeriodDto[]>([]);
+  protected readonly activePeriodId = computed(() => this.periodSvc.activeId());
 
   protected readonly displayedColumns = ['nombre', 'cliente', 'costeBruto', 'facturacion', 'margen', 'estado', 'accion'];
 
@@ -751,7 +764,13 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void { }
+  ngOnInit(): void {
+    // Cargar lista de períodos disponibles
+    this.periodSvc.list().subscribe({
+      next: (periods) => this.periodos.set(periods),
+      error: () => this.periodos.set([]),
+    });
+  }
 
   private loadAll(periodId?: number): void {
     this.loadingKpis.set(true);
@@ -797,5 +816,10 @@ export class DashboardComponent implements OnInit {
         this.regenerating.set(false);
       }
     });
+  }
+
+  protected selectPeriod(periodId: number): void {
+    this.periodSvc.setActive(periodId);
+    // El effect en el constructor reaccionará automáticamente al cambio de activePeriod
   }
 }
