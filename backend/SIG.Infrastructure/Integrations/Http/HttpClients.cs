@@ -226,7 +226,7 @@ public class IntratimeClient : IIntratimeClient
             }
 
             // 2. ITERAR SOBRE TODOS LOS USUARIOS Y OBTENER SUS FICHAJES
-            var allClockings = new List<IntratimeClockingDto>();
+            var allClockings = new List<IntratimeClockingEventDto>();
             var clockingsUrl = "https://newapi.intratime.es/api/user/clockings";
             var fromDateTime = desde.ToDateTime(TimeOnly.MinValue);
             var fromEncoded = Uri.EscapeDataString(fromDateTime.ToString("yyyy-MM-dd HH:mm:ss"));
@@ -255,7 +255,7 @@ public class IntratimeClient : IIntratimeClient
                         continue;
 
                     var clockingsJson = await clockingsResponse.Content.ReadAsStringAsync(ct);
-                    var clockingsArray = JsonSerializer.Deserialize<List<IntratimeClockingDto>>(clockingsJson);
+                    var clockingsArray = JsonSerializer.Deserialize<List<IntratimeClockingEventDto>>(clockingsJson);
 
                     if (clockingsArray != null && clockingsArray.Count > 0)
                     {
@@ -278,14 +278,21 @@ public class IntratimeClient : IIntratimeClient
             var clockingsArray2 = allClockings;
             _logger.LogInformation($"[Intratime] ✅ Total {clockingsArray2.Count} eventos obtenidos de todos los usuarios");
 
+            // DEBUG: Log primer evento para ver estructura
+            if (clockingsArray2.Count > 0)
+            {
+                var first = clockingsArray2[0];
+                _logger.LogInformation($"[Intratime] SAMPLE EVENT: ID={first.INOUT_ID}, USER_ID={first.INOUT_USER_ID}, TYPE={first.INOUT_TYPE}, DATE={first.INOUT_DATE}");
+            }
+
             // 3. AGRUPAR POR USUARIO+DÍA Y EMPAREJAR ENTRADA/SALIDA
             var filtered = clockingsArray2
-                .Where(c => c.USER_ID.HasValue && !string.IsNullOrEmpty(c.CLOCKING_TIME))
+                .Where(c => c.INOUT_USER_ID.HasValue && !string.IsNullOrEmpty(c.INOUT_DATE))
                 .ToList();
             _logger.LogInformation($"[Intratime] Después de filtrar: {filtered.Count} eventos válidos");
 
             var grouped = filtered
-                .GroupBy(c => (UserId: c.USER_ID!.Value, Dia: DateOnly.FromDateTime(DateTime.Parse(c.CLOCKING_TIME))))
+                .GroupBy(c => (UserId: c.INOUT_USER_ID!.Value, Dia: DateOnly.FromDateTime(DateTime.Parse(c.INOUT_DATE))))
                 .ToList();
             _logger.LogInformation($"[Intratime] Después de agrupar: {grouped.Count} grupos usuario+día");
 
@@ -294,17 +301,17 @@ public class IntratimeClient : IIntratimeClient
             {
                 try
                 {
-                    var ordered = g.OrderBy(c => DateTime.Parse(c.CLOCKING_TIME)).ToList();
+                    var ordered = g.OrderBy(c => DateTime.Parse(c.INOUT_DATE)).ToList();
                     if (ordered.Count == 0) continue;
 
-                    var entrada = ordered.FirstOrDefault(c => c.CLOCKING_IN_OUT == 0) ?? ordered.First();
-                    var salida = ordered.LastOrDefault(c => c.CLOCKING_IN_OUT == 1);
+                    var entrada = ordered.FirstOrDefault(c => c.INOUT_TYPE == 0) ?? ordered.First();
+                    var salida = ordered.LastOrDefault(c => c.INOUT_TYPE == 1);
 
                     fichajes.Add(new IntratimeFichajeDto(
-                        entrada.CLOCKING_ID,
-                        entrada.USER_ID!.Value.ToString(),
-                        DateTime.Parse(entrada.CLOCKING_TIME),
-                        salida != null ? DateTime.Parse(salida.CLOCKING_TIME) : null
+                        entrada.INOUT_ID?.ToString() ?? "",
+                        entrada.INOUT_USER_ID!.Value.ToString(),
+                        DateTime.Parse(entrada.INOUT_DATE),
+                        salida != null ? DateTime.Parse(salida.INOUT_DATE) : null
                     ));
                 }
                 catch (Exception ex)
