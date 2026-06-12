@@ -16,3 +16,4 @@ public enum ApprovalStep
 }
 public enum EstadoApproval { Pendiente, Aprobado, Rechazado }
 public enum AuditAction { Create, Update, Delete, Login, Logout, Export, Recalc }
+public enum TipoAlerta { Bloqueante, Advertencia }

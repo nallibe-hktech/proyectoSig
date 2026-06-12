@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Services;
+using SIG.Domain.Enums;
 
 namespace SIG.API.Controllers;
 
@@ -12,7 +13,12 @@ namespace SIG.API.Controllers;
 public class ClosuresController : ControllerBase
 {
     private readonly IClosureService _svc;
-    public ClosuresController(IClosureService svc) { _svc = svc; }
+    private readonly IClosureValidationService _validationSvc;
+    public ClosuresController(IClosureService svc, IClosureValidationService validationSvc)
+    {
+        _svc = svc;
+        _validationSvc = validationSvc;
+    }
     private int UserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new InvalidOperationException("NameIdentifier claim not found"));
 
     [HttpGet]
@@ -53,6 +59,54 @@ public class ClosuresController : ControllerBase
     {
         uint rv = ParseIfMatch(ifMatch);
         return Ok(await _svc.RejectAsync(id, req, rv, UserId, ct));
+    }
+
+    [HttpGet("{id:int}/alertas")]
+    public async Task<IActionResult> GetAlertas(int id, CancellationToken ct)
+    {
+        // Validate user has access to this closure
+        var closure = await _svc.GetByIdForUserAsync(id, UserId, ct);
+        var alertas = await _validationSvc.GetAlertasAsync(id, ct);
+        return Ok(alertas);
+    }
+
+    [HttpPost("{id:int}/alertas/{alertaId:int}/confirmar")]
+    [Authorize(Roles = "ProjectManager,Backoffice,Fico,Direction,Administrator")]
+    public async Task<IActionResult> ConfirmarAlerta(int id, int alertaId, CancellationToken ct)
+    {
+        // Validate user has access to this closure
+        var closure = await _svc.GetByIdForUserAsync(id, UserId, ct);
+        await _validationSvc.ConfirmarAdvertenciaAsync(alertaId, UserId, ct);
+        // Return updated closure with alerts
+        return Ok(await _svc.GetByIdForUserAsync(id, UserId, ct));
+    }
+
+    [HttpGet("todas-alertas")]
+    public async Task<IActionResult> GetAllAlertas(CancellationToken ct)
+    {
+        // Get all closures for this user with their alerts
+        var result = await _svc.ListAsync(new ApprovalFilterRequest(null, null, null, null, null, null, null, null), UserId, ct);
+        var alertas = new List<dynamic>();
+
+        foreach (var closure in result.Items)
+        {
+            var detail = await _svc.GetByIdForUserAsync(closure.Id, UserId, ct);
+            foreach (var alerta in detail.Alertas)
+            {
+                alertas.Add(new
+                {
+                    alerta.Id,
+                    alerta.Tipo,
+                    alerta.Codigo,
+                    alerta.Descripcion,
+                    alerta.Confirmada,
+                    ClosureId = closure.Id,
+                    ClosureNombre = closure.ProjectNombre + " — " + closure.PeriodNombre
+                });
+            }
+        }
+
+        return Ok(alertas.OrderByDescending(a => a.Confirmada).ThenByDescending(a => a.Tipo == TipoAlerta.Bloqueante));
     }
 
     private static uint ParseIfMatch(string? v)

@@ -31,6 +31,7 @@ public class AppDbContext : DbContext
     public DbSet<ClosureLine> ClosureLines => Set<ClosureLine>();
     public DbSet<Approval> Approvals => Set<Approval>();
     public DbSet<ApprovalHistory> ApprovalHistory => Set<ApprovalHistory>();
+    public DbSet<ClosureAlerta> ClosureAlertas => Set<ClosureAlerta>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CalculationLog> CalculationLogs => Set<CalculationLog>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -48,6 +49,7 @@ public class AppDbContext : DbContext
     public DbSet<StagingSgpvVisita> StagingSgpvVisitas => Set<StagingSgpvVisita>();
     public DbSet<StagingSgpvProducto> StagingSgpvProductos => Set<StagingSgpvProducto>();
     public DbSet<StagingA3InnuvaEmpleado> StagingA3InnuvaEmpleados => Set<StagingA3InnuvaEmpleado>();
+    public DbSet<StagingA3InnuvaContrato> StagingA3InnuvaContratos => Set<StagingA3InnuvaContrato>();
     public DbSet<StagingTravelPerkViaje> StagingTravelPerkViajes => Set<StagingTravelPerkViaje>();
 
     // GALÁN - Logística
@@ -62,6 +64,22 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Add UTC value converter for all DateTime properties to ensure Npgsql compatibility
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+                        v => v.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v, DateTimeKind.Utc),
+                        v => v
+                    ));
+                }
+            }
+        }
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }

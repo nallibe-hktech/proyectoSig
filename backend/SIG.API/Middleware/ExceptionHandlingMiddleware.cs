@@ -25,6 +25,13 @@ public class ExceptionHandlingMiddleware
             ctx.Response.StatusCode = dex.HttpStatusCode;
             var pd = new ProblemDetails { Status = dex.HttpStatusCode, Title = dex.Message };
             pd.Extensions["code"] = dex.Code;
+
+            // Include specific alert codes if it's a ClosureAlertasBlockingException
+            if (dex is ClosureAlertasBlockingException alertaEx)
+            {
+                pd.Extensions["alertaCodigos"] = alertaEx.AlertasCodigos;
+            }
+
             await ctx.Response.WriteAsJsonAsync(pd);
         }
         catch (DbUpdateConcurrencyException ex)

@@ -5,6 +5,7 @@ using SIG.Application.Interfaces.Repositories;
 using SIG.Application.Interfaces.Services;
 using SIG.Domain.Common;
 using SIG.Domain.Entities;
+using SIG.Domain.Entities.Staging;
 using SIG.Domain.Enums;
 using SIG.Infrastructure.Persistence;
 using Action = SIG.Domain.Entities.Action;
@@ -610,6 +611,90 @@ public class PresupuestoProyectoRepository : IPresupuestoProyectoRepository
     public Task AddAsync(PresupuestoProyecto entity, CancellationToken ct)
     {
         _db.PresupuestosProyecto.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+public class ClosureAlertaRepository : IClosureAlertaRepository
+{
+    private readonly AppDbContext _db;
+    public ClosureAlertaRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<ClosureAlerta>> GetByClosureIdAsync(int closureId, CancellationToken ct) =>
+        await _db.ClosureAlertas.AsNoTracking()
+            .Where(a => a.ClosureId == closureId)
+            .Include(a => a.ConfirmadaPor)
+            .OrderBy(a => a.Tipo).ThenBy(a => a.Codigo)
+            .ToListAsync(ct);
+
+    public Task<ClosureAlerta?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.ClosureAlertas.Include(a => a.ConfirmadaPor)
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+
+    public Task AddAsync(ClosureAlerta alerta, CancellationToken ct)
+    {
+        _db.ClosureAlertas.Add(alerta);
+        return Task.CompletedTask;
+    }
+
+    public Task AddRangeAsync(IEnumerable<ClosureAlerta> alertas, CancellationToken ct)
+    {
+        _db.ClosureAlertas.AddRange(alertas);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(ClosureAlerta alerta, CancellationToken ct)
+    {
+        _db.ClosureAlertas.Update(alerta);
+        return Task.CompletedTask;
+    }
+
+    public async Task DeleteByClosureIdAsync(int closureId, CancellationToken ct)
+    {
+        await _db.ClosureAlertas.Where(a => a.ClosureId == closureId)
+            .ExecuteDeleteAsync(ct);
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+public class StagingA3InnuvaContratoRepository : IStagingA3InnuvaContratoRepository
+{
+    private readonly AppDbContext _db;
+    public StagingA3InnuvaContratoRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<StagingA3InnuvaContrato>> GetByNifAsync(string nif, CancellationToken ct) =>
+        await _db.StagingA3InnuvaContratos.AsNoTracking()
+            .Where(c => c.NIF == nif)
+            .Include(c => c.User)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<StagingA3InnuvaContrato>> GetAllAsync(CancellationToken ct) =>
+        await _db.StagingA3InnuvaContratos.AsNoTracking()
+            .Include(c => c.User)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<StagingA3InnuvaContrato>> GetActivosEnPeriodoAsync(DateTime desde, DateTime hasta, CancellationToken ct)
+    {
+        var desdeUtc = DateTime.SpecifyKind(desde, DateTimeKind.Utc);
+        var hastaUtc = DateTime.SpecifyKind(hasta, DateTimeKind.Utc);
+        return await _db.StagingA3InnuvaContratos.AsNoTracking()
+            .Where(c => c.FechaInicio <= hastaUtc && c.FechaFin >= desdeUtc)
+            .Include(c => c.User)
+            .ToListAsync(ct);
+    }
+
+    public Task AddAsync(StagingA3InnuvaContrato contrato, CancellationToken ct)
+    {
+        _db.StagingA3InnuvaContratos.Add(contrato);
+        return Task.CompletedTask;
+    }
+
+    public Task AddRangeAsync(IEnumerable<StagingA3InnuvaContrato> contratos, CancellationToken ct)
+    {
+        _db.StagingA3InnuvaContratos.AddRange(contratos);
         return Task.CompletedTask;
     }
 

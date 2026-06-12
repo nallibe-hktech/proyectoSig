@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SIG.Application.Calculation.Nodes;
 using SIG.Domain.Exceptions;
 
@@ -8,7 +9,8 @@ public class FormulaParser : IFormulaParser
 {
     private static readonly JsonSerializerOptions Options = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new FormulaNodeJsonConverter() }
     };
 
     public FormulaNode Parse(string formulaJson)

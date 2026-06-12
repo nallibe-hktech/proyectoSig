@@ -192,3 +192,23 @@ public interface ISeedService
     Task RunIfEmptyAsync(CancellationToken ct);
     Task RegenerateAsync(CancellationToken ct);
 }
+
+public interface IClosureValidationService
+{
+    /// <summary>
+    /// Valida el cierre sobre datos sincronizados y crea alertas en BD.
+    /// Se ejecuta automáticamente al crear o recalcular un cierre.
+    /// </summary>
+    Task<IReadOnlyList<ClosureAlertaDto>> ValidarYPersistirAsync(int closureId, int projectId, int periodId, CancellationToken ct);
+
+    /// <summary>
+    /// Obtiene todas las alertas asociadas a un cierre.
+    /// </summary>
+    Task<IReadOnlyList<ClosureAlertaDto>> GetAlertasAsync(int closureId, CancellationToken ct);
+
+    /// <summary>
+    /// Confirma una advertencia, permitiendo el cierre a pesar del riesgo.
+    /// Solo usuarios con rol apropiado pueden confirmar.
+    /// </summary>
+    Task ConfirmarAdvertenciaAsync(int alertaId, int usuarioId, CancellationToken ct);
+}

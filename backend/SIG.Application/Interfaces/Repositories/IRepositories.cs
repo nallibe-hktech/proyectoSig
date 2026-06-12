@@ -2,6 +2,7 @@ using SIG.Application.Common;
 using SIG.Application.DTOs;
 using SIG.Domain.Common;
 using SIG.Domain.Entities;
+using SIG.Domain.Entities.Staging;
 using SIG.Domain.Enums;
 using Action = SIG.Domain.Entities.Action;
 
@@ -186,5 +187,26 @@ public interface IPresupuestoProyectoRepository
     Task<IReadOnlyList<PresupuestoProyecto>> ListByProjectAsync(int projectId, CancellationToken ct);
     Task<PresupuestoProyecto?> GetByIdAsync(int id, CancellationToken ct);
     Task AddAsync(PresupuestoProyecto entity, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
+public interface IClosureAlertaRepository
+{
+    Task<IReadOnlyList<ClosureAlerta>> GetByClosureIdAsync(int closureId, CancellationToken ct);
+    Task<ClosureAlerta?> GetByIdAsync(int id, CancellationToken ct);
+    Task AddAsync(ClosureAlerta alerta, CancellationToken ct);
+    Task AddRangeAsync(IEnumerable<ClosureAlerta> alertas, CancellationToken ct);
+    Task UpdateAsync(ClosureAlerta alerta, CancellationToken ct);
+    Task DeleteByClosureIdAsync(int closureId, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
+public interface IStagingA3InnuvaContratoRepository
+{
+    Task<IReadOnlyList<StagingA3InnuvaContrato>> GetByNifAsync(string nif, CancellationToken ct);
+    Task<IReadOnlyList<StagingA3InnuvaContrato>> GetAllAsync(CancellationToken ct);
+    Task<IReadOnlyList<StagingA3InnuvaContrato>> GetActivosEnPeriodoAsync(DateTime desde, DateTime hasta, CancellationToken ct);
+    Task AddAsync(StagingA3InnuvaContrato contrato, CancellationToken ct);
+    Task AddRangeAsync(IEnumerable<StagingA3InnuvaContrato> contratos, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }

@@ -21,6 +21,7 @@ public class ClosureService : IClosureService
     private readonly IRoleRepository _roleRepo;
     private readonly IConceptRepository _conceptRepo;
     private readonly ICalculationEngine _engine;
+    private readonly IClosureValidationService _validationSvc;
 
     public ClosureService(
         IClosureRepository repo,
@@ -31,7 +32,8 @@ public class ClosureService : IClosureService
         IApprovalRepository approvalRepo,
         IRoleRepository roleRepo,
         IConceptRepository conceptRepo,
-        ICalculationEngine engine)
+        ICalculationEngine engine,
+        IClosureValidationService validationSvc)
     {
         _repo = repo;
         _lineRepo = lineRepo;
@@ -42,6 +44,7 @@ public class ClosureService : IClosureService
         _roleRepo = roleRepo;
         _conceptRepo = conceptRepo;
         _engine = engine;
+        _validationSvc = validationSvc;
     }
 
     public async Task<PagedResult<ClosureListItemDto>> ListAsync(ApprovalFilterRequest filter, int usuarioId, CancellationToken ct)
@@ -91,6 +94,9 @@ public class ClosureService : IClosureService
 
         await ComputeLinesAsync(closure, ct);
 
+        // Validar y generar alertas
+        await _validationSvc.ValidarYPersistirAsync(closure.Id, closure.ProjectId, closure.PeriodId, ct);
+
         // Crear primer Approval pendiente PM
         var pmRole = await _roleRepo.GetByNombreAsync("ProjectManager", ct);
         if (pmRole is not null)
@@ -115,8 +121,8 @@ public class ClosureService : IClosureService
         if (closure.RowVersion != rowVersion) throw new ConcurrencyConflictException();
         if (closure.Period.Estado != EstadoPeriodo.Abierto)
             throw new PeriodClosedException(closure.Period.Nombre);
-        if (closure.Estado != EstadoClosure.Borrador && closure.Estado != EstadoClosure.Rechazado)
-            throw new InvalidApprovalTransitionException("Solo se pueden recalcular closures en Borrador o Rechazado.");
+        if (closure.Estado != EstadoClosure.Borrador && closure.Estado != EstadoClosure.EnAprobacion && closure.Estado != EstadoClosure.Rechazado)
+            throw new InvalidApprovalTransitionException("Solo se pueden recalcular closures en Borrador, En aprobación o Rechazado.");
 
         // Borrar líneas existentes y calc logs
         await _calcLogRepo.RemoveAllByClosureAsync(closureId, ct);
@@ -124,6 +130,9 @@ public class ClosureService : IClosureService
 
         closure.Comentarios = req.Comentarios ?? closure.Comentarios;
         await ComputeLinesAsync(closure, ct);
+
+        // Validar y regenerar alertas
+        await _validationSvc.ValidarYPersistirAsync(closureId, closure.ProjectId, closure.PeriodId, ct);
 
         await _approvalRepo.AddHistoryAsync(new ApprovalHistory
         {
@@ -146,6 +155,12 @@ public class ClosureService : IClosureService
         if (closure.RowVersion != rowVersion) throw new ConcurrencyConflictException();
         if (closure.Estado == EstadoClosure.Aprobado || closure.Estado == EstadoClosure.Exportado)
             throw new InvalidApprovalTransitionException("Closure ya aprobado/exportado.");
+
+        // Validar alertas: bloquear si hay bloqueantes o advertencias sin confirmar
+        var alertas = await _validationSvc.GetAlertasAsync(closureId, ct);
+        var alertasPendientes = alertas.Where(a => !a.Confirmada).ToList();
+        if (alertasPendientes.Any())
+            throw new ClosureAlertasBlockingException(alertasPendientes.Select(a => a.Codigo).ToList());
 
         var current = await _approvalRepo.GetCurrentByClosureAsync(closureId, ct)
                       ?? throw new InvalidApprovalTransitionException("No hay Approval pendiente para este Closure.");
@@ -325,6 +340,7 @@ public class ClosureService : IClosureService
     {
         var withLines = await _repo.GetByIdWithLinesAsync(closure.Id, ct) ?? closure;
         var approvals = await _approvalRepo.ListByClosureAsync(closure.Id, ct);
+        var alertas = await _validationSvc.GetAlertasAsync(closure.Id, ct);
 
         // Enriquecer líneas con metadata de cálculo
         // Nota: Los logs de cálculo están disponibles en CalculationLog.InputsJson
@@ -345,6 +361,6 @@ public class ClosureService : IClosureService
             withLines.PeriodId, withLines.Period?.Nombre ?? "",
             withLines.CosteTotal, withLines.FacturacionTotal, withLines.Margen,
             withLines.Estado, withLines.PasoActual, withLines.Comentarios, withLines.RowVersion,
-            lines, aps);
+            lines, aps, alertas.ToArray());
     }
 }

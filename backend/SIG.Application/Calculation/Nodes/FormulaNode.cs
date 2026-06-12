@@ -1,13 +1,7 @@
-using System.Text.Json.Serialization;
-
 namespace SIG.Application.Calculation.Nodes;
 
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(NumberNode), "Number")]
-[JsonDerivedType(typeof(VariableNode), "Variable")]
-[JsonDerivedType(typeof(SourceNode), "Source")]
-[JsonDerivedType(typeof(AggregateNode), "Aggregate")]
-[JsonDerivedType(typeof(BinaryOpNode), "BinaryOp")]
+// Note: JsonPolymorphic attributes removed in favor of custom FormulaNodeJsonConverter
+// which handles both new format (with "type" discriminator) and legacy format (type inference)
 public abstract class FormulaNode { }
 
 public sealed class NumberNode : FormulaNode

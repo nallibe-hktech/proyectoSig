@@ -7,6 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ClosureService } from '../../core/api/closures.service';
 import { ExportService } from '../../core/api/misc.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -23,7 +25,7 @@ import { RejectDialogComponent } from './reject-dialog.component';
   standalone: true,
   imports: [
     CommonModule, DecimalPipe, DatePipe, RouterLink,
-    MatCardModule, MatButtonModule, MatIconModule, MatTableModule, MatChipsModule, MatDialogModule,
+    MatCardModule, MatButtonModule, MatIconModule, MatTableModule, MatChipsModule, MatDialogModule, MatExpansionModule, MatTooltipModule,
     BreadcrumbsComponent, SkeletonComponent, StateBadgeComponent,
   ],
   template: `
@@ -39,7 +41,15 @@ import { RejectDialogComponent } from './reject-dialog.component';
             }
             @if (canApprove()) {
               <button mat-stroked-button color="warn" (click)="onRechazar()" data-testid="btn-rechazar"><mat-icon>cancel</mat-icon> Rechazar</button>
-              <button mat-flat-button color="primary" (click)="onAprobar()" data-testid="btn-aprobar"><mat-icon>check_circle</mat-icon> Aprobar</button>
+              <button
+                mat-flat-button
+                color="primary"
+                (click)="onAprobar()"
+                data-testid="btn-aprobar"
+                [disabled]="alertasPendientes().length > 0"
+                [matTooltip]="alertasPendientes().length > 0 ? 'Hay ' + alertasPendientes().length + ' alerta(s) sin confirmar' : ''">
+                <mat-icon>check_circle</mat-icon> Aprobar
+              </button>
             }
             @if (closure()!.estado === 'Aprobado' || closure()!.estado === 'Exportado') {
               <button mat-stroked-button (click)="onExportInnuva()" data-testid="btn-export-innuva"><mat-icon>download</mat-icon> A3 Innuva</button>
@@ -83,6 +93,49 @@ import { RejectDialogComponent } from './reject-dialog.component';
             </mat-card-content>
           </mat-card>
         </div>
+
+        <!-- Alertas -->
+        @if (closure()!.alertas && closure()!.alertas.length > 0) {
+          <mat-card style="margin-bottom: 16px; border-left: 4px solid var(--sig-warning);">
+            <mat-card-header>
+              <mat-card-title style="display: flex; align-items: center; gap: 8px;">
+                <mat-icon style="color: var(--sig-warning);">warning</mat-icon>
+                Alertas ({{ closure()!.alertas.length }})
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                @for (alerta of closure()!.alertas; track alerta.id) {
+                  <div style="padding: 12px; border: 1px solid var(--mat-sys-outline-variant); border-radius: 4px; background: var(--mat-sys-surface-dim);">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      @if (alerta.tipo === 'Bloqueante') {
+                        <mat-chip [style.backgroundColor]="'#f44336'" [style.color]="'white'">BLOQUEANTE</mat-chip>
+                      } @else {
+                        <mat-chip [style.backgroundColor]="'#ff9800'" [style.color]="'white'">ADVERTENCIA</mat-chip>
+                      }
+                      <span style="flex: 1; font-weight: 500;">{{ alerta.descripcion }}</span>
+                      @if (alerta.confirmada) {
+                        <mat-icon style="color: var(--sig-success); font-size: 20px; height: 20px; width: 20px;" title="Confirmada">check_circle</mat-icon>
+                      }
+                    </div>
+                    <div style="font-size: 12px; color: var(--mat-sys-on-surface-variant); margin-bottom: 8px;">
+                      <strong>Código:</strong> {{ alerta.codigo }}
+                    </div>
+                    @if (alerta.detalle) {
+                      <details style="font-size: 12px; color: var(--mat-sys-on-surface-variant); margin-bottom: 8px;">
+                        <summary style="cursor: pointer; user-select: none;">Detalles técnicos</summary>
+                        <pre style="margin-top: 4px; white-space: pre-wrap; word-break: break-word;">{{ alerta.detalle }}</pre>
+                      </details>
+                    }
+                    @if (alerta.tipo === 'Advertencia' && !alerta.confirmada) {
+                      <button mat-stroked-button (click)="onConfirmarAlerta(alerta.id)" style="font-size: 12px;">Confirmar advertencia</button>
+                    }
+                  </div>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
 
         <!-- Líneas -->
         <mat-card style="margin-bottom: 16px;">
@@ -160,9 +213,14 @@ export class ClosureDetailComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly lineCols = ['concepto', 'tipo', 'usuario', 'importe', 'incidencia', 'acciones'];
 
+  protected readonly alertasPendientes = computed(() => {
+    const c = this.closure();
+    return c?.alertas.filter(a => !a.confirmada) ?? [];
+  });
+
   protected readonly canRecalculate = computed(() => {
     const c = this.closure();
-    return !!c && (c.estado === 'Borrador' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager');
+    return !!c && (c.estado === 'Borrador' || c.estado === 'En aprobación' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager');
   });
 
   protected readonly canApprove = computed(() => {
@@ -249,6 +307,17 @@ export class ClosureDetailComponent implements OnInit {
     this.exportSvc.exportA3Erp(c.id).subscribe({
       next: (resp) => { this.exportSvc.saveAttachment(resp, `A3ERP_${c.id}.xlsx`); this.notify.success('Export A3 ERP descargado'); },
       error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo exportar'),
+    });
+  }
+
+  protected onConfirmarAlerta(alertaId: number): void {
+    const c = this.closure(); if (!c) return;
+    this.closureSvc.confirmarAlerta(c.id, alertaId).subscribe({
+      next: (updated) => {
+        this.closure.set(updated);
+        this.notify.success('Advertencia confirmada');
+      },
+      error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo confirmar la advertencia'),
     });
   }
 }

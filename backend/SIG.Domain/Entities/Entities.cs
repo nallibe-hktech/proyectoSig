@@ -314,6 +314,23 @@ public class ApprovalHistory
     public DateTime Timestamp { get; set; }
 }
 
+public class ClosureAlerta : IAuditable
+{
+    public int Id { get; set; }
+    public int ClosureId { get; set; }
+    public Closure Closure { get; set; } = null!;
+    public TipoAlerta Tipo { get; set; }
+    public string Codigo { get; set; } = null!;
+    public string Descripcion { get; set; } = null!;
+    public string? Detalle { get; set; }
+    public bool Confirmada { get; set; }
+    public int? ConfirmadaPorUserId { get; set; }
+    public User? ConfirmadaPor { get; set; }
+    public DateTime? FechaConfirmacion { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 public class AuditLog
 {
     public long Id { get; set; }

@@ -3,7 +3,7 @@ using SIG.Domain.Enums;
 namespace SIG.Application.DTOs;
 
 public record ClosureListItemDto(int Id, int ProjectId, string ProjectNombre, int PeriodId, string PeriodNombre, decimal CosteTotal, decimal FacturacionTotal, decimal Margen, EstadoClosure Estado, ApprovalStep PasoActual);
-public record ClosureDetailDto(int Id, int ProjectId, string ProjectNombre, int PeriodId, string PeriodNombre, decimal CosteTotal, decimal FacturacionTotal, decimal Margen, EstadoClosure Estado, ApprovalStep PasoActual, string? Comentarios, uint RowVersion, ClosureLineDto[] Lines, ApprovalDto[] Approvals);
+public record ClosureDetailDto(int Id, int ProjectId, string ProjectNombre, int PeriodId, string PeriodNombre, decimal CosteTotal, decimal FacturacionTotal, decimal Margen, EstadoClosure Estado, ApprovalStep PasoActual, string? Comentarios, uint RowVersion, ClosureLineDto[] Lines, ApprovalDto[] Approvals, ClosureAlertaDto[] Alertas);
 public record ClosureLineDto(
     int Id,
     int ConceptId,
@@ -28,3 +28,14 @@ public record ApprovalPanelItemDto(int ClosureId, int ProjectId, string ProjectN
 public record ApprovalHistoryDto(int Id, int ClosureId, int UserId, string UserNombre, ApprovalStep PasoOrigen, ApprovalStep PasoDestino, string Accion, string? Motivo, DateTime Timestamp);
 public record BatchApproveRequest(int[] Ids);
 public record BatchRejectRequest(int[] Ids);
+
+public record ClosureAlertaDto(
+    int Id,
+    TipoAlerta Tipo,
+    string Codigo,
+    string Descripcion,
+    string? Detalle,
+    bool Confirmada,
+    string? ConfirmadaPorNombre,
+    DateTime? FechaConfirmacion
+);

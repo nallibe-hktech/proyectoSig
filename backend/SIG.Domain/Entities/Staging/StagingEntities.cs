@@ -83,7 +83,7 @@ public class StagingPayHawkGasto : IStagingRow
     public int Id { get; set; }
     public string GastoIdExterno { get; set; } = null!;
     public int UserId { get; set; }
-    public int ProjectId { get; set; }
+    public int? ProjectId { get; set; }
     public DateOnly Fecha { get; set; }
     public decimal Importe { get; set; }
     public string Categoria { get; set; } = null!;
@@ -368,6 +368,25 @@ public class StagingMediapostRecepcion : IStagingRow
     public string Estado { get; set; } = null!;
     public string? Almacen { get; set; }
     public string? Observaciones { get; set; }
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+// A3 INNUVA - Contratos de empleados (ERP)
+public class StagingA3InnuvaContrato : IStagingRow
+{
+    public int Id { get; set; }
+    public string ContratoIdExterno { get; set; } = null!;
+    public string NIF { get; set; } = null!;
+    public DateTime FechaInicio { get; set; }
+    public DateTime FechaFin { get; set; }
+    public decimal ImporteBruto { get; set; }
+    public int? UserId { get; set; }
+    public User? User { get; set; }
     // IStagingRow
     public string PayloadJson { get; set; } = null!;
     public string Hash { get; set; } = null!;

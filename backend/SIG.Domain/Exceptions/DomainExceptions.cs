@@ -83,3 +83,15 @@ public sealed class UnauthorizedException : DomainException
     public override int HttpStatusCode => 401;
     public UnauthorizedException(string detalle = "Credenciales inválidas") : base(detalle) { }
 }
+
+public sealed class ClosureAlertasBlockingException : DomainException
+{
+    public override string Code => "closure_alertas_blocking";
+    public override int HttpStatusCode => 409;
+    public IReadOnlyList<string> AlertasCodigos { get; }
+    public ClosureAlertasBlockingException(IReadOnlyList<string> codigos)
+        : base($"El cierre tiene {codigos.Count} alerta(s) bloqueante(s) pendientes de resolver.")
+    {
+        AlertasCodigos = codigos;
+    }
+}
