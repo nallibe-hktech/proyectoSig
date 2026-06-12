@@ -46,8 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
-        services.AddScoped<IProjectRepository, ProjectRepository>();
-        services.AddScoped<IActionRepository, ActionRepository>();
+        services.AddScoped<IServiceRepository, ServiceRepository>();
         services.AddScoped<IConceptRepository, ConceptRepository>();
         services.AddScoped<IVariableRepository, VariableRepository>();
         services.AddScoped<IPeriodRepository, PeriodRepository>();
@@ -60,8 +59,8 @@ public static class DependencyInjection
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<ICostCenterRepository, CostCenterRepository>();
         services.AddScoped<ICeleroMappingRepository, CeleroMappingRepository>();
-        services.AddScoped<ITarifaProyectoRepository, TarifaProyectoRepository>();
-        services.AddScoped<IPresupuestoProyectoRepository, PresupuestoProyectoRepository>();
+        services.AddScoped<ITarifaServicioRepository, TarifaServicioRepository>();
+        services.AddScoped<IPresupuestoServicioRepository, PresupuestoServicioRepository>();
         services.AddScoped<IClosureAlertaRepository, ClosureAlertaRepository>();
         services.AddScoped<IStagingA3InnuvaContratoRepository, StagingA3InnuvaContratoRepository>();
         services.AddScoped(typeof(IStagingRepository<>), typeof(StagingRepository<>));
@@ -72,8 +71,7 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IClientService, ClientService>();
-        services.AddScoped<IProjectService, ProjectService>();
-        services.AddScoped<IActionService, ActionService>();
+        services.AddScoped<IServiceService, ServiceService>();
         services.AddScoped<IConceptService, ConceptService>();
         services.AddScoped<IVariableService, VariableService>();
         services.AddScoped<IUserService, UserService>();
@@ -81,8 +79,8 @@ public static class DependencyInjection
         services.AddScoped<IDepartmentService, DepartmentService>();
         services.AddScoped<ICostCenterService, CostCenterService>();
         services.AddScoped<IPeriodService, PeriodService>();
-        services.AddScoped<ITarifaProyectoService, TarifaProyectoService>();
-        services.AddScoped<IPresupuestoProyectoService, PresupuestoProyectoService>();
+        services.AddScoped<ITarifaServicioService, TarifaServicioService>();
+        services.AddScoped<IPresupuestoServicioService, PresupuestoServicioService>();
         services.AddScoped<IClosureService, ClosureService>();
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IClosureValidationService, ClosureValidationService>();
@@ -123,10 +121,7 @@ public static class DependencyInjection
             var celeroConnStr = config.GetConnectionString("Celero")
                               ?? throw new InvalidOperationException("ConnectionStrings:Celero no configurada");
             services.AddScoped<ICeleroClient>(sp =>
-                new CeleroPostgresClient(celeroConnStr,
-                    sp.GetRequiredService<IUserRepository>(),
-                    sp.GetRequiredService<IProjectRepository>(),
-                    sp.GetRequiredService<IActionRepository>()));
+                new CeleroPostgresClient(celeroConnStr));
 
             // Bizneo
             var bizneoUrl = config["Integrations:Bizneo:BaseUrl"]

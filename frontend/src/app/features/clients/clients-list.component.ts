@@ -60,7 +60,7 @@ import { exportCSV } from '../../core/api/api.helpers';
             <sig-empty-state
               icon="groups"
               title="No hay clientes todavía"
-              description="Crea el primer cliente para empezar a gestionar proyectos y cierres."
+              description="Crea el primer cliente para empezar a gestionar servicios y cierres."
               ctaLabel="Crear primer client"
               [hasFilter]="!!search.value"
               (ctaClick)="onEmptyCta()"
@@ -79,9 +79,9 @@ import { exportCSV } from '../../core/api/api.helpers';
                 <th mat-header-cell *matHeaderCellDef>Ciudad</th>
                 <td mat-cell *matCellDef="let row">{{ row.ciudad ?? '—' }}</td>
               </ng-container>
-              <ng-container matColumnDef="projectCount">
-                <th mat-header-cell *matHeaderCellDef>Proyectos</th>
-                <td mat-cell *matCellDef="let row" class="mono-num">{{ row.projectCount }}</td>
+              <ng-container matColumnDef="serviceCount">
+                <th mat-header-cell *matHeaderCellDef>Servicios</th>
+                <td mat-cell *matCellDef="let row" class="mono-num">{{ row.serviceCount }}</td>
               </ng-container>
               <ng-container matColumnDef="acciones">
                 <th mat-header-cell *matHeaderCellDef style="text-align: right;">Acciones</th>
@@ -138,7 +138,7 @@ export class ClientsListComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly search = new FormControl<string>('', { nonNullable: true });
 
-  protected readonly displayedColumns = ['nombre', 'nif', 'ciudad', 'projectCount', 'acciones'];
+  protected readonly displayedColumns = ['nombre', 'nif', 'ciudad', 'serviceCount', 'acciones'];
 
   ngOnInit(): void {
     this.search.valueChanges
@@ -170,7 +170,7 @@ export class ClientsListComponent implements OnInit {
         title: 'Eliminar Client',
         message: 'Estás a punto de eliminar este cliente.',
         entityName: row.nombre,
-        dependencies: row.projectCount > 0 ? [{ label: 'Proyectos', count: row.projectCount }] : undefined,
+        dependencies: row.serviceCount > 0 ? [{ label: 'Servicios', count: row.serviceCount }] : undefined,
         destructive: true,
       },
       minWidth: 480,
@@ -185,7 +185,7 @@ export class ClientsListComponent implements OnInit {
 
   protected onExportCSV(): void {
     exportCSV('clients.csv', this.items().map((c) => ({
-      Id: c.id, Nombre: c.nombre, NIF: c.nif, Ciudad: c.ciudad ?? '', Proyectos: c.projectCount,
+      Id: c.id, Nombre: c.nombre, NIF: c.nif, Ciudad: c.ciudad ?? '', Servicios: c.serviceCount,
     })));
   }
 

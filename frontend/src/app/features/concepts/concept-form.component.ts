@@ -97,7 +97,7 @@ export class ConceptFormComponent implements OnInit {
     fechaHasta: [null as Date | null],
   });
   private formulaJson = '{}';
-  private actionIds: number[] = [];
+  private serviceIds: number[] = [];
   private userIds: number[] = [];
 
   ngOnInit(): void {
@@ -114,7 +114,7 @@ export class ConceptFormComponent implements OnInit {
             fechaHasta: c.fechaHasta ? new Date(c.fechaHasta) : null,
           });
           this.formulaJson = c.formulaJson;
-          this.actionIds = c.actionIds;
+          this.serviceIds = c.serviceIds;
           this.userIds = c.userIds;
           this.loading.set(false);
         },
@@ -131,7 +131,7 @@ export class ConceptFormComponent implements OnInit {
       nombre: v.nombre, tipo: v.tipo,
       fechaDesde: v.fechaDesde.toISOString().slice(0, 10),
       fechaHasta: v.fechaHasta ? v.fechaHasta.toISOString().slice(0, 10) : null,
-      formulaJson: this.formulaJson, actionIds: this.actionIds, userIds: this.userIds,
+      formulaJson: this.formulaJson, serviceIds: this.serviceIds, userIds: this.userIds,
     };
     this.submitting.set(true);
     const obs = this.isEdit() ? this.conceptSvc.update(this.id()!, payload) : this.conceptSvc.create(payload);

@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SIG.Domain.Entities;
 using SIG.Domain.Entities.Staging;
-using Action = SIG.Domain.Entities.Action;
 
 namespace SIG.Infrastructure.Persistence.Configurations;
 
@@ -79,67 +78,47 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
     }
 }
 
-public class ProjectConfiguration : IEntityTypeConfiguration<Project>
+public class ServiceConfiguration : IEntityTypeConfiguration<Service>
 {
-    public void Configure(EntityTypeBuilder<Project> b)
-    {
-        b.Property(p => p.Nombre).HasMaxLength(200).IsRequired();
-        b.Property(p => p.Estado).HasConversion<string>().HasMaxLength(20);
-        b.HasOne(p => p.Client).WithMany(c => c.Projects).HasForeignKey(p => p.ClientId).OnDelete(DeleteBehavior.Restrict);
-        b.HasQueryFilter(p => !p.IsDeleted);
-    }
-}
-
-public class ProjectCostCenterConfiguration : IEntityTypeConfiguration<ProjectCostCenter>
-{
-    public void Configure(EntityTypeBuilder<ProjectCostCenter> b)
-    {
-        b.HasKey(x => new { x.ProjectId, x.CostCenterId });
-        b.HasOne(x => x.Project).WithMany(p => p.ProjectCostCenters).HasForeignKey(x => x.ProjectId);
-        b.HasOne(x => x.CostCenter).WithMany(c => c.ProjectCostCenters).HasForeignKey(x => x.CostCenterId);
-    }
-}
-
-public class ProjectUserConfiguration : IEntityTypeConfiguration<ProjectUser>
-{
-    public void Configure(EntityTypeBuilder<ProjectUser> b)
-    {
-        b.HasKey(x => new { x.ProjectId, x.UserId });
-        b.HasOne(x => x.Project).WithMany(p => p.ProjectUsers).HasForeignKey(x => x.ProjectId);
-        b.HasOne(x => x.User).WithMany(u => u.ProjectUsers).HasForeignKey(x => x.UserId);
-    }
-}
-
-public class ActionConfiguration : IEntityTypeConfiguration<Action>
-{
-    public void Configure(EntityTypeBuilder<Action> b)
+    public void Configure(EntityTypeBuilder<Service> b)
     {
         b.Property(a => a.Nombre).HasMaxLength(200).IsRequired();
         b.Property(a => a.Estado).HasConversion<string>().HasMaxLength(20);
-        b.HasOne(a => a.Project).WithMany(p => p.Actions).HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne(a => a.Client).WithMany().HasForeignKey(a => a.ClientId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(a => a.Client).WithMany(c => c.Services).HasForeignKey(a => a.ClientId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(a => a.Department).WithMany().HasForeignKey(a => a.DepartmentId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(a => a.ClientId);
+        b.HasIndex(a => a.DepartmentId);
         b.HasQueryFilter(a => !a.IsDeleted);
     }
 }
 
-public class ActionConceptConfiguration : IEntityTypeConfiguration<ActionConcept>
+public class ServiceConceptConfiguration : IEntityTypeConfiguration<ServiceConcept>
 {
-    public void Configure(EntityTypeBuilder<ActionConcept> b)
+    public void Configure(EntityTypeBuilder<ServiceConcept> b)
     {
-        b.HasKey(x => new { x.ActionId, x.ConceptId });
-        b.HasOne(x => x.Action).WithMany(a => a.ActionConcepts).HasForeignKey(x => x.ActionId);
-        b.HasOne(x => x.Concept).WithMany(c => c.ActionConcepts).HasForeignKey(x => x.ConceptId);
+        b.HasKey(x => new { x.ServiceId, x.ConceptId });
+        b.HasOne(x => x.Service).WithMany(a => a.ServiceConcepts).HasForeignKey(x => x.ServiceId);
+        b.HasOne(x => x.Concept).WithMany(c => c.ServiceConcepts).HasForeignKey(x => x.ConceptId);
     }
 }
 
-public class ActionUserConfiguration : IEntityTypeConfiguration<ActionUser>
+public class ServiceUserConfiguration : IEntityTypeConfiguration<ServiceUser>
 {
-    public void Configure(EntityTypeBuilder<ActionUser> b)
+    public void Configure(EntityTypeBuilder<ServiceUser> b)
     {
-        b.HasKey(x => new { x.ActionId, x.UserId });
-        b.HasOne(x => x.Action).WithMany(a => a.ActionUsers).HasForeignKey(x => x.ActionId);
-        b.HasOne(x => x.User).WithMany(u => u.ActionUsers).HasForeignKey(x => x.UserId);
+        b.HasKey(x => new { x.ServiceId, x.UserId });
+        b.HasOne(x => x.Service).WithMany(a => a.ServiceUsers).HasForeignKey(x => x.ServiceId);
+        b.HasOne(x => x.User).WithMany(u => u.ServiceUsers).HasForeignKey(x => x.UserId);
+    }
+}
+
+public class ServiceCostCenterConfiguration : IEntityTypeConfiguration<ServiceCostCenter>
+{
+    public void Configure(EntityTypeBuilder<ServiceCostCenter> b)
+    {
+        b.HasKey(x => new { x.ServiceId, x.CostCenterId });
+        b.HasOne(x => x.Service).WithMany(a => a.ServiceCostCenters).HasForeignKey(x => x.ServiceId);
+        b.HasOne(x => x.CostCenter).WithMany(c => c.ServiceCostCenters).HasForeignKey(x => x.CostCenterId);
     }
 }
 
@@ -151,11 +130,11 @@ public class ConceptConfiguration : IEntityTypeConfiguration<Concept>
         b.Property(c => c.Tipo).HasConversion<string>().HasMaxLength(20);
         b.Property(c => c.FormulaJson).HasColumnType("jsonb").IsRequired();
         b.Property(c => c.ColumnaA3).HasMaxLength(50);
-        b.HasOne(c => c.Project)
+        b.HasOne(c => c.Service)
             .WithMany()
-            .HasForeignKey(c => c.ProjectId)
+            .HasForeignKey(c => c.ServiceId)
             .OnDelete(DeleteBehavior.SetNull);
-        b.HasIndex(c => c.ProjectId);
+        b.HasIndex(c => c.ServiceId);
         b.HasQueryFilter(c => !c.IsDeleted);
     }
 }
@@ -170,38 +149,38 @@ public class ConceptUserConfiguration : IEntityTypeConfiguration<ConceptUser>
     }
 }
 
-public class TarifaProyectoConfiguration : IEntityTypeConfiguration<TarifaProyecto>
+public class TarifaServicioConfiguration : IEntityTypeConfiguration<TarifaServicio>
 {
-    public void Configure(EntityTypeBuilder<TarifaProyecto> b)
+    public void Configure(EntityTypeBuilder<TarifaServicio> b)
     {
         b.Property(t => t.Nombre).HasMaxLength(200).IsRequired();
         b.Property(t => t.Valor).HasPrecision(18, 4);
         b.Property(t => t.Unidad).HasMaxLength(50);
-        b.HasOne(t => t.Project)
+        b.HasOne(t => t.Service)
             .WithMany()
-            .HasForeignKey(t => t.ProjectId)
+            .HasForeignKey(t => t.ServiceId)
             .OnDelete(DeleteBehavior.Cascade);
-        b.HasIndex(t => t.ProjectId);
+        b.HasIndex(t => t.ServiceId);
         b.HasQueryFilter(t => !t.IsDeleted);
     }
 }
 
-public class PresupuestoProyectoConfiguration : IEntityTypeConfiguration<PresupuestoProyecto>
+public class PresupuestoServicioConfiguration : IEntityTypeConfiguration<PresupuestoServicio>
 {
-    public void Configure(EntityTypeBuilder<PresupuestoProyecto> b)
+    public void Configure(EntityTypeBuilder<PresupuestoServicio> b)
     {
         b.Property(p => p.Importe).HasPrecision(18, 4);
         b.Property(p => p.Descripcion).HasMaxLength(500);
         b.Property(p => p.Tipo).HasConversion<string>().HasMaxLength(20);
-        b.HasOne(p => p.Project)
+        b.HasOne(p => p.Service)
             .WithMany()
-            .HasForeignKey(p => p.ProjectId)
+            .HasForeignKey(p => p.ServiceId)
             .OnDelete(DeleteBehavior.Cascade);
         b.HasOne(p => p.Period)
             .WithMany()
             .HasForeignKey(p => p.PeriodId)
             .OnDelete(DeleteBehavior.SetNull);
-        b.HasIndex(p => new { p.ProjectId, p.PeriodId });
+        b.HasIndex(p => new { p.ServiceId, p.PeriodId });
         b.HasQueryFilter(p => !p.IsDeleted);
     }
 }
@@ -231,7 +210,7 @@ public class ClosureConfiguration : IEntityTypeConfiguration<Closure>
 {
     public void Configure(EntityTypeBuilder<Closure> b)
     {
-        b.HasIndex(c => new { c.ProjectId, c.PeriodId }).IsUnique();
+        b.HasIndex(c => new { c.ServiceId, c.PeriodId }).IsUnique();
         b.Property(c => c.CosteTotal).HasPrecision(18, 4);
         b.Property(c => c.FacturacionTotal).HasPrecision(18, 4);
         b.Property(c => c.Margen).HasPrecision(18, 4);
@@ -244,7 +223,7 @@ public class ClosureConfiguration : IEntityTypeConfiguration<Closure>
             .HasColumnType("xid")
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
-        b.HasOne(c => c.Project).WithMany(p => p.Closures).HasForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(c => c.Service).WithMany(p => p.Closures).HasForeignKey(c => c.ServiceId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(c => c.Period).WithMany(p => p.Closures).HasForeignKey(c => c.PeriodId).OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -418,7 +397,7 @@ public class CeleroServiceMappingConfiguration : IEntityTypeConfiguration<Celero
         b.HasIndex(m => m.CeleroServiceName).IsUnique();
         b.Property(m => m.CeleroServiceName).HasMaxLength(300).IsRequired();
         b.Property(m => m.Descripcion).HasMaxLength(500);
-        b.HasOne(m => m.Project).WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(m => m.Service).WithMany().HasForeignKey(m => m.ServiceId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -429,7 +408,7 @@ public class CeleroMissionMappingConfiguration : IEntityTypeConfiguration<Celero
         b.HasIndex(m => m.CeleroMissionName).IsUnique();
         b.Property(m => m.CeleroMissionName).HasMaxLength(300).IsRequired();
         b.Property(m => m.Descripcion).HasMaxLength(500);
-        b.HasOne(m => m.Action).WithMany().HasForeignKey(m => m.ActionId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(m => m.Service).WithMany().HasForeignKey(m => m.ServiceId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

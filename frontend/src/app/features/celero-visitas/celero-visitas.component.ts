@@ -24,8 +24,7 @@ interface CeleroVisita {
   missionName: string;
   fecha: string;
   userId?: number;
-  projectId?: number;
-  actionId?: number;
+  serviceId?: number;
   notas?: string;
   estadoMapeo?: string;
 }
@@ -90,9 +89,9 @@ interface SelectOption {
             <td mat-cell *matCellDef="let v">{{ getUserName(v.userId) || '—' }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="proyecto">
-            <th mat-header-cell *matHeaderCellDef>Proyecto</th>
-            <td mat-cell *matCellDef="let v">{{ getProjectName(v.projectId) || '—' }}</td>
+          <ng-container matColumnDef="servicio">
+            <th mat-header-cell *matHeaderCellDef>Servicio</th>
+            <td mat-cell *matCellDef="let v">{{ getServiceName(v.serviceId) || '—' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="notas">
@@ -155,10 +154,10 @@ export class CeleroVisitasComponent {
   pageSize = signal(25);
   loading = signal(false);
 
-  displayedColumns = ['fecha', 'resourceNif', 'serviceName', 'usuario', 'proyecto', 'notas', 'acciones'];
+  displayedColumns = ['fecha', 'resourceNif', 'serviceName', 'usuario', 'servicio', 'notas', 'acciones'];
 
   usuarios = signal<SelectOption[]>([]);
-  proyectos = signal<SelectOption[]>([]);
+  servicios = signal<SelectOption[]>([]);
 
   ngOnInit() {
     this.cargarRefData();
@@ -170,9 +169,9 @@ export class CeleroVisitasComponent {
       res => this.usuarios.set(res.items || []),
       () => this.notify.error('Error cargando usuarios')
     );
-    this.http.get<any>('/api/projects').subscribe(
-      res => this.proyectos.set(res.items || []),
-      () => this.notify.error('Error cargando proyectos')
+    this.http.get<any>('/api/services').subscribe(
+      res => this.servicios.set(res.items || []),
+      () => this.notify.error('Error cargando servicios')
     );
   }
 
@@ -216,7 +215,7 @@ export class CeleroVisitasComponent {
 
   editarVisita(visita: CeleroVisita) {
     this.dialog.open(CeleroVisitasEditComponent, {
-      data: { visita, usuarios: this.usuarios(), proyectos: this.proyectos() },
+      data: { visita, usuarios: this.usuarios(), servicios: this.servicios() },
       width: '600px'
     }).afterClosed().subscribe(result => {
       if (result) this.cargarVisitas();
@@ -228,9 +227,9 @@ export class CeleroVisitasComponent {
     return this.usuarios().find(u => u.id === userId)?.nombre;
   }
 
-  getProjectName(projectId?: number) {
-    if (!projectId) return null;
-    return this.proyectos().find(p => p.id === projectId)?.nombre;
+  getServiceName(serviceId?: number) {
+    if (!serviceId) return null;
+    return this.servicios().find(p => p.id === serviceId)?.nombre;
   }
 
   irAMapeos() {
@@ -256,10 +255,10 @@ export class CeleroVisitasComponent {
         </mat-form-field>
 
         <mat-form-field fullWidth>
-          <mat-label>Proyecto</mat-label>
-          <mat-select formControlName="projectId">
+          <mat-label>Servicio</mat-label>
+          <mat-select formControlName="serviceId">
             <mat-option [value]="null">— Sin asignar —</mat-option>
-            <mat-option *ngFor="let p of proyectos" [value]="p.id">{{ p.nombre }}</mat-option>
+            <mat-option *ngFor="let p of servicios" [value]="p.id">{{ p.nombre }}</mat-option>
           </mat-select>
         </mat-form-field>
 
@@ -283,16 +282,16 @@ export class CeleroVisitasEditComponent {
 
   data = inject(MAT_DIALOG_DATA);
   usuarios: SelectOption[] = [];
-  proyectos: SelectOption[] = [];
+  servicios: SelectOption[] = [];
   form: FormGroup = new FormGroup({});
 
   ngOnInit() {
     this.usuarios = this.data.usuarios;
-    this.proyectos = this.data.proyectos;
+    this.servicios = this.data.servicios;
     const v = this.data.visita;
     this.form = this.fb.group({
       userId: [v.userId],
-      projectId: [v.projectId],
+      serviceId: [v.serviceId],
       notas: [v.notas]
     });
   }

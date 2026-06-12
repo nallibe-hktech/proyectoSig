@@ -11,11 +11,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ClosureService } from '../../core/api/closures.service';
-import { ProjectService } from '../../core/api/projects.service';
+import { ServiceService } from '../../core/api/services.service';
 import { PeriodService } from '../../core/api/periods.service';
 import { NotifyService } from '../../core/notify.service';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
-import { ProjectListItemDto, PeriodDto } from '../../models/dtos';
+import { ServiceListItemDto, PeriodDto } from '../../models/dtos';
 
 @Component({
   selector: 'app-closure-form',
@@ -32,12 +32,12 @@ import { ProjectListItemDto, PeriodDto } from '../../models/dtos';
       <mat-card><mat-card-content>
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <p style="font-size: 14px; color: var(--mat-sys-on-surface-variant);">
-            Selecciona el proyecto y el período. Tras crear el cierre, el motor calculará automáticamente todas las líneas.
+            Selecciona el servicio y el período. Tras crear el cierre, el motor calculará automáticamente todas las líneas.
           </p>
           <div class="sig-form-row">
-            <mat-form-field class="sig-form-field"><mat-label>Proyecto *</mat-label>
-              <mat-select formControlName="projectId" data-testid="select-proyecto">
-                @for (p of projects(); track p.id) { <mat-option [value]="p.id">{{ p.nombre }} ({{ p.clientNombre }})</mat-option> }
+            <mat-form-field class="sig-form-field"><mat-label>Servicio *</mat-label>
+              <mat-select formControlName="serviceId" data-testid="select-servicio">
+                @for (p of services(); track p.id) { <mat-option [value]="p.id">{{ p.nombre }} ({{ p.clientNombre }})</mat-option> }
               </mat-select>
             </mat-form-field>
             <mat-form-field class="sig-form-field"><mat-label>Período *</mat-label>
@@ -72,27 +72,27 @@ import { ProjectListItemDto, PeriodDto } from '../../models/dtos';
 export class ClosureFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly closureSvc = inject(ClosureService);
-  private readonly projectSvc = inject(ProjectService);
+  private readonly serviceSvc = inject(ServiceService);
   private readonly periodSvc = inject(PeriodService);
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
 
-  protected readonly projects = signal<ProjectListItemDto[]>([]);
+  protected readonly services = signal<ServiceListItemDto[]>([]);
   protected readonly periodos = signal<PeriodDto[]>([]);
   protected readonly submitting = signal(false);
 
   protected readonly form = this.fb.nonNullable.group({
-    projectId: [0 as number, [Validators.required, Validators.min(1)]],
+    serviceId: [0 as number, [Validators.required, Validators.min(1)]],
     periodId: [0 as number, [Validators.required, Validators.min(1)]],
     comentarios: [''],
   });
 
   ngOnInit(): void {
     forkJoin({
-      projects: this.projectSvc.list(1, 100),
+      services: this.serviceSvc.list(1, 100),
       periodos: this.periodSvc.list(),
     }).subscribe({
-      next: (r) => { this.projects.set(r.projects.items); this.periodos.set(r.periodos); },
+      next: (r) => { this.services.set(r.services.items); this.periodos.set(r.periodos); },
       error: () => {},
     });
   }
@@ -102,7 +102,7 @@ export class ClosureFormComponent implements OnInit {
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
     this.submitting.set(true);
-    this.closureSvc.create({ projectId: v.projectId, periodId: v.periodId, comentarios: v.comentarios || null }).subscribe({
+    this.closureSvc.create({ serviceId: v.serviceId, periodId: v.periodId, comentarios: v.comentarios || null }).subscribe({
       next: (c) => { this.submitting.set(false); this.notify.success('Cierre creado'); void this.router.navigate(['/closures', c.id]); },
       error: (err) => { this.submitting.set(false); this.notify.error(err?.error?.title ?? 'No se pudo crear el cierre'); },
     });

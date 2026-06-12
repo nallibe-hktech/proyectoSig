@@ -78,7 +78,7 @@ interface FlujoStep { nombre: string; estado: 'ok' | 'pending' | 'idle'; }
                 <th style="width:32px"></th>
                 <th>PERIODO</th>
                 <th>CLIENTE</th>
-                <th>PROYECTO</th>
+                <th>SERVICIO</th>
                 <th>COSTE</th>
                 <th>FACTURACION</th>
                 <th>MARGEN</th>
@@ -194,7 +194,7 @@ interface FlujoStep { nombre: string; estado: 'ok' | 'pending' | 'idle'; }
           </div>
           <table class="sig-aprobados-table">
             <thead>
-              <tr><th>Periodo</th><th>Proyecto</th><th>Aprobado por</th></tr>
+              <tr><th>Periodo</th><th>Servicio</th><th>Aprobado por</th></tr>
             </thead>
             <tbody>
               @for (r of aprobados; track r.proyecto) {

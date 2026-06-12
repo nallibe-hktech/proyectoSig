@@ -15,8 +15,7 @@ public class StagingCeleroVisita : IStagingRow
 
     // IDs resueltos (nullable si no hay coincidencia)
     public int? UserId { get; set; }
-    public int? ProjectId { get; set; }
-    public int? ActionId { get; set; }
+    public int? ServiceId { get; set; }   // antes ActionId+ProjectId: la visita resuelve a un Servicio
 
     // Mapeos y anotaciones locales (enriquecimiento de datos)
     public string? Notas { get; set; }
@@ -52,7 +51,7 @@ public class StagingBizneoAbsence : IStagingRow
     public int Id { get; set; }
     public string RegistroIdExterno { get; set; } = null!;
     public int UserId { get; set; }
-    public int ProjectId { get; set; }
+    public int ServiceId { get; set; }
     public DateOnly Fecha { get; set; }
     public decimal Horas { get; set; }
     public string PayloadJson { get; set; } = null!;
@@ -83,7 +82,7 @@ public class StagingPayHawkGasto : IStagingRow
     public int Id { get; set; }
     public string GastoIdExterno { get; set; } = null!;
     public int UserId { get; set; }
-    public int? ProjectId { get; set; }
+    public int? ServiceId { get; set; }
     public DateOnly Fecha { get; set; }
     public decimal Importe { get; set; }
     public string Categoria { get; set; } = null!;
@@ -110,8 +109,8 @@ public class CeleroServiceMapping : IAuditable
 {
     public int Id { get; set; }
     public string CeleroServiceName { get; set; } = null!;
-    public int ProjectId { get; set; }
-    public Project Project { get; set; } = null!;
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
     public string? Descripcion { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -121,8 +120,8 @@ public class CeleroMissionMapping : IAuditable
 {
     public int Id { get; set; }
     public string CeleroMissionName { get; set; } = null!;
-    public int ActionId { get; set; }
-    public Action Action { get; set; } = null!;
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
     public string? Descripcion { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -143,7 +142,7 @@ public class StagingSgpvVisita : IStagingRow
 
     // IDs resueltos
     public int? UserId { get; set; }
-    public int? ProjectId { get; set; }
+    public int? ServiceId { get; set; }
 
     // Auditoría y control
     public string PayloadJson { get; set; } = null!;
@@ -256,8 +255,8 @@ public class StagingIntratimeExpense : IStagingRow
     public decimal Cantidad { get; set; }                  // INOUT_AMOUNT (en centavos, dividir por 100)
     public string NombreExpense { get; set; } = null!;     // INOUT_EXPENSE_NAME (ej: "Comidas")
     public string? Descripcion { get; set; }               // INOUT_COMMENTS
-    public string? ProyectoNombre { get; set; }            // INOUT_PROJECT_NAME (fallback si no hay ProjectId)
-    public int? ProjectId { get; set; }                    // Resuelto del nombre del proyecto
+    public string? ProyectoNombre { get; set; }            // INOUT_PROJECT_NAME (fallback si no hay ServiceId)
+    public int? ServiceId { get; set; }                    // Resuelto del nombre del servicio
     // IStagingRow
     public string PayloadJson { get; set; } = null!;
     public string Hash { get; set; } = null!;

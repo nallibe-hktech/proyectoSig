@@ -22,9 +22,9 @@ public class OwnershipTests : IntegrationTestBase
     public async Task PmAlpha_NoVeProyectosDeBeta_DevuelveListaSoloAlpha()
     {
         var alphaPm = await CreateAuthenticatedClientAsync("pm.alpha@sig.local");
-        var resp = await alphaPm.GetAsync("/api/projects?page=1&pageSize=100");
+        var resp = await alphaPm.GetAsync("/api/services?page=1&pageSize=100");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var list = await ReadJsonAsync<PagedResult<ProjectListItemDto>>(resp);
+        var list = await ReadJsonAsync<PagedResult<ServiceListItemDto>>(resp);
         list!.Items.Should().NotBeEmpty("admin alpha tiene proyectos asignados");
         list.Items.Should().OnlyContain(p => p.Nombre.StartsWith("Alpha") || p.Nombre.Contains("multi", StringComparison.OrdinalIgnoreCase));
         // No debe haber Beta o Gamma puros en su lista
@@ -35,9 +35,9 @@ public class OwnershipTests : IntegrationTestBase
     public async Task PmBeta_VeSusProyectos()
     {
         var betaPm = await CreateAuthenticatedClientAsync("pm.beta@sig.local");
-        var resp = await betaPm.GetAsync("/api/projects?page=1&pageSize=100");
+        var resp = await betaPm.GetAsync("/api/services?page=1&pageSize=100");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var list = await ReadJsonAsync<PagedResult<ProjectListItemDto>>(resp);
+        var list = await ReadJsonAsync<PagedResult<ServiceListItemDto>>(resp);
         list!.Items.Should().OnlyContain(p => p.ClientNombre == "Beta Cosmetics" || p.Nombre.Contains("multi", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -45,12 +45,12 @@ public class OwnershipTests : IntegrationTestBase
     public async Task PmAlpha_AccedeProjectDeBetaPorId_Devuelve404()
     {
         var betaPm = await CreateAuthenticatedClientAsync("pm.beta@sig.local");
-        var betaList = await ReadJsonAsync<PagedResult<ProjectListItemDto>>(await betaPm.GetAsync("/api/projects?page=1&pageSize=100"));
+        var betaList = await ReadJsonAsync<PagedResult<ServiceListItemDto>>(await betaPm.GetAsync("/api/services?page=1&pageSize=100"));
         // Pick beta project that pm.alpha shouldn't see
         var betaProj = betaList!.Items.First(p => p.ClientNombre == "Beta Cosmetics");
 
         var alphaPm = await CreateAuthenticatedClientAsync("pm.alpha@sig.local");
-        var resp = await alphaPm.GetAsync($"/api/projects/{betaProj.Id}");
+        var resp = await alphaPm.GetAsync($"/api/services/{betaProj.Id}");
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -58,9 +58,9 @@ public class OwnershipTests : IntegrationTestBase
     public async Task Administrator_VeTodosLosProyectos()
     {
         var admin = await CreateAuthenticatedClientAsync("admin@sig.local");
-        var resp = await admin.GetAsync("/api/projects?page=1&pageSize=100");
+        var resp = await admin.GetAsync("/api/services?page=1&pageSize=100");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var list = await ReadJsonAsync<PagedResult<ProjectListItemDto>>(resp);
+        var list = await ReadJsonAsync<PagedResult<ServiceListItemDto>>(resp);
         list!.Items.Should().HaveCountGreaterOrEqualTo(8); // seed: 8 proyectos
         // Debería tener proyectos de Alpha, Beta y Gamma
         var clients = list.Items.Select(p => p.ClientNombre).Distinct().ToList();
@@ -79,7 +79,7 @@ public class OwnershipTests : IntegrationTestBase
             return; // si no hay closures aún, este caso queda implícito en otros tests
 
         // Detectar un closure de Beta (no de Alpha)
-        var betaClosure = allClosures.Items.FirstOrDefault(c => !c.ProjectNombre.StartsWith("Alpha"));
+        var betaClosure = allClosures.Items.FirstOrDefault(c => !c.ServiceNombre.StartsWith("Alpha"));
         if (betaClosure is null) return; // si todos son alpha, saltar
 
         var alphaPm = await CreateAuthenticatedClientAsync("pm.alpha@sig.local");
@@ -91,7 +91,7 @@ public class OwnershipTests : IntegrationTestBase
     public async Task Reader_PuedeListarProyectos_SiendoSoloLectura()
     {
         var reader = await CreateAuthenticatedClientAsync("reader@sig.local");
-        var resp = await reader.GetAsync("/api/projects?page=1&pageSize=100");
+        var resp = await reader.GetAsync("/api/services?page=1&pageSize=100");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 

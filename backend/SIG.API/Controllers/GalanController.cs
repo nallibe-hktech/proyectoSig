@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using SIG.Application.Interfaces.Services;
 
 namespace SIG.API.Controllers;
@@ -87,7 +88,7 @@ public class GalanController : ControllerBase
     [HttpPost("upload")]
     [Authorize(Roles = "Administrator,Admin SIG")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string tipo, CancellationToken ct)
+    public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string tipo, [FromServices] IConfiguration config, CancellationToken ct)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "No se proporcionó archivo" });
@@ -100,7 +101,7 @@ public class GalanController : ControllerBase
         try
         {
             // Guardar archivo en la carpeta de Galán que monitorea GalanCsvClient
-            var baseDir = @"C:\Projects\workspaces\SIG-es\Galán\Galán";
+            var baseDir = config["Integrations:Galan:BasePath"] ?? @"C:\dev\SIG-es\Galán\Galán";
             Directory.CreateDirectory(baseDir);
 
             // Generar nombre de archivo con timestamp para evitar duplicados

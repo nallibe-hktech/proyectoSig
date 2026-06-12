@@ -26,9 +26,9 @@ public class DashboardController : ControllerBase
     public async Task<IActionResult> Avisos(CancellationToken ct) =>
         Ok(await _svc.GetAvisosAsync(UserId, ct));
 
-    [HttpGet("mis-proyectos")]
-    public async Task<IActionResult> MisProyectos([FromQuery] int? periodId = null, CancellationToken ct = default) =>
-        Ok(await _svc.GetMisProyectosAsync(periodId, UserId, ct));
+    [HttpGet("mis-servicios")]
+    public async Task<IActionResult> MisServicios([FromQuery] int? periodId = null, CancellationToken ct = default) =>
+        Ok(await _svc.GetMisServiciosAsync(periodId, UserId, ct));
 }
 
 [ApiController]
@@ -109,15 +109,14 @@ public class SyncController : ControllerBase
             {
                 totalVisitas = g.Count(),
                 conUsuario = g.Count(v => v.UserId.HasValue),
-                conProyecto = g.Count(v => v.ProjectId.HasValue),
-                conAccion = g.Count(v => v.ActionId.HasValue),
+                conServicio = g.Count(v => v.ServiceId.HasValue),
                 porcentajeResuelto = g.Count() > 0
                     ? Math.Round(g.Count(v => v.UserId.HasValue) * 100.0 / g.Count(), 1)
                     : 0
             })
             .FirstOrDefaultAsync(ct);
 
-        return Ok(stats ?? new { totalVisitas = 0, conUsuario = 0, conProyecto = 0, conAccion = 0, porcentajeResuelto = 0.0 });
+        return Ok(stats ?? new { totalVisitas = 0, conUsuario = 0, conServicio = 0, porcentajeResuelto = 0.0 });
     }
 
     [HttpGet("intratime/discrepancias")]
@@ -153,75 +152,75 @@ public class ExportsController : ControllerBase
 }
 
 [ApiController]
-[Route("api/projects/{projectId:int}/tarifas")]
+[Route("api/services/{serviceId:int}/tarifas")]
 [Authorize(Roles = "Administrator,Backoffice")]
 public class TarifasController : ControllerBase
 {
-    private readonly ITarifaProyectoService _svc;
-    public TarifasController(ITarifaProyectoService svc) { _svc = svc; }
+    private readonly ITarifaServicioService _svc;
+    public TarifasController(ITarifaServicioService svc) { _svc = svc; }
 
     [HttpGet]
     [Authorize]
-    public async Task<IActionResult> List(int projectId, CancellationToken ct) =>
-        Ok(await _svc.ListByProjectAsync(projectId, ct));
+    public async Task<IActionResult> List(int serviceId, CancellationToken ct) =>
+        Ok(await _svc.ListByServiceAsync(serviceId, ct));
 
     [HttpGet("{id:int}")]
     [Authorize]
-    public async Task<IActionResult> Get(int projectId, int id, CancellationToken ct) =>
-        Ok(await _svc.GetByIdAsync(id, projectId, ct));
+    public async Task<IActionResult> Get(int serviceId, int id, CancellationToken ct) =>
+        Ok(await _svc.GetByIdAsync(id, serviceId, ct));
 
     [HttpPost]
-    public async Task<IActionResult> Create(int projectId, SIG.Application.DTOs.TarifaProyectoCreateRequest req, CancellationToken ct)
+    public async Task<IActionResult> Create(int serviceId, SIG.Application.DTOs.TarifaServicioCreateRequest req, CancellationToken ct)
     {
-        var r = await _svc.CreateAsync(projectId, req, ct);
-        return CreatedAtAction(nameof(Get), new { projectId, id = r.Id }, r);
+        var r = await _svc.CreateAsync(serviceId, req, ct);
+        return CreatedAtAction(nameof(Get), new { serviceId, id = r.Id }, r);
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int projectId, int id, SIG.Application.DTOs.TarifaProyectoUpdateRequest req, CancellationToken ct) =>
-        Ok(await _svc.UpdateAsync(id, projectId, req, ct));
+    public async Task<IActionResult> Update(int serviceId, int id, SIG.Application.DTOs.TarifaServicioUpdateRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpdateAsync(id, serviceId, req, ct));
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int projectId, int id, CancellationToken ct)
+    public async Task<IActionResult> Delete(int serviceId, int id, CancellationToken ct)
     {
-        await _svc.DeleteAsync(id, projectId, ct);
+        await _svc.DeleteAsync(id, serviceId, ct);
         return NoContent();
     }
 }
 
 [ApiController]
-[Route("api/projects/{projectId:int}/presupuestos")]
+[Route("api/services/{serviceId:int}/presupuestos")]
 [Authorize(Roles = "Administrator,Backoffice")]
 public class PresupuestosController : ControllerBase
 {
-    private readonly IPresupuestoProyectoService _svc;
-    public PresupuestosController(IPresupuestoProyectoService svc) { _svc = svc; }
+    private readonly IPresupuestoServicioService _svc;
+    public PresupuestosController(IPresupuestoServicioService svc) { _svc = svc; }
 
     [HttpGet]
     [Authorize]
-    public async Task<IActionResult> List(int projectId, CancellationToken ct) =>
-        Ok(await _svc.ListByProjectAsync(projectId, ct));
+    public async Task<IActionResult> List(int serviceId, CancellationToken ct) =>
+        Ok(await _svc.ListByServiceAsync(serviceId, ct));
 
     [HttpGet("{id:int}")]
     [Authorize]
-    public async Task<IActionResult> Get(int projectId, int id, CancellationToken ct) =>
-        Ok(await _svc.GetByIdAsync(id, projectId, ct));
+    public async Task<IActionResult> Get(int serviceId, int id, CancellationToken ct) =>
+        Ok(await _svc.GetByIdAsync(id, serviceId, ct));
 
     [HttpPost]
-    public async Task<IActionResult> Create(int projectId, SIG.Application.DTOs.PresupuestoProyectoCreateRequest req, CancellationToken ct)
+    public async Task<IActionResult> Create(int serviceId, SIG.Application.DTOs.PresupuestoServicioCreateRequest req, CancellationToken ct)
     {
-        var r = await _svc.CreateAsync(projectId, req, ct);
-        return CreatedAtAction(nameof(Get), new { projectId, id = r.Id }, r);
+        var r = await _svc.CreateAsync(serviceId, req, ct);
+        return CreatedAtAction(nameof(Get), new { serviceId, id = r.Id }, r);
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int projectId, int id, SIG.Application.DTOs.PresupuestoProyectoUpdateRequest req, CancellationToken ct) =>
-        Ok(await _svc.UpdateAsync(id, projectId, req, ct));
+    public async Task<IActionResult> Update(int serviceId, int id, SIG.Application.DTOs.PresupuestoServicioUpdateRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpdateAsync(id, serviceId, req, ct));
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int projectId, int id, CancellationToken ct)
+    public async Task<IActionResult> Delete(int serviceId, int id, CancellationToken ct)
     {
-        await _svc.DeleteAsync(id, projectId, ct);
+        await _svc.DeleteAsync(id, serviceId, ct);
         return NoContent();
     }
 }

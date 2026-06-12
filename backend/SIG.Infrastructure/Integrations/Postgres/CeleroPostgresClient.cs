@@ -1,7 +1,6 @@
 using Npgsql;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Integrations;
-using SIG.Application.Interfaces.Repositories;
 using SIG.Domain.Exceptions;
 
 namespace SIG.Infrastructure.Integrations.Postgres;
@@ -9,36 +8,16 @@ namespace SIG.Infrastructure.Integrations.Postgres;
 public class CeleroPostgresClient : ICeleroClient
 {
     private readonly string _connectionString;
-    private readonly IUserRepository _userRepo;
-    private readonly IProjectRepository _projectRepo;
-    private readonly IActionRepository _actionRepo;
 
-    public CeleroPostgresClient(string connectionString, IUserRepository userRepo, IProjectRepository projectRepo, IActionRepository actionRepo)
+    public CeleroPostgresClient(string connectionString)
     {
         _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-        _userRepo = userRepo ?? throw new ArgumentNullException(nameof(userRepo));
-        _projectRepo = projectRepo ?? throw new ArgumentNullException(nameof(projectRepo));
-        _actionRepo = actionRepo ?? throw new ArgumentNullException(nameof(actionRepo));
     }
 
     public async Task<IReadOnlyList<CeleroVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
-        // Load lookups from local database
-        var users = await _userRepo.ListAsync(ct);
-        var projects = await _projectRepo.ListAsync(ct);
-        var actions = await _actionRepo.ListAsync(ct);
-
-        var nifToUserId = users
-            .Where(u => !u.IsDeleted)
-            .ToDictionary(u => u.NIF, u => u.Id, StringComparer.OrdinalIgnoreCase);
-
-        var serviceNameToProjectId = projects
-            .Where(p => !p.IsDeleted)
-            .ToDictionary(p => p.Nombre, p => p.Id, StringComparer.OrdinalIgnoreCase);
-
-        var missionNameToActionId = actions
-            .ToDictionary(a => a.Nombre, a => a.Id, StringComparer.OrdinalIgnoreCase);
-
+        // La resolución de NIF→usuario y servicio/misión→Servicio se realiza en DataProcessorService
+        // al migrar staging→productivo. Aquí solo se extraen las visitas crudas (modo read-only).
         var visitas = new List<CeleroVisitaDto>();
 
         try

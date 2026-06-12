@@ -9,8 +9,7 @@ public record CeleroVisitaListDto(
     string MissionName,
     DateOnly Fecha,
     int? UserId,
-    int? ProjectId,
-    int? ActionId,
+    int? ServiceId,
     string? Notas,
     string? EstadoMapeo
 );
@@ -24,8 +23,7 @@ public record CeleroVisitaDetailDto(
     string MissionName,
     DateOnly Fecha,
     int? UserId,
-    int? ProjectId,
-    int? ActionId,
+    int? ServiceId,
     string? Notas,
     int? MapeadoPor,
     DateTime? FechaMapeo,
@@ -35,8 +33,7 @@ public record CeleroVisitaDetailDto(
 // Request para actualizar mapeos y notas
 public record CeleroVisitaUpdateRequest(
     int? UserId,
-    int? ProjectId,
-    int? ActionId,
+    int? ServiceId,
     string? Notas,
     string? EstadoMapeo
 );

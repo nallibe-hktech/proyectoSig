@@ -26,7 +26,7 @@ public class CalculationEngine : ICalculationEngine
         var resultado = EvaluateNode(ast, ctx, closure, concept, recursoId, incidencias);
         ctx.UsedInputs["concepto"] = concept.Nombre;
         ctx.UsedInputs["periodo"] = closure.Period?.Nombre ?? string.Empty;
-        ctx.UsedInputs["projectId"] = closure.ProjectId;
+        ctx.UsedInputs["serviceId"] = closure.ServiceId;
         if (recursoId.HasValue) ctx.UsedInputs["recursoId"] = recursoId.Value;
         ctx.UsedInputs["filasVisitas"] = ctx.Visitas.Count;
         ctx.UsedInputs["filasGastos"] = ctx.Gastos.Count;

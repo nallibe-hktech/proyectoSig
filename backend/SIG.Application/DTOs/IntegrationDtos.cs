@@ -7,7 +7,7 @@ public record CeleroVisitaDto(
     string MissionName,
     DateOnly Fecha);
 public record BizneoEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento);
-public record BizneoAbsenceDto(string RegistroIdExterno, int UserId, int ProjectId, DateOnly Fecha, decimal Horas);
+public record BizneoAbsenceDto(string RegistroIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Horas);
 public record IntratimeEmpleadoDto(
     string UserIdExterno,   // USER_ID (ej: "20875")
     string Nombre,          // USER_NAME
@@ -27,7 +27,7 @@ public record IntratimeClockingRequestDto(
     string? HoraDesde,              // REQUESTED_TIME_FROM
     string? HoraHasta               // REQUESTED_TIME_TO
 );
-public record PayHawkGastoDto(string GastoIdExterno, int UserId, int ProjectId, DateOnly Fecha, decimal Importe, string Categoria);
+public record PayHawkGastoDto(string GastoIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Importe, string Categoria);
 public record SgpvVisitaDto(
     string VisitaIdExterno,
     string ResourceNif,

@@ -15,7 +15,7 @@ public class ClosureService : IClosureService
     private readonly IClosureRepository _repo;
     private readonly IClosureLineRepository _lineRepo;
     private readonly ICalculationLogRepository _calcLogRepo;
-    private readonly IProjectRepository _projectRepo;
+    private readonly IServiceRepository _serviceRepo;
     private readonly IPeriodRepository _periodRepo;
     private readonly IApprovalRepository _approvalRepo;
     private readonly IRoleRepository _roleRepo;
@@ -27,7 +27,7 @@ public class ClosureService : IClosureService
         IClosureRepository repo,
         IClosureLineRepository lineRepo,
         ICalculationLogRepository calcLogRepo,
-        IProjectRepository projectRepo,
+        IServiceRepository serviceRepo,
         IPeriodRepository periodRepo,
         IApprovalRepository approvalRepo,
         IRoleRepository roleRepo,
@@ -38,7 +38,7 @@ public class ClosureService : IClosureService
         _repo = repo;
         _lineRepo = lineRepo;
         _calcLogRepo = calcLogRepo;
-        _projectRepo = projectRepo;
+        _serviceRepo = serviceRepo;
         _periodRepo = periodRepo;
         _approvalRepo = approvalRepo;
         _roleRepo = roleRepo;
@@ -51,7 +51,7 @@ public class ClosureService : IClosureService
     {
         var result = await _repo.ListPaginatedForUserAsync(usuarioId, filter, ct);
         var items = result.Items.Select(c => new ClosureListItemDto(
-            c.Id, c.ProjectId, c.Project?.Nombre ?? "", c.PeriodId, c.Period?.Nombre ?? "",
+            c.Id, c.ServiceId, c.Service?.Nombre ?? "", c.PeriodId, c.Period?.Nombre ?? "",
             c.CosteTotal, c.FacturacionTotal, c.Margen, c.Estado, c.PasoActual)).ToList();
         return new PagedResult<ClosureListItemDto>(items, result.Total, result.Page, result.PageSize);
     }
@@ -70,17 +70,17 @@ public class ClosureService : IClosureService
         if (period.Estado != EstadoPeriodo.Abierto)
             throw new PeriodClosedException(period.Nombre);
 
-        var existing = await _repo.GetByProjectAndPeriodAsync(req.ProjectId, req.PeriodId, ct);
+        var existing = await _repo.GetByServiceAndPeriodAsync(req.ServiceId, req.PeriodId, ct);
         if (existing is not null)
-            throw new DuplicateException("Ya existe un Closure para ese Project y Period.");
+            throw new DuplicateException("Ya existe un Closure para ese Service y Period.");
 
-        var project = await _projectRepo.GetByIdAsync(req.ProjectId, ct)
-                     ?? throw new EntityNotFoundException("Project", req.ProjectId);
+        var service = await _serviceRepo.GetByIdAsync(req.ServiceId, ct)
+                     ?? throw new EntityNotFoundException("Service", req.ServiceId);
 
         var closure = new Closure
         {
-            ProjectId = req.ProjectId,
-            Project = project,
+            ServiceId = req.ServiceId,
+            Service = service,
             PeriodId = req.PeriodId,
             Period = period,
             Estado = EstadoClosure.Borrador,
@@ -274,7 +274,7 @@ public class ClosureService : IClosureService
         var aplicables = conceptList.Items.Where(c =>
             c.FechaDesde <= closure.Period.FechaFin &&
             (c.FechaHasta == null || c.FechaHasta >= closure.Period.FechaInicio) &&
-            (c.ProjectId == null || c.ProjectId == closure.ProjectId)).ToList();
+            (c.ServiceId == null || c.ServiceId == closure.ServiceId)).ToList();
 
         decimal coste = 0, factura = 0;
         var lines = new List<ClosureLine>();
@@ -357,7 +357,7 @@ public class ClosureService : IClosureService
             a.User != null ? $"{a.User.Nombre} {a.User.Apellidos}" : null,
             a.Motivo, a.FechaDecision)).ToArray();
         return new ClosureDetailDto(
-            withLines.Id, withLines.ProjectId, withLines.Project?.Nombre ?? "",
+            withLines.Id, withLines.ServiceId, withLines.Service?.Nombre ?? "",
             withLines.PeriodId, withLines.Period?.Nombre ?? "",
             withLines.CosteTotal, withLines.FacturacionTotal, withLines.Margen,
             withLines.Estado, withLines.PasoActual, withLines.Comentarios, withLines.RowVersion,

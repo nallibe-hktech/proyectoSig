@@ -92,7 +92,7 @@ public class DepartmentService : IDepartmentService
     public async Task DeleteAsync(int id, CancellationToken ct)
     {
         var d = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("Department", id);
-        if (await _repo.HasUsersOrActionsAsync(id, ct))
+        if (await _repo.HasUsersOrServicesAsync(id, ct))
             throw new DependenciesExistException(1);
         d.IsDeleted = true;
         d.DeletedAt = DateTime.UtcNow;
@@ -135,7 +135,7 @@ public class CostCenterService : ICostCenterService
     public async Task DeleteAsync(int id, CancellationToken ct)
     {
         var c = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("CostCenter", id);
-        if (await _repo.HasProjectsAsync(id, ct))
+        if (await _repo.HasServicesAsync(id, ct))
             throw new DependenciesExistException(1);
         c.IsDeleted = true;
         c.DeletedAt = DateTime.UtcNow;

@@ -8,11 +8,10 @@ using SIG.Domain.Entities;
 using SIG.Domain.Entities.Staging;
 using SIG.Domain.Enums;
 using SIG.Infrastructure.Persistence;
-using Action = SIG.Domain.Entities.Action;
 
 namespace SIG.Infrastructure.Repositories;
 
-// Owns visibility logic — administrative roles see everything; ProjectManager sees only owned projects.
+// Owns visibility logic — administrative roles see everything; ProjectManager sees only owned services.
 internal static class OwnershipHelper
 {
     public static readonly string[] PrivilegedRoles = new[] { "Administrator", "Direction", "Fico", "Backoffice", "Auditor", "Reader" };
@@ -60,8 +59,8 @@ public class UserRepository : IUserRepository
         return new PagedResult<User>(items, total, page, pageSize);
     }
 
-    public async Task<IReadOnlyList<int>> ListProjectIdsForUserAsync(int usuarioId, CancellationToken ct) =>
-        await _db.ProjectUsers.AsNoTracking().Where(pu => pu.UserId == usuarioId).Select(pu => pu.ProjectId).ToListAsync(ct);
+    public async Task<IReadOnlyList<int>> ListServiceIdsForUserAsync(int usuarioId, CancellationToken ct) =>
+        await _db.ServiceUsers.AsNoTracking().Where(su => su.UserId == usuarioId).Select(su => su.ServiceId).ToListAsync(ct);
 
     public async Task<IReadOnlyList<string>> ListRoleNamesForUserAsync(int usuarioId, CancellationToken ct) =>
         await _db.UserRoles.AsNoTracking().Where(ur => ur.UserId == usuarioId)
@@ -105,25 +104,25 @@ public class ClientRepository : IClientRepository
 
     public async Task<Client?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct)
     {
-        // Privilegiados ven todos. PM solo si tiene proyecto con ese cliente.
-        var c = await _db.Clients.Include(c => c.Projects).FirstOrDefaultAsync(c => c.Id == id, ct);
+        // Privilegiados ven todos. PM solo si tiene servicio con ese cliente.
+        var c = await _db.Clients.Include(c => c.Services).FirstOrDefaultAsync(c => c.Id == id, ct);
         if (c is null) return null;
         if (await IsPrivilegedAsync(usuarioId, ct)) return c;
-        var projectIds = await _userRepo.ListProjectIdsForUserAsync(usuarioId, ct);
-        var visible = await _db.Projects.AsNoTracking().AnyAsync(p => p.ClientId == id && projectIds.Contains(p.Id), ct);
+        var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
+        var visible = await _db.Services.AsNoTracking().AnyAsync(s => s.ClientId == id && serviceIds.Contains(s.Id), ct);
         return visible ? c : null;
     }
 
     public Task<Client?> GetByIdAsync(int id, CancellationToken ct) =>
-        _db.Clients.Include(c => c.Projects).FirstOrDefaultAsync(c => c.Id == id, ct);
+        _db.Clients.Include(c => c.Services).FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public async Task<PagedResult<Client>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, string? search, CancellationToken ct)
     {
-        var q = _db.Clients.AsNoTracking().Include(c => c.Projects).AsQueryable();
+        var q = _db.Clients.AsNoTracking().Include(c => c.Services).AsQueryable();
         if (!await IsPrivilegedAsync(usuarioId, ct))
         {
-            var projectIds = await _userRepo.ListProjectIdsForUserAsync(usuarioId, ct);
-            var allowedClientIds = await _db.Projects.AsNoTracking().Where(p => projectIds.Contains(p.Id)).Select(p => p.ClientId).Distinct().ToListAsync(ct);
+            var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
+            var allowedClientIds = await _db.Services.AsNoTracking().Where(s => serviceIds.Contains(s.Id)).Select(s => s.ClientId).Distinct().ToListAsync(ct);
             q = q.Where(c => allowedClientIds.Contains(c.Id));
         }
         if (!string.IsNullOrWhiteSpace(search))
@@ -137,17 +136,17 @@ public class ClientRepository : IClientRepository
     }
 
     public Task AddAsync(Client client, CancellationToken ct) { _db.Clients.Add(client); return Task.CompletedTask; }
-    public Task<bool> HasProjectsAsync(int clientId, CancellationToken ct) => _db.Projects.AsNoTracking().AnyAsync(p => p.ClientId == clientId, ct);
+    public Task<bool> HasServicesAsync(int clientId, CancellationToken ct) => _db.Services.AsNoTracking().AnyAsync(s => s.ClientId == clientId, ct);
     public Task<bool> ExistsByNifAsync(string nif, int? excludeId, CancellationToken ct) =>
         _db.Clients.AsNoTracking().AnyAsync(c => c.NIF == nif && (excludeId == null || c.Id != excludeId), ct);
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
-public class ProjectRepository : IProjectRepository
+public class ServiceRepository : IServiceRepository
 {
     private readonly AppDbContext _db;
     private readonly IUserRepository _userRepo;
-    public ProjectRepository(AppDbContext db, IUserRepository userRepo) { _db = db; _userRepo = userRepo; }
+    public ServiceRepository(AppDbContext db, IUserRepository userRepo) { _db = db; _userRepo = userRepo; }
 
     private async Task<bool> IsPrivilegedAsync(int usuarioId, CancellationToken ct)
     {
@@ -156,110 +155,53 @@ public class ProjectRepository : IProjectRepository
         return roles.Any(r => OwnershipHelper.PrivilegedRoles.Contains(r));
     }
 
-    public async Task<Project?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct)
+    public async Task<Service?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct)
     {
-        var p = await _db.Projects
-            .Include(p => p.Client)
-            .Include(p => p.ProjectCostCenters)
-            .Include(p => p.ProjectUsers)
-            .FirstOrDefaultAsync(p => p.Id == id, ct);
-        if (p is null) return null;
-        if (await IsPrivilegedAsync(usuarioId, ct)) return p;
-        var assigned = await _db.ProjectUsers.AsNoTracking().AnyAsync(pu => pu.ProjectId == id && pu.UserId == usuarioId, ct);
-        return assigned ? p : null;
-    }
-
-    public Task<Project?> GetByIdAsync(int id, CancellationToken ct) =>
-        _db.Projects.Include(p => p.Client).Include(p => p.ProjectCostCenters).Include(p => p.ProjectUsers)
-            .FirstOrDefaultAsync(p => p.Id == id, ct);
-
-    public async Task<IReadOnlyList<Project>> ListAsync(CancellationToken ct) =>
-        await _db.Projects.AsNoTracking().Include(p => p.Client).OrderBy(p => p.Id).ToListAsync(ct);
-
-    public async Task<PagedResult<Project>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct)
-    {
-        var q = _db.Projects.AsNoTracking().Include(p => p.Client).AsQueryable();
-        if (!await IsPrivilegedAsync(usuarioId, ct))
-        {
-            var projectIds = await _userRepo.ListProjectIdsForUserAsync(usuarioId, ct);
-            q = q.Where(p => projectIds.Contains(p.Id));
-        }
-        if (clientId.HasValue) q = q.Where(p => p.ClientId == clientId.Value);
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var searchTerm = $"%{search.Trim()}%";
-            q = q.Where(p => EF.Functions.ILike(p.Nombre, searchTerm) || EF.Functions.ILike(p.Client.Nombre, searchTerm));
-        }
-        var total = await q.CountAsync(ct);
-        var items = await q.OrderBy(p => p.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
-        return new PagedResult<Project>(items, total, page, pageSize);
-    }
-
-    public Task AddAsync(Project project, CancellationToken ct) { _db.Projects.Add(project); return Task.CompletedTask; }
-    public Task<bool> IsUserAssignedAsync(int projectId, int usuarioId, CancellationToken ct) =>
-        _db.ProjectUsers.AsNoTracking().AnyAsync(pu => pu.ProjectId == projectId && pu.UserId == usuarioId, ct);
-    public async Task<bool> HasActionsOrClosuresAsync(int projectId, CancellationToken ct) =>
-        await _db.Actions.AsNoTracking().AnyAsync(a => a.ProjectId == projectId, ct) ||
-        await _db.Closures.AsNoTracking().AnyAsync(c => c.ProjectId == projectId, ct);
-    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
-}
-
-public class ActionRepository : IActionRepository
-{
-    private readonly AppDbContext _db;
-    private readonly IUserRepository _userRepo;
-    public ActionRepository(AppDbContext db, IUserRepository userRepo) { _db = db; _userRepo = userRepo; }
-
-    private async Task<bool> IsPrivilegedAsync(int usuarioId, CancellationToken ct)
-    {
-        if (usuarioId == 0) return true;
-        var roles = await _userRepo.ListRoleNamesForUserAsync(usuarioId, ct);
-        return roles.Any(r => OwnershipHelper.PrivilegedRoles.Contains(r));
-    }
-
-    public async Task<Action?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct)
-    {
-        var a = await _db.Actions
-            .Include(a => a.Project)
-            .Include(a => a.ActionConcepts)
-            .Include(a => a.ActionUsers)
+        var a = await _db.Services
+            .Include(a => a.Client)
+            .Include(a => a.ServiceConcepts)
+            .Include(a => a.ServiceUsers)
+            .Include(a => a.ServiceCostCenters)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
         if (a is null) return null;
         if (await IsPrivilegedAsync(usuarioId, ct)) return a;
-        var projectIds = await _userRepo.ListProjectIdsForUserAsync(usuarioId, ct);
-        return projectIds.Contains(a.ProjectId) ? a : null;
+        var assigned = await _db.ServiceUsers.AsNoTracking().AnyAsync(su => su.ServiceId == id && su.UserId == usuarioId, ct);
+        return assigned ? a : null;
     }
 
-    public Task<Action?> GetByIdAsync(int id, CancellationToken ct) =>
-        _db.Actions.Include(a => a.Project).Include(a => a.ActionConcepts).Include(a => a.ActionUsers)
+    public Task<Service?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.Services.Include(a => a.Client).Include(a => a.ServiceConcepts).Include(a => a.ServiceUsers).Include(a => a.ServiceCostCenters)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
 
-    public async Task<IReadOnlyList<Action>> ListAsync(CancellationToken ct) =>
-        await _db.Actions.AsNoTracking().Include(a => a.Project).OrderBy(a => a.Id).ToListAsync(ct);
+    public async Task<IReadOnlyList<Service>> ListAsync(CancellationToken ct) =>
+        await _db.Services.AsNoTracking().Include(a => a.Client).OrderBy(a => a.Id).ToListAsync(ct);
 
-    public async Task<PagedResult<Action>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? projectId, string? search, CancellationToken ct)
+    public async Task<PagedResult<Service>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct)
     {
-        var q = _db.Actions.AsNoTracking().Include(a => a.Project).Include(a => a.Department).AsQueryable();
+        var q = _db.Services.AsNoTracking().Include(a => a.Client).Include(a => a.Department).AsQueryable();
         if (!await IsPrivilegedAsync(usuarioId, ct))
         {
-            var projectIds = await _userRepo.ListProjectIdsForUserAsync(usuarioId, ct);
-            q = q.Where(a => projectIds.Contains(a.ProjectId));
+            var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
+            q = q.Where(a => serviceIds.Contains(a.Id));
         }
-        if (projectId.HasValue) q = q.Where(a => a.ProjectId == projectId.Value);
+        if (clientId.HasValue) q = q.Where(a => a.ClientId == clientId.Value);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var searchTerm = $"%{search.Trim()}%";
             q = q.Where(a => EF.Functions.ILike(a.Nombre, searchTerm)
-                          || EF.Functions.ILike(a.Project.Nombre, searchTerm)
+                          || EF.Functions.ILike(a.Client.Nombre, searchTerm)
                           || (a.Department != null && EF.Functions.ILike(a.Department.Nombre, searchTerm)));
         }
         var total = await q.CountAsync(ct);
         var items = await q.OrderBy(a => a.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
-        return new PagedResult<Action>(items, total, page, pageSize);
+        return new PagedResult<Service>(items, total, page, pageSize);
     }
 
-    public Task AddAsync(Action action, CancellationToken ct) { _db.Actions.Add(action); return Task.CompletedTask; }
-    public Task<bool> HasClosuresAsync(int actionId, CancellationToken ct) => Task.FromResult(false);
+    public Task AddAsync(Service service, CancellationToken ct) { _db.Services.Add(service); return Task.CompletedTask; }
+    public Task<bool> IsUserAssignedAsync(int serviceId, int usuarioId, CancellationToken ct) =>
+        _db.ServiceUsers.AsNoTracking().AnyAsync(su => su.ServiceId == serviceId && su.UserId == usuarioId, ct);
+    public Task<bool> HasClosuresAsync(int serviceId, CancellationToken ct) =>
+        _db.Closures.AsNoTracking().AnyAsync(c => c.ServiceId == serviceId, ct);
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
@@ -269,7 +211,7 @@ public class ConceptRepository : IConceptRepository
     public ConceptRepository(AppDbContext db) { _db = db; }
 
     public Task<Concept?> GetByIdAsync(int id, CancellationToken ct) =>
-        _db.Concepts.Include(c => c.ActionConcepts).Include(c => c.ConceptUsers).FirstOrDefaultAsync(c => c.Id == id, ct);
+        _db.Concepts.Include(c => c.ServiceConcepts).Include(c => c.ConceptUsers).FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public Task<Concept?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct) =>
         GetByIdAsync(id, ct);
@@ -289,8 +231,8 @@ public class ConceptRepository : IConceptRepository
     }
 
     public Task AddAsync(Concept concept, CancellationToken ct) { _db.Concepts.Add(concept); return Task.CompletedTask; }
-    public Task<bool> HasActionsAsync(int conceptId, CancellationToken ct) =>
-        _db.ActionConcepts.AsNoTracking().AnyAsync(ac => ac.ConceptId == conceptId, ct);
+    public Task<bool> HasServicesAsync(int conceptId, CancellationToken ct) =>
+        _db.ServiceConcepts.AsNoTracking().AnyAsync(sc => sc.ConceptId == conceptId, ct);
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
@@ -336,41 +278,41 @@ public class ClosureRepository : IClosureRepository
     }
 
     public Task<Closure?> GetByIdAsync(int id, CancellationToken ct) =>
-        _db.Closures.Include(c => c.Project).ThenInclude(p => p.Client).Include(c => c.Period)
+        _db.Closures.Include(c => c.Service).ThenInclude(p => p.Client).Include(c => c.Period)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public Task<Closure?> GetByIdWithLinesAsync(int id, CancellationToken ct) =>
-        _db.Closures.Include(c => c.Project).ThenInclude(p => p.Client).Include(c => c.Period)
+        _db.Closures.Include(c => c.Service).ThenInclude(p => p.Client).Include(c => c.Period)
             .Include(c => c.Lines).ThenInclude(l => l.Concept)
             .Include(c => c.Lines).ThenInclude(l => l.User)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public async Task<Closure?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct)
     {
-        var c = await _db.Closures.Include(c => c.Project).ThenInclude(p => p.Client).Include(c => c.Period)
+        var c = await _db.Closures.Include(c => c.Service).ThenInclude(p => p.Client).Include(c => c.Period)
             .Include(c => c.Lines).ThenInclude(l => l.Concept)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
         if (c is null) return null;
         if (await IsPrivilegedAsync(usuarioId, ct)) return c;
-        var projectIds = await _userRepo.ListProjectIdsForUserAsync(usuarioId, ct);
-        return projectIds.Contains(c.ProjectId) ? c : null;
+        var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
+        return serviceIds.Contains(c.ServiceId) ? c : null;
     }
 
-    public Task<Closure?> GetByProjectAndPeriodAsync(int projectId, int periodId, CancellationToken ct) =>
-        _db.Closures.AsNoTracking().FirstOrDefaultAsync(c => c.ProjectId == projectId && c.PeriodId == periodId, ct);
+    public Task<Closure?> GetByServiceAndPeriodAsync(int serviceId, int periodId, CancellationToken ct) =>
+        _db.Closures.AsNoTracking().FirstOrDefaultAsync(c => c.ServiceId == serviceId && c.PeriodId == periodId, ct);
 
     public async Task<PagedResult<Closure>> ListPaginatedForUserAsync(int usuarioId, ApprovalFilterRequest filter, CancellationToken ct)
     {
         var q = _db.Closures.AsNoTracking()
-            .Include(c => c.Project).ThenInclude(p => p.Client)
+            .Include(c => c.Service).ThenInclude(p => p.Client)
             .Include(c => c.Period).AsQueryable();
         if (!await IsPrivilegedAsync(usuarioId, ct))
         {
-            var projectIds = await _userRepo.ListProjectIdsForUserAsync(usuarioId, ct);
-            q = q.Where(c => projectIds.Contains(c.ProjectId));
+            var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
+            q = q.Where(c => serviceIds.Contains(c.ServiceId));
         }
         if (filter.PeriodId.HasValue) q = q.Where(c => c.PeriodId == filter.PeriodId.Value);
-        if (filter.ClientId.HasValue) q = q.Where(c => c.Project.ClientId == filter.ClientId.Value);
+        if (filter.ClientId.HasValue) q = q.Where(c => c.Service.ClientId == filter.ClientId.Value);
         if (filter.Estado.HasValue) q = q.Where(c => c.Estado == filter.Estado.Value);
         var total = await q.CountAsync(ct);
         var items = await q.OrderByDescending(c => c.UpdatedAt).Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToListAsync(ct);
@@ -381,7 +323,7 @@ public class ClosureRepository : IClosureRepository
     {
         var roles = await _userRepo.ListRoleNamesForUserAsync(usuarioId, ct);
         var q = _db.Closures.AsNoTracking()
-            .Include(c => c.Project).ThenInclude(p => p.Client)
+            .Include(c => c.Service).ThenInclude(p => p.Client)
             .Include(c => c.Period)
             .Where(c => c.Estado == EstadoClosure.EnAprobacion || c.Estado == EstadoClosure.Borrador);
         // filtra por paso/rol
@@ -392,8 +334,8 @@ public class ClosureRepository : IClosureRepository
         if (step.HasValue) q = q.Where(c => c.PasoActual == step.Value);
         if (roles.Contains("ProjectManager") && !roles.Intersect(OwnershipHelper.PrivilegedRoles).Any())
         {
-            var projectIds = await _userRepo.ListProjectIdsForUserAsync(usuarioId, ct);
-            q = q.Where(c => projectIds.Contains(c.ProjectId));
+            var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
+            q = q.Where(c => serviceIds.Contains(c.ServiceId));
         }
         var total = await q.CountAsync(ct);
         var items = await q.OrderByDescending(c => c.UpdatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
@@ -531,9 +473,9 @@ public class DepartmentRepository : IDepartmentRepository
         await _db.Departments.AsNoTracking().OrderBy(d => d.Id).ToListAsync(ct);
     public Task<Department?> GetByIdAsync(int id, CancellationToken ct) =>
         _db.Departments.FirstOrDefaultAsync(d => d.Id == id, ct);
-    public async Task<bool> HasUsersOrActionsAsync(int id, CancellationToken ct) =>
+    public async Task<bool> HasUsersOrServicesAsync(int id, CancellationToken ct) =>
         await _db.Users.AsNoTracking().AnyAsync(u => u.DepartmentId == id, ct) ||
-        await _db.Actions.AsNoTracking().AnyAsync(a => a.DepartmentId == id, ct);
+        await _db.Services.AsNoTracking().AnyAsync(a => a.DepartmentId == id, ct);
     public Task AddAsync(Department dep, CancellationToken ct) { _db.Departments.Add(dep); return Task.CompletedTask; }
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
@@ -548,8 +490,8 @@ public class CostCenterRepository : ICostCenterRepository
         _db.CostCenters.FirstOrDefaultAsync(c => c.Id == id, ct);
     public Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId, CancellationToken ct) =>
         _db.CostCenters.AsNoTracking().AnyAsync(c => c.Codigo == codigo && (excludeId == null || c.Id != excludeId), ct);
-    public Task<bool> HasProjectsAsync(int id, CancellationToken ct) =>
-        _db.ProjectCostCenters.AsNoTracking().AnyAsync(pc => pc.CostCenterId == id, ct);
+    public Task<bool> HasServicesAsync(int id, CancellationToken ct) =>
+        _db.ServiceCostCenters.AsNoTracking().AnyAsync(sc => sc.CostCenterId == id, ct);
     public Task AddAsync(CostCenter cc, CancellationToken ct) { _db.CostCenters.Add(cc); return Task.CompletedTask; }
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
@@ -571,46 +513,46 @@ public class StagingRepository<TStaging> : IStagingRepository<TStaging> where TS
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
-public class TarifaProyectoRepository : ITarifaProyectoRepository
+public class TarifaServicioRepository : ITarifaServicioRepository
 {
     private readonly AppDbContext _db;
-    public TarifaProyectoRepository(AppDbContext db) { _db = db; }
+    public TarifaServicioRepository(AppDbContext db) { _db = db; }
 
-    public async Task<IReadOnlyList<TarifaProyecto>> ListByProjectAsync(int projectId, CancellationToken ct) =>
-        await _db.TarifasProyecto.AsNoTracking()
-            .Where(t => t.ProjectId == projectId && !t.IsDeleted)
+    public async Task<IReadOnlyList<TarifaServicio>> ListByServiceAsync(int serviceId, CancellationToken ct) =>
+        await _db.TarifasServicio.AsNoTracking()
+            .Where(t => t.ServiceId == serviceId && !t.IsDeleted)
             .OrderByDescending(t => t.FechaDesde)
             .ToListAsync(ct);
 
-    public Task<TarifaProyecto?> GetByIdAsync(int id, CancellationToken ct) =>
-        _db.TarifasProyecto.FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, ct);
+    public Task<TarifaServicio?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.TarifasServicio.FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, ct);
 
-    public Task AddAsync(TarifaProyecto entity, CancellationToken ct)
+    public Task AddAsync(TarifaServicio entity, CancellationToken ct)
     {
-        _db.TarifasProyecto.Add(entity);
+        _db.TarifasServicio.Add(entity);
         return Task.CompletedTask;
     }
 
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
-public class PresupuestoProyectoRepository : IPresupuestoProyectoRepository
+public class PresupuestoServicioRepository : IPresupuestoServicioRepository
 {
     private readonly AppDbContext _db;
-    public PresupuestoProyectoRepository(AppDbContext db) { _db = db; }
+    public PresupuestoServicioRepository(AppDbContext db) { _db = db; }
 
-    public async Task<IReadOnlyList<PresupuestoProyecto>> ListByProjectAsync(int projectId, CancellationToken ct) =>
-        await _db.PresupuestosProyecto.AsNoTracking()
-            .Where(p => p.ProjectId == projectId && !p.IsDeleted)
+    public async Task<IReadOnlyList<PresupuestoServicio>> ListByServiceAsync(int serviceId, CancellationToken ct) =>
+        await _db.PresupuestosServicio.AsNoTracking()
+            .Where(p => p.ServiceId == serviceId && !p.IsDeleted)
             .OrderByDescending(p => p.Id)
             .ToListAsync(ct);
 
-    public Task<PresupuestoProyecto?> GetByIdAsync(int id, CancellationToken ct) =>
-        _db.PresupuestosProyecto.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+    public Task<PresupuestoServicio?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.PresupuestosServicio.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
 
-    public Task AddAsync(PresupuestoProyecto entity, CancellationToken ct)
+    public Task AddAsync(PresupuestoServicio entity, CancellationToken ct)
     {
-        _db.PresupuestosProyecto.Add(entity);
+        _db.PresupuestosServicio.Add(entity);
         return Task.CompletedTask;
     }
 

@@ -38,7 +38,7 @@ import { NotifyService } from '../../core/notify.service';
               <dt>Tipo</dt><dd><mat-chip>{{ concept()!.tipo }}</mat-chip></dd>
               <dt>Vigente desde</dt><dd class="mono-num">{{ concept()!.fechaDesde | date:'dd/MM/yyyy' }}</dd>
               <dt>Vigente hasta</dt><dd class="mono-num">{{ concept()!.fechaHasta ? (concept()!.fechaHasta | date:'dd/MM/yyyy') : 'Indefinido' }}</dd>
-              <dt>Actions asociadas</dt><dd>{{ concept()!.actionIds.length }}</dd>
+              <dt>Servicios asociados</dt><dd>{{ concept()!.serviceIds.length }}</dd>
               <dt>Usuarios</dt><dd>{{ concept()!.userIds.length }}</dd>
             </dl>
           </mat-card-content>

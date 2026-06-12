@@ -42,8 +42,7 @@ public class CeleroVisitaService : ICeleroVisitaService
                 v.MissionName,
                 v.Fecha,
                 v.UserId,
-                v.ProjectId,
-                v.ActionId,
+                v.ServiceId,
                 v.Notas,
                 v.EstadoMapeo
             ))
@@ -67,8 +66,7 @@ public class CeleroVisitaService : ICeleroVisitaService
             visita.MissionName,
             visita.Fecha,
             visita.UserId,
-            visita.ProjectId,
-            visita.ActionId,
+            visita.ServiceId,
             visita.Notas,
             visita.MapeadoPor,
             visita.FechaMapeo,
@@ -84,8 +82,7 @@ public class CeleroVisitaService : ICeleroVisitaService
 
         // Actualizar solo los campos de mapeo y anotaciones (no los datos de Celero)
         visita.UserId = req.UserId ?? visita.UserId;
-        visita.ProjectId = req.ProjectId ?? visita.ProjectId;
-        visita.ActionId = req.ActionId ?? visita.ActionId;
+        visita.ServiceId = req.ServiceId ?? visita.ServiceId;
         visita.Notas = req.Notas ?? visita.Notas;
         visita.EstadoMapeo = req.EstadoMapeo ?? visita.EstadoMapeo;
         visita.MapeadoPor = usuarioId;
@@ -101,8 +98,7 @@ public class CeleroVisitaService : ICeleroVisitaService
             visita.MissionName,
             visita.Fecha,
             visita.UserId,
-            visita.ProjectId,
-            visita.ActionId,
+            visita.ServiceId,
             visita.Notas,
             visita.MapeadoPor,
             visita.FechaMapeo,

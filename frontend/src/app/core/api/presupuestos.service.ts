@@ -2,31 +2,31 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import {
-  PresupuestoProyectoDto, PresupuestoProyectoCreateRequest, PresupuestoProyectoUpdateRequest,
+  PresupuestoServicioDto, PresupuestoServicioCreateRequest, PresupuestoServicioUpdateRequest,
 } from '../../models/dtos';
 
 @Injectable({ providedIn: 'root' })
 export class PresupuestosService {
   private readonly http = inject(HttpClient);
-  private readonly base = `${environment.apiUrl}/projects`;
+  private readonly base = `${environment.apiUrl}/services`;
 
-  list(projectId: number) {
-    return this.http.get<PresupuestoProyectoDto[]>(`${this.base}/${projectId}/presupuestos`);
+  list(serviceId: number) {
+    return this.http.get<PresupuestoServicioDto[]>(`${this.base}/${serviceId}/presupuestos`);
   }
 
-  getById(id: number, projectId: number) {
-    return this.http.get<PresupuestoProyectoDto>(`${this.base}/${projectId}/presupuestos/${id}`);
+  getById(id: number, serviceId: number) {
+    return this.http.get<PresupuestoServicioDto>(`${this.base}/${serviceId}/presupuestos/${id}`);
   }
 
-  create(projectId: number, req: PresupuestoProyectoCreateRequest) {
-    return this.http.post<PresupuestoProyectoDto>(`${this.base}/${projectId}/presupuestos`, req);
+  create(serviceId: number, req: PresupuestoServicioCreateRequest) {
+    return this.http.post<PresupuestoServicioDto>(`${this.base}/${serviceId}/presupuestos`, req);
   }
 
-  update(id: number, projectId: number, req: PresupuestoProyectoUpdateRequest) {
-    return this.http.put<PresupuestoProyectoDto>(`${this.base}/${projectId}/presupuestos/${id}`, req);
+  update(id: number, serviceId: number, req: PresupuestoServicioUpdateRequest) {
+    return this.http.put<PresupuestoServicioDto>(`${this.base}/${serviceId}/presupuestos/${id}`, req);
   }
 
-  delete(id: number, projectId: number) {
-    return this.http.delete<void>(`${this.base}/${projectId}/presupuestos/${id}`);
+  delete(id: number, serviceId: number) {
+    return this.http.delete<void>(`${this.base}/${serviceId}/presupuestos/${id}`);
   }
 }

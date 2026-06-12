@@ -92,7 +92,7 @@ public class ExportService : IExportService
         foreach (var emp in employeeData)
         {
             var row = sheet.CreateRow(rowNum++);
-            row.CreateCell(0).SetCellValue(closure.Project.Client?.Nombre ?? "");
+            row.CreateCell(0).SetCellValue(closure.Service.Client?.Nombre ?? "");
             row.CreateCell(1).SetCellValue(emp.User?.Department?.Nombre ?? "");
             row.CreateCell(2).SetCellValue("Nómina");
 
@@ -127,7 +127,7 @@ public class ExportService : IExportService
         EnsureApproved(closure);
         _logger.LogInformation($"Validación completada: Cierre {closureId} en estado {closure.Estado}");
 
-        var client = closure.Project.Client;
+        var client = closure.Service.Client;
 
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Factura");
@@ -161,7 +161,7 @@ public class ExportService : IExportService
 
             ws.Cell(rowNum, 1).Value = client?.NIF ?? "";
             ws.Cell(rowNum, 2).Value = client?.Nombre ?? "";
-            ws.Cell(rowNum, 3).Value = closure.Project.Nombre;
+            ws.Cell(rowNum, 3).Value = closure.Service.Nombre;
             ws.Cell(rowNum, 4).Value = line.Concept?.Nombre ?? "";
             ws.Cell(rowNum, 5).Value = (double)line.Importe;
             ws.Cell(rowNum, 6).Value = (double)vat;
@@ -214,7 +214,7 @@ public class ExportService : IExportService
     private async Task<Closure> LoadClosureForExportAsync(int id, CancellationToken ct)
     {
         var closure = await _db.Closures
-            .Include(c => c.Project)
+            .Include(c => c.Service)
             .Include(c => c.Period)
             .Include(c => c.Lines)
             .Include(c => c.Lines).ThenInclude(l => l.User).ThenInclude(u => u!.Department)
@@ -223,13 +223,13 @@ public class ExportService : IExportService
             ?? throw new EntityNotFoundException("Closure", id);
 
         // Explicitly load Client with IgnoreQueryFilters to bypass soft-delete filter
-        if (closure.Project?.ClientId > 0)
+        if (closure.Service?.ClientId > 0)
         {
             var client = await _db.Clients
                 .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(c => c.Id == closure.Project.ClientId, ct);
-            if (closure.Project != null && client != null)
-                closure.Project.Client = client;
+                .FirstOrDefaultAsync(c => c.Id == closure.Service.ClientId, ct);
+            if (closure.Service != null && client != null)
+                closure.Service.Client = client;
         }
 
         // Explicitly load Concepts with IgnoreQueryFilters to bypass soft-delete filter

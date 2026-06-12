@@ -13,7 +13,6 @@ using SIG.Domain.Entities.Staging;
 using SIG.Domain.Enums;
 using SIG.Infrastructure.Persistence;
 using SIG.Infrastructure.Persistence.Interceptors;
-using Action = SIG.Domain.Entities.Action;
 
 namespace SIG.Infrastructure.Seed;
 
@@ -65,14 +64,12 @@ public class DataSeeder : ISeedService
                 staging_bizneo_empleados,
                 staging_celero_visitas,
                 refresh_tokens,
-                action_users,
-                action_concepts,
-                actions,
+                service_users,
+                service_concepts,
+                service_cost_centers,
+                services,
                 concept_users,
                 concepts,
-                project_users,
-                project_cost_centers,
-                projects,
                 clients,
                 variables,
                 periods,
@@ -99,10 +96,10 @@ public class DataSeeder : ISeedService
         Randomizer.Seed = new Random(Seed);
 
         var (rMap, dMap, costCenters, passwordHash) = await SeedMasterDataAsync(ct);
-        var (uByEmail, projectsList, concepts) = await SeedEntityDataAsync(passwordHash, dMap, rMap, costCenters, ct);
-        var (actions, periodsList, closuresFull) = await SeedTransactionDataAsync(projectsList, dMap, concepts, uByEmail, ct);
+        var (uByEmail, servicesList, concepts) = await SeedEntityDataAsync(passwordHash, dMap, rMap, costCenters, ct);
+        var (periodsList, closuresFull) = await SeedTransactionDataAsync(servicesList, ct);
 
-        await SeedStagingDataAsync(uByEmail.Values.ToList(), projectsList.ToList(), actions, periodsList, uByEmail, ct);
+        await SeedStagingDataAsync(uByEmail.Values.ToList(), servicesList.ToList(), periodsList, uByEmail, ct);
         await SeedLineasYLogsAsync(closuresFull, concepts, uByEmail.Values.ToList(), ct);
         await SeedApprovalsAsync(closuresFull, rMap, uByEmail, ct);
         await SeedAuditExtraAsync(uByEmail, ct);
@@ -118,26 +115,24 @@ public class DataSeeder : ISeedService
         return (rMap, dMap, costCenters, passwordHash);
     }
 
-    private async Task<(Dictionary<string, User>, List<Project>, List<Concept>)> SeedEntityDataAsync(string passwordHash, Dictionary<string, Department> dMap, Dictionary<string, Role> rMap, List<CostCenter> costCenters, CancellationToken ct)
+    private async Task<(Dictionary<string, User>, List<Service>, List<Concept>)> SeedEntityDataAsync(string passwordHash, Dictionary<string, Department> dMap, Dictionary<string, Role> rMap, List<CostCenter> costCenters, CancellationToken ct)
     {
         var users = await SeedUsersAsync(passwordHash, dMap, rMap, ct);
         var uByEmail = users.ToDictionary(u => u.Email);
         var clients = await SeedClientsAsync(ct);
-        var projects = await SeedProjectsAsync(clients, costCenters, uByEmail, ct);
-        var projectsList = projects.ToList();
         var variables = await SeedVariablesAsync(ct);
         var tarifaHoraId = variables.First(v => v.Nombre == "TarifaHora").Id;
         var concepts = await SeedConceptsAsync(tarifaHoraId, ct);
-        return (uByEmail, projectsList, concepts);
+        var services = await SeedServicesAsync(clients, costCenters, concepts, dMap, uByEmail, ct);
+        return (uByEmail, services.ToList(), concepts);
     }
 
-    private async Task<(List<Action>, List<Period>, List<Closure>)> SeedTransactionDataAsync(List<Project> projectsList, Dictionary<string, Department> dMap, List<Concept> concepts, Dictionary<string, User> uByEmail, CancellationToken ct)
+    private async Task<(List<Period>, List<Closure>)> SeedTransactionDataAsync(List<Service> servicesList, CancellationToken ct)
     {
-        var actions = await SeedActionsAsync(projectsList, dMap, concepts, uByEmail, ct);
         var periods = await SeedPeriodsAsync(ct);
         var periodsList = periods.ToList();
-        var closuresFull = await SeedClosuresAsync(projectsList, periodsList, ct);
-        return (actions, periodsList, closuresFull);
+        var closuresFull = await SeedClosuresAsync(servicesList, periodsList, ct);
+        return (periodsList, closuresFull);
     }
 
     private async Task<List<Role>> SeedRolesAsync(CancellationToken ct)
@@ -228,30 +223,34 @@ public class DataSeeder : ISeedService
         return clients;
     }
 
-    private async Task<List<Project>> SeedProjectsAsync(List<Client> clients, List<CostCenter> costCenters, Dictionary<string, User> uByEmail, CancellationToken ct)
+    private async Task<List<Service>> SeedServicesAsync(List<Client> clients, List<CostCenter> costCenters, List<Concept> concepts, Dictionary<string, Department> dMap, Dictionary<string, User> uByEmail, CancellationToken ct)
     {
         var alpha = clients[0]; var beta = clients[1]; var gamma = clients[2];
         var fechaAlta = new DateOnly(2025, 1, 15);
-        var projects = new List<Project>
+        var opsDeptId = dMap["Operaciones"].Id;
+        var services = new List<Service>
         {
-            NewProject("Alpha - Implantación Madrid", alpha.Id, costCenters[1].Id, uByEmail["pm.alpha@sig.local"].Id, fechaAlta),
-            NewProject("Alpha - Visitas GPV España",  alpha.Id, costCenters[1].Id, uByEmail["pm.alpha@sig.local"].Id, fechaAlta),
-            NewProject("Alpha - Formación Equipos",   alpha.Id, costCenters[3].Id, uByEmail["pm.alpha@sig.local"].Id, fechaAlta),
-            NewProject("Beta - Implantación Barcelona", beta.Id, costCenters[0].Id, uByEmail["pm.beta@sig.local"].Id, fechaAlta),
-            NewProject("Beta - Visitas Premium",      beta.Id, costCenters[1].Id, uByEmail["pm.beta@sig.local"].Id, fechaAlta),
-            NewProject("Beta - Mensualidad",          beta.Id, costCenters[0].Id, uByEmail["pm.beta@sig.local"].Id, fechaAlta),
-            NewProject("Gamma - Operaciones Campo",   gamma.Id, costCenters[0].Id, uByEmail["pm.gamma@sig.local"].Id, fechaAlta),
-            NewProject("Gamma - Formación Premium",   gamma.Id, costCenters[3].Id, uByEmail["pm.gamma@sig.local"].Id, fechaAlta),
+            NewService("Alpha - Implantación Madrid", alpha.Id, costCenters[1].Id, uByEmail["pm.alpha@sig.local"].Id, opsDeptId, fechaAlta),
+            NewService("Alpha - Visitas GPV España",  alpha.Id, costCenters[1].Id, uByEmail["pm.alpha@sig.local"].Id, opsDeptId, fechaAlta),
+            NewService("Alpha - Formación Equipos",   alpha.Id, costCenters[3].Id, uByEmail["pm.alpha@sig.local"].Id, opsDeptId, fechaAlta),
+            NewService("Beta - Implantación Barcelona", beta.Id, costCenters[0].Id, uByEmail["pm.beta@sig.local"].Id, opsDeptId, fechaAlta),
+            NewService("Beta - Visitas Premium",      beta.Id, costCenters[1].Id, uByEmail["pm.beta@sig.local"].Id, opsDeptId, fechaAlta),
+            NewService("Beta - Mensualidad",          beta.Id, costCenters[0].Id, uByEmail["pm.beta@sig.local"].Id, opsDeptId, fechaAlta),
+            NewService("Gamma - Operaciones Campo",   gamma.Id, costCenters[0].Id, uByEmail["pm.gamma@sig.local"].Id, opsDeptId, fechaAlta),
+            NewService("Gamma - Formación Premium",   gamma.Id, costCenters[3].Id, uByEmail["pm.gamma@sig.local"].Id, opsDeptId, fechaAlta),
         };
-        foreach (var p in projects)
+        var firstConcepts = concepts.Take(3).ToList();
+        foreach (var s in services)
         {
-            p.ProjectUsers.Add(new ProjectUser { UserId = uByEmail["pm.multi@sig.local"].Id });
+            s.ServiceUsers.Add(new ServiceUser { UserId = uByEmail["pm.multi@sig.local"].Id });
             foreach (var gpv in new[] { "gpv1@sig.local", "gpv2@sig.local", "gpv3@sig.local", "gpv4@sig.local" })
-                p.ProjectUsers.Add(new ProjectUser { UserId = uByEmail[gpv].Id });
+                s.ServiceUsers.Add(new ServiceUser { UserId = uByEmail[gpv].Id });
+            foreach (var c in firstConcepts)
+                s.ServiceConcepts.Add(new ServiceConcept { ConceptId = c.Id });
         }
-        _db.Projects.AddRange(projects);
+        _db.Services.AddRange(services);
         await _db.SaveChangesAsync(ct);
-        return projects;
+        return services;
     }
 
     private async Task<List<Variable>> SeedVariablesAsync(CancellationToken ct)
@@ -305,7 +304,7 @@ public class DataSeeder : ISeedService
                 left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero", filters = new object[0] } },
                 right = new { type = "Number", value = 18 }
             }) },
-            new() { Nombre = "Mensualidad fija proyecto", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new { type = "Number", value = 1500 }) },
+            new() { Nombre = "Mensualidad fija servicio", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new { type = "Number", value = 1500 }) },
             new() { Nombre = "Refacturación gastos", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "BinaryOp", op = "Pct",
                 left = new { type = "Aggregate", op = "Sum", field = "Importe", source = new { type = "Source", entity = "GastosPayHawk", filters = new object[0] } },
@@ -315,33 +314,6 @@ public class DataSeeder : ISeedService
         _db.Concepts.AddRange(concepts);
         await _db.SaveChangesAsync(ct);
         return concepts;
-    }
-
-    private async Task<List<Action>> SeedActionsAsync(List<Project> projects, Dictionary<string, Department> dMap, List<Concept> concepts, Dictionary<string, User> uByEmail, CancellationToken ct)
-    {
-        var actions = new List<Action>();
-        var actionNames = new[] { "Implantación", "Visita Estándar", "Visita Premium", "Formación", "Reposición" };
-        foreach (var p in projects)
-        {
-            int count = new Random(Seed + p.Id).Next(2, 4);
-            for (int i = 0; i < count; i++)
-            {
-                var name = actionNames[i % actionNames.Length] + " - " + p.Nombre;
-                var act = new Action
-                {
-                    Nombre = name, ProjectId = p.Id, ClientId = p.ClientId,
-                    DepartmentId = dMap["Operaciones"].Id, Estado = EstadoAccion.Activa
-                };
-                foreach (var c in concepts.Take(3))
-                    act.ActionConcepts.Add(new ActionConcept { ConceptId = c.Id });
-                foreach (var gpv in new[] { "gpv1@sig.local", "gpv2@sig.local" })
-                    act.ActionUsers.Add(new ActionUser { UserId = uByEmail[gpv].Id });
-                actions.Add(act);
-            }
-        }
-        _db.Actions.AddRange(actions);
-        await _db.SaveChangesAsync(ct);
-        return actions;
     }
 
     private async Task<List<Period>> SeedPeriodsAsync(CancellationToken ct)
@@ -359,7 +331,7 @@ public class DataSeeder : ISeedService
         return periods;
     }
 
-    private async Task SeedStagingDataAsync(List<User> users, List<Project> projects, List<Action> actions, List<Period> periods, Dictionary<string, User> uByEmail, CancellationToken ct)
+    private async Task SeedStagingDataAsync(List<User> users, List<Service> services, List<Period> periods, Dictionary<string, User> uByEmail, CancellationToken ct)
     {
         Randomizer.Seed = new Random(Seed);
         var stagingVisitas = new List<StagingCeleroVisita>();
@@ -383,19 +355,19 @@ public class DataSeeder : ISeedService
         }
 
         int hashCounter = 0;
-        foreach (var p in projects)
+        foreach (var s in services)
         {
             foreach (var period in periods)
             {
-                var pId = p.Id; var periodId = period.Id;
-                stagingVisitas.AddRange(GenerateVisitas(p, period, actions, users, hashCounter));
-                hashCounter += 5 + (pId + periodId) % 4;
-                stagingHoras.AddRange(GenerateHoras(p, period, users, hashCounter));
-                hashCounter += 8 + (pId + periodId) % 5;
-                stagingFichajes.AddRange(GenerateFichajes(p, period, users, hashCounter));
-                hashCounter += 12 + (pId + periodId) % 4;
-                stagingGastos.AddRange(GenerateGastos(p, period, users, hashCounter));
-                hashCounter += 3 + (pId + periodId) % 4;
+                var sId = s.Id; var periodId = period.Id;
+                stagingVisitas.AddRange(GenerateVisitas(s, period, users, hashCounter));
+                hashCounter += 5 + (sId + periodId) % 4;
+                stagingHoras.AddRange(GenerateHoras(s, period, users, hashCounter));
+                hashCounter += 8 + (sId + periodId) % 5;
+                stagingFichajes.AddRange(GenerateFichajes(s, period, users, hashCounter));
+                hashCounter += 12 + (sId + periodId) % 4;
+                stagingGastos.AddRange(GenerateGastos(s, period, users, hashCounter));
+                hashCounter += 3 + (sId + periodId) % 4;
             }
         }
         _db.StagingBizneoEmpleados.AddRange(stagingEmps);
@@ -406,21 +378,20 @@ public class DataSeeder : ISeedService
         await _db.SaveChangesAsync(ct);
     }
 
-    private static List<StagingCeleroVisita> GenerateVisitas(Project p, Period period, List<Action> actions, List<User> users, int hashOffset)
+    private static List<StagingCeleroVisita> GenerateVisitas(Service s, Period period, List<User> users, int hashOffset)
     {
         var list = new List<StagingCeleroVisita>();
-        int num = 5 + (p.Id + period.Id) % 4;
+        int num = 5 + (s.Id + period.Id) % 4;
         for (int i = 0; i < num; i++)
         {
             var rec = users.Skip(11).Take(4).ToList()[i % 4];
-            var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i).Next(0, 27));
+            var date = period.FechaInicio.AddDays(new Random(Seed + s.Id + period.Id + i).Next(0, 27));
             if (date > period.FechaFin) date = period.FechaFin;
-            var action = actions.First(a => a.ProjectId == p.Id);
             var v = new StagingCeleroVisita
             {
-                VisitaIdExterno = $"VC-{p.Id:00}{period.Id:00}{i:00}",
-                ResourceNif = rec.NIF, ServiceName = p.Nombre, MissionName = action.Nombre,
-                Fecha = date, UserId = rec.Id, ProjectId = p.Id, ActionId = action.Id,
+                VisitaIdExterno = $"VC-{s.Id:00}{period.Id:00}{i:00}",
+                ResourceNif = rec.NIF, ServiceName = s.Nombre, MissionName = s.Nombre,
+                Fecha = date, UserId = rec.Id, ServiceId = s.Id,
                 FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
             };
             v.PayloadJson = JsonSerializer.Serialize(new { v.VisitaIdExterno, v.ResourceNif, v.ServiceName, v.MissionName, v.Fecha });
@@ -430,41 +401,41 @@ public class DataSeeder : ISeedService
         return list;
     }
 
-    private static List<StagingBizneoAbsence> GenerateHoras(Project p, Period period, List<User> users, int hashOffset)
+    private static List<StagingBizneoAbsence> GenerateHoras(Service s, Period period, List<User> users, int hashOffset)
     {
         var list = new List<StagingBizneoAbsence>();
-        int num = 8 + (p.Id + period.Id) % 5;
+        int num = 8 + (s.Id + period.Id) % 5;
         for (int i = 0; i < num; i++)
         {
             var rec = users.Skip(11).Take(4).ToList()[i % 4];
-            var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 1000).Next(0, 27));
+            var date = period.FechaInicio.AddDays(new Random(Seed + s.Id + period.Id + i + 1000).Next(0, 27));
             if (date > period.FechaFin) date = period.FechaFin;
             var h = new StagingBizneoAbsence
             {
-                RegistroIdExterno = $"BA-{p.Id:00}{period.Id:00}{i:00}",
-                UserId = rec.Id, ProjectId = p.Id, Fecha = date, Horas = 4 + (i % 5),
+                RegistroIdExterno = $"BA-{s.Id:00}{period.Id:00}{i:00}",
+                UserId = rec.Id, ServiceId = s.Id, Fecha = date, Horas = 4 + (i % 5),
                 FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
             };
-            h.PayloadJson = JsonSerializer.Serialize(new { h.RegistroIdExterno, h.UserId, h.ProjectId, h.Fecha, h.Horas });
+            h.PayloadJson = JsonSerializer.Serialize(new { h.RegistroIdExterno, h.UserId, h.ServiceId, h.Fecha, h.Horas });
             h.Hash = Sha256($"absence-{hashOffset + i}");
             list.Add(h);
         }
         return list;
     }
 
-    private static List<StagingIntratimeFichaje> GenerateFichajes(Project p, Period period, List<User> users, int hashOffset)
+    private static List<StagingIntratimeFichaje> GenerateFichajes(Service s, Period period, List<User> users, int hashOffset)
     {
         var list = new List<StagingIntratimeFichaje>();
-        int num = 12 + (p.Id + period.Id) % 4;
+        int num = 12 + (s.Id + period.Id) % 4;
         for (int i = 0; i < num; i++)
         {
             var rec = users.Skip(11).Take(4).ToList()[i % 4];
-            var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 2000).Next(0, 27));
+            var date = period.FechaInicio.AddDays(new Random(Seed + s.Id + period.Id + i + 2000).Next(0, 27));
             if (date > period.FechaFin) date = period.FechaFin;
             var dt = DateTime.SpecifyKind(date.ToDateTime(new TimeOnly(8, 0)), DateTimeKind.Utc);
             var f = new StagingIntratimeFichaje
             {
-                FichajeIdExterno = $"FIC-{p.Id:00}{period.Id:00}{i:00}",
+                FichajeIdExterno = $"FIC-{s.Id:00}{period.Id:00}{i:00}",
                 UserId = rec.Id,
                 UserIdExterno = (1000 + rec.Id).ToString(), // Intratime user ID
                 Entrada = dt,
@@ -478,57 +449,57 @@ public class DataSeeder : ISeedService
         return list;
     }
 
-    private static List<StagingPayHawkGasto> GenerateGastos(Project p, Period period, List<User> users, int hashOffset)
+    private static List<StagingPayHawkGasto> GenerateGastos(Service s, Period period, List<User> users, int hashOffset)
     {
         var list = new List<StagingPayHawkGasto>();
-        int num = 3 + (p.Id + period.Id) % 4;
+        int num = 3 + (s.Id + period.Id) % 4;
         for (int i = 0; i < num; i++)
         {
             var rec = users.Skip(11).Take(4).ToList()[i % 4];
-            var date = period.FechaInicio.AddDays(new Random(Seed + p.Id + period.Id + i + 3000).Next(0, 27));
+            var date = period.FechaInicio.AddDays(new Random(Seed + s.Id + period.Id + i + 3000).Next(0, 27));
             if (date > period.FechaFin) date = period.FechaFin;
             var g = new StagingPayHawkGasto
             {
-                GastoIdExterno = $"GH-{p.Id:00}{period.Id:00}{i:00}",
-                UserId = rec.Id, ProjectId = p.Id, Fecha = date,
+                GastoIdExterno = $"GH-{s.Id:00}{period.Id:00}{i:00}",
+                UserId = rec.Id, ServiceId = s.Id, Fecha = date,
                 Importe = 50 + (i * 11) % 200,
                 Categoria = new[] { "Viajes", "Material", "Restauración", "Combustible" }[i % 4],
                 FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = true
             };
-            g.PayloadJson = JsonSerializer.Serialize(new { g.GastoIdExterno, g.UserId, g.ProjectId, g.Fecha, g.Importe, g.Categoria });
+            g.PayloadJson = JsonSerializer.Serialize(new { g.GastoIdExterno, g.UserId, g.ServiceId, g.Fecha, g.Importe, g.Categoria });
             g.Hash = Sha256($"gasto-{hashOffset + i}");
             list.Add(g);
         }
         return list;
     }
 
-    private async Task<List<Closure>> SeedClosuresAsync(List<Project> projects, List<Period> periods, CancellationToken ct)
+    private async Task<List<Closure>> SeedClosuresAsync(List<Service> services, List<Period> periods, CancellationToken ct)
     {
         var closures = new List<Closure>();
         foreach (var period in periods.Take(3))
-            foreach (var p in projects)
-                closures.Add(NewClosureBare(p.Id, period.Id, EstadoClosure.Aprobado, ApprovalStep.SystemExports));
+            foreach (var s in services)
+                closures.Add(NewClosureBare(s.Id, period.Id, EstadoClosure.Aprobado, ApprovalStep.SystemExports));
 
         var febrero = periods[3];
-        for (int idx = 0; idx < projects.Count; idx++)
+        for (int idx = 0; idx < services.Count; idx++)
         {
             var paso = idx < 6 ? ApprovalStep.Fico : ApprovalStep.Backoffice;
-            closures.Add(NewClosureBare(projects[idx].Id, febrero.Id, EstadoClosure.EnAprobacion, paso));
+            closures.Add(NewClosureBare(services[idx].Id, febrero.Id, EstadoClosure.EnAprobacion, paso));
         }
 
         var marzo = periods[4];
-        for (int i = 0; i < projects.Count; i++)
+        for (int i = 0; i < services.Count; i++)
         {
-            var p = projects[i];
+            var s = services[i];
             closures.Add(i < 5
-                ? NewClosureBare(p.Id, marzo.Id, EstadoClosure.Borrador, ApprovalStep.ProjectManager)
-                : NewClosureBare(p.Id, marzo.Id, EstadoClosure.Rechazado, ApprovalStep.ProjectManager));
+                ? NewClosureBare(s.Id, marzo.Id, EstadoClosure.Borrador, ApprovalStep.ProjectManager)
+                : NewClosureBare(s.Id, marzo.Id, EstadoClosure.Rechazado, ApprovalStep.ProjectManager));
         }
 
         _db.Closures.AddRange(closures);
         await _db.SaveChangesAsync(ct);
 
-        return await _db.Closures.Include(c => c.Project).Include(c => c.Period).ToListAsync(ct);
+        return await _db.Closures.Include(c => c.Service).Include(c => c.Period).ToListAsync(ct);
     }
 
     private async Task SeedLineasYLogsAsync(List<Closure> closuresFull, List<Concept> concepts, List<User> users, CancellationToken ct)
@@ -678,23 +649,23 @@ public class DataSeeder : ISeedService
         };
     }
 
-    private static Project NewProject(string nombre, int clientId, int costCenterId, int pmUserId, DateOnly fechaAlta)
+    private static Service NewService(string nombre, int clientId, int costCenterId, int pmUserId, int departmentId, DateOnly fechaAlta)
     {
-        var p = new Project
+        var s = new Service
         {
-            Nombre = nombre, ClientId = clientId, FechaAlta = fechaAlta, Estado = EstadoProyecto.Activo,
+            Nombre = nombre, ClientId = clientId, DepartmentId = departmentId, FechaAlta = fechaAlta, Estado = EstadoServicio.Activo,
             InterlocutorNombre = "Contacto " + nombre, InterlocutorEmail = "contacto@cliente.es", InterlocutorTelefono = "910000000"
         };
-        p.ProjectCostCenters.Add(new ProjectCostCenter { CostCenterId = costCenterId });
-        p.ProjectUsers.Add(new ProjectUser { UserId = pmUserId });
-        return p;
+        s.ServiceCostCenters.Add(new ServiceCostCenter { CostCenterId = costCenterId });
+        s.ServiceUsers.Add(new ServiceUser { UserId = pmUserId });
+        return s;
     }
 
-    private static Closure NewClosureBare(int projectId, int periodId, EstadoClosure estado, ApprovalStep paso)
+    private static Closure NewClosureBare(int serviceId, int periodId, EstadoClosure estado, ApprovalStep paso)
     {
         return new Closure
         {
-            ProjectId = projectId,
+            ServiceId = serviceId,
             PeriodId = periodId,
             Estado = estado,
             PasoActual = paso,

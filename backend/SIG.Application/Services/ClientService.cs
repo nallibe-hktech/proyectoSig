@@ -16,7 +16,7 @@ public class ClientService : IClientService
     public async Task<PagedResult<ClientListItemDto>> ListAsync(int usuarioId, int page, int pageSize, string? search, CancellationToken ct)
     {
         var result = await _repo.ListPaginatedForUserAsync(usuarioId, page, pageSize, search, ct);
-        var items = result.Items.Select(c => new ClientListItemDto(c.Id, c.Nombre, c.NIF, c.Ciudad, c.Projects?.Count ?? 0)).ToList();
+        var items = result.Items.Select(c => new ClientListItemDto(c.Id, c.Nombre, c.NIF, c.Ciudad, c.Services?.Count ?? 0)).ToList();
         return new PagedResult<ClientListItemDto>(items, result.Total, result.Page, result.PageSize);
     }
 
@@ -73,7 +73,7 @@ public class ClientService : IClientService
     {
         var c = await _repo.GetByIdAndUsuarioIdAsync(id, usuarioId, ct)
                 ?? throw new EntityNotFoundException("Client", id);
-        if (await _repo.HasProjectsAsync(id, ct))
+        if (await _repo.HasServicesAsync(id, ct))
             throw new DependenciesExistException(1);
         c.IsDeleted = true;
         c.DeletedAt = DateTime.UtcNow;

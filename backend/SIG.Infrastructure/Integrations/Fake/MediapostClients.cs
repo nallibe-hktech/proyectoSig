@@ -1,5 +1,6 @@
 using System.Globalization;
 using ClosedXML.Excel;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Integrations;
@@ -15,11 +16,12 @@ public class MediapostExcelClient : IMediapostClient
     private readonly ILogger<MediapostExcelClient> _logger;
     private readonly string _basePath;
 
-    public MediapostExcelClient(ILogger<MediapostExcelClient> logger)
+    public MediapostExcelClient(ILogger<MediapostExcelClient> logger, IConfiguration config)
     {
         _logger = logger;
-        // Ruta de los archivos de ejemplo (en producción sería carpeta SharePoint o API HTTP)
-        _basePath = @"C:\Projects\workspaces\SIG-es\Mediapost\Mediapost\Documentación";
+        // Ruta de los archivos de Mediapost (configurable; en producción sería SharePoint o API HTTP)
+        _basePath = config["Integrations:Mediapost:BasePath"]
+            ?? @"C:\dev\SIG-es\Mediapost\Mediapost\Documentación";
     }
 
     public async Task<IReadOnlyList<MediapostPedidoDto>> GetPedidosAsync(DateTime desde, DateTime hasta, CancellationToken ct)

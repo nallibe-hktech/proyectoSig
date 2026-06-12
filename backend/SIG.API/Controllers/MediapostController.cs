@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using SIG.Application.Interfaces.Services;
 
 namespace SIG.API.Controllers;
@@ -71,7 +72,7 @@ public class MediapostController : ControllerBase
     [HttpPost("upload")]
     [Authorize(Roles = "Administrator,Admin SIG")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string tipo, CancellationToken ct)
+    public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string tipo, [FromServices] IConfiguration config, CancellationToken ct)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "No se proporcionó archivo" });
@@ -82,7 +83,7 @@ public class MediapostController : ControllerBase
         try
         {
             // Guardar archivo en la carpeta de Mediapost que monitorea MediapostExcelClient
-            var baseDir = @"C:\Projects\workspaces\SIG-es\Mediapost\Mediapost\Documentación";
+            var baseDir = config["Integrations:Mediapost:BasePath"] ?? @"C:\dev\SIG-es\Mediapost\Mediapost\Documentación";
             Directory.CreateDirectory(baseDir);
 
             // Generar nombre de archivo con timestamp para evitar duplicados

@@ -21,7 +21,7 @@ public class CalculationEngineTests
     private static Closure CreateClosure(int projectId = 100, DateOnly? desde = null, DateOnly? hasta = null) => new()
     {
         Id = 1,
-        ProjectId = projectId,
+        ServiceId = projectId,
         PeriodId = 1,
         Period = new Period
         {
@@ -87,8 +87,8 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.Gastos.AddRange(new[]
         {
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Importe = 100m, Categoria = "viaje", PayloadJson = "{}", Hash = "h1" },
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 10), UserId = 2, ProjectId = 100, Importe = 50m, Categoria = "comida", PayloadJson = "{}", Hash = "h2" },
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, Importe = 100m, Categoria = "viaje", PayloadJson = "{}", Hash = "h1" },
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 10), UserId = 2, ServiceId = 100, Importe = 50m, Categoria = "comida", PayloadJson = "{}", Hash = "h2" },
         });
         var concept = CreateConcept("""{"type":"Aggregate","op":"Sum","field":"Importe","source":{"type":"Source","entity":"GastosPayHawk","filters":[]}}""");
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
@@ -102,9 +102,9 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.Visitas.AddRange(new[]
         {
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ProjectId = 100, ActionId = 200, VisitaIdExterno = "v1", PayloadJson = "{}", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ProjectId = 100, ActionId = 200, VisitaIdExterno = "v2", PayloadJson = "{}", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ProjectId = 100, ActionId = 200, VisitaIdExterno = "v3", PayloadJson = "{}", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, VisitaIdExterno = "v1", PayloadJson = "{}", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, VisitaIdExterno = "v2", PayloadJson = "{}", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ServiceId = 100, VisitaIdExterno = "v3", PayloadJson = "{}", Hash = "h" },
         });
         var concept = CreateConcept("""{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[]}}""");
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
@@ -115,14 +115,16 @@ public class CalculationEngineTests
     public async Task Evaluate_CountConFiltro_AplicaFiltroEq()
     {
         var (sut, loader) = CreateSut();
+        // Colapso del modelo: el servicio del cierre es el filtro implícito; el subconjunto
+        // se discrimina por UserId (antes se usaba ActionId, dimensión ya inexistente).
         loader.Visitas.AddRange(new[]
         {
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v1", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v2", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ProjectId = 100, ActionId = 300, PayloadJson = "{}", VisitaIdExterno = "v3", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v2", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 2, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v3", Hash = "h" },
         });
         var concept = CreateConcept("""
-        {"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"ActionId","op":"Eq","value":200}]}}
+        {"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"UserId","op":"Eq","value":1}]}}
         """);
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
         r.Resultado.Should().Be(2m);
@@ -134,8 +136,8 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.Gastos.AddRange(new[]
         {
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" },
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 10), UserId = 2, ProjectId = 100, Importe = 30m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" },
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" },
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 10), UserId = 2, ServiceId = 100, Importe = 30m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" },
         });
         var concept = CreateConcept("""{"type":"Aggregate","op":"Min","field":"Importe","source":{"type":"Source","entity":"GastosPayHawk","filters":[]}}""");
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
@@ -148,8 +150,8 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.Gastos.AddRange(new[]
         {
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" },
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 10), UserId = 2, ProjectId = 100, Importe = 30m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" },
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" },
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 10), UserId = 2, ServiceId = 100, Importe = 30m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" },
         });
         var concept = CreateConcept("""{"type":"Aggregate","op":"Max","field":"Importe","source":{"type":"Source","entity":"GastosPayHawk","filters":[]}}""");
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
@@ -238,22 +240,22 @@ public class CalculationEngineTests
     [Fact]
     public async Task Evaluate_BonusVisitaEstandar_x5_AplicaCalculoCorrectamente()
     {
-        // Cuenta(VisitasCelero ActionId=200) × 5
+        // Cuenta(VisitasCelero del usuario 1) × 5 — subconjunto discriminado por UserId
         var (sut, loader) = CreateSut();
         loader.Visitas.AddRange(new[]
         {
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v1", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 6), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v2", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 7), UserId = 1, ProjectId = 100, ActionId = 200, PayloadJson = "{}", VisitaIdExterno = "v3", Hash = "h" },
-            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 8), UserId = 1, ProjectId = 100, ActionId = 300, PayloadJson = "{}", VisitaIdExterno = "v4", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 6), UserId = 1, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v2", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 7), UserId = 1, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v3", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 8), UserId = 2, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v4", Hash = "h" },
         });
         var concept = CreateConcept("""
         {"type":"BinaryOp","op":"Mul",
-         "left":{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"ActionId","op":"Eq","value":200}]}},
+         "left":{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"UserId","op":"Eq","value":1}]}},
          "right":{"type":"Number","value":5}}
         """);
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
-        r.Resultado.Should().Be(15m); // 3 visitas ActionId=200 × 5
+        r.Resultado.Should().Be(15m); // 3 visitas del usuario 1 × 5
         r.SistemaOrigen.Should().Be("Celero");
     }
 
@@ -264,8 +266,8 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.HorasBizneo.AddRange(new[]
         {
-            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Horas = 8m, PayloadJson = "{}", RegistroIdExterno = "r1", Hash = "h" },
-            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 6), UserId = 1, ProjectId = 100, Horas = 6m, PayloadJson = "{}", RegistroIdExterno = "r2", Hash = "h" },
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, Horas = 8m, PayloadJson = "{}", RegistroIdExterno = "r1", Hash = "h" },
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 6), UserId = 1, ServiceId = 100, Horas = 6m, PayloadJson = "{}", RegistroIdExterno = "r2", Hash = "h" },
         });
         loader.Variables.Add(new Variable { Id = 4, Nombre = "TarifaHora", QuestionIdExterno = "q4", MapeoValoresJson = """[{"respuesta":"default","valor":18.5}]""" });
         var concept = CreateConcept("""
@@ -284,8 +286,8 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.Gastos.AddRange(new[]
         {
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Importe = 200m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" },
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 10), UserId = 2, ProjectId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" },
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, Importe = 200m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" },
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 10), UserId = 2, ServiceId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" },
         });
         var concept = CreateConcept("""
         {"type":"BinaryOp","op":"Pct",
@@ -304,9 +306,9 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.Gastos.AddRange(new[]
         {
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 2, 28), UserId = 1, ProjectId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" }, // FUERA
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 2, ProjectId = 100, Importe = 50m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" },  // DENTRO
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 4, 1), UserId = 3, ProjectId = 100, Importe = 200m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g3", Hash = "h3" }, // FUERA
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 2, 28), UserId = 1, ServiceId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" }, // FUERA
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 2, ServiceId = 100, Importe = 50m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" },  // DENTRO
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 4, 1), UserId = 3, ServiceId = 100, Importe = 200m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g3", Hash = "h3" }, // FUERA
         });
         var concept = CreateConcept("""{"type":"Aggregate","op":"Sum","field":"Importe","source":{"type":"Source","entity":"GastosPayHawk","filters":[]}}""");
         var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
@@ -319,8 +321,8 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.Gastos.AddRange(new[]
         {
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" }, // MATCH
-            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 999, Importe = 500m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" }, // OTRO PROYECTO
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, Importe = 100m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" }, // MATCH
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 999, Importe = 500m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" }, // OTRO PROYECTO
         });
         var concept = CreateConcept("""{"type":"Aggregate","op":"Sum","field":"Importe","source":{"type":"Source","entity":"GastosPayHawk","filters":[]}}""");
         var r = await sut.EvaluateAsync(concept, CreateClosure(projectId: 100), null, CancellationToken.None);
@@ -333,8 +335,8 @@ public class CalculationEngineTests
         var (sut, loader) = CreateSut();
         loader.HorasBizneo.AddRange(new[]
         {
-            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ProjectId = 100, Horas = 8m, PayloadJson = "{}", RegistroIdExterno = "r1", Hash = "h" },
-            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 2, ProjectId = 100, Horas = 4m, PayloadJson = "{}", RegistroIdExterno = "r2", Hash = "h" },
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, Horas = 8m, PayloadJson = "{}", RegistroIdExterno = "r1", Hash = "h" },
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 2, ServiceId = 100, Horas = 4m, PayloadJson = "{}", RegistroIdExterno = "r2", Hash = "h" },
         });
         var concept = CreateConcept("""{"type":"Aggregate","op":"Sum","field":"Horas","source":{"type":"Source","entity":"HorasBizneo","filters":[]}}""");
         var r = await sut.EvaluateAsync(concept, CreateClosure(), recursoId: 1, CancellationToken.None);

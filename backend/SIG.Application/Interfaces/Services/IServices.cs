@@ -30,21 +30,12 @@ public interface IClientService
     Task DeleteAsync(int id, int usuarioId, CancellationToken ct);
 }
 
-public interface IProjectService
+public interface IServiceService
 {
-    Task<PagedResult<ProjectListItemDto>> ListAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
-    Task<ProjectDetailDto> GetByIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task<ProjectDetailDto> CreateAsync(ProjectCreateRequest req, int usuarioId, CancellationToken ct);
-    Task<ProjectDetailDto> UpdateAsync(int id, ProjectUpdateRequest req, int usuarioId, CancellationToken ct);
-    Task DeleteAsync(int id, int usuarioId, CancellationToken ct);
-}
-
-public interface IActionService
-{
-    Task<PagedResult<ActionListItemDto>> ListAsync(int usuarioId, int page, int pageSize, int? projectId, string? search, CancellationToken ct);
-    Task<ActionDetailDto> GetByIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task<ActionDetailDto> CreateAsync(ActionCreateRequest req, int usuarioId, CancellationToken ct);
-    Task<ActionDetailDto> UpdateAsync(int id, ActionUpdateRequest req, int usuarioId, CancellationToken ct);
+    Task<PagedResult<ServiceListItemDto>> ListAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
+    Task<ServiceDetailDto> GetByIdAsync(int id, int usuarioId, CancellationToken ct);
+    Task<ServiceDetailDto> CreateAsync(ServiceCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<ServiceDetailDto> UpdateAsync(int id, ServiceUpdateRequest req, int usuarioId, CancellationToken ct);
     Task DeleteAsync(int id, int usuarioId, CancellationToken ct);
 }
 
@@ -109,22 +100,22 @@ public interface IPeriodService
     Task<PeriodDto> ReabrirAsync(int id, CancellationToken ct);
 }
 
-public interface ITarifaProyectoService
+public interface ITarifaServicioService
 {
-    Task<IReadOnlyList<TarifaProyectoDto>> ListByProjectAsync(int projectId, CancellationToken ct);
-    Task<TarifaProyectoDto> GetByIdAsync(int id, int projectId, CancellationToken ct);
-    Task<TarifaProyectoDto> CreateAsync(int projectId, TarifaProyectoCreateRequest req, CancellationToken ct);
-    Task<TarifaProyectoDto> UpdateAsync(int id, int projectId, TarifaProyectoUpdateRequest req, CancellationToken ct);
-    Task DeleteAsync(int id, int projectId, CancellationToken ct);
+    Task<IReadOnlyList<TarifaServicioDto>> ListByServiceAsync(int serviceId, CancellationToken ct);
+    Task<TarifaServicioDto> GetByIdAsync(int id, int serviceId, CancellationToken ct);
+    Task<TarifaServicioDto> CreateAsync(int serviceId, TarifaServicioCreateRequest req, CancellationToken ct);
+    Task<TarifaServicioDto> UpdateAsync(int id, int serviceId, TarifaServicioUpdateRequest req, CancellationToken ct);
+    Task DeleteAsync(int id, int serviceId, CancellationToken ct);
 }
 
-public interface IPresupuestoProyectoService
+public interface IPresupuestoServicioService
 {
-    Task<IReadOnlyList<PresupuestoProyectoDto>> ListByProjectAsync(int projectId, CancellationToken ct);
-    Task<PresupuestoProyectoDto> GetByIdAsync(int id, int projectId, CancellationToken ct);
-    Task<PresupuestoProyectoDto> CreateAsync(int projectId, PresupuestoProyectoCreateRequest req, CancellationToken ct);
-    Task<PresupuestoProyectoDto> UpdateAsync(int id, int projectId, PresupuestoProyectoUpdateRequest req, CancellationToken ct);
-    Task DeleteAsync(int id, int projectId, CancellationToken ct);
+    Task<IReadOnlyList<PresupuestoServicioDto>> ListByServiceAsync(int serviceId, CancellationToken ct);
+    Task<PresupuestoServicioDto> GetByIdAsync(int id, int serviceId, CancellationToken ct);
+    Task<PresupuestoServicioDto> CreateAsync(int serviceId, PresupuestoServicioCreateRequest req, CancellationToken ct);
+    Task<PresupuestoServicioDto> UpdateAsync(int id, int serviceId, PresupuestoServicioUpdateRequest req, CancellationToken ct);
+    Task DeleteAsync(int id, int serviceId, CancellationToken ct);
 }
 
 public interface IClosureService
@@ -150,7 +141,7 @@ public interface IDashboardService
 {
     Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct);
     Task<IReadOnlyList<DashboardAvisoDto>> GetAvisosAsync(int usuarioId, CancellationToken ct);
-    Task<IReadOnlyList<MiProyectoDto>> GetMisProyectosAsync(int? periodId, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct);
 }
 
 public interface ICalculationService

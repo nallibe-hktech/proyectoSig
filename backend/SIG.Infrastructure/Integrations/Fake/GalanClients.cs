@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using CsvHelper;
 using CsvHelper.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Integrations;
@@ -18,11 +19,12 @@ public class GalanCsvClient : IGalanClient
     private readonly ILogger<GalanCsvClient> _logger;
     private readonly string _basePath;
 
-    public GalanCsvClient(ILogger<GalanCsvClient> logger)
+    public GalanCsvClient(ILogger<GalanCsvClient> logger, IConfiguration config)
     {
         _logger = logger;
-        // Ruta de los archivos de ejemplo (en producción sería carpeta SharePoint)
-        _basePath = @"C:\Projects\workspaces\SIG-es\Galán\Galán";
+        // Ruta de los archivos de Galán (configurable; en producción sería carpeta SharePoint)
+        _basePath = config["Integrations:Galan:BasePath"]
+            ?? @"C:\dev\SIG-es\Galán\Galán";
     }
 
     public async Task<IReadOnlyList<GalanEntradaDto>> GetEntradasAsync(DateTime desde, DateTime hasta, CancellationToken ct)

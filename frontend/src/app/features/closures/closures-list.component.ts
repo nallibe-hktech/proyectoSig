@@ -43,8 +43,8 @@ interface FlowStep { label: string; idx: number; done: boolean; current: boolean
       <mat-card style="margin-bottom: 16px;">
         <mat-card-content>
           <div style="display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--mat-sys-on-surface-variant);">
-            <strong>Flujo de aprobación (5 pasos):</strong>
-            <span>1 PM → 2 Backoffice → 3 Fico → 4 Direction → 5 Exportado</span>
+            <strong>Flujo de aprobaci&oacute;n (5 pasos):</strong>
+            <span>1 PM &rarr; 2 Backoffice &rarr; 3 Fico &rarr; 4 Direction &rarr; 5 Exportado</span>
           </div>
         </mat-card-content>
       </mat-card>
@@ -53,7 +53,7 @@ interface FlowStep { label: string; idx: number; done: boolean; current: boolean
         <div class="sig-table-toolbar">
           <mat-form-field appearance="outline" class="sig-search">
             <mat-icon matPrefix aria-hidden="true">search</mat-icon>
-            <mat-label>Buscar proyecto...</mat-label>
+            <mat-label>Buscar servicio...</mat-label>
             <input matInput [formControl]="search" data-testid="input-busqueda" />
           </mat-form-field>
           <mat-form-field appearance="outline" style="max-width: 180px;">
@@ -81,7 +81,7 @@ interface FlowStep { label: string; idx: number; done: boolean; current: boolean
           <sig-empty-state icon="lock_clock" title="No hay cierres todavía" ctaLabel="Crear primer cierre" (ctaClick)="router.navigate(['/closures/nuevo'])" />
         } @else {
           <table mat-table [dataSource]="items()" class="sig-table" data-testid="tabla-closures">
-            <ng-container matColumnDef="proyecto"><th mat-header-cell *matHeaderCellDef>Proyecto</th><td mat-cell *matCellDef="let row">{{ row.projectNombre }}</td></ng-container>
+            <ng-container matColumnDef="servicio"><th mat-header-cell *matHeaderCellDef>Servicio</th><td mat-cell *matCellDef="let row">{{ row.serviceNombre }}</td></ng-container>
             <ng-container matColumnDef="periodo"><th mat-header-cell *matHeaderCellDef>Período</th><td mat-cell *matCellDef="let row">{{ row.periodNombre }}</td></ng-container>
             <ng-container matColumnDef="flujo">
               <th mat-header-cell *matHeaderCellDef>Flujo</th>
@@ -135,7 +135,7 @@ export class ClosuresListComponent implements OnInit {
   protected readonly search = new FormControl<string>('', { nonNullable: true });
   protected readonly periodFilter = new FormControl<number | null>(null);
   protected readonly estadoFilter = new FormControl<EstadoClosure | null>(null);
-  protected readonly cols = ['proyecto', 'periodo', 'flujo', 'margen', 'acciones'];
+  protected readonly cols = ['servicio', 'periodo', 'flujo', 'margen', 'acciones'];
 
   ngOnInit(): void {
     this.periodSvc.list().subscribe({ next: (ps) => this.periodos.set(ps), error: () => this.periodos.set([]) });
@@ -145,7 +145,7 @@ export class ClosuresListComponent implements OnInit {
     this.load();
   }
   protected onPage(e: PageEvent): void { this.pageSize.set(e.pageSize); this.page.set(e.pageIndex + 1); this.load(); }
-  protected onExportCSV(): void { exportCSV('closures.csv', this.items().map((c) => ({ Id: c.id, Proyecto: c.projectNombre, Periodo: c.periodNombre, Coste: c.costeTotal, Facturacion: c.facturacionTotal, Margen: c.margen, Estado: c.estado }))); }
+  protected onExportCSV(): void { exportCSV('closures.csv', this.items().map((c) => ({ Id: c.id, Servicio: c.serviceNombre, Periodo: c.periodNombre, Coste: c.costeTotal, Facturacion: c.facturacionTotal, Margen: c.margen, Estado: c.estado }))); }
   protected stepsFor(row: ClosureListItemDto): FlowStep[] {
     const stepOrder: ApprovalStep[] = ['ProjectManager', 'Backoffice', 'Fico', 'Direction', 'SystemExports'];
     const labels = ['PM', 'BO', 'Fico', 'Dir', 'Export'];
@@ -168,7 +168,7 @@ export class ClosuresListComponent implements OnInit {
         let items = r.items;
         if (this.search.value) {
           const q = this.search.value.toLowerCase();
-          items = items.filter((c) => c.projectNombre.toLowerCase().includes(q));
+          items = items.filter((c) => c.serviceNombre.toLowerCase().includes(q));
         }
         this.items.set(items); this.total.set(r.total); this.loading.set(false);
       },

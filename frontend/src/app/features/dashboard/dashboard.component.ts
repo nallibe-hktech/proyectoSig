@@ -9,7 +9,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { DashboardService } from '../../core/api/dashboard.service';
 import { PeriodService } from '../../core/api/periods.service';
 import { NotifyService } from '../../core/notify.service';
-import { DashboardKpisDto, DashboardAvisoDto, MiProyectoDto, PeriodDto } from '../../models/dtos';
+import { DashboardKpisDto, DashboardAvisoDto, MiServicioDto, PeriodDto } from '../../models/dtos';
 import { EstadoClosure, ApprovalStep } from '../../models/enums';
 import { StateBadgeComponent } from '../../shared/state-badge.component';
 import { environment } from '../../../environments/environment';
@@ -188,18 +188,16 @@ import { environment } from '../../../environments/environment';
             <text x="8" y="124" fill="var(--sig-text-muted)" font-size="11">&mdash;</text>
             <text x="8" y="84"  fill="var(--sig-text-muted)" font-size="11">&mdash;</text>
             <text x="8" y="44"  fill="var(--sig-text-muted)" font-size="11">&mdash;</text>
-            <!-- Area -->
-            <path [attr.d]="evolucionPath() ? 'M50 155 ' + evolucionPath() + ' L578 170 L50 170Z' : ''" fill="url(#areaGrad)"/>
-            <!-- Line -->
-            <path [attr.d]="evolucionPath() ? 'M50 155 ' + evolucionPath() : ''" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <!-- End dot (if we have data) -->
-            @if (kpis()?.evolucion && kpis()!.evolucion!.length > 0) {
-              <circle cx="578" cy="50" r="4" fill="#3b82f6"/>
-            }
-            <!-- X labels -->
-            @for (evo of kpis()?.evolucion ?? []; track evo.periodNombre; let i = $index) {
-              @if ((kpis()?.evolucion?.length ?? 0) > 0) {
-                <text [attr.x]="50 + (i / Math.max(1, (kpis()?.evolucion?.length ?? 1) - 1)) * 460" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">{{ evo.periodNombre.substring(0, 3) }}</text>
+            @if (evo(); as e) {
+              <!-- Area -->
+              <path [attr.d]="e.area" fill="url(#areaGrad)"/>
+              <!-- Line -->
+              <path [attr.d]="e.line" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- End dot -->
+              <circle [attr.cx]="e.end.x" [attr.cy]="e.end.y" r="4" fill="#3b82f6"/>
+              <!-- X labels -->
+              @for (pt of e.points; track pt.label) {
+                <text [attr.x]="pt.x" y="185" fill="var(--sig-text-muted)" font-size="11" text-anchor="middle">{{ pt.label.substring(0, 3) }}</text>
               }
             }
           </svg>
@@ -241,11 +239,11 @@ import { environment } from '../../../environments/environment';
 
       </div>
 
-      <!-- Mis Proyectos Table -->
-      <div class="sig-table-section" data-testid="dashboard-mis-proyectos">
+      <!-- Mis Servicios Table -->
+      <div class="sig-table-section" data-testid="dashboard-mis-servicios">
         <div class="sig-section-hdr">
           <div class="sig-chart-icon"><mat-icon>assignment</mat-icon></div>
-          <span class="sig-chart-title">Mis Proyectos</span>
+          <span class="sig-chart-title">Mis Servicios</span>
         </div>
         @if (loadingMis()) {
           <div class="sig-table-skeleton">
@@ -253,14 +251,14 @@ import { environment } from '../../../environments/environment';
               <div class="sig-skeleton" style="height:16px;width:100%;border-radius:4px;margin-bottom:8px;"></div>
             }
           </div>
-        } @else if (misProyectos().length === 0) {
-          <div class="sig-empty-table">No hay proyectos asignados en el per&iacute;odo activo.</div>
+        } @else if (misServicios().length === 0) {
+          <div class="sig-empty-table">No hay servicios asignados en el per&iacute;odo activo.</div>
         } @else {
-          <table mat-table [dataSource]="misProyectos()" class="sig-mat-table">
+          <table mat-table [dataSource]="misServicios()" class="sig-mat-table">
             <ng-container matColumnDef="nombre">
-              <th mat-header-cell *matHeaderCellDef> Proyecto </th>
+              <th mat-header-cell *matHeaderCellDef> Servicio </th>
               <td mat-cell *matCellDef="let p">
-                <span class="sig-cell-link" [routerLink]="['/projects', p.projectId]">{{ p.nombre }}</span>
+                <span class="sig-cell-link" [routerLink]="['/services', p.serviceId]">{{ p.nombre }}</span>
               </td>
             </ng-container>
             <ng-container matColumnDef="cliente">
@@ -316,11 +314,11 @@ import { environment } from '../../../environments/environment';
           <span class="sig-chart-title">Margen vs Objetivo</span>
           <svg class="sig-gauge" viewBox="0 0 200 130">
             <!-- Background arc -->
-            <path d="M20 110 A80 80 0 0 1 180 110" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="18" stroke-linecap="round"/>
+            <path d="M20 110 A80 80 0 0 1 180 110" fill="none" stroke="var(--sig-border)" stroke-width="18" stroke-linecap="round"/>
             <!-- Gauge fill (dynamic) -->
             <path [attr.d]="gaugePath()" fill="none" stroke="#3b82f6" stroke-width="18" stroke-linecap="round"/>
             <!-- Target marker at 25% -->
-            <line x1="115" y1="44" x2="103" y2="32" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="51" y1="61" x2="35" y2="45" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
             <!-- Center text -->
             <text x="100" y="98" text-anchor="middle" fill="var(--sig-text-heading)" font-size="28" font-weight="700">{{ margenPct() | number:'1.1-1' }}%</text>
             <text x="100" y="116" text-anchor="middle" fill="var(--sig-text-muted)" font-size="12">Objetivo 25%</text>
@@ -591,7 +589,7 @@ import { environment } from '../../../environments/environment';
     .sig-obj-vals { display: flex; justify-content: space-between; margin-bottom: 5px; }
     .sig-obj-current { font-size: 13px; font-weight: 600; color: var(--sig-text-heading); font-family: 'Roboto Mono', monospace; }
     .sig-obj-track {
-      height: 6px; background: rgba(255,255,255,.07); border-radius: 3px; overflow: hidden;
+      height: 6px; background: var(--sig-border); border-radius: 3px; overflow: hidden;
     }
     .sig-obj-fill { height: 100%; border-radius: 3px; transition: width .3s; }
     .sig-obj-sub { font-size: 11px; color: var(--sig-text-muted); margin-top: 4px; }
@@ -680,7 +678,7 @@ import { environment } from '../../../environments/environment';
       color: var(--sig-text-secondary) !important;
     }
     .sig-skeleton {
-      background: rgba(255,255,255,.06);
+      background: var(--sig-border);
       animation: sig-shimmer 1.4s infinite;
     }
     @keyframes sig-shimmer {
@@ -701,7 +699,7 @@ export class DashboardComponent implements OnInit {
 
   protected readonly kpis          = signal<DashboardKpisDto | null>(null);
   protected readonly avisos        = signal<DashboardAvisoDto[]>([]);
-  protected readonly misProyectos  = signal<MiProyectoDto[]>([]);
+  protected readonly misServicios  = signal<MiServicioDto[]>([]);
   protected readonly loadingKpis   = signal(true);
   protected readonly loadingAvisos = signal(true);
   protected readonly loadingMis    = signal(true);
@@ -728,7 +726,7 @@ export class DashboardComponent implements OnInit {
 
   protected readonly donutSegmentos = computed(() => {
     const clientes = this.kpis()?.desglosePorCliente ?? [];
-    const C = 2 * Math.PI * 54; // circumference with radius 54
+    const C = 2 * Math.PI * 68; // circunferencia para radio 68 (debe coincidir con el <circle r="68"> del SVG)
     const COLORS = ['#3b82f6','#00d4c4','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
     let offset = 0;
     return clientes.map((c, i) => {
@@ -741,20 +739,29 @@ export class DashboardComponent implements OnInit {
 
   protected readonly gaugePath = computed(() => {
     const pct = Math.min(this.margenPct(), 100) / 100;
+    if (pct <= 0) return '';
+    // Geometría fiel al arco de fondo del SVG: centro (100,110), radio 80, semicírculo superior
     const a = pct * Math.PI;
-    const x = 60 + 50 * Math.cos(Math.PI - a);
-    const y = 60 - 50 * Math.sin(Math.PI - a);
-    return `M 10 60 A 50 50 0 ${pct > 0.5 ? 1 : 0} 1 ${x} ${y}`;
+    const x = 100 - 80 * Math.cos(a);
+    const y = 110 - 80 * Math.sin(a);
+    return `M 20 110 A 80 80 0 ${pct > 0.5 ? 1 : 0} 1 ${x.toFixed(1)} ${y.toFixed(1)}`;
   });
 
-  protected readonly evolucionPath = computed(() => {
+  protected readonly evo = computed(() => {
     const pts = this.kpis()?.evolucion ?? [];
-    if (pts.length < 2) return '';
+    if (pts.length < 2) return null;
     const maxF = Math.max(...pts.map(p => p.facturacion), 1);
-    const W = 460, H = 100;
-    return pts.map((p, i) =>
-      `${i === 0 ? 'M' : 'L'} ${(i / (pts.length - 1)) * W} ${H - (p.facturacion / maxF) * H * 0.85}`
-    ).join(' ');
+    // Coordenadas absolutas en el viewBox "0 0 600 200": zona útil x[50..510], y[40..160]
+    const X0 = 50, W = 460, YTOP = 40, YBOT = 160;
+    const xy = pts.map((p, i) => ({
+      x: X0 + (i / (pts.length - 1)) * W,
+      y: YBOT - (p.facturacion / maxF) * (YBOT - YTOP),
+      label: p.periodNombre,
+    }));
+    const line = xy.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(' ');
+    const first = xy[0], last = xy[xy.length - 1];
+    const area = `${line} L ${last.x.toFixed(1)} ${YBOT} L ${first.x.toFixed(1)} ${YBOT} Z`;
+    return { line, area, points: xy, end: last };
   });
 
   constructor() {
@@ -784,9 +791,9 @@ export class DashboardComponent implements OnInit {
       next:  (d) => { this.avisos.set(d);   this.loadingAvisos.set(false); },
       error: ()  => { this.avisos.set([]);   this.loadingAvisos.set(false); },
     });
-    this.dashboardSvc.getMisProyectos(periodId).subscribe({
-      next:  (d) => { this.misProyectos.set(d);   this.loadingMis.set(false); },
-      error: ()  => { this.misProyectos.set([]);   this.loadingMis.set(false); },
+    this.dashboardSvc.getMisServicios(periodId).subscribe({
+      next:  (d) => { this.misServicios.set(d);   this.loadingMis.set(false); },
+      error: ()  => { this.misServicios.set([]);   this.loadingMis.set(false); },
     });
   }
 

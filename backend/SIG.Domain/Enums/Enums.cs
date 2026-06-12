@@ -1,8 +1,7 @@
 namespace SIG.Domain.Enums;
 
 public enum EstadoUsuario { Activo, Inactivo }
-public enum EstadoProyecto { Activo, Pausado, Cerrado }
-public enum EstadoAccion { Activa, Inactiva }
+public enum EstadoServicio { Activo, Inactivo }
 public enum TipoConcepto { Pago, Factura }
 public enum EstadoPeriodo { Abierto, Cerrado, Bloqueado }
 public enum EstadoClosure { Borrador, EnAprobacion, Aprobado, Rechazado, Exportado }

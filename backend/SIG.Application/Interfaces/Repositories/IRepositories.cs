@@ -4,7 +4,6 @@ using SIG.Domain.Common;
 using SIG.Domain.Entities;
 using SIG.Domain.Entities.Staging;
 using SIG.Domain.Enums;
-using Action = SIG.Domain.Entities.Action;
 
 namespace SIG.Application.Interfaces.Repositories;
 
@@ -17,7 +16,7 @@ public interface IUserRepository
     Task<bool> ExistsByNifAsync(string nif, int? excludeId, CancellationToken ct);
     Task<IReadOnlyList<User>> ListAsync(CancellationToken ct);
     Task<PagedResult<User>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, string? search, CancellationToken ct);
-    Task<IReadOnlyList<int>> ListProjectIdsForUserAsync(int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<int>> ListServiceIdsForUserAsync(int usuarioId, CancellationToken ct);
     Task<IReadOnlyList<string>> ListRoleNamesForUserAsync(int usuarioId, CancellationToken ct);
     Task AddAsync(User user, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
@@ -37,31 +36,20 @@ public interface IClientRepository
     Task<Client?> GetByIdAsync(int id, CancellationToken ct);
     Task<PagedResult<Client>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, string? search, CancellationToken ct);
     Task AddAsync(Client client, CancellationToken ct);
-    Task<bool> HasProjectsAsync(int clientId, CancellationToken ct);
+    Task<bool> HasServicesAsync(int clientId, CancellationToken ct);
     Task<bool> ExistsByNifAsync(string nif, int? excludeId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
-public interface IProjectRepository
+public interface IServiceRepository
 {
-    Task<Project?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task<Project?> GetByIdAsync(int id, CancellationToken ct);
-    Task<IReadOnlyList<Project>> ListAsync(CancellationToken ct);
-    Task<PagedResult<Project>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
-    Task AddAsync(Project project, CancellationToken ct);
-    Task<bool> IsUserAssignedAsync(int projectId, int usuarioId, CancellationToken ct);
-    Task<bool> HasActionsOrClosuresAsync(int projectId, CancellationToken ct);
-    Task SaveChangesAsync(CancellationToken ct);
-}
-
-public interface IActionRepository
-{
-    Task<Action?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task<Action?> GetByIdAsync(int id, CancellationToken ct);
-    Task<IReadOnlyList<Action>> ListAsync(CancellationToken ct);
-    Task<PagedResult<Action>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? projectId, string? search, CancellationToken ct);
-    Task AddAsync(Action action, CancellationToken ct);
-    Task<bool> HasClosuresAsync(int actionId, CancellationToken ct);
+    Task<Service?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
+    Task<Service?> GetByIdAsync(int id, CancellationToken ct);
+    Task<IReadOnlyList<Service>> ListAsync(CancellationToken ct);
+    Task<PagedResult<Service>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
+    Task AddAsync(Service service, CancellationToken ct);
+    Task<bool> IsUserAssignedAsync(int serviceId, int usuarioId, CancellationToken ct);
+    Task<bool> HasClosuresAsync(int serviceId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
@@ -71,7 +59,7 @@ public interface IConceptRepository
     Task<Concept?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
     Task<PagedResult<Concept>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, TipoConcepto? tipo, string? search, CancellationToken ct);
     Task AddAsync(Concept concept, CancellationToken ct);
-    Task<bool> HasActionsAsync(int conceptId, CancellationToken ct);
+    Task<bool> HasServicesAsync(int conceptId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
@@ -98,7 +86,7 @@ public interface IClosureRepository
     Task<Closure?> GetByIdAsync(int id, CancellationToken ct);
     Task<Closure?> GetByIdWithLinesAsync(int id, CancellationToken ct);
     Task<Closure?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task<Closure?> GetByProjectAndPeriodAsync(int projectId, int periodId, CancellationToken ct);
+    Task<Closure?> GetByServiceAndPeriodAsync(int serviceId, int periodId, CancellationToken ct);
     Task<PagedResult<Closure>> ListPaginatedForUserAsync(int usuarioId, ApprovalFilterRequest filter, CancellationToken ct);
     Task<PagedResult<Closure>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct);
     Task AddAsync(Closure closure, CancellationToken ct);
@@ -159,7 +147,7 @@ public interface IDepartmentRepository
 {
     Task<IReadOnlyList<Department>> ListAsync(CancellationToken ct);
     Task<Department?> GetByIdAsync(int id, CancellationToken ct);
-    Task<bool> HasUsersOrActionsAsync(int id, CancellationToken ct);
+    Task<bool> HasUsersOrServicesAsync(int id, CancellationToken ct);
     Task AddAsync(Department dep, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
@@ -169,24 +157,24 @@ public interface ICostCenterRepository
     Task<IReadOnlyList<CostCenter>> ListAsync(CancellationToken ct);
     Task<CostCenter?> GetByIdAsync(int id, CancellationToken ct);
     Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId, CancellationToken ct);
-    Task<bool> HasProjectsAsync(int id, CancellationToken ct);
+    Task<bool> HasServicesAsync(int id, CancellationToken ct);
     Task AddAsync(CostCenter cc, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
-public interface ITarifaProyectoRepository
+public interface ITarifaServicioRepository
 {
-    Task<IReadOnlyList<TarifaProyecto>> ListByProjectAsync(int projectId, CancellationToken ct);
-    Task<TarifaProyecto?> GetByIdAsync(int id, CancellationToken ct);
-    Task AddAsync(TarifaProyecto entity, CancellationToken ct);
+    Task<IReadOnlyList<TarifaServicio>> ListByServiceAsync(int serviceId, CancellationToken ct);
+    Task<TarifaServicio?> GetByIdAsync(int id, CancellationToken ct);
+    Task AddAsync(TarifaServicio entity, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
-public interface IPresupuestoProyectoRepository
+public interface IPresupuestoServicioRepository
 {
-    Task<IReadOnlyList<PresupuestoProyecto>> ListByProjectAsync(int projectId, CancellationToken ct);
-    Task<PresupuestoProyecto?> GetByIdAsync(int id, CancellationToken ct);
-    Task AddAsync(PresupuestoProyecto entity, CancellationToken ct);
+    Task<IReadOnlyList<PresupuestoServicio>> ListByServiceAsync(int serviceId, CancellationToken ct);
+    Task<PresupuestoServicio?> GetByIdAsync(int id, CancellationToken ct);
+    Task AddAsync(PresupuestoServicio entity, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 

@@ -11,7 +11,7 @@ public class CalculationContext
     public List<StagingBizneoAbsence> HorasBizneo { get; set; } = new();
     public List<StagingIntratimeFichaje> Fichajes { get; set; } = new();
     public List<StagingPayHawkGasto> Gastos { get; set; } = new();
-    public List<TarifaProyecto> Tarifas { get; set; } = new();
+    public List<TarifaServicio> Tarifas { get; set; } = new();
     public List<Variable> Variables { get; set; } = new();
     public List<StagingSgpvVisita> VisitasSgpv { get; set; } = new();
     public HashSet<string> SistemasUsados { get; } = new();
@@ -27,7 +27,7 @@ public class CalculationContext
             "VisitasCelero" => Visitas.Select(v => RowAdapter.FromVisita(v)),
             "HorasBizneo" => HorasBizneo.Select(h => RowAdapter.FromHora(h)),
             "HorasIntratime" => Fichajes.Select(f => RowAdapter.FromFichaje(f)),
-            "TarifasProyecto" => Tarifas.Select(t => RowAdapter.FromTarifa(t)),
+            "TarifasServicio" or "TarifasProyecto" => Tarifas.Select(t => RowAdapter.FromTarifa(t)),
             "VisitasSgpv" => VisitasSgpv.Select(s => RowAdapter.FromSgpvVisita(s)),
             _ => throw new FormulaInvalidException($"Entidad desconocida: {source.Entity}")
         };
@@ -39,7 +39,7 @@ public class CalculationContext
         var rows = baseRows.Where(r =>
         {
             if (r.Fecha.HasValue && (r.Fecha.Value < desde || r.Fecha.Value > hasta)) return false;
-            if (r.ProjectId.HasValue && r.ProjectId.Value != closure.ProjectId) return false;
+            if (r.ServiceId.HasValue && r.ServiceId.Value != closure.ServiceId) return false;
             if (recursoId.HasValue && r.UserId.HasValue && r.UserId.Value != recursoId.Value) return false;
             return true;
         });
@@ -108,6 +108,7 @@ public class CalculationContext
         "VisitasCelero" => "Celero",
         "HorasBizneo" => "Bizneo",
         "HorasIntratime" => "Intratime",
+        "TarifasServicio" => "Tarifas",
         "TarifasProyecto" => "Tarifas",
         "VisitasSgpv" => "SGPV",
         _ => "Desconocido"
@@ -125,8 +126,7 @@ public class RowAdapter
 {
     public DateOnly? Fecha { get; set; }
     public int? UserId { get; set; }
-    public int? ProjectId { get; set; }
-    public int? ActionId { get; set; }
+    public int? ServiceId { get; set; }
     public decimal? Importe { get; set; }
     public decimal? Horas { get; set; }
     public int? TipoVisita { get; set; }
@@ -149,8 +149,10 @@ public class RowAdapter
     {
         "Fecha" => Fecha,
         "UserId" => UserId,
-        "ProjectId" => ProjectId,
-        "ActionId" => ActionId,
+        "ServiceId" => ServiceId,
+        // Alias retro-compat para fórmulas almacenadas que filtraban por ProjectId/ActionId
+        "ProjectId" => ServiceId,
+        "ActionId" => ServiceId,
         "Importe" => Importe,
         "Horas" => Horas,
         "TipoVisita" => TipoVisita,
@@ -163,26 +165,26 @@ public class RowAdapter
 
     public static RowAdapter FromGasto(StagingPayHawkGasto g) => new()
     {
-        Fecha = g.Fecha, UserId = g.UserId, ProjectId = g.ProjectId, Importe = g.Importe, Categoria = g.Categoria
+        Fecha = g.Fecha, UserId = g.UserId, ServiceId = g.ServiceId, Importe = g.Importe, Categoria = g.Categoria
     };
     public static RowAdapter FromVisita(StagingCeleroVisita v) => new()
     {
-        Fecha = v.Fecha, UserId = v.UserId, ProjectId = v.ProjectId, ActionId = v.ActionId, TipoVisita = null, PuntoMontado = null
+        Fecha = v.Fecha, UserId = v.UserId, ServiceId = v.ServiceId, TipoVisita = null, PuntoMontado = null
     };
     public static RowAdapter FromHora(StagingBizneoAbsence h) => new()
     {
-        Fecha = h.Fecha, UserId = h.UserId, ProjectId = h.ProjectId, Horas = h.Horas
+        Fecha = h.Fecha, UserId = h.UserId, ServiceId = h.ServiceId, Horas = h.Horas
     };
     public static RowAdapter FromFichaje(StagingIntratimeFichaje f) => new()
     {
         UserId = f.UserId, Entrada = f.Entrada, Salida = f.Salida, Horas = f.HorasCalculadas
     };
-    public static RowAdapter FromTarifa(TarifaProyecto t) => new()
+    public static RowAdapter FromTarifa(TarifaServicio t) => new()
     {
-        Nombre = t.Nombre, Importe = t.Valor, Fecha = t.FechaDesde, ProjectId = t.ProjectId
+        Nombre = t.Nombre, Importe = t.Valor, Fecha = t.FechaDesde, ServiceId = t.ServiceId
     };
     public static RowAdapter FromSgpvVisita(StagingSgpvVisita s) => new()
     {
-        Fecha = s.Fecha, UserId = s.UserId, ProjectId = s.ProjectId
+        Fecha = s.Fecha, UserId = s.UserId, ServiceId = s.ServiceId
     };
 }

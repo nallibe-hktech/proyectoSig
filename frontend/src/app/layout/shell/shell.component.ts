@@ -77,8 +77,7 @@ export class ShellComponent implements OnInit {
   private readonly allOperativoNav: NavItem[] = [
     { label: 'Dashboard', route: '/dashboard', icon: 'dashboard', testId: 'nav-dashboard' },
     { label: 'Clients', route: '/clients', icon: 'groups', testId: 'nav-clients' },
-    { label: 'Projects', route: '/projects', icon: 'folder_open', testId: 'nav-projects' },
-    { label: 'Actions', route: '/actions', icon: 'task_alt', testId: 'nav-actions' },
+    { label: 'Servicios', route: '/services', icon: 'task_alt', testId: 'nav-services' },
     { label: 'Concepts', route: '/concepts', icon: 'calculate', testId: 'nav-concepts' },
     { label: 'Variables', route: '/variables', icon: 'data_object', testId: 'nav-variables' },
     { label: 'Periods', route: '/periods', icon: 'calendar_month', testId: 'nav-periods' },

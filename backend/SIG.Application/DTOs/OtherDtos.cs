@@ -15,8 +15,8 @@ public record DashboardKpisDto(
 
 public record DashboardAvisoDto(string Tipo, string Descripcion, int? EntityId);
 
-public record MiProyectoDto(
-    int ProjectId, string Nombre, int ClientId, string ClientNombre,
+public record MiServicioDto(
+    int ServiceId, string Nombre, int ClientId, string ClientNombre,
     int? ClosureId, EstadoClosure? Estado, ApprovalStep? PasoActual,
     decimal? CosteTotal, decimal? FacturacionTotal, decimal? Margen);
 

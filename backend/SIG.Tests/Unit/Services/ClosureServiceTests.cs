@@ -14,7 +14,7 @@ public class ClosureServiceTests
     private readonly IClosureRepository _repo = Substitute.For<IClosureRepository>();
     private readonly IClosureLineRepository _lineRepo = Substitute.For<IClosureLineRepository>();
     private readonly ICalculationLogRepository _calcLogRepo = Substitute.For<ICalculationLogRepository>();
-    private readonly IProjectRepository _projectRepo = Substitute.For<IProjectRepository>();
+    private readonly IServiceRepository _serviceRepo = Substitute.For<IServiceRepository>();
     private readonly IPeriodRepository _periodRepo = Substitute.For<IPeriodRepository>();
     private readonly IApprovalRepository _approvalRepo = Substitute.For<IApprovalRepository>();
     private readonly IRoleRepository _roleRepo = Substitute.For<IRoleRepository>();
@@ -24,17 +24,17 @@ public class ClosureServiceTests
 
     public ClosureServiceTests()
     {
-        _sut = new ClosureService(_repo, _lineRepo, _calcLogRepo, _projectRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _engine);
+        _sut = new ClosureService(_repo, _lineRepo, _calcLogRepo, _serviceRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _engine);
     }
 
     private static Period MakePeriod(EstadoPeriodo estado = EstadoPeriodo.Abierto) =>
         new() { Id = 1, Nombre = "Marzo 2026", FechaInicio = new DateOnly(2026, 3, 1), FechaFin = new DateOnly(2026, 3, 31), Estado = estado };
 
-    private static Project MakeProject() => new() { Id = 100, Nombre = "Proj1", ClientId = 1 };
+    private static Service MakeService() => new() { Id = 100, Nombre = "Serv1", ClientId = 1 };
 
     private static Closure MakeClosure(EstadoClosure estado = EstadoClosure.Borrador, ApprovalStep paso = ApprovalStep.ProjectManager, uint rowVersion = 1) => new()
     {
-        Id = 555, ProjectId = 100, Project = MakeProject(),
+        Id = 555, ServiceId = 100, Service = MakeService(),
         PeriodId = 1, Period = MakePeriod(),
         Estado = estado, PasoActual = paso, RowVersion = rowVersion,
         Lines = new List<ClosureLine>(),
@@ -65,7 +65,7 @@ public class ClosureServiceTests
     public async Task CreateAsync_ClosureYaExisteParaProjectPeriod_LanzaDuplicateException()
     {
         _periodRepo.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(MakePeriod());
-        _repo.GetByProjectAndPeriodAsync(100, 1, Arg.Any<CancellationToken>()).Returns(MakeClosure());
+        _repo.GetByServiceAndPeriodAsync(100, 1, Arg.Any<CancellationToken>()).Returns(MakeClosure());
 
         await FluentActions.Awaiting(() => _sut.CreateAsync(new ClosureCreateRequest(100, 1, null), 1, CancellationToken.None))
             .Should().ThrowAsync<DuplicateException>();

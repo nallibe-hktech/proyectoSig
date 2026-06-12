@@ -40,43 +40,27 @@ public class ClientUpdateRequestValidator : AbstractValidator<ClientUpdateReques
     }
 }
 
-public class ProjectCreateRequestValidator : AbstractValidator<ProjectCreateRequest>
+public class ServiceCreateRequestValidator : AbstractValidator<ServiceCreateRequest>
 {
-    public ProjectCreateRequestValidator()
+    public ServiceCreateRequestValidator()
     {
         RuleFor(x => x.Nombre).NotEmpty().Length(2, 200);
         RuleFor(x => x.ClientId).GreaterThan(0);
         RuleFor(x => x.CostCenterIds).NotNull();
         RuleFor(x => x.UserIds).NotNull();
+        RuleFor(x => x.ConceptIds).NotNull();
     }
 }
 
-public class ProjectUpdateRequestValidator : AbstractValidator<ProjectUpdateRequest>
+public class ServiceUpdateRequestValidator : AbstractValidator<ServiceUpdateRequest>
 {
-    public ProjectUpdateRequestValidator()
+    public ServiceUpdateRequestValidator()
     {
         RuleFor(x => x.Nombre).NotEmpty().Length(2, 200);
         RuleFor(x => x.ClientId).GreaterThan(0);
-    }
-}
-
-public class ActionCreateRequestValidator : AbstractValidator<ActionCreateRequest>
-{
-    public ActionCreateRequestValidator()
-    {
-        RuleFor(x => x.Nombre).NotEmpty().Length(2, 200);
-        RuleFor(x => x.ProjectId).GreaterThan(0);
-        RuleFor(x => x.ClientId).GreaterThan(0);
-    }
-}
-
-public class ActionUpdateRequestValidator : AbstractValidator<ActionUpdateRequest>
-{
-    public ActionUpdateRequestValidator()
-    {
-        RuleFor(x => x.Nombre).NotEmpty().Length(2, 200);
-        RuleFor(x => x.ProjectId).GreaterThan(0);
-        RuleFor(x => x.ClientId).GreaterThan(0);
+        RuleFor(x => x.CostCenterIds).NotNull();
+        RuleFor(x => x.UserIds).NotNull();
+        RuleFor(x => x.ConceptIds).NotNull();
     }
 }
 
@@ -180,7 +164,7 @@ public class ClosureCreateRequestValidator : AbstractValidator<ClosureCreateRequ
 {
     public ClosureCreateRequestValidator()
     {
-        RuleFor(x => x.ProjectId).GreaterThan(0);
+        RuleFor(x => x.ServiceId).GreaterThan(0);
         RuleFor(x => x.PeriodId).GreaterThan(0);
     }
 }

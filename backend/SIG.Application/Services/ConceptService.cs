@@ -73,7 +73,7 @@ public class ConceptService : IConceptService
     {
         var c = await _repo.GetByIdAndUsuarioIdAsync(id, usuarioId, ct)
                 ?? throw new EntityNotFoundException("Concept", id);
-        if (await _repo.HasActionsAsync(id, ct))
+        if (await _repo.HasServicesAsync(id, ct))
             throw new DependenciesExistException(1);
         c.IsDeleted = true;
         c.DeletedAt = DateTime.UtcNow;
@@ -88,6 +88,6 @@ public class ConceptService : IConceptService
 
     private static ConceptDetailDto Map(Concept c) =>
         new(c.Id, c.Nombre, c.Tipo, c.FechaDesde, c.FechaHasta, c.FormulaJson,
-            c.ActionConcepts.Select(x => x.ActionId).ToArray(),
+            c.ServiceConcepts.Select(x => x.ServiceId).ToArray(),
             c.ConceptUsers.Select(x => x.UserId).ToArray());
 }

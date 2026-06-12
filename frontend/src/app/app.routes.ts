@@ -39,17 +39,13 @@ export const routes: Routes = [
       { path: 'clients/:id', loadComponent: () => import('./features/clients/client-detail.component').then((m) => m.ClientDetailComponent), title: 'Detalle Client — SIG' },
       { path: 'clients/:id/editar', loadComponent: () => import('./features/clients/client-form.component').then((m) => m.ClientFormComponent), title: 'Editar Client — SIG' },
 
-      // Projects
-      { path: 'projects', loadComponent: () => import('./features/projects/projects-list.component').then((m) => m.ProjectsListComponent), title: 'Projects — SIG' },
-      { path: 'projects/nuevo', loadComponent: () => import('./features/projects/project-form.component').then((m) => m.ProjectFormComponent), title: 'Nuevo Project — SIG' },
-      { path: 'projects/:id', loadComponent: () => import('./features/projects/project-detail.component').then((m) => m.ProjectDetailComponent), title: 'Detalle Project — SIG' },
-      { path: 'projects/:id/editar', loadComponent: () => import('./features/projects/project-form.component').then((m) => m.ProjectFormComponent), title: 'Editar Project — SIG' },
-
-      // Actions
-      { path: 'actions', loadComponent: () => import('./features/actions/actions-list.component').then((m) => m.ActionsListComponent), title: 'Actions — SIG' },
-      { path: 'actions/nuevo', loadComponent: () => import('./features/actions/action-form.component').then((m) => m.ActionFormComponent), title: 'Nueva Action — SIG' },
-      { path: 'actions/:id', loadComponent: () => import('./features/actions/action-detail.component').then((m) => m.ActionDetailComponent), title: 'Detalle Action — SIG' },
-      { path: 'actions/:id/editar', loadComponent: () => import('./features/actions/action-form.component').then((m) => m.ActionFormComponent), title: 'Editar Action — SIG' },
+      // Services
+      { path: 'services', loadComponent: () => import('./features/services/services-list.component').then((m) => m.ServicesListComponent), title: 'Servicios — SIG' },
+      { path: 'services/nuevo', loadComponent: () => import('./features/services/service-form.component').then((m) => m.ServiceFormComponent), title: 'Nuevo Servicio — SIG' },
+      { path: 'services/:id', loadComponent: () => import('./features/services/service-detail.component').then((m) => m.ServiceDetailComponent), title: 'Detalle Servicio — SIG' },
+      { path: 'services/:id/editar', loadComponent: () => import('./features/services/service-form.component').then((m) => m.ServiceFormComponent), title: 'Editar Servicio — SIG' },
+      { path: 'services/:id/tarifas', loadComponent: () => import('./features/services/tarifas/tarifas-list.component').then((m) => m.TarifasListComponent), title: 'Tarifas — SIG' },
+      { path: 'services/:id/presupuestos', loadComponent: () => import('./features/services/presupuestos/presupuestos-list.component').then((m) => m.PresupuestosListComponent), title: 'Presupuestos — SIG' },
 
       // Concepts
       { path: 'concepts', loadComponent: () => import('./features/concepts/concepts-list.component').then((m) => m.ConceptsListComponent), title: 'Concepts — SIG' },
