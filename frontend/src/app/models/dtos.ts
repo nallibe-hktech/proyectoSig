@@ -232,6 +232,18 @@ export interface ApprovalDto {
   motivo?: string | null;
   fechaDecision?: string | null;
 }
+export interface ClosureAlertaDto {
+  id: number;
+  tipo: string;
+  codigo: string;
+  descripcion: string;
+  detalle?: string | null;
+  confirmada: boolean;
+  confirmadaPorNombre?: string | null;
+  fechaConfirmacion?: string | null;
+  closureId?: number;
+  closureNombre?: string;
+}
 export interface ClosureDetailDto {
   id: number;
   serviceId: number;
@@ -247,6 +259,7 @@ export interface ClosureDetailDto {
   rowVersion: number;
   lines: ClosureLineDto[];
   approvals: ApprovalDto[];
+  alertas: ClosureAlertaDto[];
 }
 export interface ClosureCreateRequest { serviceId: number; periodId: number; comentarios?: string | null; }
 export interface ClosureRecalcRequest { comentarios?: string | null; }

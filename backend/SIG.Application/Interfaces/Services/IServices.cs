@@ -190,7 +190,7 @@ public interface IClosureValidationService
     /// Valida el cierre sobre datos sincronizados y crea alertas en BD.
     /// Se ejecuta automáticamente al crear o recalcular un cierre.
     /// </summary>
-    Task<IReadOnlyList<ClosureAlertaDto>> ValidarYPersistirAsync(int closureId, int projectId, int periodId, CancellationToken ct);
+    Task<IReadOnlyList<ClosureAlertaDto>> ValidarYPersistirAsync(int closureId, int serviceId, int periodId, CancellationToken ct);
 
     /// <summary>
     /// Obtiene todas las alertas asociadas a un cierre.

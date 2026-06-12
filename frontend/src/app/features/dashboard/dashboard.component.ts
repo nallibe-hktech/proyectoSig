@@ -6,10 +6,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
 import { DashboardService } from '../../core/api/dashboard.service';
 import { PeriodService } from '../../core/api/periods.service';
 import { NotifyService } from '../../core/notify.service';
-import { DashboardKpisDto, DashboardAvisoDto, MiServicioDto, PeriodDto } from '../../models/dtos';
+import { DashboardKpisDto, DashboardAvisoDto, MiServicioDto, PeriodDto, ClosureAlertaDto } from '../../models/dtos';
+import { ClosureService } from '../../core/api/closures.service';
 import { EstadoClosure, ApprovalStep } from '../../models/enums';
 import { StateBadgeComponent } from '../../shared/state-badge.component';
 import { environment } from '../../../environments/environment';
@@ -17,7 +19,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatTableModule, MatCardModule, MatMenuModule, StateBadgeComponent],
+  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatTableModule, MatCardModule, MatMenuModule, MatDividerModule, StateBadgeComponent],
   template: `
     <div class="sig-exec-page">
 
@@ -52,6 +54,37 @@ import { environment } from '../../../environments/environment';
               <span class="sig-notif-badge">{{ avisos().length }}</span>
             }
           </button>
+          <button mat-icon-button class="sig-exec-icon-btn sig-alert-bell-btn" [matMenuTriggerFor]="alertasMenu" aria-label="Alertas de Cierre" data-testid="btn-alertas-cierre">
+            <mat-icon>warning_amber</mat-icon>
+            @if (alertasPendientesCierre().length > 0) {
+              <span class="sig-notif-badge sig-notif-badge--alert">{{ alertasPendientesCierre().length }}</span>
+            }
+          </button>
+          <mat-menu #alertasMenu="matMenu" class="sig-alertas-menu">
+            @if (loadingAlertasCierre()) {
+              <div class="sig-alert-menu-item sig-alert-menu-loading">Cargando alertas...</div>
+            } @else if (alertasPendientesCierre().length === 0) {
+              <div class="sig-alert-menu-item sig-alert-menu-ok">
+                <mat-icon>check_circle</mat-icon>
+                <span>No hay alertas pendientes</span>
+              </div>
+            } @else {
+              @for (a of alertasPendientesCierre().slice(0, 10); track a.id) {
+                <div class="sig-alert-menu-item" [class]="'sig-alert-menu--' + a.tipo.toLowerCase()">
+                  <mat-icon>{{ a.tipo === 'Bloqueante' ? 'block' : 'warning' }}</mat-icon>
+                  <div class="sig-alert-menu-body">
+                    <span class="sig-alert-menu-codigo">{{ a.codigo }}</span>
+                    <span class="sig-alert-menu-desc">{{ a.descripcion }}</span>
+                  </div>
+                </div>
+              }
+              <mat-divider></mat-divider>
+              <button mat-menu-item [routerLink]="['/alertas']" class="sig-alert-menu-ver-todas">
+                <mat-icon>list</mat-icon>
+                <span>Ver todas las alertas</span>
+              </button>
+            }
+          </mat-menu>
         </div>
       </div>
 
@@ -361,25 +394,34 @@ import { environment } from '../../../environments/environment';
           </div>
         </div>
 
-        <!-- Alerts -->
-        <div class="sig-bottom-card" data-testid="dashboard-alertas">
+        <!-- Alertas de Cierre -->
+        <div class="sig-bottom-card" data-testid="dashboard-alertas-cierre">
           <div class="sig-chart-icon sig-chart-icon--warn"><mat-icon>warning_amber</mat-icon></div>
-          <span class="sig-chart-title">Alertas</span>
-          @if (loadingAvisos()) {
+          <span class="sig-chart-title">Alertas de Cierre</span>
+          @if (loadingAlertasCierre()) {
             <div class="sig-alert-item sig-alert--loading" *ngFor="let i of [0,1,2]">
               <div class="sig-skeleton" style="height:14px;width:80%;border-radius:4px;"></div>
             </div>
-          } @else if (avisos().length === 0) {
+          } @else if (alertasCierreResumen().total === 0) {
             <div class="sig-alert-item">
               <mat-icon style="color:var(--sig-success);font-size:18px;width:18px;height:18px;">check_circle</mat-icon>
-              <span style="color:var(--sig-text-muted);font-size:13px;">No hay alertas activas</span>
+              <span style="color:var(--sig-text-muted);font-size:13px;">No hay alertas de cierre</span>
             </div>
           } @else {
-            @for (a of avisos(); track a.descripcion) {
-              <div class="sig-alert-item" [class]="'sig-alert--' + a.tipo">
-                <mat-icon class="sig-alert-icon" aria-hidden="true">{{ avisoIcon(a.tipo) }}</mat-icon>
-                <span class="sig-alert-text">{{ a.descripcion }}</span>
+            @for (a of alertasPendientesCierre().slice(0, 5); track a.id) {
+              <div class="sig-alert-item" [routerLink]="['/closures', a.closureId]" style="cursor:pointer;" [class]="'sig-alert--' + (a.tipo === 'Bloqueante' ? 'warn' : 'info')">
+                <mat-icon class="sig-alert-icon" aria-hidden="true">{{ a.tipo === 'Bloqueante' ? 'block' : 'warning' }}</mat-icon>
+                <div class="sig-alert-body">
+                  <span class="sig-alert-text">{{ a.descripcion }}</span>
+                  <span class="sig-alert-closure">{{ a.closureNombre }}</span>
+                </div>
               </div>
+            }
+            @if (alertasPendientesCierre().length > 5) {
+              <a [routerLink]="['/alertas']" class="sig-alert-ver-todas">
+                Ver todas ({{ alertasPendientesCierre().length }})
+                <mat-icon style="font-size:14px;width:14px;height:14px;">arrow_forward</mat-icon>
+              </a>
             }
           }
         </div>
@@ -602,8 +644,13 @@ import { environment } from '../../../environments/environment';
       border-radius: 8px;
       padding: 10px 12px;
       margin-top: 6px;
+      &:hover { background: var(--sig-bg-hover); }
     }
     .sig-alert--warn {
+      background: rgba(239,68,68,.07);
+      border-color: rgba(239,68,68,.2);
+    }
+    .sig-alert--info {
       background: rgba(245,158,11,.07);
       border-color: rgba(245,158,11,.2);
     }
@@ -616,6 +663,35 @@ import { environment } from '../../../environments/environment';
       color: #f59e0b !important; flex-shrink: 0; margin-top: 1px;
     }
     .sig-alert-text { font-size: 12px; color: var(--sig-text-primary); line-height: 1.4; }
+    .sig-alert-body { display: flex; flex-direction: column; gap: 2px; }
+    .sig-alert-closure { font-size: 11px; color: var(--sig-text-muted); }
+    .sig-alert-ver-todas {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 12px; color: #3b82f6; text-decoration: none;
+      padding: 8px 0; margin-top: 4px;
+      &:hover { text-decoration: underline; }
+    }
+
+    /* Dropdown bell for closure alerts */
+    .sig-alert-bell-btn { position: relative; }
+    .sig-notif-badge--alert { background: #f59e0b; }
+    .sig-alertas-menu { min-width: 320px; }
+    .sig-alert-menu-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 8px 12px; font-size: 12px;
+    }
+    .sig-alert-menu-item mat-icon { font-size: 16px !important; width: 16px !important; height: 16px !important; flex-shrink: 0; margin-top: 2px; }
+    .sig-alert-menu-body { display: flex; flex-direction: column; gap: 2px; }
+    .sig-alert-menu-codigo { font-weight: 600; font-size: 11px; }
+    .sig-alert-menu-desc { font-size: 11px; color: var(--sig-text-muted); }
+    .sig-alert-menu--bloqueante { background: rgba(239,68,68,.05); }
+    .sig-alert-menu--bloqueante mat-icon { color: #ef4444 !important; }
+    .sig-alert-menu--advertencia { background: rgba(245,158,11,.05); }
+    .sig-alert-menu--advertencia mat-icon { color: #f59e0b !important; }
+    .sig-alert-menu-loading { color: var(--sig-text-muted); font-style: italic; }
+    .sig-alert-menu-ok { color: var(--sig-success); }
+    .sig-alert-menu-ok mat-icon { color: #22c55e !important; }
+    .sig-alert-menu-ver-todas { color: #3b82f6; font-weight: 500; }
 
     /* Mis Proyectos Table */
     .sig-table-section {
@@ -694,15 +770,18 @@ import { environment } from '../../../environments/environment';
 })
 export class DashboardComponent implements OnInit {
   private readonly dashboardSvc = inject(DashboardService);
+  private readonly closureSvc   = inject(ClosureService);
   private readonly periodSvc    = inject(PeriodService);
   private readonly notify       = inject(NotifyService);
 
   protected readonly kpis          = signal<DashboardKpisDto | null>(null);
   protected readonly avisos        = signal<DashboardAvisoDto[]>([]);
   protected readonly misServicios  = signal<MiServicioDto[]>([]);
+  protected readonly alertasCierre = signal<ClosureAlertaDto[]>([]);
   protected readonly loadingKpis   = signal(true);
   protected readonly loadingAvisos = signal(true);
   protected readonly loadingMis    = signal(true);
+  protected readonly loadingAlertasCierre = signal(true);
   protected readonly regenerating  = signal(false);
   protected readonly periodos      = signal<PeriodDto[]>([]);
   protected readonly activePeriodId = computed(() => this.periodSvc.activeId());
@@ -710,6 +789,19 @@ export class DashboardComponent implements OnInit {
   protected readonly displayedColumns = ['nombre', 'cliente', 'costeBruto', 'facturacion', 'margen', 'estado', 'accion'];
 
   protected readonly Math = Math; // expose Math to template
+
+  protected readonly alertasPendientesCierre = computed(() =>
+    this.alertasCierre().filter(a => !a.confirmada)
+  );
+
+  protected readonly alertasCierreResumen = computed(() => {
+    const alertas = this.alertasCierre();
+    return {
+      total: alertas.length,
+      bloqueantes: alertas.filter(a => a.tipo === 'Bloqueante' && !a.confirmada).length,
+      advertencias: alertas.filter(a => a.tipo === 'Advertencia' && !a.confirmada).length,
+    };
+  });
 
   private readonly activePeriod = this.periodSvc.activeId;
 
@@ -783,6 +875,7 @@ export class DashboardComponent implements OnInit {
     this.loadingKpis.set(true);
     this.loadingAvisos.set(true);
     this.loadingMis.set(true);
+    this.loadingAlertasCierre.set(true);
     this.dashboardSvc.getKpis(periodId).subscribe({
       next:  (d) => { this.kpis.set(d);  this.loadingKpis.set(false); },
       error: ()  => { this.kpis.set(null); this.loadingKpis.set(false); },
@@ -794,6 +887,10 @@ export class DashboardComponent implements OnInit {
     this.dashboardSvc.getMisServicios(periodId).subscribe({
       next:  (d) => { this.misServicios.set(d);   this.loadingMis.set(false); },
       error: ()  => { this.misServicios.set([]);   this.loadingMis.set(false); },
+    });
+    this.closureSvc.getAllAlertas().subscribe({
+      next: (d) => { this.alertasCierre.set(d as ClosureAlertaDto[]); this.loadingAlertasCierre.set(false); },
+      error: () => { this.alertasCierre.set([]); this.loadingAlertasCierre.set(false); },
     });
   }
 

@@ -13,7 +13,7 @@ import { ClosureService } from '../../core/api/closures.service';
 import { ExportService } from '../../core/api/misc.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotifyService } from '../../core/notify.service';
-import { ClosureDetailDto, ApprovalHistoryDto } from '../../models/dtos';
+import { ClosureDetailDto, ClosureAlertaDto, ApprovalHistoryDto } from '../../models/dtos';
 import { ApprovalStep } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
@@ -215,12 +215,12 @@ export class ClosureDetailComponent implements OnInit {
 
   protected readonly alertasPendientes = computed(() => {
     const c = this.closure();
-    return c?.alertas.filter(a => !a.confirmada) ?? [];
+    return c?.alertas.filter((a: ClosureAlertaDto) => !a.confirmada) ?? [];
   });
 
   protected readonly canRecalculate = computed(() => {
     const c = this.closure();
-    return !!c && (c.estado === 'Borrador' || c.estado === 'En aprobación' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager');
+    return !!c && (c.estado === 'Borrador' || c.estado === 'EnAprobacion' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager');
   });
 
   protected readonly canApprove = computed(() => {
@@ -313,11 +313,11 @@ export class ClosureDetailComponent implements OnInit {
   protected onConfirmarAlerta(alertaId: number): void {
     const c = this.closure(); if (!c) return;
     this.closureSvc.confirmarAlerta(c.id, alertaId).subscribe({
-      next: (updated) => {
+      next: (updated: ClosureDetailDto) => {
         this.closure.set(updated);
         this.notify.success('Advertencia confirmada');
       },
-      error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo confirmar la advertencia'),
+      error: (err: unknown) => this.notify.error((err as any)?.error?.title ?? 'No se pudo confirmar la advertencia'),
     });
   }
 }

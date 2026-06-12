@@ -95,7 +95,7 @@ public class ClosureService : IClosureService
         await ComputeLinesAsync(closure, ct);
 
         // Validar y generar alertas
-        await _validationSvc.ValidarYPersistirAsync(closure.Id, closure.ProjectId, closure.PeriodId, ct);
+        await _validationSvc.ValidarYPersistirAsync(closure.Id, closure.ServiceId, closure.PeriodId, ct);
 
         // Crear primer Approval pendiente PM
         var pmRole = await _roleRepo.GetByNombreAsync("ProjectManager", ct);
@@ -132,7 +132,7 @@ public class ClosureService : IClosureService
         await ComputeLinesAsync(closure, ct);
 
         // Validar y regenerar alertas
-        await _validationSvc.ValidarYPersistirAsync(closureId, closure.ProjectId, closure.PeriodId, ct);
+        await _validationSvc.ValidarYPersistirAsync(closureId, closure.ServiceId, closure.PeriodId, ct);
 
         await _approvalRepo.AddHistoryAsync(new ApprovalHistory
         {

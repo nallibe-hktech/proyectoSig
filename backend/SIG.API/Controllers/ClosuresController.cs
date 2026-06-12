@@ -101,7 +101,7 @@ public class ClosuresController : ControllerBase
                     alerta.Descripcion,
                     alerta.Confirmada,
                     ClosureId = closure.Id,
-                    ClosureNombre = closure.ProjectNombre + " — " + closure.PeriodNombre
+                    ClosureNombre = closure.ServiceNombre + " — " + closure.PeriodNombre
                 });
             }
         }

@@ -73,6 +73,9 @@ export const routes: Routes = [
       { path: 'closures/nuevo', loadComponent: () => import('./features/closures/closure-form.component').then((m) => m.ClosureFormComponent), title: 'Nuevo Cierre — SIG' },
       { path: 'closures/:id', loadComponent: () => import('./features/closures/closure-detail.component').then((m) => m.ClosureDetailComponent), title: 'Detalle Cierre — SIG' },
 
+      // Alertas de Cierre
+      { path: 'alertas', loadComponent: () => import('./features/closures/alerts-list.component').then((m) => m.AlertsListComponent), title: 'Alertas de Cierre — SIG' },
+
       // Calculations
       { path: 'calculations/:closureLineId', loadComponent: () => import('./features/calculations/calculation-detail.component').then((m) => m.CalculationDetailComponent), title: 'Detalle de cálculo — SIG' },
 

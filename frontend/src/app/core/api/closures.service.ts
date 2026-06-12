@@ -40,4 +40,12 @@ export class ClosureService {
   historial(closureId: number) {
     return this.http.get<ApprovalHistoryDto[]>(`${environment.apiUrl}/approvals/historial/${closureId}`);
   }
+
+  confirmarAlerta(closureId: number, alertaId: number) {
+    return this.http.post<ClosureDetailDto>(`${this.base}/${closureId}/alertas/${alertaId}/confirmar`, {});
+  }
+
+  getAllAlertas() {
+    return this.http.get<any[]>(`${this.base}/todas-alertas`);
+  }
 }
