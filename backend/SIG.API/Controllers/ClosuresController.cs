@@ -84,30 +84,30 @@ public class ClosuresController : ControllerBase
     [HttpGet("todas-alertas")]
     public async Task<IActionResult> GetAllAlertas(CancellationToken ct)
     {
-        // Get all closures for this user with their alerts
         var result = await _svc.ListAsync(new ApprovalFilterRequest(null, null, null, null, null, null, null, null), UserId, ct);
-        var alertas = new List<dynamic>();
+        var alertas = new List<ClosureAlertaResumida>();
 
         foreach (var closure in result.Items)
         {
             var detail = await _svc.GetByIdForUserAsync(closure.Id, UserId, ct);
             foreach (var alerta in detail.Alertas)
             {
-                alertas.Add(new
-                {
+                alertas.Add(new ClosureAlertaResumida(
                     alerta.Id,
-                    alerta.Tipo,
+                    alerta.Tipo.ToString(),
                     alerta.Codigo,
                     alerta.Descripcion,
                     alerta.Confirmada,
-                    ClosureId = closure.Id,
-                    ClosureNombre = closure.ServiceNombre + " — " + closure.PeriodNombre
-                });
+                    closure.Id,
+                    closure.ServiceId,
+                    closure.ServiceNombre + " — " + closure.PeriodNombre));
             }
         }
 
-        return Ok(alertas.OrderByDescending(a => a.Confirmada).ThenByDescending(a => a.Tipo == TipoAlerta.Bloqueante));
+        return Ok(alertas.OrderByDescending(a => a.Confirmada).ThenByDescending(a => a.Tipo == "Bloqueante"));
     }
+
+    private record ClosureAlertaResumida(int Id, string Tipo, string Codigo, string Descripcion, bool Confirmada, int ClosureId, int ServiceId, string ClosureNombre);
 
     private static uint ParseIfMatch(string? v)
     {

@@ -242,6 +242,7 @@ export interface ClosureAlertaDto {
   confirmadaPorNombre?: string | null;
   fechaConfirmacion?: string | null;
   closureId?: number;
+  serviceId?: number;
   closureNombre?: string;
 }
 export interface ClosureDetailDto {

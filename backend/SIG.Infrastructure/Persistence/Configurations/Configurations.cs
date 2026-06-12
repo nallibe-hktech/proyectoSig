@@ -463,3 +463,40 @@ public class StagingSgpvVisitaConfiguration : IEntityTypeConfiguration<StagingSg
         b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
     }
 }
+
+public class ClosureAlertaConfiguration : IEntityTypeConfiguration<ClosureAlerta>
+{
+    public void Configure(EntityTypeBuilder<ClosureAlerta> b)
+    {
+        b.ToTable("closure_alertas");
+        b.HasKey(a => a.Id);
+        b.Property(a => a.Tipo).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(a => a.Codigo).HasMaxLength(100).IsRequired();
+        b.Property(a => a.Descripcion).HasMaxLength(500).IsRequired();
+        b.Property(a => a.Detalle).HasColumnType("jsonb");
+        b.Property(a => a.FechaConfirmacion).HasColumnType("timestamp with time zone");
+        b.HasIndex(a => a.ClosureId);
+        b.HasIndex(a => a.ConfirmadaPorUserId);
+        b.HasOne(a => a.Closure).WithMany().HasForeignKey(a => a.ClosureId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(a => a.ConfirmadaPor).WithMany().HasForeignKey(a => a.ConfirmadaPorUserId).OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+public class StagingA3InnuvaContratoConfiguration : IEntityTypeConfiguration<StagingA3InnuvaContrato>
+{
+    public void Configure(EntityTypeBuilder<StagingA3InnuvaContrato> b)
+    {
+        b.ToTable("staging_a3innuva_contratos");
+        b.HasKey(c => c.Id);
+        b.Property(c => c.ContratoIdExterno).HasMaxLength(100).IsRequired();
+        b.Property(c => c.NIF).HasMaxLength(20).IsRequired();
+        b.Property(c => c.ImporteBruto).HasPrecision(18, 4);
+        b.Property(c => c.PayloadJson).HasColumnType("jsonb").IsRequired();
+        b.Property(c => c.Hash).HasMaxLength(100).IsRequired();
+        b.Property(c => c.ErrorProcesamiento).HasMaxLength(2000);
+        b.HasIndex(c => c.NIF);
+        b.HasIndex(c => c.FechaInicio);
+        b.HasIndex(c => c.Hash).IsUnique();
+        b.HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.SetNull);
+    }
+}

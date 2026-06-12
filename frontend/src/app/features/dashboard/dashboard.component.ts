@@ -1,17 +1,16 @@
 import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatDividerModule } from '@angular/material/divider';
 import { DashboardService } from '../../core/api/dashboard.service';
 import { PeriodService } from '../../core/api/periods.service';
+import { ClosureService } from '../../core/api/closures.service';
 import { NotifyService } from '../../core/notify.service';
 import { DashboardKpisDto, DashboardAvisoDto, MiServicioDto, PeriodDto, ClosureAlertaDto } from '../../models/dtos';
-import { ClosureService } from '../../core/api/closures.service';
 import { EstadoClosure, ApprovalStep } from '../../models/enums';
 import { StateBadgeComponent } from '../../shared/state-badge.component';
 import { environment } from '../../../environments/environment';
@@ -19,7 +18,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatTableModule, MatCardModule, MatMenuModule, MatDividerModule, StateBadgeComponent],
+  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatTableModule, MatCardModule, MatMenuModule, StateBadgeComponent],
   template: `
     <div class="sig-exec-page">
 
@@ -48,42 +47,49 @@ import { environment } from '../../../environments/environment';
               </button>
             }
           </mat-menu>
-          <button mat-icon-button class="sig-exec-icon-btn sig-notif-btn" aria-label="Notificaciones" data-testid="btn-notificaciones">
+          <button mat-icon-button class="sig-exec-icon-btn sig-notif-btn" [matMenuTriggerFor]="combinedNotifMenu" aria-label="Notificaciones y Alertas" data-testid="btn-notificaciones">
             <mat-icon>notifications</mat-icon>
-            @if (avisos().length > 0) {
-              <span class="sig-notif-badge">{{ avisos().length }}</span>
+            @if (totalNotificaciones() > 0) {
+              <span class="sig-notif-badge">{{ totalNotificaciones() }}</span>
             }
           </button>
-          <button mat-icon-button class="sig-exec-icon-btn sig-alert-bell-btn" [matMenuTriggerFor]="alertasMenu" aria-label="Alertas de Cierre" data-testid="btn-alertas-cierre">
-            <mat-icon>warning_amber</mat-icon>
-            @if (alertasPendientesCierre().length > 0) {
-              <span class="sig-notif-badge sig-notif-badge--alert">{{ alertasPendientesCierre().length }}</span>
-            }
-          </button>
-          <mat-menu #alertasMenu="matMenu" class="sig-alertas-menu">
-            @if (loadingAlertasCierre()) {
-              <div class="sig-alert-menu-item sig-alert-menu-loading">Cargando alertas...</div>
-            } @else if (alertasPendientesCierre().length === 0) {
-              <div class="sig-alert-menu-item sig-alert-menu-ok">
-                <mat-icon>check_circle</mat-icon>
-                <span>No hay alertas pendientes</span>
+          <mat-menu #combinedNotifMenu="matMenu" class="sig-combined-notif-menu" style="min-width: 360px;">
+            <!-- Sección: Alertas de Cierre -->
+            <div class="sig-notif-section">
+              <div class="sig-notif-section-header">
+                <mat-icon style="font-size:16px;width:16px;height:16px;color:#f59e0b;">warning_amber</mat-icon>
+                <span class="sig-notif-section-title">Alertas de Cierre</span>
+                @if (alertasPendientesCierre().length > 0) {
+                  <span class="sig-notif-count">{{ alertasPendientesCierre().length }}</span>
+                }
               </div>
-            } @else {
-              @for (a of alertasPendientesCierre().slice(0, 10); track a.id) {
-                <div class="sig-alert-menu-item" [class]="'sig-alert-menu--' + a.tipo.toLowerCase()">
-                  <mat-icon>{{ a.tipo === 'Bloqueante' ? 'block' : 'warning' }}</mat-icon>
-                  <div class="sig-alert-menu-body">
-                    <span class="sig-alert-menu-codigo">{{ a.codigo }}</span>
-                    <span class="sig-alert-menu-desc">{{ a.descripcion }}</span>
-                  </div>
+              @if (loadingAlertasCierre()) {
+                <div class="sig-notif-item sig-notif-loading">Cargando alertas...</div>
+              } @else if (alertasPendientesCierre().length === 0) {
+                <div class="sig-notif-item sig-notif-ok">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Sin alertas pendientes</span>
                 </div>
+              } @else {
+                @for (a of alertasPendientesCierre().slice(0, 5); track a.id) {
+                  <div class="sig-notif-item" (click)="irAServicio(a.serviceId ?? 0)" [class]="'sig-notif--' + (a.tipo === 'Bloqueante' ? 'bloqueante' : 'advertencia')">
+                    <mat-icon>{{ a.tipo === 'Bloqueante' ? 'block' : 'warning' }}</mat-icon>
+                    <div class="sig-notif-body">
+                      <span class="sig-notif-codigo">{{ a.codigo }}</span>
+                      <span class="sig-notif-desc">{{ a.descripcion }}</span>
+                      @if (a.closureNombre) {
+                        <span class="sig-notif-closure">{{ a.closureNombre }}</span>
+                      }
+                    </div>
+                  </div>
+                }
               }
-              <mat-divider></mat-divider>
-              <button mat-menu-item [routerLink]="['/alertas']" class="sig-alert-menu-ver-todas">
+              <div class="sig-notif-divider"></div>
+              <button mat-menu-item (click)="irAAlertas()" class="sig-notif-ver-todas">
                 <mat-icon>list</mat-icon>
                 <span>Ver todas las alertas</span>
               </button>
-            }
+            </div>
           </mat-menu>
         </div>
       </div>
@@ -402,14 +408,14 @@ import { environment } from '../../../environments/environment';
             <div class="sig-alert-item sig-alert--loading" *ngFor="let i of [0,1,2]">
               <div class="sig-skeleton" style="height:14px;width:80%;border-radius:4px;"></div>
             </div>
-          } @else if (alertasCierreResumen().total === 0) {
+          } @else if (alertasPendientesCierre().length === 0) {
             <div class="sig-alert-item">
               <mat-icon style="color:var(--sig-success);font-size:18px;width:18px;height:18px;">check_circle</mat-icon>
-              <span style="color:var(--sig-text-muted);font-size:13px;">No hay alertas de cierre</span>
+              <span style="color:var(--sig-text-muted);font-size:13px;">Sin alertas pendientes</span>
             </div>
           } @else {
             @for (a of alertasPendientesCierre().slice(0, 5); track a.id) {
-              <div class="sig-alert-item" [routerLink]="['/closures', a.closureId]" style="cursor:pointer;" [class]="'sig-alert--' + (a.tipo === 'Bloqueante' ? 'warn' : 'info')">
+              <div class="sig-alert-item" (click)="irAServicio(a.serviceId ?? 0)" style="cursor:pointer;" [class]="'sig-alert--' + (a.tipo === 'Bloqueante' ? 'warn' : 'info')">
                 <mat-icon class="sig-alert-icon" aria-hidden="true">{{ a.tipo === 'Bloqueante' ? 'block' : 'warning' }}</mat-icon>
                 <div class="sig-alert-body">
                   <span class="sig-alert-text">{{ a.descripcion }}</span>
@@ -418,7 +424,7 @@ import { environment } from '../../../environments/environment';
               </div>
             }
             @if (alertasPendientesCierre().length > 5) {
-              <a [routerLink]="['/alertas']" class="sig-alert-ver-todas">
+              <a (click)="irAAlertas()" class="sig-alert-ver-todas" style="cursor:pointer;">
                 Ver todas ({{ alertasPendientesCierre().length }})
                 <mat-icon style="font-size:14px;width:14px;height:14px;">arrow_forward</mat-icon>
               </a>
@@ -672,26 +678,39 @@ import { environment } from '../../../environments/environment';
       &:hover { text-decoration: underline; }
     }
 
-    /* Dropdown bell for closure alerts */
-    .sig-alert-bell-btn { position: relative; }
-    .sig-notif-badge--alert { background: #f59e0b; }
-    .sig-alertas-menu { min-width: 320px; }
-    .sig-alert-menu-item {
-      display: flex; align-items: flex-start; gap: 8px;
-      padding: 8px 12px; font-size: 12px;
+    /* Combined notification menu */
+    .sig-combined-notif-menu { max-height: 80vh; }
+    .sig-notif-section { padding: 8px 0; }
+    .sig-notif-section-header {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 12px; font-size: 12px; font-weight: 600;
+      color: var(--sig-text-heading);
     }
-    .sig-alert-menu-item mat-icon { font-size: 16px !important; width: 16px !important; height: 16px !important; flex-shrink: 0; margin-top: 2px; }
-    .sig-alert-menu-body { display: flex; flex-direction: column; gap: 2px; }
-    .sig-alert-menu-codigo { font-weight: 600; font-size: 11px; }
-    .sig-alert-menu-desc { font-size: 11px; color: var(--sig-text-muted); }
-    .sig-alert-menu--bloqueante { background: rgba(239,68,68,.05); }
-    .sig-alert-menu--bloqueante mat-icon { color: #ef4444 !important; }
-    .sig-alert-menu--advertencia { background: rgba(245,158,11,.05); }
-    .sig-alert-menu--advertencia mat-icon { color: #f59e0b !important; }
-    .sig-alert-menu-loading { color: var(--sig-text-muted); font-style: italic; }
-    .sig-alert-menu-ok { color: var(--sig-success); }
-    .sig-alert-menu-ok mat-icon { color: #22c55e !important; }
-    .sig-alert-menu-ver-todas { color: #3b82f6; font-weight: 500; }
+    .sig-notif-count {
+      margin-left: auto;
+      font-size: 10px; font-weight: 700;
+      background: rgba(59,130,246,.12); color: #3b82f6;
+      padding: 2px 6px; border-radius: 10px;
+    }
+    .sig-notif-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 8px 12px; font-size: 12px; cursor: pointer;
+      &:hover { background: var(--sig-bg-hover); }
+      mat-icon { font-size: 16px !important; width: 16px !important; height: 16px !important; flex-shrink: 0; margin-top: 2px; }
+    }
+    .sig-notif-body { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .sig-notif-codigo { font-weight: 600; font-size: 11px; }
+    .sig-notif-desc { font-size: 11px; color: var(--sig-text-muted); line-height: 1.3; }
+    .sig-notif-closure { font-size: 10px; color: var(--sig-text-muted); font-style: italic; }
+    .sig-notif--bloqueante { background: rgba(239,68,68,.05); }
+    .sig-notif--bloqueante mat-icon { color: #ef4444 !important; }
+    .sig-notif--advertencia { background: rgba(245,158,11,.05); }
+    .sig-notif--advertencia mat-icon { color: #f59e0b !important; }
+    .sig-notif-loading { color: var(--sig-text-muted); font-style: italic; }
+    .sig-notif-ok { color: var(--sig-success); }
+    .sig-notif-ok mat-icon { color: #22c55e !important; }
+    .sig-notif-divider { height: 1px; background: var(--sig-border); margin: 4px 12px; }
+    .sig-notif-ver-todas { color: #3b82f6; font-weight: 500; }
 
     /* Mis Proyectos Table */
     .sig-table-section {
@@ -773,6 +792,7 @@ export class DashboardComponent implements OnInit {
   private readonly closureSvc   = inject(ClosureService);
   private readonly periodSvc    = inject(PeriodService);
   private readonly notify       = inject(NotifyService);
+  private readonly router       = inject(Router);
 
   protected readonly kpis          = signal<DashboardKpisDto | null>(null);
   protected readonly avisos        = signal<DashboardAvisoDto[]>([]);
@@ -792,6 +812,10 @@ export class DashboardComponent implements OnInit {
 
   protected readonly alertasPendientesCierre = computed(() =>
     this.alertasCierre().filter(a => !a.confirmada)
+  );
+
+  protected readonly totalNotificaciones = computed(() =>
+    this.alertasPendientesCierre().length + this.avisos().length
   );
 
   protected readonly alertasCierreResumen = computed(() => {
@@ -892,6 +916,16 @@ export class DashboardComponent implements OnInit {
       next: (d) => { this.alertasCierre.set(d as ClosureAlertaDto[]); this.loadingAlertasCierre.set(false); },
       error: () => { this.alertasCierre.set([]); this.loadingAlertasCierre.set(false); },
     });
+  }
+
+  protected irAServicio(serviceId: number): void {
+    if (serviceId > 0) {
+      this.router.navigate(['/services', serviceId]);
+    }
+  }
+
+  protected irAAlertas(): void {
+    this.router.navigate(['/alertas']);
   }
 
   protected avisoIcon(tipo: string): string {
