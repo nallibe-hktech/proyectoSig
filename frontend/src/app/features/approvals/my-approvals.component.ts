@@ -36,7 +36,7 @@ import { ApprovalFilterRequest, ClosureListItemDto, EstadoClosure, ApprovalStep 
         <input
           type="text"
           class="sig-search-input"
-          placeholder="🔍 Buscar proyecto, cliente, período..."
+          placeholder="🔍 Buscar servicio, cliente, período..."
           [(ngModel)]="textoBusqueda"
           (input)="aplicarFiltro()"
         />
@@ -65,7 +65,7 @@ import { ApprovalFilterRequest, ClosureListItemDto, EstadoClosure, ApprovalStep 
               <tr>
                 <th>PERÍODO</th>
                 <th>CLIENTE</th>
-                <th>PROYECTO</th>
+                <th>SERVICIO</th>
                 <th>ESTADO</th>
                 <th>COSTE</th>
                 <th>FACTURACIÓN</th>
@@ -78,7 +78,7 @@ import { ApprovalFilterRequest, ClosureListItemDto, EstadoClosure, ApprovalStep 
                 <tr (click)="seleccionar(cierre)" [class.selected]="seleccionado()?.id === cierre.id">
                   <td class="sig-mono-sm">{{ cierre.periodo }}</td>
                   <td>{{ cierre.clientNombre }}</td>
-                  <td><a class="sig-link">{{ cierre.projectNombre }}</a></td>
+                  <td><a class="sig-link">{{ cierre.serviceNombre }}</a></td>
                   <td>
                     <span class="sig-badge" [class]="'sig-badge--' + estadoClase(cierre.estado)">
                       {{ cierre.estado }}
@@ -113,7 +113,7 @@ import { ApprovalFilterRequest, ClosureListItemDto, EstadoClosure, ApprovalStep 
       @if (seleccionado()) {
         <div class="sig-detail-panel">
           <div class="sig-detail-header">
-            <h3>{{ seleccionado()!.projectNombre }}</h3>
+            <h3>{{ seleccionado()!.serviceNombre }}</h3>
             <button (click)="seleccionar(null)" class="sig-close-btn">
               <mat-icon>close</mat-icon>
             </button>
@@ -222,7 +222,7 @@ export class MyApprovalsComponent implements OnInit {
   protected cierresFiltrados = computed(() => {
     const texto = this.textoBusqueda.toLowerCase();
     return this.cierres().filter(c => {
-      const coincide = c.projectNombre.toLowerCase().includes(texto) ||
+      const coincide = c.serviceNombre.toLowerCase().includes(texto) ||
                       c.clientNombre?.toLowerCase().includes(texto) ||
                       c.periodo?.toLowerCase().includes(texto);
       const periodoCoinc = !this.periodSeleccionado || c.periodo === this.periodSeleccionado;
@@ -244,13 +244,13 @@ export class MyApprovalsComponent implements OnInit {
     // Por ahora usamos datos demo
     this.cierres.set([
       {
-        id: 1, periodo: 'Mayo 2026', periodNombre: 'Mayo 2026', clientNombre: 'American Express', projectNombre: 'Amex Shop Small',
-        projectId: 1, periodId: 1,
+        id: 1, periodo: 'Mayo 2026', periodNombre: 'Mayo 2026', clientNombre: 'American Express', serviceNombre: 'Amex Shop Small',
+        serviceId: 1, periodId: 1,
         costeTotal: 15000, facturacionTotal: 20500, margen: 5500, estado: 'EnAprobacion' as EstadoClosure, pasoActual: 'ProjectManager' as ApprovalStep
       },
       {
-        id: 2, periodo: 'Mayo 2026', periodNombre: 'Mayo 2026', clientNombre: 'Granini', projectNombre: 'Granini GPVs',
-        projectId: 2, periodId: 1,
+        id: 2, periodo: 'Mayo 2026', periodNombre: 'Mayo 2026', clientNombre: 'Granini', serviceNombre: 'Granini GPVs',
+        serviceId: 2, periodId: 1,
         costeTotal: 8500, facturacionTotal: 10200, margen: 1700, estado: 'EnAprobacion' as EstadoClosure, pasoActual: 'ProjectManager' as ApprovalStep
       }
     ]);

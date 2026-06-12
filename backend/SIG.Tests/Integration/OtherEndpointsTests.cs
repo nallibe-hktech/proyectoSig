@@ -39,9 +39,9 @@ public class OtherEndpointsTests : IntegrationTestBase
     public async Task GetDashboardMisProyectos_FiltradoPorRol()
     {
         var client = await CreateAuthenticatedClientAsync("pm.alpha@sig.local");
-        var resp = await client.GetAsync("/api/dashboard/mis-proyectos");
+        var resp = await client.GetAsync("/api/dashboard/mis-servicios");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await ReadJsonAsync<IReadOnlyList<MiProyectoDto>>(resp);
+        var body = await ReadJsonAsync<IReadOnlyList<MiServicioDto>>(resp);
         body.Should().NotBeNull();
     }
 
@@ -318,7 +318,7 @@ public class OtherEndpointsTests : IntegrationTestBase
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
-    // === /api/projects ===
+    // === /api/services ===
 
     [Fact]
     public async Task GetProjects_FiltroPorClientId_FiltraCorrectamente()
@@ -326,19 +326,17 @@ public class OtherEndpointsTests : IntegrationTestBase
         var client = await CreateAuthenticatedClientAsync();
         var clients = await ReadJsonAsync<PagedResult<ClientListItemDto>>(await client.GetAsync("/api/clients"));
         var clientId = clients!.Items.First().Id;
-        var resp = await client.GetAsync($"/api/projects?clientId={clientId}");
+        var resp = await client.GetAsync($"/api/services?clientId={clientId}");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await ReadJsonAsync<PagedResult<ProjectListItemDto>>(resp);
+        var body = await ReadJsonAsync<PagedResult<ServiceListItemDto>>(resp);
         body!.Items.Should().OnlyContain(p => p.ClientId == clientId);
     }
-
-    // === /api/actions ===
 
     [Fact]
     public async Task GetActions_DevuelvePaginado()
     {
         var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.GetAsync("/api/actions");
+        var resp = await client.GetAsync("/api/services");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 

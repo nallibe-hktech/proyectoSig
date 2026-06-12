@@ -71,7 +71,7 @@ interface AuditLog {
                   <th>USUARIO</th>
                   <th>TIPO ACCION</th>
                   <th>CLIENTE</th>
-                  <th>PROYECTO</th>
+                  <th>SERVICIO</th>
                   <th>ACCION</th>
                   <th>RECURSO</th>
                   <th>ENTIDAD</th>
@@ -153,7 +153,7 @@ interface AuditLog {
                 <span>{{ selectedLog()!.cliente || 'Amex' }}</span>
               </div>
               <div class="sig-detail-field">
-                <label>Proyecto</label>
+                <label>Servicio</label>
                 <span>{{ selectedLog()!.proyecto || 'Amex' }}</span>
               </div>
               <div class="sig-detail-field">

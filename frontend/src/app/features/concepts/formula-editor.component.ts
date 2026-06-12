@@ -423,7 +423,7 @@ export class FormulaEditorComponent implements OnInit {
       nombre: c.nombre, tipo: c.tipo,
       fechaDesde: c.fechaDesde, fechaHasta: c.fechaHasta ?? null,
       formulaJson: JSON.stringify(r),
-      actionIds: c.actionIds, userIds: c.userIds,
+      serviceIds: c.serviceIds, userIds: c.userIds,
     };
     this.conceptSvc.update(c.id, payload).subscribe({
       next: () => { this.saving.set(false); this.notify.success('Fórmula guardada'); void this.router.navigate(['/concepts', c.id]); },

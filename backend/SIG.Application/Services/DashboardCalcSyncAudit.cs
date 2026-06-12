@@ -16,14 +16,14 @@ public class DashboardService : IDashboardService
     private readonly IClosureRepository _closureRepo;
     private readonly IPeriodRepository _periodRepo;
     private readonly IUserRepository _userRepo;
-    private readonly IProjectRepository _projectRepo;
+    private readonly IServiceRepository _serviceRepo;
 
-    public DashboardService(IClosureRepository closureRepo, IPeriodRepository periodRepo, IUserRepository userRepo, IProjectRepository projectRepo)
+    public DashboardService(IClosureRepository closureRepo, IPeriodRepository periodRepo, IUserRepository userRepo, IServiceRepository serviceRepo)
     {
         _closureRepo = closureRepo;
         _periodRepo = periodRepo;
         _userRepo = userRepo;
-        _projectRepo = projectRepo;
+        _serviceRepo = serviceRepo;
     }
 
     public async Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct)
@@ -43,8 +43,8 @@ public class DashboardService : IDashboardService
 
         // Desglose por cliente (top 6)
         var desglose = closures.Items
-            .Where(c => c.Project?.Client != null)
-            .GroupBy(c => new { c.Project!.ClientId, c.Project.Client!.Nombre })
+            .Where(c => c.Service?.Client != null)
+            .GroupBy(c => new { c.Service!.ClientId, c.Service.Client!.Nombre })
             .Select(g => {
                 var f = g.Sum(c => c.FacturacionTotal);
                 var co = g.Sum(c => c.CosteTotal);
@@ -84,15 +84,15 @@ public class DashboardService : IDashboardService
 
         // Cierres pendientes
         foreach (var c in closures.Items.Where(x => x.Estado == EstadoClosure.EnAprobacion || x.Estado == EstadoClosure.Borrador).Take(10))
-            avisos.Add(new DashboardAvisoDto("CierrePendiente", $"Cierre #{c.Id} {c.Project?.Nombre} pendiente en paso {c.PasoActual}", c.Id));
+            avisos.Add(new DashboardAvisoDto("CierrePendiente", $"Cierre #{c.Id} {c.Service?.Nombre} pendiente en paso {c.PasoActual}", c.Id));
 
         // Cierres rechazados
         foreach (var c in closures.Items.Where(x => x.Estado == EstadoClosure.Rechazado).Take(5))
-            avisos.Add(new DashboardAvisoDto("CierreRechazado", $"Cierre #{c.Id} {c.Project?.Nombre} fue rechazado", c.Id));
+            avisos.Add(new DashboardAvisoDto("CierreRechazado", $"Cierre #{c.Id} {c.Service?.Nombre} fue rechazado", c.Id));
 
         // Incidencias en líneas de cálculo
         foreach (var c in closures.Items.Where(c => c.Lines.Any(l => l.TieneIncidencia)).Take(5))
-            avisos.Add(new DashboardAvisoDto("IncidenciaCalculo", $"Cierre #{c.Id} {c.Project?.Nombre} tiene líneas con incidencias", c.Id));
+            avisos.Add(new DashboardAvisoDto("IncidenciaCalculo", $"Cierre #{c.Id} {c.Service?.Nombre} tiene líneas con incidencias", c.Id));
 
         // Períodos bloqueados y próximos a vencer
         var periods = await _periodRepo.ListAsync(ct);
@@ -107,23 +107,23 @@ public class DashboardService : IDashboardService
         return avisos;
     }
 
-    public async Task<IReadOnlyList<MiProyectoDto>> GetMisProyectosAsync(int? periodId, int usuarioId, CancellationToken ct)
+    public async Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct)
     {
         var period = periodId.HasValue ? await _periodRepo.GetByIdAsync(periodId.Value, ct)
                                        : await _periodRepo.GetActivoAsync(ct);
-        var projects = await _projectRepo.ListPaginatedForUserAsync(usuarioId, 1, int.MaxValue, null, null, ct);
+        var services = await _serviceRepo.ListPaginatedForUserAsync(usuarioId, 1, int.MaxValue, null, null, ct);
 
         // Cargar todos los cierres del período de una sola vez (fix N+1 query)
         var allClosures = period is null
             ? new Dictionary<int, Closure>()
             : (await _closureRepo.ListPaginatedForUserAsync(usuarioId,
                  new ApprovalFilterRequest(period.Id, null, null, null, null, null, null, null, 1, int.MaxValue), ct))
-               .Items.ToDictionary(c => c.ProjectId);
+               .Items.ToDictionary(c => c.ServiceId);
 
-        var items = projects.Items.Select(p =>
+        var items = services.Items.Select(p =>
         {
             allClosures.TryGetValue(p.Id, out var c);
-            return new MiProyectoDto(p.Id, p.Nombre, p.ClientId, p.Client?.Nombre ?? "",
+            return new MiServicioDto(p.Id, p.Nombre, p.ClientId, p.Client?.Nombre ?? "",
                 c?.Id, c?.Estado, c?.PasoActual,
                 c?.CosteTotal, c?.FacturacionTotal, c?.Margen);
         }).ToList();
@@ -192,8 +192,7 @@ public class SyncService : ISyncService
     private readonly IStagingRepository<StagingMediapostPedido> _mediapostPedidoRepo;
     private readonly IStagingRepository<StagingMediapostRecepcion> _mediapostRecepcionRepo;
     private readonly IUserRepository _userRepo;
-    private readonly IProjectRepository _projectRepo;
-    private readonly IActionRepository _actionRepo;
+    private readonly IServiceRepository _serviceRepo;
     private readonly ICeleroMappingRepository _mappingRepo;
 
     public SyncService(
@@ -215,8 +214,7 @@ public class SyncService : ISyncService
         IStagingRepository<StagingMediapostPedido> mediapostPedidoRepo,
         IStagingRepository<StagingMediapostRecepcion> mediapostRecepcionRepo,
         IUserRepository userRepo,
-        IProjectRepository projectRepo,
-        IActionRepository actionRepo,
+        IServiceRepository serviceRepo,
         ICeleroMappingRepository mappingRepo)
     {
         _celero = celero;
@@ -228,8 +226,7 @@ public class SyncService : ISyncService
         _mediapost = mediapost;
         _celeroRepo = celeroRepo;
         _userRepo = userRepo;
-        _projectRepo = projectRepo;
-        _actionRepo = actionRepo;
+        _serviceRepo = serviceRepo;
         _empRepo = empRepo;
         _absenceRepo = absenceRepo;
         _ficRepo = ficRepo;
@@ -266,17 +263,15 @@ public class SyncService : ISyncService
                 var missionMappings = await _mappingRepo.GetMissionMappingsAsync(ct);
 
                 var nifToUserIdMapping = resourceMappings.ToDictionary(m => m.CeleroNif, m => m.UserId);
-                var serviceNameToProjectIdMapping = serviceMappings.ToDictionary(m => m.CeleroServiceName, m => m.ProjectId);
-                var missionNameToActionIdMapping = missionMappings.ToDictionary(m => m.CeleroMissionName, m => m.ActionId);
+                var serviceNameToServiceIdMapping = serviceMappings.ToDictionary(m => m.CeleroServiceName, m => m.ServiceId);
+                var missionNameToServiceIdMapping = missionMappings.ToDictionary(m => m.CeleroMissionName, m => m.ServiceId);
 
                 // Cargar lookups de fallback para resolución por nombre/NIF (baja prioridad)
                 var users = await _userRepo.ListAsync(ct);
-                var projects = await _projectRepo.ListAsync(ct);
-                var actions = await _actionRepo.ListAsync(ct);
+                var services = await _serviceRepo.ListAsync(ct);
 
                 var nifToUserId = users.Where(u => !u.IsDeleted).ToDictionary(u => u.NIF, u => u.Id);
-                var serviceNameToProjectId = projects.Where(p => !p.IsDeleted).ToDictionary(p => p.Nombre, p => p.Id);
-                var missionNameToActionId = actions.Where(a => !a.IsDeleted).ToDictionary(a => a.Nombre, a => a.Id);
+                var serviceNameToServiceId = services.Where(a => !a.IsDeleted).ToDictionary(a => a.Nombre, a => a.Id);
 
                 foreach (var d in data)
                 {
@@ -292,18 +287,17 @@ public class SyncService : ISyncService
                         else if (nifToUserId.TryGetValue(d.ResourceNif, out uid)) userId = uid;
                     }
 
-                    int? projectId = null;
-                    if (!string.IsNullOrEmpty(d.ServiceName))
-                    {
-                        if (serviceNameToProjectIdMapping.TryGetValue(d.ServiceName, out var pid)) projectId = pid;
-                        else if (serviceNameToProjectId.TryGetValue(d.ServiceName, out pid)) projectId = pid;
-                    }
-
-                    int? actionId = null;
+                    // El Servicio resuelve por misión (más específico) y, en su defecto, por nombre de servicio.
+                    int? serviceId = null;
                     if (!string.IsNullOrEmpty(d.MissionName))
                     {
-                        if (missionNameToActionIdMapping.TryGetValue(d.MissionName, out var aid)) actionId = aid;
-                        else if (missionNameToActionId.TryGetValue(d.MissionName, out aid)) actionId = aid;
+                        if (missionNameToServiceIdMapping.TryGetValue(d.MissionName, out var sid)) serviceId = sid;
+                        else if (serviceNameToServiceId.TryGetValue(d.MissionName, out sid)) serviceId = sid;
+                    }
+                    if (serviceId is null && !string.IsNullOrEmpty(d.ServiceName))
+                    {
+                        if (serviceNameToServiceIdMapping.TryGetValue(d.ServiceName, out var sid)) serviceId = sid;
+                        else if (serviceNameToServiceId.TryGetValue(d.ServiceName, out sid)) serviceId = sid;
                     }
 
                     nuevas.Add(new StagingCeleroVisita
@@ -314,8 +308,7 @@ public class SyncService : ISyncService
                         MissionName = d.MissionName,
                         Fecha = d.Fecha,
                         UserId = userId,
-                        ProjectId = projectId,
-                        ActionId = actionId,
+                        ServiceId = serviceId,
                         PayloadJson = json,
                         Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow,
@@ -352,7 +345,7 @@ public class SyncService : ISyncService
                     if (await _absenceRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
                     await _absenceRepo.AddRangeAsync(new[] { new StagingBizneoAbsence
                     {
-                        RegistroIdExterno = a.RegistroIdExterno, UserId = a.UserId, ProjectId = a.ProjectId,
+                        RegistroIdExterno = a.RegistroIdExterno, UserId = a.UserId, ServiceId = a.ServiceId,
                         Fecha = a.Fecha, Horas = a.Horas,
                         PayloadJson = json, Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
@@ -433,7 +426,7 @@ public class SyncService : ISyncService
                     if (await _gastoRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
                     await _gastoRepo.AddRangeAsync(new[] { new StagingPayHawkGasto
                     {
-                        GastoIdExterno = g.GastoIdExterno, UserId = g.UserId, ProjectId = g.ProjectId,
+                        GastoIdExterno = g.GastoIdExterno, UserId = g.UserId, ServiceId = g.ServiceId,
                         Fecha = g.Fecha, Importe = g.Importe, Categoria = g.Categoria,
                         PayloadJson = json, Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
@@ -453,14 +446,14 @@ public class SyncService : ISyncService
                 var serviceMappings = await _mappingRepo.GetServiceMappingsAsync(ct);
 
                 var nifToUserIdMapping = resourceMappings.ToDictionary(m => m.CeleroNif, m => m.UserId);
-                var serviceNameToProjectIdMapping = serviceMappings.ToDictionary(m => m.CeleroServiceName, m => m.ProjectId);
+                var serviceNameToServiceIdMapping = serviceMappings.ToDictionary(m => m.CeleroServiceName, m => m.ServiceId);
 
                 // Cargar lookups de fallback para resolución por nombre/NIF
                 var users = await _userRepo.ListAsync(ct);
-                var projects = await _projectRepo.ListAsync(ct);
+                var services = await _serviceRepo.ListAsync(ct);
 
                 var nifToUserId = users.Where(u => !u.IsDeleted).ToDictionary(u => u.NIF, u => u.Id);
-                var serviceNameToProjectId = projects.Where(p => !p.IsDeleted).ToDictionary(p => p.Nombre, p => p.Id);
+                var serviceNameToServiceId = services.Where(a => !a.IsDeleted).ToDictionary(a => a.Nombre, a => a.Id);
 
                 foreach (var d in data)
                 {
@@ -476,11 +469,11 @@ public class SyncService : ISyncService
                         else if (nifToUserId.TryGetValue(d.ResourceNif, out uid)) userId = uid;
                     }
 
-                    int? projectId = null;
+                    int? serviceId = null;
                     if (!string.IsNullOrEmpty(d.ServiceName))
                     {
-                        if (serviceNameToProjectIdMapping.TryGetValue(d.ServiceName, out var pid)) projectId = pid;
-                        else if (serviceNameToProjectId.TryGetValue(d.ServiceName, out pid)) projectId = pid;
+                        if (serviceNameToServiceIdMapping.TryGetValue(d.ServiceName, out var sid)) serviceId = sid;
+                        else if (serviceNameToServiceId.TryGetValue(d.ServiceName, out sid)) serviceId = sid;
                     }
 
                     nuevas.Add(new StagingSgpvVisita
@@ -493,7 +486,7 @@ public class SyncService : ISyncService
                         Fecha = d.Fecha,
                         HorasDuracion = d.HorasDuracion,
                         UserId = userId,
-                        ProjectId = projectId,
+                        ServiceId = serviceId,
                         PayloadJson = json,
                         Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow,
@@ -589,9 +582,9 @@ public class SyncService : ISyncService
                     .Where(e => e.UserId.HasValue && !string.IsNullOrEmpty(e.UserIdExterno))
                     .ToDictionary(e => e.UserIdExterno, e => e.UserId!.Value);
 
-                // Cargar proyectos para resolver ProjectId por nombre
-                var projects = await _projectRepo.ListAsync(ct);
-                var projectNameLookup = projects
+                // Cargar servicios para resolver ServiceId por nombre
+                var services = await _serviceRepo.ListAsync(ct);
+                var serviceNameLookup = services
                     .Where(p => !p.IsDeleted)
                     .ToDictionary(p => p.Nombre, p => p.Id);
 
@@ -609,12 +602,12 @@ public class SyncService : ISyncService
                         userId = uid;
                     }
 
-                    // Resolver ProjectId por nombre
-                    int? projectId = null;
+                    // Resolver ServiceId por nombre
+                    int? serviceId = null;
                     if (!string.IsNullOrEmpty(e.ProyectoNombre))
                     {
-                        projectNameLookup.TryGetValue(e.ProyectoNombre, out var pid);
-                        projectId = pid;
+                        serviceNameLookup.TryGetValue(e.ProyectoNombre, out var sid);
+                        serviceId = sid;
                     }
 
                     await _expenseRepo.AddRangeAsync(new[] { new StagingIntratimeExpense
@@ -627,7 +620,7 @@ public class SyncService : ISyncService
                         NombreExpense = e.NombreExpense,
                         Descripcion = e.Descripcion,
                         ProyectoNombre = e.ProyectoNombre,
-                        ProjectId = projectId,
+                        ServiceId = serviceId,
                         PayloadJson = json, Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
                     } }, ct);

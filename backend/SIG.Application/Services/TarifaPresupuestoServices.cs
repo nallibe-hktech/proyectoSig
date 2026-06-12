@@ -6,37 +6,37 @@ using SIG.Domain.Exceptions;
 
 namespace SIG.Application.Services;
 
-public class TarifaProyectoService : ITarifaProyectoService
+public class TarifaServicioService : ITarifaServicioService
 {
-    private readonly ITarifaProyectoRepository _repo;
-    private readonly IProjectRepository _projectRepo;
+    private readonly ITarifaServicioRepository _repo;
+    private readonly IServiceRepository _serviceRepo;
 
-    public TarifaProyectoService(ITarifaProyectoRepository repo, IProjectRepository projectRepo)
+    public TarifaServicioService(ITarifaServicioRepository repo, IServiceRepository serviceRepo)
     {
         _repo = repo;
-        _projectRepo = projectRepo;
+        _serviceRepo = serviceRepo;
     }
 
-    public async Task<IReadOnlyList<TarifaProyectoDto>> ListByProjectAsync(int projectId, CancellationToken ct)
+    public async Task<IReadOnlyList<TarifaServicioDto>> ListByServiceAsync(int serviceId, CancellationToken ct)
     {
-        var project = await _projectRepo.GetByIdAsync(projectId, ct) ?? throw new EntityNotFoundException("Project", projectId);
-        var tarifas = await _repo.ListByProjectAsync(projectId, ct);
+        _ = await _serviceRepo.GetByIdAsync(serviceId, ct) ?? throw new EntityNotFoundException("Service", serviceId);
+        var tarifas = await _repo.ListByServiceAsync(serviceId, ct);
         return tarifas.Select(Map).ToList();
     }
 
-    public async Task<TarifaProyectoDto> GetByIdAsync(int id, int projectId, CancellationToken ct)
+    public async Task<TarifaServicioDto> GetByIdAsync(int id, int serviceId, CancellationToken ct)
     {
-        var t = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("TarifaProyecto", id);
-        if (t.ProjectId != projectId) throw new EntityNotFoundException("TarifaProyecto", id);
+        var t = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("TarifaServicio", id);
+        if (t.ServiceId != serviceId) throw new EntityNotFoundException("TarifaServicio", id);
         return Map(t);
     }
 
-    public async Task<TarifaProyectoDto> CreateAsync(int projectId, TarifaProyectoCreateRequest req, CancellationToken ct)
+    public async Task<TarifaServicioDto> CreateAsync(int serviceId, TarifaServicioCreateRequest req, CancellationToken ct)
     {
-        var project = await _projectRepo.GetByIdAsync(projectId, ct) ?? throw new EntityNotFoundException("Project", projectId);
-        var t = new TarifaProyecto
+        _ = await _serviceRepo.GetByIdAsync(serviceId, ct) ?? throw new EntityNotFoundException("Service", serviceId);
+        var t = new TarifaServicio
         {
-            ProjectId = projectId,
+            ServiceId = serviceId,
             Nombre = req.Nombre,
             Valor = req.Valor,
             Unidad = req.Unidad,
@@ -48,10 +48,10 @@ public class TarifaProyectoService : ITarifaProyectoService
         return Map(t);
     }
 
-    public async Task<TarifaProyectoDto> UpdateAsync(int id, int projectId, TarifaProyectoUpdateRequest req, CancellationToken ct)
+    public async Task<TarifaServicioDto> UpdateAsync(int id, int serviceId, TarifaServicioUpdateRequest req, CancellationToken ct)
     {
-        var t = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("TarifaProyecto", id);
-        if (t.ProjectId != projectId) throw new EntityNotFoundException("TarifaProyecto", id);
+        var t = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("TarifaServicio", id);
+        if (t.ServiceId != serviceId) throw new EntityNotFoundException("TarifaServicio", id);
         t.Nombre = req.Nombre;
         t.Valor = req.Valor;
         t.Unidad = req.Unidad;
@@ -61,49 +61,49 @@ public class TarifaProyectoService : ITarifaProyectoService
         return Map(t);
     }
 
-    public async Task DeleteAsync(int id, int projectId, CancellationToken ct)
+    public async Task DeleteAsync(int id, int serviceId, CancellationToken ct)
     {
-        var t = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("TarifaProyecto", id);
-        if (t.ProjectId != projectId) throw new EntityNotFoundException("TarifaProyecto", id);
+        var t = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("TarifaServicio", id);
+        if (t.ServiceId != serviceId) throw new EntityNotFoundException("TarifaServicio", id);
         t.IsDeleted = true;
         await _repo.SaveChangesAsync(ct);
     }
 
-    private static TarifaProyectoDto Map(TarifaProyecto t) =>
-        new(t.Id, t.ProjectId, t.Nombre, t.Valor, t.Unidad, t.FechaDesde, t.FechaHasta);
+    private static TarifaServicioDto Map(TarifaServicio t) =>
+        new(t.Id, t.ServiceId, t.Nombre, t.Valor, t.Unidad, t.FechaDesde, t.FechaHasta);
 }
 
-public class PresupuestoProyectoService : IPresupuestoProyectoService
+public class PresupuestoServicioService : IPresupuestoServicioService
 {
-    private readonly IPresupuestoProyectoRepository _repo;
-    private readonly IProjectRepository _projectRepo;
+    private readonly IPresupuestoServicioRepository _repo;
+    private readonly IServiceRepository _serviceRepo;
 
-    public PresupuestoProyectoService(IPresupuestoProyectoRepository repo, IProjectRepository projectRepo)
+    public PresupuestoServicioService(IPresupuestoServicioRepository repo, IServiceRepository serviceRepo)
     {
         _repo = repo;
-        _projectRepo = projectRepo;
+        _serviceRepo = serviceRepo;
     }
 
-    public async Task<IReadOnlyList<PresupuestoProyectoDto>> ListByProjectAsync(int projectId, CancellationToken ct)
+    public async Task<IReadOnlyList<PresupuestoServicioDto>> ListByServiceAsync(int serviceId, CancellationToken ct)
     {
-        var project = await _projectRepo.GetByIdAsync(projectId, ct) ?? throw new EntityNotFoundException("Project", projectId);
-        var presupuestos = await _repo.ListByProjectAsync(projectId, ct);
+        _ = await _serviceRepo.GetByIdAsync(serviceId, ct) ?? throw new EntityNotFoundException("Service", serviceId);
+        var presupuestos = await _repo.ListByServiceAsync(serviceId, ct);
         return presupuestos.Select(Map).ToList();
     }
 
-    public async Task<PresupuestoProyectoDto> GetByIdAsync(int id, int projectId, CancellationToken ct)
+    public async Task<PresupuestoServicioDto> GetByIdAsync(int id, int serviceId, CancellationToken ct)
     {
-        var p = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("PresupuestoProyecto", id);
-        if (p.ProjectId != projectId) throw new EntityNotFoundException("PresupuestoProyecto", id);
+        var p = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("PresupuestoServicio", id);
+        if (p.ServiceId != serviceId) throw new EntityNotFoundException("PresupuestoServicio", id);
         return Map(p);
     }
 
-    public async Task<PresupuestoProyectoDto> CreateAsync(int projectId, PresupuestoProyectoCreateRequest req, CancellationToken ct)
+    public async Task<PresupuestoServicioDto> CreateAsync(int serviceId, PresupuestoServicioCreateRequest req, CancellationToken ct)
     {
-        var project = await _projectRepo.GetByIdAsync(projectId, ct) ?? throw new EntityNotFoundException("Project", projectId);
-        var p = new PresupuestoProyecto
+        _ = await _serviceRepo.GetByIdAsync(serviceId, ct) ?? throw new EntityNotFoundException("Service", serviceId);
+        var p = new PresupuestoServicio
         {
-            ProjectId = projectId,
+            ServiceId = serviceId,
             PeriodId = req.PeriodId,
             Tipo = req.Tipo,
             Importe = req.Importe,
@@ -114,10 +114,10 @@ public class PresupuestoProyectoService : IPresupuestoProyectoService
         return Map(p);
     }
 
-    public async Task<PresupuestoProyectoDto> UpdateAsync(int id, int projectId, PresupuestoProyectoUpdateRequest req, CancellationToken ct)
+    public async Task<PresupuestoServicioDto> UpdateAsync(int id, int serviceId, PresupuestoServicioUpdateRequest req, CancellationToken ct)
     {
-        var p = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("PresupuestoProyecto", id);
-        if (p.ProjectId != projectId) throw new EntityNotFoundException("PresupuestoProyecto", id);
+        var p = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("PresupuestoServicio", id);
+        if (p.ServiceId != serviceId) throw new EntityNotFoundException("PresupuestoServicio", id);
         p.PeriodId = req.PeriodId;
         p.Tipo = req.Tipo;
         p.Importe = req.Importe;
@@ -126,14 +126,14 @@ public class PresupuestoProyectoService : IPresupuestoProyectoService
         return Map(p);
     }
 
-    public async Task DeleteAsync(int id, int projectId, CancellationToken ct)
+    public async Task DeleteAsync(int id, int serviceId, CancellationToken ct)
     {
-        var p = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("PresupuestoProyecto", id);
-        if (p.ProjectId != projectId) throw new EntityNotFoundException("PresupuestoProyecto", id);
+        var p = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("PresupuestoServicio", id);
+        if (p.ServiceId != serviceId) throw new EntityNotFoundException("PresupuestoServicio", id);
         p.IsDeleted = true;
         await _repo.SaveChangesAsync(ct);
     }
 
-    private static PresupuestoProyectoDto Map(PresupuestoProyecto p) =>
-        new(p.Id, p.ProjectId, p.PeriodId, p.Tipo, p.Importe, p.Descripcion);
+    private static PresupuestoServicioDto Map(PresupuestoServicio p) =>
+        new(p.Id, p.ServiceId, p.PeriodId, p.Tipo, p.Importe, p.Descripcion);
 }

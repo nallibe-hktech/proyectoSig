@@ -26,11 +26,11 @@ public class ApprovalServiceTests
     {
         var filter = new ApprovalFilterRequest(null, null, null, null, null, null, null, null);
         var client = new Client { Id = 1, Nombre = "Alpha", NIF = "X" };
-        var project = new Project { Id = 100, Nombre = "Proj1", ClientId = 1, Client = client };
+        var service = new Service { Id = 100, Nombre = "Proj1", ClientId = 1, Client = client };
         var period = new Period { Id = 1, Nombre = "Marzo 2026", FechaInicio = new DateOnly(2026, 3, 1), FechaFin = new DateOnly(2026, 3, 31) };
         var closure = new Closure
         {
-            Id = 555, ProjectId = 100, Project = project, PeriodId = 1, Period = period,
+            Id = 555, ServiceId = 100, Service = service, PeriodId = 1, Period = period,
             Estado = EstadoClosure.EnAprobacion, PasoActual = ApprovalStep.Backoffice,
             Margen = 1000m, UpdatedAt = DateTime.UtcNow
         };
@@ -42,7 +42,7 @@ public class ApprovalServiceTests
         result.Total.Should().Be(1);
         result.Items.Should().HaveCount(1);
         result.Items[0].ClosureId.Should().Be(555);
-        result.Items[0].ProjectNombre.Should().Be("Proj1");
+        result.Items[0].ServiceNombre.Should().Be("Proj1");
         result.Items[0].ClientNombre.Should().Be("Alpha");
         result.Items[0].PasoActual.Should().Be(ApprovalStep.Backoffice);
         result.Items[0].Margen.Should().Be(1000m);
@@ -72,7 +72,7 @@ public class ApprovalServiceTests
     [Fact]
     public async Task GetHistoryAsync_DevuelveHistorialOrdenadoConUsuarioNombre()
     {
-        var closure = new Closure { Id = 1, ProjectId = 100, PeriodId = 1 };
+        var closure = new Closure { Id = 1, ServiceId = 100, PeriodId = 1 };
         _closureRepo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns(closure);
 
         var historial = new List<ApprovalHistory>

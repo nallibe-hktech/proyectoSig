@@ -24,8 +24,8 @@ public class ApprovalService : IApprovalService
     {
         var result = await _closureRepo.ListPaginatedForUserAsync(usuarioId, filter, ct);
         var items = result.Items.Select(c => new ApprovalPanelItemDto(
-            c.Id, c.ProjectId, c.Project?.Nombre ?? "",
-            c.Project?.ClientId ?? 0, c.Project?.Client?.Nombre ?? "",
+            c.Id, c.ServiceId, c.Service?.Nombre ?? "",
+            c.Service?.ClientId ?? 0, c.Service?.Client?.Nombre ?? "",
             c.PeriodId, c.Period?.Nombre ?? "",
             c.Estado, c.PasoActual, c.PasoActual.ToString(), c.Margen, c.UpdatedAt)).ToList();
         return new PagedResult<ApprovalPanelItemDto>(items, result.Total, result.Page, result.PageSize);
@@ -35,8 +35,8 @@ public class ApprovalService : IApprovalService
     {
         var result = await _closureRepo.ListPendingForUserAsync(usuarioId, page, pageSize, ct);
         var items = result.Items.Select(c => new ApprovalPanelItemDto(
-            c.Id, c.ProjectId, c.Project?.Nombre ?? "",
-            c.Project?.ClientId ?? 0, c.Project?.Client?.Nombre ?? "",
+            c.Id, c.ServiceId, c.Service?.Nombre ?? "",
+            c.Service?.ClientId ?? 0, c.Service?.Client?.Nombre ?? "",
             c.PeriodId, c.Period?.Nombre ?? "",
             c.Estado, c.PasoActual, c.PasoActual.ToString(), c.Margen, c.UpdatedAt)).ToList();
         return new PagedResult<ApprovalPanelItemDto>(items, result.Total, result.Page, result.PageSize);

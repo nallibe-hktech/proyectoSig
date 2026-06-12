@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { DashboardKpisDto, DashboardAvisoDto, MiProyectoDto } from '../../models/dtos';
+import { DashboardKpisDto, DashboardAvisoDto, MiServicioDto } from '../../models/dtos';
 import { toHttpParams } from './api.helpers';
 
 @Injectable({ providedIn: 'root' })
@@ -15,8 +15,8 @@ export class DashboardService {
   getAvisos() {
     return this.http.get<DashboardAvisoDto[]>(`${this.base}/avisos`);
   }
-  getMisProyectos(periodId?: number | null) {
-    return this.http.get<MiProyectoDto[]>(`${this.base}/mis-proyectos`, { params: toHttpParams({ periodId }) });
+  getMisServicios(periodId?: number | null) {
+    return this.http.get<MiServicioDto[]>(`${this.base}/mis-servicios`, { params: toHttpParams({ periodId }) });
   }
   regenerateSeed() {
     return this.http.post(`${environment.apiUrl}/dev/regenerar-seed`, {});

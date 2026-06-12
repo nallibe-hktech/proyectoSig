@@ -20,8 +20,7 @@ public class User : ISoftDeletable, IAuditable
     public DateTime UpdatedAt { get; set; }
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
-    public ICollection<ProjectUser> ProjectUsers { get; set; } = new List<ProjectUser>();
-    public ICollection<ActionUser> ActionUsers { get; set; } = new List<ActionUser>();
+    public ICollection<ServiceUser> ServiceUsers { get; set; } = new List<ServiceUser>();
     public ICollection<ConceptUser> ConceptUsers { get; set; } = new List<ConceptUser>();
 }
 
@@ -64,7 +63,7 @@ public class CostCenter : ISoftDeletable, IAuditable
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public ICollection<ProjectCostCenter> ProjectCostCenters { get; set; } = new List<ProjectCostCenter>();
+    public ICollection<ServiceCostCenter> ServiceCostCenters { get; set; } = new List<ServiceCostCenter>();
 }
 
 public class Client : ISoftDeletable, IAuditable
@@ -84,16 +83,23 @@ public class Client : ISoftDeletable, IAuditable
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public ICollection<Project> Projects { get; set; } = new List<Project>();
+    public ICollection<Service> Services { get; set; } = new List<Service>();
 }
 
-public class Project : ISoftDeletable, IAuditable
+// Service = antiguo Action renombrado, que absorbe el vínculo directo a Client
+// y las relaciones CECO/Usuario/Cierres/Tarifas/Presupuestos que colgaban de Project.
+// (PPT §1: Cliente → Servicio → Concepto; "Proyecto" desaparece.)
+public class Service : ISoftDeletable, IAuditable
 {
     public int Id { get; set; }
     public string Nombre { get; set; } = null!;
     public int ClientId { get; set; }
     public Client Client { get; set; } = null!;
-    public EstadoProyecto Estado { get; set; }
+    public int? DepartmentId { get; set; }
+    public Department? Department { get; set; }
+    public EstadoServicio Estado { get; set; }
+    // Metadatos heredados de Project (preservados en la migración; revisar en olas posteriores
+    // si el interlocutor pasa a modelarse como ServiceUser con rol — PPT §2.3).
     public string? InterlocutorNombre { get; set; }
     public string? InterlocutorEmail { get; set; }
     public string? InterlocutorTelefono { get; set; }
@@ -102,61 +108,34 @@ public class Project : ISoftDeletable, IAuditable
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public ICollection<ProjectCostCenter> ProjectCostCenters { get; set; } = new List<ProjectCostCenter>();
-    public ICollection<ProjectUser> ProjectUsers { get; set; } = new List<ProjectUser>();
-    public ICollection<Action> Actions { get; set; } = new List<Action>();
+    public ICollection<ServiceConcept> ServiceConcepts { get; set; } = new List<ServiceConcept>();
+    public ICollection<ServiceUser> ServiceUsers { get; set; } = new List<ServiceUser>();
+    public ICollection<ServiceCostCenter> ServiceCostCenters { get; set; } = new List<ServiceCostCenter>();
     public ICollection<Closure> Closures { get; set; } = new List<Closure>();
 }
 
-public class ProjectCostCenter
+public class ServiceConcept
 {
-    public int ProjectId { get; set; }
-    public Project Project { get; set; } = null!;
-    public int CostCenterId { get; set; }
-    public CostCenter CostCenter { get; set; } = null!;
-}
-
-public class ProjectUser
-{
-    public int ProjectId { get; set; }
-    public Project Project { get; set; } = null!;
-    public int UserId { get; set; }
-    public User User { get; set; } = null!;
-}
-
-public class Action : ISoftDeletable, IAuditable
-{
-    public int Id { get; set; }
-    public string Nombre { get; set; } = null!;
-    public int ProjectId { get; set; }
-    public Project Project { get; set; } = null!;
-    public int ClientId { get; set; }
-    public Client Client { get; set; } = null!;
-    public int? DepartmentId { get; set; }
-    public Department? Department { get; set; }
-    public EstadoAccion Estado { get; set; }
-    public bool IsDeleted { get; set; }
-    public DateTime? DeletedAt { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
-    public ICollection<ActionConcept> ActionConcepts { get; set; } = new List<ActionConcept>();
-    public ICollection<ActionUser> ActionUsers { get; set; } = new List<ActionUser>();
-}
-
-public class ActionConcept
-{
-    public int ActionId { get; set; }
-    public Action Action { get; set; } = null!;
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
     public int ConceptId { get; set; }
     public Concept Concept { get; set; } = null!;
 }
 
-public class ActionUser
+public class ServiceUser
 {
-    public int ActionId { get; set; }
-    public Action Action { get; set; } = null!;
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
     public int UserId { get; set; }
     public User User { get; set; } = null!;
+}
+
+public class ServiceCostCenter
+{
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
+    public int CostCenterId { get; set; }
+    public CostCenter CostCenter { get; set; } = null!;
 }
 
 public class Concept : ISoftDeletable, IAuditable
@@ -167,14 +146,14 @@ public class Concept : ISoftDeletable, IAuditable
     public DateOnly FechaDesde { get; set; }
     public DateOnly? FechaHasta { get; set; }
     public string FormulaJson { get; set; } = null!;
-    public int? ProjectId { get; set; }   // null = global concept applies to all projects
-    public Project? Project { get; set; }
+    public int? ServiceId { get; set; }   // null = global concept applies to all services
+    public Service? Service { get; set; }
     public string? ColumnaA3 { get; set; } // Maps to A3 export column: "ImporteBruto", "IRPF", "SSEmpleado", "KM", etc.
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public ICollection<ActionConcept> ActionConcepts { get; set; } = new List<ActionConcept>();
+    public ICollection<ServiceConcept> ServiceConcepts { get; set; } = new List<ServiceConcept>();
     public ICollection<ConceptUser> ConceptUsers { get; set; } = new List<ConceptUser>();
 }
 
@@ -186,11 +165,11 @@ public class ConceptUser
     public User User { get; set; } = null!;
 }
 
-public class TarifaProyecto : ISoftDeletable, IAuditable
+public class TarifaServicio : ISoftDeletable, IAuditable
 {
     public int Id { get; set; }
-    public int ProjectId { get; set; }
-    public Project Project { get; set; } = null!;
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
     public string Nombre { get; set; } = null!;    // "Visita estándar", "Hora extra", "KM", etc.
     public decimal Valor { get; set; }              // price in EUR
     public string? Unidad { get; set; }             // "visita" | "hora" | "km" | "dia" (informational)
@@ -202,11 +181,11 @@ public class TarifaProyecto : ISoftDeletable, IAuditable
     public DateTime UpdatedAt { get; set; }
 }
 
-public class PresupuestoProyecto : ISoftDeletable, IAuditable
+public class PresupuestoServicio : ISoftDeletable, IAuditable
 {
     public int Id { get; set; }
-    public int ProjectId { get; set; }
-    public Project Project { get; set; } = null!;
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
     public int? PeriodId { get; set; }              // null = applies to all periods
     public Period? Period { get; set; }
     public TipoConcepto Tipo { get; set; }          // Pago | Factura
@@ -245,8 +224,8 @@ public class Period : IAuditable
 public class Closure : IAuditable
 {
     public int Id { get; set; }
-    public int ProjectId { get; set; }
-    public Project Project { get; set; } = null!;
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
     public int PeriodId { get; set; }
     public Period Period { get; set; } = null!;
     public decimal CosteTotal { get; set; }

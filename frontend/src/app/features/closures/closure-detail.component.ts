@@ -28,10 +28,10 @@ import { RejectDialogComponent } from './reject-dialog.component';
   ],
   template: `
     <div class="sig-page">
-      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Closures', route: '/closures' }, { label: closure() ? closure()!.projectNombre + ' — ' + closure()!.periodNombre : 'Detalle' }]" />
+      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Closures', route: '/closures' }, { label: closure() ? closure()!.serviceNombre + ' — ' + closure()!.periodNombre : 'Detalle' }]" />
 
       <div class="sig-page__header">
-        <h1 class="sig-page__title">{{ closure() ? closure()!.projectNombre + ' — ' + closure()!.periodNombre : 'Cargando...' }}</h1>
+        <h1 class="sig-page__title">{{ closure() ? closure()!.serviceNombre + ' — ' + closure()!.periodNombre : 'Cargando...' }}</h1>
         @if (closure()) {
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             @if (canRecalculate()) {

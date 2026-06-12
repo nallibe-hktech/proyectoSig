@@ -161,11 +161,11 @@ public class CeleroResourceMappingsController : ControllerBase
 public class CeleroServiceMappingsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly IProjectRepository _projectRepo;
-    public CeleroServiceMappingsController(AppDbContext db, IProjectRepository projectRepo)
+    private readonly IServiceRepository _serviceRepo;
+    public CeleroServiceMappingsController(AppDbContext db, IServiceRepository serviceRepo)
     {
         _db = db;
-        _projectRepo = projectRepo;
+        _serviceRepo = serviceRepo;
     }
 
     [HttpGet]
@@ -175,10 +175,10 @@ public class CeleroServiceMappingsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CeleroServiceMappingRequest req, CancellationToken ct)
     {
-        var project = await _projectRepo.GetByIdAsync(req.ProjectId, ct);
-        if (project is null) return NotFound($"Proyecto {req.ProjectId} no encontrado");
+        var service = await _serviceRepo.GetByIdAsync(req.ServiceId, ct);
+        if (service is null) return NotFound($"Servicio {req.ServiceId} no encontrado");
 
-        var mapping = new CeleroServiceMapping { CeleroServiceName = req.CeleroServiceName, ProjectId = req.ProjectId, Descripcion = req.Descripcion, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        var mapping = new CeleroServiceMapping { CeleroServiceName = req.CeleroServiceName, ServiceId = req.ServiceId, Descripcion = req.Descripcion, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         _db.CeleroServiceMappings.Add(mapping);
         await _db.SaveChangesAsync(ct);
         return StatusCode(201, mapping);
@@ -201,11 +201,11 @@ public class CeleroServiceMappingsController : ControllerBase
 public class CeleroMissionMappingsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly IActionRepository _actionRepo;
-    public CeleroMissionMappingsController(AppDbContext db, IActionRepository actionRepo)
+    private readonly IServiceRepository _serviceRepo;
+    public CeleroMissionMappingsController(AppDbContext db, IServiceRepository serviceRepo)
     {
         _db = db;
-        _actionRepo = actionRepo;
+        _serviceRepo = serviceRepo;
     }
 
     [HttpGet]
@@ -215,10 +215,10 @@ public class CeleroMissionMappingsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CeleroMissionMappingRequest req, CancellationToken ct)
     {
-        var action = await _actionRepo.GetByIdAsync(req.ActionId, ct);
-        if (action is null) return NotFound($"Acción {req.ActionId} no encontrada");
+        var service = await _serviceRepo.GetByIdAsync(req.ServiceId, ct);
+        if (service is null) return NotFound($"Servicio {req.ServiceId} no encontrado");
 
-        var mapping = new CeleroMissionMapping { CeleroMissionName = req.CeleroMissionName, ActionId = req.ActionId, Descripcion = req.Descripcion, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        var mapping = new CeleroMissionMapping { CeleroMissionName = req.CeleroMissionName, ServiceId = req.ServiceId, Descripcion = req.Descripcion, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         _db.CeleroMissionMappings.Add(mapping);
         await _db.SaveChangesAsync(ct);
         return StatusCode(201, mapping);
@@ -236,8 +236,8 @@ public class CeleroMissionMappingsController : ControllerBase
 }
 
 public record CeleroResourceMappingRequest(string CeleroNif, int UserId, string? Descripcion);
-public record CeleroServiceMappingRequest(string CeleroServiceName, int ProjectId, string? Descripcion);
-public record CeleroMissionMappingRequest(string CeleroMissionName, int ActionId, string? Descripcion);
+public record CeleroServiceMappingRequest(string CeleroServiceName, int ServiceId, string? Descripcion);
+public record CeleroMissionMappingRequest(string CeleroMissionName, int ServiceId, string? Descripcion);
 
 // Gestión de valores pendientes de mapeo
 [ApiController]
@@ -324,7 +324,7 @@ public class CeleroMapeosPendientesController : ControllerBase
             Servicios = pendingServices,
             Misiones = pendingMissions,
             TotalVisitasSinMapear = await _db.StagingCeleroVisitas
-                .CountAsync(s => s.UserId == null || s.ProjectId == null, cancellationToken: ct)
+                .CountAsync(s => s.UserId == null || s.ServiceId == null, cancellationToken: ct)
         });
     }
 
@@ -341,15 +341,15 @@ public class CeleroMapeosPendientesController : ControllerBase
 
         var serviceMappings = await _db.CeleroServiceMappings
             .AsNoTracking()
-            .ToDictionaryAsync(m => m.CeleroServiceName, m => m.ProjectId, ct);
+            .ToDictionaryAsync(m => m.CeleroServiceName, m => m.ServiceId, ct);
 
         var missionMappings = await _db.CeleroMissionMappings
             .AsNoTracking()
-            .ToDictionaryAsync(m => m.CeleroMissionName, m => m.ActionId, ct);
+            .ToDictionaryAsync(m => m.CeleroMissionName, m => m.ServiceId, ct);
 
         // Obtener visitas sin mapear completo
         var visitasSinMapear = await _db.StagingCeleroVisitas
-            .Where(v => v.UserId == null || v.ProjectId == null)
+            .Where(v => v.UserId == null || v.ServiceId == null)
             .ToListAsync(ct);
 
         int procesados = 0, resueltos = 0;
@@ -368,27 +368,25 @@ public class CeleroMapeosPendientesController : ControllerBase
                 }
             }
 
-            // Intentar resolver ProjectId
-            if (visita.ProjectId == null && !string.IsNullOrEmpty(visita.ServiceName))
+            // Intentar resolver ServiceId: misión (más específico) y, en su defecto, servicio
+            if (visita.ServiceId == null && !string.IsNullOrEmpty(visita.MissionName))
             {
-                if (serviceMappings.TryGetValue(visita.ServiceName, out var projectId))
+                if (missionMappings.TryGetValue(visita.MissionName, out var serviceId))
                 {
-                    visita.ProjectId = projectId;
+                    visita.ServiceId = serviceId;
+                    cambio = true;
+                }
+            }
+            if (visita.ServiceId == null && !string.IsNullOrEmpty(visita.ServiceName))
+            {
+                if (serviceMappings.TryGetValue(visita.ServiceName, out var serviceId))
+                {
+                    visita.ServiceId = serviceId;
                     cambio = true;
                 }
             }
 
-            // Intentar resolver ActionId (misionName → actionId)
-            if (visita.ActionId == null && !string.IsNullOrEmpty(visita.MissionName))
-            {
-                if (missionMappings.TryGetValue(visita.MissionName, out var actionId))
-                {
-                    visita.ActionId = actionId;
-                    cambio = true;
-                }
-            }
-
-            if (cambio && visita.UserId.HasValue && visita.ProjectId.HasValue)
+            if (cambio && visita.UserId.HasValue && visita.ServiceId.HasValue)
             {
                 resueltos++;
             }

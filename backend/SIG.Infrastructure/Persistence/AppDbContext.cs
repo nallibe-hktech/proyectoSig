@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SIG.Domain.Entities;
 using SIG.Domain.Entities.Staging;
-using Action = SIG.Domain.Entities.Action;
 
 namespace SIG.Infrastructure.Persistence;
 
@@ -15,16 +14,14 @@ public class AppDbContext : DbContext
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<CostCenter> CostCenters => Set<CostCenter>();
     public DbSet<Client> Clients => Set<Client>();
-    public DbSet<Project> Projects => Set<Project>();
-    public DbSet<ProjectCostCenter> ProjectCostCenters => Set<ProjectCostCenter>();
-    public DbSet<ProjectUser> ProjectUsers => Set<ProjectUser>();
-    public DbSet<Action> Actions => Set<Action>();
-    public DbSet<ActionConcept> ActionConcepts => Set<ActionConcept>();
-    public DbSet<ActionUser> ActionUsers => Set<ActionUser>();
+    public DbSet<Service> Services => Set<Service>();
+    public DbSet<ServiceConcept> ServiceConcepts => Set<ServiceConcept>();
+    public DbSet<ServiceUser> ServiceUsers => Set<ServiceUser>();
+    public DbSet<ServiceCostCenter> ServiceCostCenters => Set<ServiceCostCenter>();
     public DbSet<Concept> Concepts => Set<Concept>();
     public DbSet<ConceptUser> ConceptUsers => Set<ConceptUser>();
-    public DbSet<TarifaProyecto> TarifasProyecto => Set<TarifaProyecto>();
-    public DbSet<PresupuestoProyecto> PresupuestosProyecto => Set<PresupuestoProyecto>();
+    public DbSet<TarifaServicio> TarifasServicio => Set<TarifaServicio>();
+    public DbSet<PresupuestoServicio> PresupuestosServicio => Set<PresupuestoServicio>();
     public DbSet<Variable> Variables => Set<Variable>();
     public DbSet<Period> Periods => Set<Period>();
     public DbSet<Closure> Closures => Set<Closure>();

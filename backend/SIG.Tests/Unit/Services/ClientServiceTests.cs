@@ -15,7 +15,7 @@ public class ClientServiceTests
     public ClientServiceTests() { _sut = new ClientService(_repo); }
 
     private static Client MakeClient(int id = 1) =>
-        new() { Id = id, Nombre = "Alpha Foods", NIF = "A12345678", Ciudad = "Madrid", Projects = new List<Project>() };
+        new() { Id = id, Nombre = "Alpha Foods", NIF = "A12345678", Ciudad = "Madrid", Services = new List<Service>() };
 
     [Fact]
     public async Task ListAsync_DelegaEnRepositorioYMapeaDtos()
@@ -98,7 +98,7 @@ public class ClientServiceTests
     public async Task DeleteAsync_ClienteConProyectos_LanzaDependenciesExistException()
     {
         _repo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns(MakeClient());
-        _repo.HasProjectsAsync(1, Arg.Any<CancellationToken>()).Returns(true);
+        _repo.HasServicesAsync(1, Arg.Any<CancellationToken>()).Returns(true);
 
         await FluentActions.Awaiting(() => _sut.DeleteAsync(1, 99, CancellationToken.None))
             .Should().ThrowAsync<DependenciesExistException>();
@@ -109,7 +109,7 @@ public class ClientServiceTests
     {
         var c = MakeClient();
         _repo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns(c);
-        _repo.HasProjectsAsync(1, Arg.Any<CancellationToken>()).Returns(false);
+        _repo.HasServicesAsync(1, Arg.Any<CancellationToken>()).Returns(false);
 
         await _sut.DeleteAsync(1, 99, CancellationToken.None);
 

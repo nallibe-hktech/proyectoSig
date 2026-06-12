@@ -3,9 +3,7 @@
 
 export type EstadoUsuario = 'Activo' | 'Inactivo';
 
-export type EstadoProyecto = 'Activo' | 'Pausado' | 'Cerrado';
-
-export type EstadoAccion = 'Activa' | 'Inactiva';
+export type EstadoServicio = 'Activo' | 'Inactivo';
 
 export type TipoConcepto = 'Pago' | 'Factura';
 

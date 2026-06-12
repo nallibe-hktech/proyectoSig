@@ -285,7 +285,7 @@ public class DataProcessorService : IDataProcessorService
     {
         // Procesar ausencias Bizneo
         var absencesPendientes = await _db.StagingBizneoAbsences
-            .Where(x => !x.FlagProcesado && x.UserId > 0 && x.ProjectId > 0)
+            .Where(x => !x.FlagProcesado && x.UserId > 0 && x.ServiceId > 0)
             .ToListAsync(ct);
 
         foreach (var a in absencesPendientes)
@@ -295,7 +295,7 @@ public class DataProcessorService : IDataProcessorService
 
         // Procesar gastos PayHawk
         var gastosPendientes = await _db.StagingPayHawkGastos
-            .Where(x => !x.FlagProcesado && x.UserId > 0 && x.ProjectId > 0)
+            .Where(x => !x.FlagProcesado && x.UserId > 0 && x.ServiceId > 0)
             .ToListAsync(ct);
 
         foreach (var g in gastosPendientes)

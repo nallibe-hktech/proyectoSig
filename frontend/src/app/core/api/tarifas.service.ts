@@ -2,31 +2,31 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import {
-  TarifaProyectoDto, TarifaProyectoCreateRequest, TarifaProyectoUpdateRequest,
+  TarifaServicioDto, TarifaServicioCreateRequest, TarifaServicioUpdateRequest,
 } from '../../models/dtos';
 
 @Injectable({ providedIn: 'root' })
 export class TarifasService {
   private readonly http = inject(HttpClient);
-  private readonly base = `${environment.apiUrl}/projects`;
+  private readonly base = `${environment.apiUrl}/services`;
 
-  list(projectId: number) {
-    return this.http.get<TarifaProyectoDto[]>(`${this.base}/${projectId}/tarifas`);
+  list(serviceId: number) {
+    return this.http.get<TarifaServicioDto[]>(`${this.base}/${serviceId}/tarifas`);
   }
 
-  getById(id: number, projectId: number) {
-    return this.http.get<TarifaProyectoDto>(`${this.base}/${projectId}/tarifas/${id}`);
+  getById(id: number, serviceId: number) {
+    return this.http.get<TarifaServicioDto>(`${this.base}/${serviceId}/tarifas/${id}`);
   }
 
-  create(projectId: number, req: TarifaProyectoCreateRequest) {
-    return this.http.post<TarifaProyectoDto>(`${this.base}/${projectId}/tarifas`, req);
+  create(serviceId: number, req: TarifaServicioCreateRequest) {
+    return this.http.post<TarifaServicioDto>(`${this.base}/${serviceId}/tarifas`, req);
   }
 
-  update(id: number, projectId: number, req: TarifaProyectoUpdateRequest) {
-    return this.http.put<TarifaProyectoDto>(`${this.base}/${projectId}/tarifas/${id}`, req);
+  update(id: number, serviceId: number, req: TarifaServicioUpdateRequest) {
+    return this.http.put<TarifaServicioDto>(`${this.base}/${serviceId}/tarifas/${id}`, req);
   }
 
-  delete(id: number, projectId: number) {
-    return this.http.delete<void>(`${this.base}/${projectId}/tarifas/${id}`);
+  delete(id: number, serviceId: number) {
+    return this.http.delete<void>(`${this.base}/${serviceId}/tarifas/${id}`);
   }
 }

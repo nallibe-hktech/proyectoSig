@@ -2,7 +2,7 @@
 // Nombres, casing y tipos respetan fidelidad nominal con el backend .NET.
 
 import type {
-  EstadoUsuario, EstadoProyecto, EstadoAccion, TipoConcepto, EstadoPeriodo,
+  EstadoUsuario, EstadoServicio, TipoConcepto, EstadoPeriodo,
   EstadoClosure, ApprovalStep, EstadoApproval, AuditAction
 } from './enums';
 
@@ -40,7 +40,7 @@ export interface ClientListItemDto {
   nombre: string;
   nif: string;
   ciudad?: string | null;
-  projectCount: number;
+  serviceCount: number;
 }
 export interface ClientDetailDto {
   id: number;
@@ -58,71 +58,45 @@ export interface ClientDetailDto {
 export type ClientCreateRequest = Omit<ClientDetailDto, 'id'>;
 export type ClientUpdateRequest = ClientCreateRequest;
 
-// ------------------ Project ------------------
-export interface ProjectListItemDto {
+// ------------------ Service ------------------
+export interface ServiceListItemDto {
   id: number;
   nombre: string;
   clientId: number;
   clientNombre: string;
-  estado: EstadoProyecto;
+  departmentId?: number | null;
+  estado: EstadoServicio;
+}
+export interface ServiceDetailDto {
+  id: number;
+  nombre: string;
+  clientId: number;
+  clientNombre: string;
+  departmentId?: number | null;
+  estado: EstadoServicio;
+  interlocutorNombre?: string | null;
+  interlocutorEmail?: string | null;
+  interlocutorTelefono?: string | null;
   fechaAlta: string; // DateOnly ISO yyyy-MM-dd
+  costCenterIds: number[];
+  userIds: number[];
+  conceptIds: number[];
 }
-export interface ProjectDetailDto {
-  id: number;
+export interface ServiceCreateRequest {
   nombre: string;
   clientId: number;
-  clientNombre: string;
-  estado: EstadoProyecto;
+  clientNombre?: string;
+  departmentId?: number | null;
+  estado: EstadoServicio;
   interlocutorNombre?: string | null;
   interlocutorEmail?: string | null;
   interlocutorTelefono?: string | null;
   fechaAlta: string;
   costCenterIds: number[];
   userIds: number[];
-}
-export interface ProjectCreateRequest {
-  nombre: string;
-  clientId: number;
-  estado: EstadoProyecto;
-  interlocutorNombre?: string | null;
-  interlocutorEmail?: string | null;
-  interlocutorTelefono?: string | null;
-  fechaAlta: string;
-  costCenterIds: number[];
-  userIds: number[];
-}
-export type ProjectUpdateRequest = ProjectCreateRequest;
-
-// ------------------ Action ------------------
-export interface ActionListItemDto {
-  id: number;
-  nombre: string;
-  projectId: number;
-  projectNombre: string;
-  clientId: number;
-  departmentId?: number | null;
-  estado: EstadoAccion;
-}
-export interface ActionDetailDto {
-  id: number;
-  nombre: string;
-  projectId: number;
-  clientId: number;
-  departmentId?: number | null;
-  estado: EstadoAccion;
   conceptIds: number[];
-  userIds: number[];
 }
-export interface ActionCreateRequest {
-  nombre: string;
-  projectId: number;
-  clientId: number;
-  departmentId?: number | null;
-  estado: EstadoAccion;
-  conceptIds: number[];
-  userIds: number[];
-}
-export type ActionUpdateRequest = ActionCreateRequest;
+export type ServiceUpdateRequest = ServiceCreateRequest;
 
 // ------------------ Concept ------------------
 export interface ConceptListItemDto {
@@ -139,7 +113,7 @@ export interface ConceptDetailDto {
   fechaDesde: string;
   fechaHasta?: string | null;
   formulaJson: string;
-  actionIds: number[];
+  serviceIds: number[];
   userIds: number[];
 }
 export interface ConceptCreateRequest {
@@ -148,7 +122,7 @@ export interface ConceptCreateRequest {
   fechaDesde: string;
   fechaHasta?: string | null;
   formulaJson: string;
-  actionIds: number[];
+  serviceIds: number[];
   userIds: number[];
 }
 export type ConceptUpdateRequest = ConceptCreateRequest;
@@ -220,8 +194,8 @@ export type PeriodUpdateRequest = PeriodCreateRequest;
 // ------------------ Closure / Approval ------------------
 export interface ClosureListItemDto {
   id: number;
-  projectId: number;
-  projectNombre: string;
+  serviceId: number;
+  serviceNombre: string;
   periodId: number;
   periodNombre: string;
   periodo?: string; // Alias para periodNombre
@@ -260,8 +234,8 @@ export interface ApprovalDto {
 }
 export interface ClosureDetailDto {
   id: number;
-  projectId: number;
-  projectNombre: string;
+  serviceId: number;
+  serviceNombre: string;
   periodId: number;
   periodNombre: string;
   costeTotal: number;
@@ -274,7 +248,7 @@ export interface ClosureDetailDto {
   lines: ClosureLineDto[];
   approvals: ApprovalDto[];
 }
-export interface ClosureCreateRequest { projectId: number; periodId: number; comentarios?: string | null; }
+export interface ClosureCreateRequest { serviceId: number; periodId: number; comentarios?: string | null; }
 export interface ClosureRecalcRequest { comentarios?: string | null; }
 export interface ClosureApproveRequest { comentarios?: string | null; }
 export interface ClosureRejectRequest { motivo: string; }
@@ -293,8 +267,8 @@ export interface ApprovalFilterRequest {
 }
 export interface ApprovalPanelItemDto {
   closureId: number;
-  projectId: number;
-  projectNombre: string;
+  serviceId: number;
+  serviceNombre: string;
   clientId: number;
   clientNombre: string;
   periodId: number;
@@ -349,8 +323,8 @@ export interface DashboardAvisoDto {
   descripcion: string;
   entityId?: number | null;
 }
-export interface MiProyectoDto {
-  projectId: number;
+export interface MiServicioDto {
+  serviceId: number;
   nombre: string;
   clientId: number;
   clientNombre: string;
@@ -427,40 +401,40 @@ export interface VariableCreateRequest {
 export type VariableUpdateRequest = VariableCreateRequest;
 
 // ------------------ Tarifa ------------------
-export interface TarifaProyectoDto {
+export interface TarifaServicioDto {
   id: number;
-  projectId: number;
+  serviceId: number;
   nombre: string;
   valor: number;
   unidad?: string | null;
   fechaDesde: string; // DateOnly ISO yyyy-MM-dd
   fechaHasta?: string | null; // DateOnly ISO yyyy-MM-dd
 }
-export interface TarifaProyectoCreateRequest {
+export interface TarifaServicioCreateRequest {
   nombre: string;
   valor: number;
   unidad?: string | null;
   fechaDesde: string; // DateOnly ISO yyyy-MM-dd
   fechaHasta?: string | null; // DateOnly ISO yyyy-MM-dd
 }
-export type TarifaProyectoUpdateRequest = TarifaProyectoCreateRequest;
+export type TarifaServicioUpdateRequest = TarifaServicioCreateRequest;
 
 // ------------------ Presupuesto ------------------
-export interface PresupuestoProyectoDto {
+export interface PresupuestoServicioDto {
   id: number;
-  projectId: number;
+  serviceId: number;
   periodId?: number | null;
   tipo: TipoConcepto;
   importe: number;
   descripcion?: string | null;
 }
-export interface PresupuestoProyectoCreateRequest {
+export interface PresupuestoServicioCreateRequest {
   periodId?: number | null;
   tipo: TipoConcepto;
   importe: number;
   descripcion?: string | null;
 }
-export type PresupuestoProyectoUpdateRequest = PresupuestoProyectoCreateRequest;
+export type PresupuestoServicioUpdateRequest = PresupuestoServicioCreateRequest;
 
 // ------------------ Formula AST ------------------
 export type FormulaNode =

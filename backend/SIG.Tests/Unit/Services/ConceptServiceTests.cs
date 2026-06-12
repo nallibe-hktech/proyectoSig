@@ -24,7 +24,7 @@ public class ConceptServiceTests
         Tipo = TipoConcepto.Pago,
         FechaDesde = new DateOnly(2026, 1, 1),
         FormulaJson = """{"type":"Number","value":5}""",
-        ActionConcepts = new List<ActionConcept>(),
+        ServiceConcepts = new List<ServiceConcept>(),
         ConceptUsers = new List<ConceptUser>()
     };
 
@@ -68,7 +68,7 @@ public class ConceptServiceTests
     public async Task DeleteAsync_ConDependencias_LanzaDependenciesExistException()
     {
         _repo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns(MakeConcept());
-        _repo.HasActionsAsync(1, Arg.Any<CancellationToken>()).Returns(true);
+        _repo.HasServicesAsync(1, Arg.Any<CancellationToken>()).Returns(true);
 
         await FluentActions.Awaiting(() => _sut.DeleteAsync(1, 99, CancellationToken.None))
             .Should().ThrowAsync<DependenciesExistException>();
@@ -79,7 +79,7 @@ public class ConceptServiceTests
     {
         var c = MakeConcept();
         _repo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns(c);
-        _repo.HasActionsAsync(1, Arg.Any<CancellationToken>()).Returns(false);
+        _repo.HasServicesAsync(1, Arg.Any<CancellationToken>()).Returns(false);
 
         await _sut.DeleteAsync(1, 99, CancellationToken.None);
 

@@ -538,7 +538,7 @@ public class PayHawkClient : IPayHawkClient
                         g.Category?.Name ?? "Otros"
                     );
                 })
-                .Where(g => g.UserId > 0 && g.ProjectId > 0)
+                .Where(g => g.UserId > 0 && g.ServiceId > 0)
                 .ToList();
 
             _logger.LogInformation($"[PayHawk] Después de filtrar: {gastos.Count} gastos válidos (de {count})");

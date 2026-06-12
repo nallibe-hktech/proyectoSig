@@ -146,11 +146,11 @@ interface SelectOption {
               </table>
             </mat-expansion-panel>
 
-            <!-- Sección Servicios (ServiceName → Proyecto) -->
+            <!-- Sección Servicios (ServiceName → Servicio) -->
             <mat-expansion-panel [expanded]="false" data-testid="servicios-panel">
               <mat-expansion-panel-header>
                 <mat-panel-title>
-                  Servicios (ServiceName → Proyecto)
+                  Servicios (ServiceName → Servicio)
                   <mat-icon matBadge="{{ serviciosSinMapear() }}" matBadgeColor="warn"
                     matBadgeSize="small" class="badge-margin">business</mat-icon>
                 </mat-panel-title>
@@ -173,7 +173,7 @@ interface SelectOption {
                 </ng-container>
 
                 <ng-container matColumnDef="select">
-                  <th mat-header-cell *matHeaderCellDef>Proyecto SIG-ES</th>
+                  <th mat-header-cell *matHeaderCellDef>Servicio SIG-ES</th>
                   <td mat-cell *matCellDef="let s">
                     <mat-form-field>
                       <mat-select
@@ -182,7 +182,7 @@ interface SelectOption {
                         class="select-small"
                         [attr.data-testid]="'servicio-select-' + s.valor">
                         <mat-option [value]="null">— Sin asignar —</mat-option>
-                        <mat-option *ngFor="let p of proyectos()" [value]="p.id">
+                        <mat-option *ngFor="let p of serviciosSig()" [value]="p.id">
                           {{ p.nombre }}
                         </mat-option>
                       </mat-select>
@@ -204,11 +204,11 @@ interface SelectOption {
               </table>
             </mat-expansion-panel>
 
-            <!-- Sección Misiones (MissionType → Acción) -->
+            <!-- Sección Misiones (MissionType → Servicio) -->
             <mat-expansion-panel [expanded]="false" data-testid="misiones-panel">
               <mat-expansion-panel-header>
                 <mat-panel-title>
-                  Misiones (MissionType → Acción)
+                  Misiones (MissionType → Servicio)
                   <mat-icon matBadge="{{ misionesSinMapear() }}" matBadgeColor="warn"
                     matBadgeSize="small" class="badge-margin">assignment</mat-icon>
                 </mat-panel-title>
@@ -231,7 +231,7 @@ interface SelectOption {
                 </ng-container>
 
                 <ng-container matColumnDef="select">
-                  <th mat-header-cell *matHeaderCellDef>Acción SIG-ES</th>
+                  <th mat-header-cell *matHeaderCellDef>Servicio SIG-ES</th>
                   <td mat-cell *matCellDef="let m">
                     <mat-form-field>
                       <mat-select
@@ -240,7 +240,7 @@ interface SelectOption {
                         class="select-small"
                         [attr.data-testid]="'mision-select-' + m.valor">
                         <mat-option [value]="null">— Sin asignar —</mat-option>
-                        <mat-option *ngFor="let a of acciones()" [value]="a.id">
+                        <mat-option *ngFor="let a of serviciosSig()" [value]="a.id">
                           {{ a.nombre }}
                         </mat-option>
                       </mat-select>
@@ -432,8 +432,7 @@ export class CeleroMapeosComponent implements OnInit {
 
   // Selects de referencia
   usuarios = signal<SelectOption[]>([]);
-  proyectos = signal<SelectOption[]>([]);
-  acciones = signal<SelectOption[]>([]);
+  serviciosSig = signal<SelectOption[]>([]);
 
   // Estados de carga
   cargando = signal(false);
@@ -468,10 +467,9 @@ export class CeleroMapeosComponent implements OnInit {
     Promise.all([
       this.http.get<PendientesResponse>('/api/celero-mappings/pendientes').toPromise(),
       this.http.get<any>('/api/users').toPromise(),
-      this.http.get<any>('/api/projects').toPromise(),
-      this.http.get<any>('/api/actions').toPromise()
+      this.http.get<any>('/api/services').toPromise()
     ]).then(
-      ([mapeos, users, projects, actions]) => {
+      ([mapeos, users, services]) => {
         if (mapeos) {
           this.recursos.set(mapeos.recursos);
           this.servicios.set(mapeos.servicios);
@@ -481,11 +479,8 @@ export class CeleroMapeosComponent implements OnInit {
         if (users?.items) {
           this.usuarios.set(users.items);
         }
-        if (projects?.items) {
-          this.proyectos.set(projects.items);
-        }
-        if (actions?.items) {
-          this.acciones.set(actions.items);
+        if (services?.items) {
+          this.serviciosSig.set(services.items);
         }
         this.cargando.set(false);
       },
@@ -506,11 +501,11 @@ export class CeleroMapeosComponent implements OnInit {
 
     const serviciosNuevos = this.servicios()
       .filter(s => s.selectedId && !s.estaMapado)
-      .map(s => ({ celeroServiceName: s.valor, projectId: s.selectedId }));
+      .map(s => ({ celeroServiceName: s.valor, serviceId: s.selectedId }));
 
     const misionesNuevos = this.misiones()
       .filter(m => m.selectedId && !m.estaMapado)
-      .map(m => ({ celeroMissionName: m.valor, actionId: m.selectedId }));
+      .map(m => ({ celeroMissionName: m.valor, serviceId: m.selectedId }));
 
     const total = recursosNuevos.length + serviciosNuevos.length + misionesNuevos.length;
 

@@ -3,28 +3,22 @@ using SIG.Domain.Enums;
 namespace SIG.Application.DTOs;
 
 // Client
-public record ClientListItemDto(int Id, string Nombre, string NIF, string? Ciudad, int ProjectCount);
+public record ClientListItemDto(int Id, string Nombre, string NIF, string? Ciudad, int ServiceCount);
 public record ClientDetailDto(int Id, string Nombre, string NIF, string? Direccion, string? Ciudad, string? Provincia, string? Pais, string? CodigoPostal, string? ContactoNombre, string? ContactoEmail, string? ContactoTelefono);
 public record ClientCreateRequest(string Nombre, string NIF, string? Direccion, string? Ciudad, string? Provincia, string? Pais, string? CodigoPostal, string? ContactoNombre, string? ContactoEmail, string? ContactoTelefono);
 public record ClientUpdateRequest(string Nombre, string NIF, string? Direccion, string? Ciudad, string? Provincia, string? Pais, string? CodigoPostal, string? ContactoNombre, string? ContactoEmail, string? ContactoTelefono);
 
-// Project
-public record ProjectListItemDto(int Id, string Nombre, int ClientId, string ClientNombre, EstadoProyecto Estado, DateOnly FechaAlta);
-public record ProjectDetailDto(int Id, string Nombre, int ClientId, string ClientNombre, EstadoProyecto Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds);
-public record ProjectCreateRequest(string Nombre, int ClientId, EstadoProyecto Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds);
-public record ProjectUpdateRequest(string Nombre, int ClientId, EstadoProyecto Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds);
-
-// Action
-public record ActionListItemDto(int Id, string Nombre, int ProjectId, string ProjectNombre, int ClientId, int? DepartmentId, EstadoAccion Estado);
-public record ActionDetailDto(int Id, string Nombre, int ProjectId, int ClientId, int? DepartmentId, EstadoAccion Estado, int[] ConceptIds, int[] UserIds);
-public record ActionCreateRequest(string Nombre, int ProjectId, int ClientId, int? DepartmentId, EstadoAccion Estado, int[] ConceptIds, int[] UserIds);
-public record ActionUpdateRequest(string Nombre, int ProjectId, int ClientId, int? DepartmentId, EstadoAccion Estado, int[] ConceptIds, int[] UserIds);
+// Service (antes Action; absorbe el vínculo directo a Client y los metadatos de Project)
+public record ServiceListItemDto(int Id, string Nombre, int ClientId, string ClientNombre, int? DepartmentId, EstadoServicio Estado);
+public record ServiceDetailDto(int Id, string Nombre, int ClientId, string ClientNombre, int? DepartmentId, EstadoServicio Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds, int[] ConceptIds);
+public record ServiceCreateRequest(string Nombre, int ClientId, int? DepartmentId, EstadoServicio Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds, int[] ConceptIds);
+public record ServiceUpdateRequest(string Nombre, int ClientId, int? DepartmentId, EstadoServicio Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds, int[] ConceptIds);
 
 // Concept
 public record ConceptListItemDto(int Id, string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta);
-public record ConceptDetailDto(int Id, string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ActionIds, int[] UserIds);
-public record ConceptCreateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ActionIds, int[] UserIds);
-public record ConceptUpdateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ActionIds, int[] UserIds);
+public record ConceptDetailDto(int Id, string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ServiceIds, int[] UserIds);
+public record ConceptCreateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ServiceIds, int[] UserIds);
+public record ConceptUpdateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ServiceIds, int[] UserIds);
 public record ValidarFormulaRequest(string FormulaJson);
 public record ValidarFormulaResponse(bool Ok, string[] Errores);
 
@@ -54,12 +48,12 @@ public record PeriodDto(int Id, string Nombre, DateOnly FechaInicio, DateOnly Fe
 public record PeriodCreateRequest(string Nombre, DateOnly FechaInicio, DateOnly FechaFin);
 public record PeriodUpdateRequest(string Nombre, DateOnly FechaInicio, DateOnly FechaFin);
 
-// TarifaProyecto
-public record TarifaProyectoDto(int Id, int ProjectId, string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
-public record TarifaProyectoCreateRequest(string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
-public record TarifaProyectoUpdateRequest(string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
+// TarifaServicio
+public record TarifaServicioDto(int Id, int ServiceId, string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
+public record TarifaServicioCreateRequest(string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
+public record TarifaServicioUpdateRequest(string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
 
-// PresupuestoProyecto
-public record PresupuestoProyectoDto(int Id, int ProjectId, int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
-public record PresupuestoProyectoCreateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
-public record PresupuestoProyectoUpdateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
+// PresupuestoServicio
+public record PresupuestoServicioDto(int Id, int ServiceId, int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
+public record PresupuestoServicioCreateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
+public record PresupuestoServicioUpdateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
