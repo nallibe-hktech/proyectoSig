@@ -2,6 +2,7 @@ using SIG.Application.Calculation;
 using SIG.Application.Common;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Repositories;
+using SIG.Application.Interfaces.Services;
 using SIG.Application.Services;
 using SIG.Domain.Entities;
 using SIG.Domain.Enums;
@@ -20,11 +21,12 @@ public class ClosureServiceTests
     private readonly IRoleRepository _roleRepo = Substitute.For<IRoleRepository>();
     private readonly IConceptRepository _conceptRepo = Substitute.For<IConceptRepository>();
     private readonly ICalculationEngine _engine = Substitute.For<ICalculationEngine>();
+    private readonly IClosureValidationService _validationSvc = Substitute.For<IClosureValidationService>();
     private readonly ClosureService _sut;
 
     public ClosureServiceTests()
     {
-        _sut = new ClosureService(_repo, _lineRepo, _calcLogRepo, _serviceRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _engine);
+        _sut = new ClosureService(_repo, _lineRepo, _calcLogRepo, _serviceRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _engine, _validationSvc);
     }
 
     private static Period MakePeriod(EstadoPeriodo estado = EstadoPeriodo.Abierto) =>
