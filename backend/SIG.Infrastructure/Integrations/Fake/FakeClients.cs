@@ -57,7 +57,9 @@ public class CeleroFakeClient : ICeleroClient
                 f.PickRandom(misiones),
                 DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue)))
             ));
-        var list = faker.Generate(50);
+        // Semilla local fija: cada llamada produce el MISMO lote → la sincronización es idempotente
+        // (la 2ª sync detecta todos los registros como duplicados por hash SHA256).
+        var list = faker.UseSeed(FakeSeed.Seed).Generate(50);
         return Task.FromResult<IReadOnlyList<CeleroVisitaDto>>(list);
     }
 }
