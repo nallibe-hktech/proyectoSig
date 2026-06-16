@@ -28,6 +28,13 @@ public class MediapostExcelClient : IMediapostClient
     {
         try
         {
+            // Si la carpeta de origen aún no existe (nadie ha subido ficheros), degradar a vacío en vez de lanzar 500
+            if (!Directory.Exists(_basePath))
+            {
+                _logger.LogWarning("Carpeta de Mediapost no existe: {Path}. No hay pedidos que sincronizar.", _basePath);
+                return Array.Empty<MediapostPedidoDto>();
+            }
+
             // Buscar archivo de pedidos (infpedsit11_*.xlsx)
             var files = Directory.GetFiles(_basePath, "infpedsit11_*.xlsx")
                 .OrderByDescending(f => f)
@@ -162,6 +169,13 @@ public class MediapostExcelClient : IMediapostClient
     {
         try
         {
+            // Si la carpeta de origen aún no existe (nadie ha subido ficheros), degradar a vacío en vez de lanzar 500
+            if (!Directory.Exists(_basePath))
+            {
+                _logger.LogWarning("Carpeta de Mediapost no existe: {Path}. No hay recepciones que sincronizar.", _basePath);
+                return Array.Empty<MediapostRecepcionDto>();
+            }
+
             // Buscar archivo de recepciones (infrecep07_*.xlsx)
             var files = Directory.GetFiles(_basePath, "infrecep07_*.xlsx")
                 .OrderByDescending(f => f)
