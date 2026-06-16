@@ -85,7 +85,7 @@ public class SyncController : ControllerBase
             !system.Equals("mediapost", StringComparison.OrdinalIgnoreCase))
         {
             // Otros sistemas requieren autenticación
-            if (!User.IsInRole("Administrator") && !User.IsInRole("Admin SIG"))
+            if (!User.IsInRole("Administrator"))
             {
                 return Unauthorized("Solo administradores pueden sincronizar sistemas externos");
             }
@@ -95,7 +95,7 @@ public class SyncController : ControllerBase
     }
 
     [HttpPost("process")]
-    [Authorize(Roles = "Administrator,Admin SIG")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> ProcessPending(CancellationToken ct) =>
         Ok(await _processor.ProcessAllPendingAsync(ct));
 
