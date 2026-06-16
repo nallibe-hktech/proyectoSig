@@ -35,13 +35,13 @@ interface RolDef {
             <option value="">Vista</option>
             <option>Todas</option>
             <option>Global</option>
-            <option>Proyecto</option>
+            <option>Servicio</option>
           </select>
           <select class="sig-select">
             <option value="">Ambito</option>
             <option>Todos</option>
             <option>Global</option>
-            <option>Proyecto</option>
+            <option>Servicio</option>
           </select>
           <button class="sig-btn-filter">Filtrar</button>
           <button class="sig-btn-limpiar" (click)="clearFilters()">Limpiar</button>
@@ -76,7 +76,7 @@ interface RolDef {
             </tbody>
           </table>
           <div class="sig-footer-note">
-            El permiso "Editar" incluye Eliminar &middot; Los datos de Ceco / Cliente / Proyecto / Accion se alimentan de Celero
+            El permiso "Editar" incluye Eliminar &middot; Los datos de Ceco / Cliente / Servicio / Concepto se alimentan de Celero
           </div>
         </div>
 
@@ -122,11 +122,11 @@ interface RolDef {
                     <div class="sig-perm-pills"><span class="sig-perm-pill perm--ver">Ver</span></div>
                   </div>
                   <div class="sig-perm-row">
-                    <span class="sig-perm-label">Proyecto</span>
+                    <span class="sig-perm-label">Servicio</span>
                     <div class="sig-perm-pills"><span class="sig-perm-pill perm--ver">Ver</span></div>
                   </div>
                   <div class="sig-perm-row">
-                    <span class="sig-perm-label">Accion</span>
+                    <span class="sig-perm-label">Concepto</span>
                     <div class="sig-perm-pills"><span class="sig-perm-pill perm--ver">Ver</span></div>
                   </div>
                   <div class="sig-perm-row">
@@ -237,10 +237,10 @@ export class RolesListComponent implements OnInit {
     { nombre:'FICO',          ambito:'Global',   pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Ver / Editar / Crear', roles:'Sin permisos' },
     { nombre:'RRHH',          ambito:'Global',   pagos:'Ver / Validar / Editar', facturaciones:'Sin permisos',          usuarios:'Ver / Editar / Crear', roles:'Sin permisos' },
     { nombre:'Facilitador',   ambito:'Global',   pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Ver / Editar / Crear', roles:'Sin permisos' },
-    { nombre:'Interlocutor',  ambito:'Proyecto', pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Sin permisos',         roles:'Sin permisos' },
-    { nombre:'Gestor',        ambito:'Proyecto', pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Sin permisos',         roles:'Sin permisos' },
-    { nombre:'Backoffice',    ambito:'Proyecto', pagos:'Ver / Validar',          facturaciones:'Sin permisos',          usuarios:'Sin permisos',         roles:'Sin permisos' },
-    { nombre:'Auxiliar',      ambito:'Proyecto', pagos:'Ver',                    facturaciones:'Sin permisos',          usuarios:'Sin permisos',         roles:'Sin permisos' },
+    { nombre:'Interlocutor',  ambito:'Servicio', pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Sin permisos',         roles:'Sin permisos' },
+    { nombre:'Gestor',        ambito:'Servicio', pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Sin permisos',         roles:'Sin permisos' },
+    { nombre:'Backoffice',    ambito:'Servicio', pagos:'Ver / Validar',          facturaciones:'Sin permisos',          usuarios:'Sin permisos',         roles:'Sin permisos' },
+    { nombre:'Auxiliar',      ambito:'Servicio', pagos:'Ver',                    facturaciones:'Sin permisos',          usuarios:'Sin permisos',         roles:'Sin permisos' },
   ]);
 
   ngOnInit(): void { const r = this.roles(); if (r.length) this.selected.set(r[0]); }
