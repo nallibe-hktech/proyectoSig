@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Services;
+using SIG.Infrastructure.Services;
 
 namespace SIG.API.Controllers;
 
@@ -11,10 +13,15 @@ namespace SIG.API.Controllers;
 public class MediapostController : ControllerBase
 {
     private readonly IMediapostService _service;
+    private readonly MediapostSyncService _syncService;
 
-    public MediapostController(IMediapostService service) => _service = service;
+    public MediapostController(IMediapostService service, MediapostSyncService syncService)
+    {
+        _service = service;
+        _syncService = syncService;
+    }
 
-    /// <summary>Obtiene pedidos de envío paginados</summary>
+    /// <summary>Obtiene pedidos paginados</summary>
     [HttpGet("pedidos")]
     public async Task<IActionResult> GetPedidos(
         [FromQuery] int page = 1,
@@ -27,7 +34,7 @@ public class MediapostController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Obtiene recepciones de envío paginadas</summary>
+    /// <summary>Obtiene recepciones paginadas</summary>
     [HttpGet("recepciones")]
     public async Task<IActionResult> GetRecepciones(
         [FromQuery] int page = 1,
@@ -77,8 +84,10 @@ public class MediapostController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "No se proporcionó archivo" });
 
-        if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { error = "Solo se aceptan archivos .xlsx" });
+        var validExtensions = new[] { ".xlsx", ".csv" };
+        var ext = Path.GetExtension(file.FileName);
+        if (!validExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))
+            return BadRequest(new { error = "Solo se aceptan archivos .xlsx o .csv" });
 
         try
         {
@@ -90,9 +99,9 @@ public class MediapostController : ControllerBase
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
             var fileName = tipo switch
             {
-                "pedidos" => $"infpedsit11_{timestamp}.xlsx",
-                "recepciones" => $"infrecep07_{timestamp}.xlsx",
-                _ => $"Upload_{tipo}_{timestamp}.xlsx"
+                "pedidos" => $"infpedsit11_{timestamp}{ext}",
+                "recepciones" => $"infrecep07_{timestamp}{ext}",
+                _ => $"Upload_{tipo}_{timestamp}{ext}"
             };
 
             var filePath = Path.Combine(baseDir, fileName);
@@ -115,5 +124,35 @@ public class MediapostController : ControllerBase
         {
             return StatusCode(500, new { error = $"Error guardando archivo: {ex.Message}" });
         }
+    }
+
+    /// <summary>Sincroniza un archivo cargado de Pedidos (lee, deduplica, actualiza BD)</summary>
+    [HttpPost("sync-file/pedidos")]
+    [Authorize(Roles = "Administrator,Admin SIG")]
+    public async Task<IActionResult> SyncPedidos([FromQuery] string filePath, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return BadRequest(new { error = "filePath es requerido" });
+
+        if (!System.IO.File.Exists(filePath))
+            return NotFound(new { error = "Archivo no encontrado" });
+
+        var result = await _syncService.SyncPedidosFromFileAsync(filePath, ct);
+        return Ok(result);
+    }
+
+    /// <summary>Sincroniza un archivo cargado de Recepciones</summary>
+    [HttpPost("sync-file/recepciones")]
+    [Authorize(Roles = "Administrator,Admin SIG")]
+    public async Task<IActionResult> SyncRecepciones([FromQuery] string filePath, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return BadRequest(new { error = "filePath es requerido" });
+
+        if (!System.IO.File.Exists(filePath))
+            return NotFound(new { error = "Archivo no encontrado" });
+
+        var result = await _syncService.SyncRecepcionesFromFileAsync(filePath, ct);
+        return Ok(result);
     }
 }

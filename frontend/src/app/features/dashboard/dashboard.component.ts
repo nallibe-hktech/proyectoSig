@@ -6,9 +6,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
+import { interval } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DashboardService } from '../../core/api/dashboard.service';
 import { PeriodService } from '../../core/api/periods.service';
 import { ClosureService } from '../../core/api/closures.service';
+import { AlertReadStateService } from '../../core/services/alert-read-state.service';
 import { NotifyService } from '../../core/notify.service';
 import { DashboardKpisDto, DashboardAvisoDto, MiServicioDto, PeriodDto, ClosureAlertaDto } from '../../models/dtos';
 import { EstadoClosure, ApprovalStep } from '../../models/enums';
@@ -83,6 +86,12 @@ import { environment } from '../../../environments/environment';
                     </div>
                   </div>
                 }
+              }
+              @if (alertasPendientesCierre().length > 0) {
+                <button mat-menu-item (click)="marcarTodasLeidas()" class="sig-notif-mark-read">
+                  <mat-icon>done_all</mat-icon>
+                  <span>Marcar todas como leídas</span>
+                </button>
               }
               <div class="sig-notif-divider"></div>
               <button mat-menu-item (click)="irAAlertas()" class="sig-notif-ver-todas">
@@ -408,14 +417,14 @@ import { environment } from '../../../environments/environment';
             <div class="sig-alert-item sig-alert--loading" *ngFor="let i of [0,1,2]">
               <div class="sig-skeleton" style="height:14px;width:80%;border-radius:4px;"></div>
             </div>
-          } @else if (alertasPendientesCierre().length === 0) {
+          } @else if (alertasCierreNoConfirmadas().length === 0) {
             <div class="sig-alert-item">
               <mat-icon style="color:var(--sig-success);font-size:18px;width:18px;height:18px;">check_circle</mat-icon>
               <span style="color:var(--sig-text-muted);font-size:13px;">Sin alertas pendientes</span>
             </div>
           } @else {
-            @for (a of alertasPendientesCierre().slice(0, 5); track a.id) {
-              <div class="sig-alert-item" (click)="irAServicio(a.serviceId ?? 0)" style="cursor:pointer;" [class]="'sig-alert--' + (a.tipo === 'Bloqueante' ? 'warn' : 'info')">
+            @for (a of alertasCierreNoConfirmadas().slice(0, 5); track a.id) {
+              <div class="sig-alert-item" (click)="irAServicio(a.serviceId ?? 0)" style="cursor:pointer;" [class]="'sig-alert--' + (a.tipo === 'Bloqueante' ? 'warn' : 'info') + (alertReadSvc.isRead(a.id) ? ' sig-alert--read' : '')">
                 <mat-icon class="sig-alert-icon" aria-hidden="true">{{ a.tipo === 'Bloqueante' ? 'block' : 'warning' }}</mat-icon>
                 <div class="sig-alert-body">
                   <span class="sig-alert-text">{{ a.descripcion }}</span>
@@ -423,9 +432,9 @@ import { environment } from '../../../environments/environment';
                 </div>
               </div>
             }
-            @if (alertasPendientesCierre().length > 5) {
+            @if (alertasCierreNoConfirmadas().length > 5) {
               <a (click)="irAAlertas()" class="sig-alert-ver-todas" style="cursor:pointer;">
-                Ver todas ({{ alertasPendientesCierre().length }})
+                Ver todas ({{ alertasCierreNoConfirmadas().length }})
                 <mat-icon style="font-size:14px;width:14px;height:14px;">arrow_forward</mat-icon>
               </a>
             }
@@ -664,6 +673,11 @@ import { environment } from '../../../environments/environment';
       background: rgba(34,197,94,.07);
       border-color: rgba(34,197,94,.2);
     }
+    .sig-alert--read {
+      opacity: 0.6;
+      background: var(--sig-bg-card-alt) !important;
+      border-color: var(--sig-border) !important;
+    }
     .sig-alert-icon {
       font-size: 16px !important; width: 16px !important; height: 16px !important;
       color: #f59e0b !important; flex-shrink: 0; margin-top: 1px;
@@ -791,6 +805,7 @@ export class DashboardComponent implements OnInit {
   private readonly dashboardSvc = inject(DashboardService);
   private readonly closureSvc   = inject(ClosureService);
   private readonly periodSvc    = inject(PeriodService);
+  protected readonly alertReadSvc = inject(AlertReadStateService);
   private readonly notify       = inject(NotifyService);
   private readonly router       = inject(Router);
 
@@ -811,6 +826,10 @@ export class DashboardComponent implements OnInit {
   protected readonly Math = Math; // expose Math to template
 
   protected readonly alertasPendientesCierre = computed(() =>
+    this.alertasCierre().filter(a => !a.confirmada && !this.alertReadSvc.isRead(a.id))
+  );
+
+  protected readonly alertasCierreNoConfirmadas = computed(() =>
     this.alertasCierre().filter(a => !a.confirmada)
   );
 
@@ -884,6 +903,12 @@ export class DashboardComponent implements OnInit {
     effect(() => {
       const pid = this.activePeriod();
       this.loadAll(pid ?? undefined);
+    });
+
+    interval(30_000).pipe(takeUntilDestroyed()).subscribe(() => {
+      this.closureSvc.getAllAlertas().subscribe({
+        next: d => this.alertasCierre.set(d as ClosureAlertaDto[])
+      });
     });
   }
 
@@ -959,5 +984,9 @@ export class DashboardComponent implements OnInit {
   protected selectPeriod(periodId: number): void {
     this.periodSvc.setActive(periodId);
     // El effect en el constructor reaccionará automáticamente al cambio de activePeriod
+  }
+
+  protected marcarTodasLeidas() {
+    this.alertReadSvc.markAllAsRead(this.alertasPendientesCierre().map(a => a.id));
   }
 }

@@ -148,27 +148,27 @@ type GalanStock = GalanStockDto;
               <table mat-table [dataSource]="entradas()" class="data-table">
                 <ng-container matColumnDef="codigoArticulo">
                   <th mat-header-cell>Código</th>
-                  <td mat-cell>{{ $any(row).codigoArticulo }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.codigoArticulo }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="descripcion">
                   <th mat-header-cell>Descripción</th>
-                  <td mat-cell>{{ $any(row).descripcion }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.descripcion }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="unidades">
                   <th mat-header-cell>Unidades</th>
-                  <td mat-cell>{{ $any(row).unidades | number: '0.0-0' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.unidades | number: '0.0-0' }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="fecha">
                   <th mat-header-cell>Fecha</th>
-                  <td mat-cell>{{ $any(row).fecha | date: 'short' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.fecha | date: 'short' }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="almacen">
                   <th mat-header-cell>Almacén</th>
-                  <td mat-cell>{{ $any(row).almacen }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.almacen }}</td>
                 </ng-container>
 
                 <tr mat-header-row></tr>
@@ -201,27 +201,27 @@ type GalanStock = GalanStockDto;
               <table mat-table [dataSource]="salidas()" class="data-table">
                 <ng-container matColumnDef="albaran">
                   <th mat-header-cell>Albarán</th>
-                  <td mat-cell>{{ $any(row).albaran }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.albaran }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="codigoArticulo">
                   <th mat-header-cell>Código</th>
-                  <td mat-cell>{{ $any(row).codigoArticulo }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.codigoArticulo }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="descripcion">
                   <th mat-header-cell>Descripción</th>
-                  <td mat-cell>{{ $any(row).descripcion }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.descripcion }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="unidades">
                   <th mat-header-cell>Unidades</th>
-                  <td mat-cell>{{ $any(row).unidades | number: '0.0-0' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.unidades | number: '0.0-0' }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="fecha">
                   <th mat-header-cell>Fecha</th>
-                  <td mat-cell>{{ $any(row).fecha | date: 'short' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.fecha | date: 'short' }}</td>
                 </ng-container>
 
                 <tr mat-header-row></tr>
@@ -254,27 +254,27 @@ type GalanStock = GalanStockDto;
               <table mat-table [dataSource]="stock()" class="data-table">
                 <ng-container matColumnDef="codigoArticulo">
                   <th mat-header-cell>Código</th>
-                  <td mat-cell>{{ $any(row).codigoArticulo }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.codigoArticulo }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="descripcion">
                   <th mat-header-cell>Descripción</th>
-                  <td mat-cell>{{ $any(row).descripcion }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.descripcion }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="stock">
                   <th mat-header-cell>Stock</th>
-                  <td mat-cell>{{ $any(row).stock | number: '0.0-0' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.stock | number: '0.0-0' }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="familia">
                   <th mat-header-cell>Familia</th>
-                  <td mat-cell>{{ $any(row).familia }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.familia }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="almacen">
                   <th mat-header-cell>Almacén</th>
-                  <td mat-cell>{{ $any(row).almacen }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.almacen }}</td>
                 </ng-container>
 
                 <tr mat-header-row></tr>
@@ -323,21 +323,22 @@ type GalanStock = GalanStockDto;
     }
 
     .kpi-card {
-      background: #f5f5f5;
+      background: var(--sig-bg-card);
       border-radius: 8px;
       padding: 20px;
       text-align: center;
+      border: 1px solid var(--sig-border);
 
       .kpi-value {
         font-size: 32px;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--sig-blue);
         margin-bottom: 8px;
       }
 
       .kpi-label {
         font-size: 12px;
-        color: #999;
+        color: var(--sig-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
@@ -346,19 +347,21 @@ type GalanStock = GalanStockDto;
     .upload-section {
       margin-bottom: 40px;
       padding: 20px;
-      background: #fafafa;
+      background: var(--sig-bg-card);
       border-radius: 8px;
+      border: 1px solid var(--sig-border);
 
       h3 {
         margin-top: 0;
         font-size: 16px;
         font-weight: 600;
+        color: var(--sig-text-heading);
       }
 
       .upload-info {
         margin: 10px 0 20px 0;
         font-size: 14px;
-        color: #666;
+        color: var(--sig-text-secondary);
       }
     }
 
@@ -433,7 +436,9 @@ type GalanStock = GalanStockDto;
     }
 
     .tab-content {
-      padding: 20px 0;
+      padding: 20px;
+      background: var(--sig-bg-card);
+      border-radius: 8px;
     }
 
     .search-box {
@@ -450,22 +455,22 @@ type GalanStock = GalanStockDto;
       border-collapse: collapse;
 
       th {
-        background-color: #f5f5f5;
+        background-color: var(--sig-bg-header);
         padding: 12px;
         text-align: left;
         font-weight: 600;
         font-size: 12px;
-        color: #666;
-        border-bottom: 1px solid #e0e0e0;
+        color: var(--sig-text-muted);
+        border-bottom: 1px solid var(--sig-border);
       }
 
       td {
         padding: 12px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--sig-border);
       }
 
       tr:hover {
-        background-color: #fafafa;
+        background-color: var(--sig-bg-hover);
       }
     }
 
@@ -498,9 +503,6 @@ export class GalanDashboardComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly syncSvc = inject(SyncService);
   private readonly notify = inject(NotifyService);
-
-  // Dummy property for template type checking
-  protected row: GalanEntrada | GalanSalida | GalanStock | any;
 
   fileTypes: FileType[] = [
     { key: 'facturas', label: 'Facturación transporte', pattern: 'FACT_MENSUAL_*.xlsx', icon: 'receipt' },
@@ -648,9 +650,10 @@ export class GalanDashboardComponent implements OnInit {
 
   private loadStock(search?: string) {
     this.stockLoading.set(true);
-    this.galanSvc.getStock().subscribe({
+    // Load all stock data without pagination for dashboard
+    this.galanSvc.getStock(1, 10000).subscribe({
       next: (response) => {
-        this.stock.set(response || []);
+        this.stock.set(response.items || []);
         this.stockLoading.set(false);
       },
       error: () => {

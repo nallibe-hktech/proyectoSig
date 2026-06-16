@@ -89,22 +89,22 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         <table mat-table [dataSource]="fichajes()" class="data-table">
           <ng-container matColumnDef="userIdExterno">
             <th mat-header-cell>ID Empleado</th>
-            <td mat-cell>{{ $any(row).userIdExterno }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.userIdExterno }}</td>
           </ng-container>
 
           <ng-container matColumnDef="entrada">
             <th mat-header-cell>Entrada</th>
-            <td mat-cell>{{ $any(row).entrada | date: 'short' }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.entrada | date: 'short' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="salida">
             <th mat-header-cell>Salida</th>
-            <td mat-cell>{{ $any(row).salida ? ($any(row).salida | date: 'short') : '-' }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.salida ? (row.salida | date: 'short') : '-' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="horasCalculadas">
             <th mat-header-cell>Horas</th>
-            <td mat-cell>{{ $any(row).horasCalculadas || '-' }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.horasCalculadas || '-' }}</td>
           </ng-container>
 
           <tr mat-header-row></tr>
@@ -136,21 +136,22 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     }
 
     .kpi-card {
-      background: #f5f5f5;
+      background: var(--sig-bg-card);
       border-radius: 8px;
       padding: 20px;
       text-align: center;
+      border: 1px solid var(--sig-border);
 
       .kpi-value {
         font-size: 32px;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--sig-blue);
         margin-bottom: 8px;
       }
 
       .kpi-label {
         font-size: 12px;
-        color: #999;
+        color: var(--sig-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
@@ -172,22 +173,22 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       border-collapse: collapse;
 
       th {
-        background-color: #f5f5f5;
+        background-color: var(--sig-bg-header);
         padding: 12px;
         text-align: left;
         font-weight: 600;
         font-size: 12px;
-        color: #666;
-        border-bottom: 1px solid #e0e0e0;
+        color: var(--sig-text-muted);
+        border-bottom: 1px solid var(--sig-border);
       }
 
       td {
         padding: 12px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--sig-border);
       }
 
       tr:hover {
-        background-color: #fafafa;
+        background-color: var(--sig-bg-hover);
       }
     }
 

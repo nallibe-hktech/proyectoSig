@@ -74,22 +74,22 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
               <table mat-table [dataSource]="empleados()" class="data-table">
                 <ng-container matColumnDef="nombre">
                   <th mat-header-cell>Nombre</th>
-                  <td mat-cell>{{ $any(row).nombre }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.nombre }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="nif">
                   <th mat-header-cell>NIF</th>
-                  <td mat-cell>{{ $any(row).nif }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.nif }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="departamento">
                   <th mat-header-cell>Departamento</th>
-                  <td mat-cell>{{ $any(row).departamento || '-' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.departamento || '-' }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="sincronizado">
                   <th mat-header-cell>Sincronizado</th>
-                  <td mat-cell>{{ $any(row).fechaUltimaSincronizacion | date: 'short' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.fechaUltimaSincronizacion | date: 'short' }}</td>
                 </ng-container>
 
                 <tr mat-header-row></tr>
@@ -122,22 +122,22 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
               <table mat-table [dataSource]="ausencias()" class="data-table">
                 <ng-container matColumnDef="userId">
                   <th mat-header-cell>ID Usuario</th>
-                  <td mat-cell>{{ $any(row).userId }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.userId }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="fecha">
                   <th mat-header-cell>Fecha</th>
-                  <td mat-cell>{{ $any(row).fecha | date: 'short' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.fecha | date: 'short' }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="horas">
                   <th mat-header-cell>Horas</th>
-                  <td mat-cell>{{ $any(row).horas }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.horas }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="proyecto">
                   <th mat-header-cell>Proyecto</th>
-                  <td mat-cell>{{ $any(row).projectId }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.projectId }}</td>
                 </ng-container>
 
                 <tr mat-header-row></tr>
@@ -172,28 +172,31 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     }
 
     .kpi-card {
-      background: #f5f5f5;
+      background: var(--sig-bg-card);
       border-radius: 8px;
       padding: 20px;
       text-align: center;
+      border: 1px solid var(--sig-border);
 
       .kpi-value {
         font-size: 32px;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--sig-blue);
         margin-bottom: 8px;
       }
 
       .kpi-label {
         font-size: 12px;
-        color: #999;
+        color: var(--sig-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
     }
 
     .tab-content {
-      padding: 20px 0;
+      padding: 20px;
+      background: var(--sig-bg-card);
+      border-radius: 8px;
     }
 
     .search-box {
@@ -210,22 +213,22 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       border-collapse: collapse;
 
       th {
-        background-color: #f5f5f5;
+        background-color: var(--sig-bg-header);
         padding: 12px;
         text-align: left;
         font-weight: 600;
         font-size: 12px;
-        color: #666;
-        border-bottom: 1px solid #e0e0e0;
+        color: var(--sig-text-muted);
+        border-bottom: 1px solid var(--sig-border);
       }
 
       td {
         padding: 12px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--sig-border);
       }
 
       tr:hover {
-        background-color: #fafafa;
+        background-color: var(--sig-bg-hover);
       }
     }
 

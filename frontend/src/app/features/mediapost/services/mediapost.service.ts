@@ -56,6 +56,18 @@ export interface MediapostDashboardDto {
   }>;
 }
 
+export interface FileSyncResultDto {
+  tipoArchivo: string;
+  exito: boolean;
+  registrosInsertados: number;
+  registrosActualizados: number;
+  registrosDuplicados: number;
+  registrosError: number;
+  mensajeError?: string;
+  fechaSincronizacion?: string;
+  detallesErrores?: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -106,5 +118,23 @@ export class MediapostService {
       .set('hasta', hasta);
 
     return this.http.get<MediapostDashboardDto>(`${this.apiUrl}/dashboard`, { params });
+  }
+
+  // Sincronización de archivos con deduplicación
+  uploadFile(file: File, tipo: string): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const params = new HttpParams().set('tipo', tipo);
+    return this.http.post(`${this.apiUrl}/upload`, formData, { params });
+  }
+
+  syncPedidos(filePath: string): Observable<FileSyncResultDto> {
+    const params = new HttpParams().set('filePath', filePath);
+    return this.http.post<FileSyncResultDto>(`${this.apiUrl}/sync-file/pedidos`, null, { params });
+  }
+
+  syncRecepciones(filePath: string): Observable<FileSyncResultDto> {
+    const params = new HttpParams().set('filePath', filePath);
+    return this.http.post<FileSyncResultDto>(`${this.apiUrl}/sync-file/recepciones`, null, { params });
   }
 }

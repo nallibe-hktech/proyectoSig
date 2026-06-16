@@ -99,8 +99,12 @@ export class GalanService {
     return this.http.get<PagedResult<GalanSalidaDto>>(`${this.apiUrl}/salidas`, { params });
   }
 
-  getStock(): Observable<GalanStockDto[]> {
-    return this.http.get<GalanStockDto[]>(`${this.apiUrl}/stock`);
+  getStock(page: number = 1, pageSize: number = 25): Observable<PagedResult<GalanStockDto>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+
+    return this.http.get<PagedResult<GalanStockDto>>(`${this.apiUrl}/stock`, { params });
   }
 
   getEntradaById(id: number): Observable<GalanEntradaDto> {
@@ -122,4 +126,39 @@ export class GalanService {
 
     return this.http.get<GalanDashboardDto>(`${this.apiUrl}/dashboard`, { params });
   }
+
+  // Sincronización de archivos con deduplicación
+  uploadFile(file: File, tipo: string): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const params = new HttpParams().set('tipo', tipo);
+    return this.http.post(`${this.apiUrl}/upload`, formData, { params });
+  }
+
+  syncEntradas(filePath: string): Observable<FileSyncResultDto> {
+    const params = new HttpParams().set('filePath', filePath);
+    return this.http.post<FileSyncResultDto>(`${this.apiUrl}/sync-file/entradas`, null, { params });
+  }
+
+  syncSalidas(filePath: string): Observable<FileSyncResultDto> {
+    const params = new HttpParams().set('filePath', filePath);
+    return this.http.post<FileSyncResultDto>(`${this.apiUrl}/sync-file/salidas`, null, { params });
+  }
+
+  syncAlmacenaje(filePath: string): Observable<FileSyncResultDto> {
+    const params = new HttpParams().set('filePath', filePath);
+    return this.http.post<FileSyncResultDto>(`${this.apiUrl}/sync-file/almacenaje`, null, { params });
+  }
+}
+
+export interface FileSyncResultDto {
+  tipoArchivo: string;
+  exito: boolean;
+  registrosInsertados: number;
+  registrosActualizados: number;
+  registrosDuplicados: number;
+  registrosError: number;
+  mensajeError?: string;
+  fechaSincronizacion?: string;
+  detallesErrores?: string[];
 }

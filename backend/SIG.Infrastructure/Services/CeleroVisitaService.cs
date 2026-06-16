@@ -80,7 +80,8 @@ public class CeleroVisitaService : ICeleroVisitaService
             .FirstOrDefaultAsync(v => v.Id == id, ct)
             ?? throw new EntityNotFoundException("Visita Celero", id);
 
-        // Actualizar solo los campos de mapeo y anotaciones (no los datos de Celero)
+        // Actualizar solo los campos de mapeo, anotaciones y datos faltantes (no los datos principales de Celero)
+        visita.ResourceNif = req.ResourceNif ?? visita.ResourceNif;
         visita.UserId = req.UserId ?? visita.UserId;
         visita.ServiceId = req.ServiceId ?? visita.ServiceId;
         visita.Notas = req.Notas ?? visita.Notas;

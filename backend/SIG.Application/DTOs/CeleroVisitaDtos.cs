@@ -30,8 +30,9 @@ public record CeleroVisitaDetailDto(
     string? EstadoMapeo
 );
 
-// Request para actualizar mapeos y notas
+// Request para actualizar mapeos, notas y datos faltantes
 public record CeleroVisitaUpdateRequest(
+    string? ResourceNif,
     int? UserId,
     int? ServiceId,
     string? Notas,

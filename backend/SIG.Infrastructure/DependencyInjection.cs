@@ -94,6 +94,8 @@ public static class DependencyInjection
         services.AddScoped<IDataProcessorService, DataProcessorService>();
         services.AddScoped<IGalanService, GalanService>();
         services.AddScoped<IMediapostService, MediapostService>();
+        services.AddScoped<GalanSyncService>();
+        services.AddScoped<MediapostSyncService>();
 
         // Calculation
         services.AddScoped<IFormulaParser, FormulaParser>();

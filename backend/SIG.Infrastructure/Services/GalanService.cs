@@ -87,11 +87,16 @@ public class GalanService : IGalanService
         return new PagedResult<GalanSalidaDto>(items, total, page, pageSize);
     }
 
-    public async Task<IReadOnlyList<GalanStockDto>> GetStockAsync(CancellationToken ct)
+    public async Task<PagedResult<GalanStockDto>> GetStockAsync(int page = 1, int pageSize = 25, CancellationToken ct = default)
     {
-        var items = await _db.StagingGalanStocks
+        var query = _db.StagingGalanStocks.AsQueryable();
+
+        var total = await query.CountAsync(ct);
+        var items = await query
             .OrderBy(s => s.Almacen)
             .ThenBy(s => s.CodigoCelda)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(s => new GalanStockDto(
                 s.CodigoArticulo,
                 s.CodigoDepartamento,
@@ -106,7 +111,7 @@ public class GalanService : IGalanService
                 s.Descripcion))
             .ToListAsync(ct);
 
-        return items;
+        return new PagedResult<GalanStockDto>(items, total, page, pageSize);
     }
 
     public async Task<GalanEntradaDto?> GetEntradaByIdAsync(int id, CancellationToken ct)

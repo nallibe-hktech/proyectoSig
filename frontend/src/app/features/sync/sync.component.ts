@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SyncService } from '../../core/api/misc.service';
+import { SyncEventService } from '../../core/services/sync-event.service';
 import { SyncResultDto, ProcessingResultDto } from '../../models/dtos';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { NotifyService } from '../../core/notify.service';
@@ -106,6 +107,7 @@ type System = 'celero' | 'bizneo' | 'intratime' | 'payhawk' | 'sgpv' | 'sgpv-pro
 })
 export class SyncComponent {
   private readonly syncSvc = inject(SyncService);
+  private readonly syncEventSvc = inject(SyncEventService);
   private readonly notify = inject(NotifyService);
 
   protected readonly systems: { id: System; label: string; desc: string; icon: string }[] = [
@@ -132,6 +134,8 @@ export class SyncComponent {
         this.syncResults.update((v) => ({ ...v, [system]: r }));
         const msg = `${system}: ${r.registrosInsertados} inserción${r.registrosInsertados === 1 ? '' : 'es'}, ${r.registrosActualizados} actualización${r.registrosActualizados === 1 ? '' : 'es'}, ${r.registrosError} error${r.registrosError === 1 ? '' : 'es'}`;
         this.notify.success(`Sync ${msg}`);
+        // Notify other dashboards to reload their data
+        this.syncEventSvc.notify(system);
       },
       error: (err) => {
         this.syncLoading.update((l) => ({ ...l, [system]: false }));

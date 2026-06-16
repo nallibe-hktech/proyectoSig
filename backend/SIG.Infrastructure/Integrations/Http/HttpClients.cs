@@ -651,6 +651,9 @@ public class SgpvClient : ISgpvClient
             var request = new HttpRequestMessage(HttpMethod.Get, $"ExportData.php?start={desde:yyyy-MM-dd}&end={hasta:yyyy-MM-dd}");
             request.Headers.Add("Authorization", $"Basic {auth}");
 
+            // Timeout de 240 segundos para SGPV (servidor puede tardar 3-4 minutos)
+            _httpClient.Timeout = TimeSpan.FromSeconds(240);
+
             var response = await _httpClient.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode)
                 return Array.Empty<SgpvVisitaDto>();
@@ -705,8 +708,8 @@ public class SgpvClient : ISgpvClient
             var request = new HttpRequestMessage(HttpMethod.Get, "ExportData.php");
             request.Headers.Add("Authorization", $"Basic {auth}");
 
-            // Timeout de 120 segundos para SGPV (servidor lento)
-            _httpClient.Timeout = TimeSpan.FromSeconds(120);
+            // Timeout de 240 segundos para SGPV (servidor puede tardar 3-4 minutos)
+            _httpClient.Timeout = TimeSpan.FromSeconds(240);
 
             var response = await _httpClient.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode)

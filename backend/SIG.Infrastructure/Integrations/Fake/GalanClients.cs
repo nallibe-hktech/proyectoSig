@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using CsvHelper;
 using CsvHelper.Configuration;
+using ClosedXML.Excel;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SIG.Application.DTOs;
@@ -86,13 +87,24 @@ public class GalanCsvClient : IGalanClient
     {
         try
         {
+            // Buscar primero en Excel (FACT_MENSUAL_*.xlsx), luego en CSV
+            var excelFiles = Directory.GetFiles(_basePath, "FACT_MENSUAL_*.xlsx")
+                .OrderByDescending(f => f)
+                .FirstOrDefault();
+
+            if (excelFiles != null)
+            {
+                return ReadSalidasFromExcel(excelFiles, desde, hasta);
+            }
+
+            // Fallback a CSV si no hay Excel
             var files = Directory.GetFiles(_basePath, "Salidas_*.csv")
                 .OrderByDescending(f => f)
                 .FirstOrDefault();
 
             if (files == null)
             {
-                _logger.LogWarning("No se encontraron archivos Salidas_*.csv en {Path}", _basePath);
+                _logger.LogWarning("No se encontraron archivos FACT_MENSUAL_*.xlsx ni Salidas_*.csv en {Path}", _basePath);
                 return Array.Empty<GalanSalidaDto>();
             }
 
@@ -144,13 +156,24 @@ public class GalanCsvClient : IGalanClient
     {
         try
         {
+            // Buscar primero en Excel (STOCK_*.xlsx), luego en CSV
+            var excelFiles = Directory.GetFiles(_basePath, "STOCK_*.xlsx")
+                .OrderByDescending(f => f)
+                .FirstOrDefault();
+
+            if (excelFiles != null)
+            {
+                return ReadStockFromExcel(excelFiles);
+            }
+
+            // Fallback a CSV si no hay Excel
             var files = Directory.GetFiles(_basePath, "STOCK_celda_*.csv")
                 .OrderByDescending(f => f)
                 .FirstOrDefault();
 
             if (files == null)
             {
-                _logger.LogWarning("No se encontraron archivos STOCK_celda_*.csv en {Path}", _basePath);
+                _logger.LogWarning("No se encontraron archivos STOCK_*.xlsx ni STOCK_celda_*.csv en {Path}", _basePath);
                 return Array.Empty<GalanStockDto>();
             }
 
@@ -191,6 +214,179 @@ public class GalanCsvClient : IGalanClient
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error leyendo stock de Galán");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Lee salidas desde un archivo Excel (FACT_MENSUAL_*.xlsx)
+    /// Estructura del Excel: Col1=ReferenciaCli, Col2=ReferenciaCli2, Col3=Descripcion, Col4=Unidades, Col5=CodLinea, Col6=ImporteUnd, Col7=Albaran, Col8=ImporteSuma
+    /// </summary>
+    private IReadOnlyList<GalanSalidaDto> ReadSalidasFromExcel(string filePath, DateTime desde, DateTime hasta)
+    {
+        var dtos = new List<GalanSalidaDto>();
+        try
+        {
+            using (var workbook = new XLWorkbook(filePath))
+            {
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null)
+                {
+                    _logger.LogWarning("No hay worksheets en {File}", filePath);
+                    return dtos;
+                }
+
+                var rows = worksheet.Rows().ToList();
+
+                // La estructura es: Row 1 contiene los headers
+                int headerRowIndex = 0;
+                for (int i = 0; i < Math.Min(10, rows.Count); i++)
+                {
+                    var cellValue = rows[i].Cell(1).Value.ToString()?.ToLower() ?? "";
+                    if (cellValue.Contains("referencia") || cellValue.Contains("albarán") || cellValue.Contains("cliente"))
+                    {
+                        headerRowIndex = i;
+                        _logger.LogInformation("Headers detectados en fila {RowNum}", i + 1);
+                        break;
+                    }
+                }
+
+                // Leer datos a partir de la fila siguiente a headers
+                for (int i = headerRowIndex + 1; i < rows.Count; i++)
+                {
+                    try
+                    {
+                        var row = rows[i];
+
+                        // Mapeo de columnas según la estructura real del archivo
+                        var albaran = row.Cell(7).Value.ToString().Trim();  // Col 7 = Albarán
+                        if (string.IsNullOrEmpty(albaran)) continue;
+
+                        var codigoArticulo = row.Cell(5).Value.ToString().Trim();  // Col 5 = Código de línea
+                        var descripcion = row.Cell(3).Value.ToString().Trim();     // Col 3 = Descripción
+                        var unidadesStr = row.Cell(4).Value.ToString().Trim();     // Col 4 = Unidades
+                        var referencia = row.Cell(2).Value.ToString().Trim();      // Col 2 = Referencia
+
+                        if (!int.TryParse(unidadesStr, out int unidades))
+                            unidades = 0;
+
+                        // Usar fecha actual ya que el Excel no tiene columna de fecha
+                        var fecha = DateTime.UtcNow;
+
+                        var dto = new GalanSalidaDto(
+                            albaran,
+                            referencia,
+                            codigoArticulo,
+                            "",
+                            "",
+                            descripcion,
+                            unidades,
+                            null,
+                            null,
+                            fecha,
+                            null,
+                            "",
+                            ""
+                        );
+                        dtos.Add(dto);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error leyendo fila {RowNum} de salidas Excel", i + 1);
+                    }
+                }
+            }
+
+            _logger.LogInformation("Leídas {Count} salidas de Galán desde Excel {File}", dtos.Count, filePath);
+            return dtos;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error leyendo salidas de Galán desde Excel");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Lee stock desde un archivo Excel (STOCK_*.xlsx)
+    /// Estructura del Excel: Col1=CodigoArticulo, Col2=CodigoDepartamento, Col3=CodigoFamilia, Col4=Descripcion, Col5=Stock, Col6=Empresa
+    /// </summary>
+    private IReadOnlyList<GalanStockDto> ReadStockFromExcel(string filePath)
+    {
+        var dtos = new List<GalanStockDto>();
+        try
+        {
+            using (var workbook = new XLWorkbook(filePath))
+            {
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null)
+                {
+                    _logger.LogWarning("No hay worksheets en {File}", filePath);
+                    return dtos;
+                }
+
+                var rows = worksheet.Rows().ToList();
+
+                // Detectar fila de headers
+                int headerRowIndex = 0;
+                for (int i = 0; i < Math.Min(10, rows.Count); i++)
+                {
+                    var cellValue = rows[i].Cell(1).Value.ToString()?.ToLower() ?? "";
+                    if (cellValue.Contains("codigo"))
+                    {
+                        headerRowIndex = i;
+                        _logger.LogInformation("Headers detectados en fila {RowNum}", i + 1);
+                        break;
+                    }
+                }
+
+                // Leer datos a partir de la fila siguiente a headers
+                for (int i = headerRowIndex + 1; i < rows.Count; i++)
+                {
+                    try
+                    {
+                        var row = rows[i];
+
+                        var codigoArticulo = row.Cell(1).Value.ToString().Trim();
+                        if (string.IsNullOrEmpty(codigoArticulo)) continue;
+
+                        var codigoDepartamento = row.Cell(2).Value.ToString().Trim();
+                        var codigoFamilia = row.Cell(3).Value.ToString().Trim();
+                        var descripcion = row.Cell(4).Value.ToString().Trim();
+                        var stockStr = row.Cell(5).Value.ToString().Trim();
+                        var empresa = row.Cell(6).Value.ToString().Trim();
+
+                        if (!decimal.TryParse(stockStr, out decimal stock))
+                            stock = 0;
+
+                        var dto = new GalanStockDto(
+                            codigoArticulo,
+                            codigoDepartamento,
+                            codigoFamilia,
+                            "",
+                            0,
+                            0,
+                            stock,
+                            empresa,
+                            "",
+                            "",
+                            descripcion
+                        );
+                        dtos.Add(dto);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error leyendo fila {RowNum} de stock Excel", i + 1);
+                    }
+                }
+            }
+
+            _logger.LogInformation("Leído stock de {Count} artículos desde Excel {File}", dtos.Count, filePath);
+            return dtos;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error leyendo stock de Galán desde Excel");
             throw;
         }
     }

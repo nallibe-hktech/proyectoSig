@@ -7,7 +7,7 @@ public interface IGalanService
 {
     Task<PagedResult<GalanEntradaDto>> GetEntradasAsync(int page, int pageSize, string? search, CancellationToken ct);
     Task<PagedResult<GalanSalidaDto>> GetSalidasAsync(int page, int pageSize, string? search, CancellationToken ct);
-    Task<IReadOnlyList<GalanStockDto>> GetStockAsync(CancellationToken ct);
+    Task<PagedResult<GalanStockDto>> GetStockAsync(int page = 1, int pageSize = 25, CancellationToken ct = default);
     Task<GalanEntradaDto?> GetEntradaByIdAsync(int id, CancellationToken ct);
     Task<GalanSalidaDto?> GetSalidaByIdAsync(int id, CancellationToken ct);
     Task<GalanStockDto?> GetStockByIdAsync(int id, CancellationToken ct);

@@ -313,7 +313,7 @@ interface SelectOption {
     }
 
     .stat-card {
-      background: #f5f5f5;
+      background: var(--sig-bg-header);
       border-radius: 8px;
       padding: 16px;
       text-align: center;
@@ -406,7 +406,7 @@ interface SelectOption {
       padding: 24px;
       border-top: 1px solid #e0e0e0;
       justify-content: flex-end;
-      background: #fafafa;
+      background: var(--sig-bg-hover);
       border-radius: 0 0 8px 8px;
     }
 

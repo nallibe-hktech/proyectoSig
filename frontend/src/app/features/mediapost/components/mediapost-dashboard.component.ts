@@ -157,29 +157,29 @@ type MediapostRecepcion = MediapostRecepcionDto;
               </div>
             } @else {
               <table mat-table [dataSource]="pedidos()" class="data-table">
-                <ng-container matColumnDef="numeroDocumento">
-                  <th mat-header-cell>Nº Documento</th>
-                  <td mat-cell>{{ $any(row).numeroDocumento }}</td>
+                <ng-container matColumnDef="pedidoId">
+                  <th mat-header-cell>Nº Pedido</th>
+                  <td mat-cell *matCellDef="let row">{{ row.pedidoId }}</td>
                 </ng-container>
 
-                <ng-container matColumnDef="numeroReferencia">
+                <ng-container matColumnDef="referenciaPedido">
                   <th mat-header-cell>Referencia</th>
-                  <td mat-cell>{{ $any(row).numeroReferencia }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.referenciaPedido }}</td>
                 </ng-container>
 
-                <ng-container matColumnDef="fecha">
+                <ng-container matColumnDef="fechaPedido">
                   <th mat-header-cell>Fecha</th>
-                  <td mat-cell>{{ $any(row).fecha | date: 'short' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.fechaPedido | date: 'short' }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="estado">
                   <th mat-header-cell>Estado</th>
-                  <td mat-cell>{{ $any(row).estado }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.estado }}</td>
                 </ng-container>
 
-                <ng-container matColumnDef="nombreEntrega">
-                  <th mat-header-cell>Punto de Entrega</th>
-                  <td mat-cell>{{ $any(row).nombreEntrega }}</td>
+                <ng-container matColumnDef="destinatarioNombre">
+                  <th mat-header-cell>Destinatario</th>
+                  <td mat-cell *matCellDef="let row">{{ row.destinatarioNombre }}</td>
                 </ng-container>
 
                 <tr mat-header-row></tr>
@@ -210,34 +210,34 @@ type MediapostRecepcion = MediapostRecepcionDto;
               </div>
             } @else {
               <table mat-table [dataSource]="recepciones()" class="data-table">
-                <ng-container matColumnDef="numeroRecepcion">
+                <ng-container matColumnDef="recepcionId">
                   <th mat-header-cell>Nº Recepción</th>
-                  <td mat-cell>{{ $any(row).numeroRecepcion }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.recepcionId }}</td>
                 </ng-container>
 
-                <ng-container matColumnDef="numeroDocumentoCliente">
-                  <th mat-header-cell>Nº Documento</th>
-                  <td mat-cell>{{ $any(row).numeroDocumentoCliente }}</td>
+                <ng-container matColumnDef="codigoArticulo">
+                  <th mat-header-cell>Artículo</th>
+                  <td mat-cell *matCellDef="let row">{{ row.codigoArticulo }}</td>
                 </ng-container>
 
-                <ng-container matColumnDef="fecha">
+                <ng-container matColumnDef="fechaRecepcion">
                   <th mat-header-cell>Fecha</th>
-                  <td mat-cell>{{ $any(row).fecha | date: 'short' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.fechaRecepcion | date: 'short' }}</td>
                 </ng-container>
 
-                <ng-container matColumnDef="proveedor">
-                  <th mat-header-cell>Proveedor</th>
-                  <td mat-cell>{{ $any(row).proveedor }}</td>
+                <ng-container matColumnDef="cantidad">
+                  <th mat-header-cell>Cantidad</th>
+                  <td mat-cell *matCellDef="let row">{{ row.cantidad }}</td>
                 </ng-container>
 
-                <ng-container matColumnDef="bultos">
-                  <th mat-header-cell>Bultos</th>
-                  <td mat-cell>{{ $any(row).bultos }}</td>
+                <ng-container matColumnDef="cantidadDanada">
+                  <th mat-header-cell>Dañada</th>
+                  <td mat-cell *matCellDef="let row">{{ row['cantidadDañada'] || 0 }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="estado">
                   <th mat-header-cell>Estado</th>
-                  <td mat-cell>{{ $any(row).estado }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.estado }}</td>
                 </ng-container>
 
                 <tr mat-header-row></tr>
@@ -286,21 +286,22 @@ type MediapostRecepcion = MediapostRecepcionDto;
     }
 
     .kpi-card {
-      background: #f5f5f5;
+      background: var(--sig-bg-card);
       border-radius: 8px;
       padding: 20px;
       text-align: center;
+      border: 1px solid var(--sig-border);
 
       .kpi-value {
         font-size: 32px;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--sig-blue);
         margin-bottom: 8px;
       }
 
       .kpi-label {
         font-size: 12px;
-        color: #999;
+        color: var(--sig-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
@@ -309,19 +310,21 @@ type MediapostRecepcion = MediapostRecepcionDto;
     .upload-section {
       margin-bottom: 40px;
       padding: 20px;
-      background: #fafafa;
+      background: var(--sig-bg-card);
       border-radius: 8px;
+      border: 1px solid var(--sig-border);
 
       h3 {
         margin-top: 0;
         font-size: 16px;
         font-weight: 600;
+        color: var(--sig-text-heading);
       }
 
       .upload-info {
         margin: 10px 0 20px 0;
         font-size: 14px;
-        color: #666;
+        color: var(--sig-text-secondary);
       }
     }
 
@@ -396,7 +399,9 @@ type MediapostRecepcion = MediapostRecepcionDto;
     }
 
     .tab-content {
-      padding: 20px 0;
+      padding: 20px;
+      background: var(--sig-bg-card);
+      border-radius: 8px;
     }
 
     .filter-controls {
@@ -424,22 +429,22 @@ type MediapostRecepcion = MediapostRecepcionDto;
       border-collapse: collapse;
 
       th {
-        background-color: #f5f5f5;
+        background-color: var(--sig-bg-header);
         padding: 12px;
         text-align: left;
         font-weight: 600;
         font-size: 12px;
-        color: #666;
-        border-bottom: 1px solid #e0e0e0;
+        color: var(--sig-text-muted);
+        border-bottom: 1px solid var(--sig-border);
       }
 
       td {
         padding: 12px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--sig-border);
       }
 
       tr:hover {
-        background-color: #fafafa;
+        background-color: var(--sig-bg-hover);
       }
     }
 
@@ -473,9 +478,6 @@ export class MediapostDashboardComponent implements OnInit {
   private readonly syncSvc = inject(SyncService);
   private readonly notify = inject(NotifyService);
 
-  // Dummy property for template type checking
-  protected row: MediapostPedido | MediapostRecepcion | any;
-
   fileTypes: FileType[] = [
     { key: 'pedidos', label: 'Pedidos', pattern: 'infpedsit11_*.xlsx', icon: 'receipt' },
     { key: 'recepciones', label: 'Recepciones', pattern: 'infrecep07_*.xlsx', icon: 'check_circle' },
@@ -491,8 +493,8 @@ export class MediapostDashboardComponent implements OnInit {
   uploadingTypes: { [key: string]: boolean } = {};
   uploadStatus: { [key: string]: string } = {};
 
-  pedidosColumns = ['numeroDocumento', 'numeroReferencia', 'fecha', 'estado', 'nombreEntrega'];
-  recepcionesColumns = ['numeroRecepcion', 'numeroDocumentoCliente', 'fecha', 'proveedor', 'bultos', 'estado'];
+  pedidosColumns = ['pedidoId', 'referenciaPedido', 'fechaPedido', 'estado', 'destinatarioNombre'];
+  recepcionesColumns = ['recepcionId', 'codigoArticulo', 'fechaRecepcion', 'cantidad', 'cantidadDanada', 'estado'];
 
   pedidosCount = computed(() => this.pedidos().length);
   recepcionesCount = computed(() => this.recepciones().length);

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Services;
+using SIG.Infrastructure.Services;
 
 namespace SIG.API.Controllers;
 
@@ -11,8 +13,13 @@ namespace SIG.API.Controllers;
 public class GalanController : ControllerBase
 {
     private readonly IGalanService _service;
+    private readonly GalanSyncService _syncService;
 
-    public GalanController(IGalanService service) => _service = service;
+    public GalanController(IGalanService service, GalanSyncService syncService)
+    {
+        _service = service;
+        _syncService = syncService;
+    }
 
     /// <summary>Obtiene entradas de almacén paginadas</summary>
     [HttpGet("entradas")]
@@ -38,11 +45,14 @@ public class GalanController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Obtiene estado actual del stock</summary>
+    /// <summary>Obtiene estado actual del stock paginado</summary>
     [HttpGet("stock")]
-    public async Task<IActionResult> GetStock(CancellationToken ct = default)
+    public async Task<IActionResult> GetStock(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        CancellationToken ct = default)
     {
-        var result = await _service.GetStockAsync(ct);
+        var result = await _service.GetStockAsync(page, pageSize, ct);
         return Ok(result);
     }
 
@@ -136,5 +146,65 @@ public class GalanController : ControllerBase
         {
             return StatusCode(500, new { error = $"Error guardando archivo: {ex.Message}" });
         }
+    }
+
+    /// <summary>Sincroniza un archivo cargado de Entradas (lee, deduplica, actualiza BD)</summary>
+    [HttpPost("sync-file/entradas")]
+    [Authorize(Roles = "Administrator,Admin SIG")]
+    public async Task<IActionResult> SyncEntradas([FromQuery] string filePath, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return BadRequest(new { error = "filePath es requerido" });
+
+        if (!System.IO.File.Exists(filePath))
+            return NotFound(new { error = "Archivo no encontrado" });
+
+        var result = await _syncService.SyncEntradasFromFileAsync(filePath, ct);
+        return Ok(result);
+    }
+
+    /// <summary>Sincroniza un archivo cargado de Salidas/Facturas</summary>
+    [HttpPost("sync-file/salidas")]
+    [Authorize(Roles = "Administrator,Admin SIG")]
+    public async Task<IActionResult> SyncSalidas([FromQuery] string filePath, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return BadRequest(new { error = "filePath es requerido" });
+
+        if (!System.IO.File.Exists(filePath))
+            return NotFound(new { error = "Archivo no encontrado" });
+
+        var result = await _syncService.SyncSalidasFromFileAsync(filePath, ct);
+        return Ok(result);
+    }
+
+    /// <summary>Sincroniza un archivo cargado de Almacenaje</summary>
+    [HttpPost("sync-file/almacenaje")]
+    [Authorize(Roles = "Administrator,Admin SIG")]
+    public async Task<IActionResult> SyncAlmacenaje([FromQuery] string filePath, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return BadRequest(new { error = "filePath es requerido" });
+
+        if (!System.IO.File.Exists(filePath))
+            return NotFound(new { error = "Archivo no encontrado" });
+
+        var result = await _syncService.SyncAlmacenajeFromFileAsync(filePath, ct);
+        return Ok(result);
+    }
+
+    /// <summary>Sincroniza un archivo cargado de Stock</summary>
+    [HttpPost("sync-file/stock")]
+    [Authorize(Roles = "Administrator,Admin SIG")]
+    public async Task<IActionResult> SyncStock([FromQuery] string filePath, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return BadRequest(new { error = "filePath es requerido" });
+
+        if (!System.IO.File.Exists(filePath))
+            return NotFound(new { error = "Archivo no encontrado" });
+
+        var result = await _syncService.SyncStockFromFileAsync(filePath, ct);
+        return Ok(result);
     }
 }

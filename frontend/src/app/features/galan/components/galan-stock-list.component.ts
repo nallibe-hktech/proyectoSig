@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { GalanService } from '../services/galan.service';
 
 interface GalanStock {
@@ -19,50 +20,57 @@ interface GalanStock {
 @Component({
   selector: 'app-galan-stock-list',
   standalone: true,
-  imports: [CommonModule, MatTableModule, MatProgressBarModule],
+  imports: [CommonModule, MatTableModule, MatProgressBarModule, MatPaginatorModule],
   template: `
     <div class="list-container">
       <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
 
-      <mat-table [dataSource]="items" class="data-table">
+      <table mat-table [dataSource]="items" class="data-table">
         <ng-container matColumnDef="codigoArticulo">
-          <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.codigoArticulo }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Código</th>
+          <td mat-cell *matCellDef="let element">{{ element.codigoArticulo }}</td>
         </ng-container>
 
         <ng-container matColumnDef="descripcion">
-          <mat-header-cell *matHeaderCellDef>Descripción</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.descripcion }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Descripción</th>
+          <td mat-cell *matCellDef="let element">{{ element.descripcion }}</td>
         </ng-container>
 
         <ng-container matColumnDef="stock">
-          <mat-header-cell *matHeaderCellDef>Stock</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.stock }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Stock</th>
+          <td mat-cell *matCellDef="let element">{{ element.stock }}</td>
         </ng-container>
 
         <ng-container matColumnDef="stockA">
-          <mat-header-cell *matHeaderCellDef>Stock A</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.stockA }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Stock A</th>
+          <td mat-cell *matCellDef="let element">{{ element.stockA }}</td>
         </ng-container>
 
         <ng-container matColumnDef="stockB">
-          <mat-header-cell *matHeaderCellDef>Stock B</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.stockB }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Stock B</th>
+          <td mat-cell *matCellDef="let element">{{ element.stockB }}</td>
         </ng-container>
 
         <ng-container matColumnDef="almacen">
-          <mat-header-cell *matHeaderCellDef>Almacén</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.almacen }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Almacén</th>
+          <td mat-cell *matCellDef="let element">{{ element.almacen }}</td>
         </ng-container>
 
         <ng-container matColumnDef="codigoCelda">
-          <mat-header-cell *matHeaderCellDef>Celda</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.codigoCelda }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Celda</th>
+          <td mat-cell *matCellDef="let element">{{ element.codigoCelda }}</td>
         </ng-container>
 
-        <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-        <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-      </mat-table>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+      <mat-paginator
+        [pageSizeOptions]="[25, 50, 100]"
+        [pageSize]="pageSize"
+        [length]="total"
+        (page)="onPageChange($event)">
+      </mat-paginator>
     </div>
   `,
   styles: [`
@@ -74,19 +82,28 @@ interface GalanStock {
       width: 100%;
     }
 
-    mat-header-cell {
+    th {
       font-weight: 600;
-      background-color: #f5f5f5;
+      background-color: var(--sig-bg-header);
+      color: var(--sig-text-muted);
+      border-bottom: 1px solid var(--sig-border);
     }
 
-    mat-row:hover {
-      background-color: #fafafa;
+    td {
+      border-bottom: 1px solid var(--sig-border);
+    }
+
+    tr:hover {
+      background-color: var(--sig-bg-hover);
     }
   `]
 })
 export class GalanStockListComponent implements OnInit {
   items: GalanStock[] = [];
   loading = false;
+  total = 0;
+  pageSize = 25;
+  currentPage = 1;
   displayedColumns = ['codigoArticulo', 'descripcion', 'stock', 'stockA', 'stockB', 'almacen', 'codigoCelda'];
 
   constructor(private galanService: GalanService) { }
@@ -97,10 +114,11 @@ export class GalanStockListComponent implements OnInit {
 
   loadStock(): void {
     this.loading = true;
-    this.galanService.getStock()
+    this.galanService.getStock(this.currentPage, this.pageSize)
       .subscribe({
-        next: (items) => {
-          this.items = items;
+        next: (response) => {
+          this.items = response.items;
+          this.total = response.total;
           this.loading = false;
         },
         error: (err) => {
@@ -108,5 +126,11 @@ export class GalanStockListComponent implements OnInit {
           this.loading = false;
         }
       });
+  }
+
+  onPageChange(event: PageEvent): void {
+    this.pageSize = event.pageSize;
+    this.currentPage = event.pageIndex + 1;
+    this.loadStock();
   }
 }

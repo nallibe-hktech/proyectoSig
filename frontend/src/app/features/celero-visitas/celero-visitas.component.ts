@@ -247,6 +247,11 @@ export class CeleroVisitasComponent {
     <mat-dialog-content>
       <form [formGroup]="form">
         <mat-form-field fullWidth>
+          <mat-label>NIF Empleado</mat-label>
+          <input matInput formControlName="resourceNif" placeholder="12345678A">
+        </mat-form-field>
+
+        <mat-form-field fullWidth>
           <mat-label>Usuario</mat-label>
           <mat-select formControlName="userId">
             <mat-option [value]="null">— Sin asignar —</mat-option>
@@ -290,6 +295,7 @@ export class CeleroVisitasEditComponent {
     this.servicios = this.data.servicios;
     const v = this.data.visita;
     this.form = this.fb.group({
+      resourceNif: [v.resourceNif ?? ''],
       userId: [v.userId],
       serviceId: [v.serviceId],
       notas: [v.notas]

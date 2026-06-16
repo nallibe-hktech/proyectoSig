@@ -36,43 +36,43 @@ interface GalanSalida {
 
       <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
 
-      <mat-table [dataSource]="items" class="data-table">
+      <table mat-table [dataSource]="items" class="data-table">
         <ng-container matColumnDef="albaran">
-          <mat-header-cell *matHeaderCellDef>Albarán</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.albaran }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Albarán</th>
+          <td mat-cell *matCellDef="let element">{{ element.albaran }}</td>
         </ng-container>
 
         <ng-container matColumnDef="codigoArticulo">
-          <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.codigoArticulo }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Código</th>
+          <td mat-cell *matCellDef="let element">{{ element.codigoArticulo }}</td>
         </ng-container>
 
         <ng-container matColumnDef="descripcion">
-          <mat-header-cell *matHeaderCellDef>Descripción</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.descripcion }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Descripción</th>
+          <td mat-cell *matCellDef="let element">{{ element.descripcion }}</td>
         </ng-container>
 
         <ng-container matColumnDef="unidades">
-          <mat-header-cell *matHeaderCellDef>Unidades</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.unidades }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Unidades</th>
+          <td mat-cell *matCellDef="let element">{{ element.unidades }}</td>
         </ng-container>
 
         <ng-container matColumnDef="destinatario">
-          <mat-header-cell *matHeaderCellDef>Destinatario</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.destinatario }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Destinatario</th>
+          <td mat-cell *matCellDef="let element">{{ element.destinatario }}</td>
         </ng-container>
 
         <ng-container matColumnDef="fecha">
-          <mat-header-cell *matHeaderCellDef>Fecha</mat-header-cell>
-          <mat-cell *matCellDef="let element">{{ element.fecha | date: 'short' }}</mat-cell>
+          <th mat-header-cell *matHeaderCellDef>Fecha</th>
+          <td mat-cell *matCellDef="let element">{{ element.fecha | date: 'short' }}</td>
         </ng-container>
 
-        <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-        <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-      </mat-table>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
 
       <mat-paginator
-        [pageSizeOptions]="[10, 25, 50]"
+        [pageSizeOptions]="[25, 50, 100]"
         [pageSize]="pageSize"
         [length]="total"
         (page)="onPageChange($event)"
@@ -93,13 +93,19 @@ interface GalanSalida {
       width: 100%;
     }
 
-    mat-header-cell {
+    th {
       font-weight: 600;
-      background-color: #f5f5f5;
+      background-color: var(--sig-bg-header);
+      color: var(--sig-text-muted);
+      border-bottom: 1px solid var(--sig-border);
     }
 
-    mat-row:hover {
-      background-color: #fafafa;
+    td {
+      border-bottom: 1px solid var(--sig-border);
+    }
+
+    tr:hover {
+      background-color: var(--sig-bg-hover);
     }
   `]
 })
