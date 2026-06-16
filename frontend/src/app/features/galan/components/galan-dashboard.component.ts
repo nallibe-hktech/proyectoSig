@@ -11,7 +11,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
-import { HttpClient } from '@angular/common/http';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GalanService, GalanEntradaDto, GalanSalidaDto, GalanStockDto } from '../services/galan.service';
@@ -495,7 +494,6 @@ type GalanStock = GalanStockDto;
 })
 export class GalanDashboardComponent implements OnInit {
   private readonly galanSvc = inject(GalanService);
-  private readonly http = inject(HttpClient);
   private readonly syncSvc = inject(SyncService);
   private readonly notify = inject(NotifyService);
 
@@ -598,11 +596,9 @@ export class GalanDashboardComponent implements OnInit {
     }
 
     this.uploadingTypes[tipoKey] = true;
-    const formData = new FormData();
-    formData.append('file', file);
 
-    this.http.post(`/api/galan/upload?tipo=${tipoKey}`, formData).subscribe({
-      next: (response: any) => {
+    this.galanSvc.uploadFile(tipoKey, file).subscribe({
+      next: () => {
         this.uploadingTypes[tipoKey] = false;
         this.uploadStatus[tipoKey] = `✓ Cargado: ${file.name}`;
         setTimeout(() => {

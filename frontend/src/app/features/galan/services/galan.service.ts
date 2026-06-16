@@ -122,4 +122,11 @@ export class GalanService {
 
     return this.http.get<GalanDashboardDto>(`${this.apiUrl}/dashboard`, { params });
   }
+
+  uploadFile(tipo: string, file: File): Observable<unknown> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const params = new HttpParams().set('tipo', tipo);
+    return this.http.post(`${this.apiUrl}/upload`, formData, { params });
+  }
 }

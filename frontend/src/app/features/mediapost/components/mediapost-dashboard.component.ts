@@ -12,7 +12,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatPaginatorModule } from '@angular/material/paginator';
-import { HttpClient } from '@angular/common/http';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MediapostService, MediapostPedidoDto, MediapostRecepcionDto } from '../services/mediapost.service';
@@ -469,7 +468,6 @@ type MediapostRecepcion = MediapostRecepcionDto;
 })
 export class MediapostDashboardComponent implements OnInit {
   private readonly mediapostSvc = inject(MediapostService);
-  private readonly http = inject(HttpClient);
   private readonly syncSvc = inject(SyncService);
   private readonly notify = inject(NotifyService);
 
@@ -563,11 +561,9 @@ export class MediapostDashboardComponent implements OnInit {
     }
 
     this.uploadingTypes[tipoKey] = true;
-    const formData = new FormData();
-    formData.append('file', file);
 
-    this.http.post(`/api/mediapost/upload?tipo=${tipoKey}`, formData).subscribe({
-      next: (response: any) => {
+    this.mediapostSvc.uploadFile(tipoKey, file).subscribe({
+      next: () => {
         this.uploadingTypes[tipoKey] = false;
         this.uploadStatus[tipoKey] = `✓ Cargado: ${file.name}`;
         setTimeout(() => {
