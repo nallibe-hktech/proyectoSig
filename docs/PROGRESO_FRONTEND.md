@@ -16,13 +16,12 @@ El frontend está **completamente implementado** con los 16 módulos funcionales
 | Login | OK | LoginComponent | ✅ |
 | Dashboard | OK | DashboardComponent | ✅ |
 | Clientes | OK | ClientsList, ClientForm, ClientDetail | ✅ |
-| Proyectos | OK | ProjectsList, ProjectForm, ProjectDetail | ✅ |
-| Acciones | OK | ActionsList, ActionForm, ActionDetail | ✅ |
+| Servicios | OK | ServicesList, ServiceForm, ServiceDetail (+ Tarifas, Presupuestos) | ✅ |
 | Conceptos | OK | ConceptsList, ConceptForm, ConceptDetail, FormulaEditor | ✅ |
 | Variables | OK | VariablesList, VariableForm | ✅ |
 | Periodos | OK | PeriodsList, PeriodForm | ✅ |
 | Aprobaciones | OK | ApprovalsComponent | ✅ |
-| Cierres | OK | ClosuresList, ClosureForm, ClosureDetail, RejectDialog | ✅ |
+| Cierres | OK | ClosuresList, ClosureForm, ClosureDetail (con panel de alertas de cierre), RejectDialog | ✅ |
 | Cálculos | OK | CalculationDetailComponent | ✅ |
 | Auditoría | OK | AuditComponent | ✅ |
 | Sincronización | OK | SyncComponent | ✅ |
@@ -44,6 +43,19 @@ El frontend está **completamente implementado** con los 16 módulos funcionales
 ## Bloqueantes nuevos
 
 - **0** — Sin bloqueantes nuevos
+
+## Refactor Project → Service (PPT) — COMPLETADO
+
+- Las antiguas features `projects/` y `actions/` se **eliminaron y consolidaron** en `features/services/` (jerarquía Cliente → Servicio → Concepto).
+- Componentes: `services-list.component.ts`, `service-form.component.ts`, `service-detail.component.ts` (+ subcarpetas `tarifas/` y `presupuestos/`).
+- Servicio HTTP: `core/api/services.service.ts` → clase `ServiceService` apuntando a `/api/services` (sustituye a ProjectsService + ActionsService).
+- Modelos TS renombrados: `ServiceListItem`/`ServiceDetail` (antes Project*/Action*), `EstadoServicio` (antes EstadoProyecto/EstadoAccion); Concept usa `serviceIds`.
+- Menú lateral: entradas "Projects"/"Actions" sustituidas por una única "Servicios".
+
+## Closure alerts — IMPLEMENTADO
+
+- `ClosureDetail` muestra panel de alertas de cierre (modelo `ClosureAlerta`: tipo Bloqueante/Advertencia, código, descripción, confirmación).
+- Las alertas bloqueantes no confirmadas inhabilitan el avance del cierre en la UI.
 
 ## Cambios realizados
 

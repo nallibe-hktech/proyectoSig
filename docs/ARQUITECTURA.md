@@ -24,12 +24,12 @@ Documento único de verdad técnica. Cualquier cambio aquí lo aplica el Arquite
 | Término | Definición |
 |---|---|
 | **Client** | Empresa cliente de SIG (Alpha Foods, Beta Cosmetics, Gamma Retail). NO es un tenant. |
-| **Project** | Trabajo contratado por un Client a SIG. Tiene N Actions, N:M CostCenters, N:M Users (recursos asignados). |
-| **Action** | Servicio concreto dentro de un Project (espejo de `serviceId` externo). Tiene N:M Concepts y N:M Users. |
-| **Concept** | Regla de cálculo con una fórmula. Tipo `Pago` (sale dinero al empleado) o `Factura` (entra dinero del cliente). Tiene validez temporal (`fechaDesde`/`fechaHasta`). |
+| **Service** | Servicio contratado por un Client a SIG. Entidad central de la jerarquía **Cliente → Servicio → Concepto** (sustituye al antiguo par Project/Action, ambos eliminados). Tiene N:M Concepts (`ServiceConcept`), N:M Users (`ServiceUser`, recursos asignados / ownership), N:M CostCenters (`ServiceCostCenter`), N Closures, N TarifaServicio y N PresupuestoServicio. Conserva metadatos de interlocutor heredados del antiguo Project. (Nota de fidelidad: el campo externo `project`/`PROJECT_ID` de sistemas ajenos como Intratime/Celero NO se renombra; solo desaparece la **entidad interna** Project.) |
+| **Concept** | Regla de cálculo con una fórmula. Tipo `Pago` (sale dinero al empleado) o `Factura` (entra dinero del cliente). Tiene validez temporal (`fechaDesde`/`fechaHasta`). Se vincula a uno o varios Service vía `ServiceConcept`; `ServiceId` nulo = concepto global aplicable a todos los servicios. |
 | **Variable** | Mapeo entre una pregunta de Celero (`questionIdExterno`) y un valor numérico. Ej: respuesta "Sí" → 1, "No" → 0. |
 | **Period** | Mes de cierre. Estados: Abierto, Cerrado, Bloqueado. |
-| **Closure** | Conjunto de líneas (`ClosureLine`) calculadas para un par `Project × Period`. Estados de aprobación. |
+| **Closure** | Conjunto de líneas (`ClosureLine`) calculadas para un par `Service × Period`. Estados de aprobación. |
+| **ClosureAlerta** | Alerta generada sobre un Closure durante el cálculo/cierre. Tipo `Bloqueante` o `Advertencia`. Tiene `Codigo`, `Descripcion` y flag `Confirmada` (con usuario y fecha de confirmación). Las bloqueantes impiden avanzar el cierre hasta confirmarse. |
 | **ClosureLine** | Línea individual: importe calculado por un Concept dentro de un Closure, opcionalmente asignada a un User (recurso de campo). |
 | **Approval** | Estado actual del cierre en un paso del flujo de 5 niveles. |
 | **ApprovalHistory** | Inmutable. Una fila por cada transición histórica de un Closure entre pasos del flujo. |
@@ -53,10 +53,10 @@ Documento único de verdad técnica. Cualquier cambio aquí lo aplica el Arquite
 | RF-A03 | Refresh: intercambiar refresh por nuevo access | POST `/api/auth/refresh` | RefreshToken |
 | RF-B01 | Dashboard KPIs período activo | GET `/api/dashboard` | Closure, Period |
 | RF-B02 | Dashboard avisos automáticos | GET `/api/dashboard/avisos` | Closure, StagingX |
-| RF-B03 | Dashboard "Mis proyectos" filtrado por ownership | GET `/api/dashboard/mis-proyectos` | Project, ProjectUser |
+| RF-B03 | Dashboard "Mis servicios" filtrado por ownership | GET `/api/dashboard/mis-proyectos` | Service, ServiceUser |
 | RF-C01 | CRUD Client paginado | `/api/clients` | Client |
-| RF-C02 | CRUD Project (N:M CostCenter, N:M User) | `/api/projects` | Project, ProjectCostCenter, ProjectUser |
-| RF-C03 | CRUD Action | `/api/actions` | Action, ActionConcept, ActionUser |
+| RF-C02 | CRUD Service (N:M CostCenter, N:M User, N:M Concept) | `/api/services` | Service, ServiceCostCenter, ServiceUser, ServiceConcept |
+| RF-C03 | *(consolidado en RF-C02)* — el antiguo CRUD Action desaparece; sus relaciones (Concepts, Users) las absorbe Service | `/api/services` | Service, ServiceConcept, ServiceUser |
 | RF-C04 | CRUD Concept con fórmula | `/api/concepts` | Concept |
 | RF-C05 | CRUD User con NIF, multi-rol, asignaciones | `/api/users` | User, UserRole |
 | RF-C06 | CRUD Role/Department/CostCenter (admin) | `/api/roles`, `/api/departments`, `/api/costcenters` | Role, Department, CostCenter |
@@ -122,8 +122,7 @@ public class User : ISoftDeletable, IAuditable
     public DateTime UpdatedAt { get; set; }
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
-    public ICollection<ProjectUser> ProjectUsers { get; set; } = new List<ProjectUser>();
-    public ICollection<ActionUser> ActionUsers { get; set; } = new List<ActionUser>();
+    public ICollection<ServiceUser> ServiceUsers { get; set; } = new List<ServiceUser>();
     public ICollection<ConceptUser> ConceptUsers { get; set; } = new List<ConceptUser>();
 }
 public enum EstadoUsuario { Activo, Inactivo }
@@ -180,7 +179,7 @@ public class CostCenter : ISoftDeletable, IAuditable
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public ICollection<ProjectCostCenter> ProjectCostCenters { get; set; } = new List<ProjectCostCenter>();
+    public ICollection<ServiceCostCenter> ServiceCostCenters { get; set; } = new List<ServiceCostCenter>();
 }
 ```
 Unique index sobre `Codigo`.
@@ -204,19 +203,25 @@ public class Client : ISoftDeletable, IAuditable
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public ICollection<Project> Projects { get; set; } = new List<Project>();
+    public ICollection<Service> Services { get; set; } = new List<Service>();
 }
 ```
 
-#### Project (RF-C02)
+#### Service (RF-C02)
+
+> Entidad central de la jerarquía **Cliente → Servicio → Concepto**. Resultado del refactor PPT que eliminó las entidades internas `Project` y `Action`: `Service` absorbe el vínculo directo a `Client` (antes en Project) y las relaciones CECO/Usuario/Cierres/Tarifas/Presupuestos. El rename a nivel de BD lo aplica la migración `20260612071833_RenameProjectActionToService` (data-preserving). Implementado en `backend/SIG.Domain/Entities/Entities.cs`.
+
 ```csharp
-public class Project : ISoftDeletable, IAuditable
+public class Service : ISoftDeletable, IAuditable
 {
     public int Id { get; set; }
     public string Nombre { get; set; } = null!;
     public int ClientId { get; set; }
     public Client Client { get; set; } = null!;
-    public EstadoProyecto Estado { get; set; }        // Activo, Pausado, Cerrado
+    public int? DepartmentId { get; set; }
+    public Department? Department { get; set; }
+    public EstadoServicio Estado { get; set; }        // Activo, Inactivo
+    // Metadatos de interlocutor heredados del antiguo Project (preservados en la migración).
     public string? InterlocutorNombre { get; set; }
     public string? InterlocutorEmail { get; set; }
     public string? InterlocutorTelefono { get; set; }
@@ -225,47 +230,19 @@ public class Project : ISoftDeletable, IAuditable
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public ICollection<ProjectCostCenter> ProjectCostCenters { get; set; } = new List<ProjectCostCenter>();
-    public ICollection<ProjectUser> ProjectUsers { get; set; } = new List<ProjectUser>();
-    public ICollection<Action> Actions { get; set; } = new List<Action>();
+    public ICollection<ServiceConcept> ServiceConcepts { get; set; } = new List<ServiceConcept>();
+    public ICollection<ServiceUser> ServiceUsers { get; set; } = new List<ServiceUser>();
+    public ICollection<ServiceCostCenter> ServiceCostCenters { get; set; } = new List<ServiceCostCenter>();
     public ICollection<Closure> Closures { get; set; } = new List<Closure>();
 }
-public enum EstadoProyecto { Activo, Pausado, Cerrado }
+public enum EstadoServicio { Activo, Inactivo }
 ```
 
-#### ProjectCostCenter (N:M) y ProjectUser (N:M)
+#### ServiceConcept (N:M), ServiceUser (N:M) y ServiceCostCenter (N:M)
 ```csharp
-public class ProjectCostCenter { public int ProjectId { get; set; } public Project Project { get; set; } = null!; public int CostCenterId { get; set; } public CostCenter CostCenter { get; set; } = null!; }
-public class ProjectUser { public int ProjectId { get; set; } public Project Project { get; set; } = null!; public int UserId { get; set; } public User User { get; set; } = null!; }
-```
-
-#### Action (RF-C03)
-```csharp
-public class Action : ISoftDeletable, IAuditable
-{
-    public int Id { get; set; }                       // serviceId externo
-    public string Nombre { get; set; } = null!;
-    public int ProjectId { get; set; }
-    public Project Project { get; set; } = null!;
-    public int ClientId { get; set; }
-    public Client Client { get; set; } = null!;
-    public int? DepartmentId { get; set; }
-    public Department? Department { get; set; }
-    public EstadoAccion Estado { get; set; }
-    public bool IsDeleted { get; set; }
-    public DateTime? DeletedAt { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
-    public ICollection<ActionConcept> ActionConcepts { get; set; } = new List<ActionConcept>();
-    public ICollection<ActionUser> ActionUsers { get; set; } = new List<ActionUser>();
-}
-public enum EstadoAccion { Activa, Inactiva }
-```
-
-#### ActionConcept (N:M) y ActionUser (N:M)
-```csharp
-public class ActionConcept { public int ActionId { get; set; } public Action Action { get; set; } = null!; public int ConceptId { get; set; } public Concept Concept { get; set; } = null!; }
-public class ActionUser { public int ActionId { get; set; } public Action Action { get; set; } = null!; public int UserId { get; set; } public User User { get; set; } = null!; }
+public class ServiceConcept { public int ServiceId { get; set; } public Service Service { get; set; } = null!; public int ConceptId { get; set; } public Concept Concept { get; set; } = null!; }
+public class ServiceUser { public int ServiceId { get; set; } public Service Service { get; set; } = null!; public int UserId { get; set; } public User User { get; set; } = null!; }   // ownership de servicio
+public class ServiceCostCenter { public int ServiceId { get; set; } public Service Service { get; set; } = null!; public int CostCenterId { get; set; } public CostCenter CostCenter { get; set; } = null!; }
 ```
 
 #### Concept (RF-C04)
@@ -278,11 +255,14 @@ public class Concept : ISoftDeletable, IAuditable
     public DateOnly FechaDesde { get; set; }
     public DateOnly? FechaHasta { get; set; }
     public string FormulaJson { get; set; } = null!;  // AST JSON (ver §6)
+    public int? ServiceId { get; set; }               // null = concepto global (aplica a todos los servicios)
+    public Service? Service { get; set; }
+    public string? ColumnaA3 { get; set; }            // columna destino del export A3: "ImporteBruto", "IRPF", "SSEmpleado", "KM", etc.
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public ICollection<ActionConcept> ActionConcepts { get; set; } = new List<ActionConcept>();
+    public ICollection<ServiceConcept> ServiceConcepts { get; set; } = new List<ServiceConcept>();
     public ICollection<ConceptUser> ConceptUsers { get; set; } = new List<ConceptUser>();
 }
 public enum TipoConcepto { Pago, Factura }
@@ -332,8 +312,8 @@ Sin soft-delete (periodos no se borran).
 public class Closure : IAuditable
 {
     public int Id { get; set; }
-    public int ProjectId { get; set; }
-    public Project Project { get; set; } = null!;
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
     public int PeriodId { get; set; }
     public Period Period { get; set; } = null!;
     public decimal CosteTotal { get; set; }           // decimal(18,4)
@@ -349,11 +329,12 @@ public class Closure : IAuditable
     public ICollection<ClosureLine> Lines { get; set; } = new List<ClosureLine>();
     public ICollection<Approval> Approvals { get; set; } = new List<Approval>();
     public ICollection<ApprovalHistory> ApprovalHistory { get; set; } = new List<ApprovalHistory>();
+    public ICollection<ClosureAlerta> Alertas { get; set; } = new List<ClosureAlerta>();
 }
 public enum EstadoClosure { Borrador, EnAprobacion, Aprobado, Rechazado, Exportado }
 public enum ApprovalStep { ProjectManager = 1, Backoffice = 2, Fico = 3, Direction = 4, SystemExports = 5 }
 ```
-Unique constraint `(ProjectId, PeriodId)` — un Closure por Project×Period.
+Unique constraint `(ServiceId, PeriodId)` — un Closure por Service×Period.
 RowVersion: `b.Property(c => c.RowVersion).IsRowVersion().HasColumnName("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();`
 
 #### ClosureLine (RF-D01, RNF-03)
@@ -419,6 +400,28 @@ public class ApprovalHistory
 }
 ```
 Sin `UpdatedAt`. Tabla sin endpoints PUT/DELETE.
+
+#### ClosureAlerta (sistema de alertas de cierre)
+```csharp
+public class ClosureAlerta : IAuditable
+{
+    public int Id { get; set; }
+    public int ClosureId { get; set; }
+    public Closure Closure { get; set; } = null!;
+    public TipoAlerta Tipo { get; set; }              // Bloqueante | Advertencia
+    public string Codigo { get; set; } = null!;       // código semántico de la alerta
+    public string Descripcion { get; set; } = null!;
+    public string? Detalle { get; set; }
+    public bool Confirmada { get; set; }
+    public int? ConfirmadaPorUserId { get; set; }
+    public User? ConfirmadaPor { get; set; }
+    public DateTime? FechaConfirmacion { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+public enum TipoAlerta { Bloqueante, Advertencia }
+```
+Generadas durante el cálculo/cierre (ver §3.8). Una alerta `Bloqueante` no confirmada impide avanzar el cierre; las `Advertencia` son informativas. La migración que introduce esta tabla (junto con los contratos A3) es `20260612121215_AddClosureAlertasAndA3Contratos`.
 
 ### 3.4 Auditoría
 
@@ -585,17 +588,19 @@ public class RefreshToken
 ### 3.7 Relaciones — diagrama lógico (Mermaid)
 
 ```
-Client (1)──(N) Project (1)──(N) Action
-Project (N)──(N) CostCenter via ProjectCostCenter
-Project (N)──(N) User       via ProjectUser
-Action (N)──(N) Concept     via ActionConcept
-Action (N)──(N) User        via ActionUser
-Concept (N)──(N) User       via ConceptUser
-User (N)──(N) Role          via UserRole
-User (1)──(N) Department    (FK opcional)
-Closure (N)──(1) Project
+Client (1)──(N) Service (1)──(N) Concept   (jerarquía Cliente → Servicio → Concepto)
+Service (N)──(N) Concept     via ServiceConcept
+Service (N)──(N) User        via ServiceUser        (ownership de servicio)
+Service (N)──(N) CostCenter  via ServiceCostCenter
+Service (1)──(N) Department  (FK opcional)
+Concept (N)──(N) User        via ConceptUser
+Concept (N)──(1) Service     (ServiceId nullable: null = concepto global)
+User (N)──(N) Role           via UserRole
+User (1)──(N) Department     (FK opcional)
+Closure (N)──(1) Service
 Closure (N)──(1) Period
 Closure (1)──(N) ClosureLine
+Closure (1)──(N) ClosureAlerta
 ClosureLine (N)──(1) Concept
 ClosureLine (N)──(1) User    (recurso opcional)
 ClosureLine (1)──(1) CalculationLog
@@ -617,7 +622,7 @@ Closure (1)──(N) ApprovalHistory
 8. Frontend guarda tokens en sessionStorage, redirige a `/dashboard` según rol (ProjectManager → vista pendientes; Administrator → admin landing).
 9. Dashboard llama GET `/api/dashboard?periodId=...` con `Authorization: Bearer <accessToken>`.
 10. Backend valida JWT (`JwtBearer` middleware), inyecta `ICurrentUserService` que expone `UserId` y `Roles`. `DashboardController` resuelve KPIs filtrados por ownership (RF-G01).
-11. Usuario navega a Projects → ProjectsListComponent llama `ProjectsService.list({ page, pageSize, filter })` → GET `/api/projects?page=1&pageSize=25`. Backend devuelve solo proyectos donde el usuario tiene `ProjectUser` (si rol ProjectManager) o todos (admin/auditor).
+11. Usuario navega a Servicios → ServicesListComponent llama `ServiceService.getAll({ page, pageSize, clientId, search })` → GET `/api/services?page=1&pageSize=25`. Backend devuelve solo servicios donde el usuario tiene `ServiceUser` (si rol ProjectManager) o todos (admin/auditor).
 12. Usuario abre un Closure → GET `/api/closures/{id}` devuelve cabecera + líneas + estado de aprobación.
 13. Si paso del flujo = rol del usuario, aparece botón "Aprobar" y "Rechazar".
 14. Aprobar → POST `/api/closures/{id}/aprobar` con header `If-Match: <rowVersion>`. Backend:
@@ -658,28 +663,21 @@ public record ClientCreateRequest(string Nombre, string NIF, string? Direccion, 
 public record ClientUpdateRequest(string Nombre, string NIF, string? Direccion, string? Ciudad, string? Provincia, string? Pais, string? CodigoPostal, string? ContactoNombre, string? ContactoEmail, string? ContactoTelefono);
 ```
 
-#### Project
+#### Service
+DTOs reales en `backend/SIG.Application/DTOs/MaestrosDtos.cs`. Service unifica los antiguos Project + Action.
 ```csharp
-public record ProjectListItemDto(int Id, string Nombre, int ClientId, string ClientNombre, EstadoProyecto Estado, DateOnly FechaAlta);
-public record ProjectDetailDto(int Id, string Nombre, int ClientId, string ClientNombre, EstadoProyecto Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds);
-public record ProjectCreateRequest(string Nombre, int ClientId, EstadoProyecto Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds);
-public record ProjectUpdateRequest(string Nombre, int ClientId, EstadoProyecto Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds);
-```
-
-#### Action
-```csharp
-public record ActionListItemDto(int Id, string Nombre, int ProjectId, string ProjectNombre, int ClientId, int? DepartmentId, EstadoAccion Estado);
-public record ActionDetailDto(int Id, string Nombre, int ProjectId, int ClientId, int? DepartmentId, EstadoAccion Estado, int[] ConceptIds, int[] UserIds);
-public record ActionCreateRequest(string Nombre, int ProjectId, int ClientId, int? DepartmentId, EstadoAccion Estado, int[] ConceptIds, int[] UserIds);
-public record ActionUpdateRequest(string Nombre, int ProjectId, int ClientId, int? DepartmentId, EstadoAccion Estado, int[] ConceptIds, int[] UserIds);
+public record ServiceListItemDto(int Id, string Nombre, int ClientId, string ClientNombre, int? DepartmentId, EstadoServicio Estado);
+public record ServiceDetailDto(int Id, string Nombre, int ClientId, string ClientNombre, int? DepartmentId, EstadoServicio Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds, int[] ConceptIds);
+public record ServiceCreateRequest(string Nombre, int ClientId, int? DepartmentId, EstadoServicio Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds, int[] ConceptIds);
+public record ServiceUpdateRequest(string Nombre, int ClientId, int? DepartmentId, EstadoServicio Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds, int[] ConceptIds);
 ```
 
 #### Concept
 ```csharp
 public record ConceptListItemDto(int Id, string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta);
-public record ConceptDetailDto(int Id, string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ActionIds, int[] UserIds);
-public record ConceptCreateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ActionIds, int[] UserIds);
-public record ConceptUpdateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ActionIds, int[] UserIds);
+public record ConceptDetailDto(int Id, string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ServiceIds, int[] UserIds);
+public record ConceptCreateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ServiceIds, int[] UserIds);
+public record ConceptUpdateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ServiceIds, int[] UserIds);
 ```
 
 #### User
@@ -697,10 +695,11 @@ public record PeriodDto(int Id, string Nombre, DateOnly FechaInicio, DateOnly Fe
 public record PeriodCreateRequest(string Nombre, DateOnly FechaInicio, DateOnly FechaFin);
 public record PeriodUpdateRequest(string Nombre, DateOnly FechaInicio, DateOnly FechaFin);
 
-public record ClosureListItemDto(int Id, int ProjectId, string ProjectNombre, int PeriodId, string PeriodNombre, decimal CosteTotal, decimal FacturacionTotal, decimal Margen, EstadoClosure Estado, ApprovalStep PasoActual);
-public record ClosureDetailDto(int Id, int ProjectId, string ProjectNombre, int PeriodId, string PeriodNombre, decimal CosteTotal, decimal FacturacionTotal, decimal Margen, EstadoClosure Estado, ApprovalStep PasoActual, string? Comentarios, uint RowVersion, ClosureLineDto[] Lines, ApprovalDto[] Approvals);
+public record ClosureListItemDto(int Id, int ServiceId, string ServiceNombre, int PeriodId, string PeriodNombre, decimal CosteTotal, decimal FacturacionTotal, decimal Margen, EstadoClosure Estado, ApprovalStep PasoActual);
+public record ClosureDetailDto(int Id, int ServiceId, string ServiceNombre, int PeriodId, string PeriodNombre, decimal CosteTotal, decimal FacturacionTotal, decimal Margen, EstadoClosure Estado, ApprovalStep PasoActual, string? Comentarios, uint RowVersion, ClosureLineDto[] Lines, ApprovalDto[] Approvals, ClosureAlertaDto[] Alertas);
 public record ClosureLineDto(int Id, int ConceptId, string ConceptNombre, int? UserId, string? UserNombre, decimal Importe, TipoConcepto Tipo, bool TieneIncidencia, uint RowVersion);
-public record ClosureCreateRequest(int ProjectId, int PeriodId, string? Comentarios);
+public record ClosureAlertaDto(int Id, TipoAlerta Tipo, string Codigo, string Descripcion, string? Detalle, bool Confirmada, string? ConfirmadaPorNombre, DateTime? FechaConfirmacion);
+public record ClosureCreateRequest(int ServiceId, int PeriodId, string? Comentarios);
 public record ClosureRecalcRequest(string? Comentarios);
 public record ApprovalDto(int Id, ApprovalStep Paso, int RoleId, string RoleNombre, EstadoApproval Estado, int? UserId, string? UserNombre, string? Motivo, DateTime? FechaDecision);
 public record ClosureApproveRequest(string? Comentarios);
@@ -710,14 +709,14 @@ public record ClosureRejectRequest(string Motivo);
 #### Approval panel
 ```csharp
 public record ApprovalFilterRequest(int? PeriodId, int? ClientId, int? CostCenterId, EstadoClosure? Estado, int? UserId, int? DepartmentId, TipoConcepto? Tipo, int? ConceptId, int Page = 1, int PageSize = 25);
-public record ApprovalPanelItemDto(int ClosureId, int ProjectId, string ProjectNombre, int ClientId, string ClientNombre, int PeriodId, string PeriodNombre, EstadoClosure Estado, ApprovalStep PasoActual, string PasoActualRol, decimal Margen, DateTime UpdatedAt);
+public record ApprovalPanelItemDto(int ClosureId, int ServiceId, string ServiceNombre, int ClientId, string ClientNombre, int PeriodId, string PeriodNombre, EstadoClosure Estado, ApprovalStep PasoActual, string PasoActualRol, decimal Margen, DateTime UpdatedAt);
 ```
 
 #### Dashboard
 ```csharp
 public record DashboardKpisDto(int PeriodId, string PeriodNombre, int CierresCompletados, int CierresPendientes, decimal FacturacionTotal, decimal CosteTotal, decimal Margen);
 public record DashboardAvisoDto(string Tipo, string Descripcion, int? EntityId);  // Tipo: "CierrePendiente" | "PeriodoBloqueado" | "ErrorSync"
-public record MiProyectoDto(int ProjectId, string Nombre, int ClientId, string ClientNombre, int? ClosureId, EstadoClosure? Estado, ApprovalStep? PasoActual);
+public record MiServicioDto(int ServiceId, string Nombre, int ClientId, string ClientNombre, int? ClosureId, EstadoClosure? Estado, ApprovalStep? PasoActual, decimal? CosteTotal, decimal? FacturacionTotal, decimal? Margen);
 ```
 
 #### CalculationLog / Sync / Audit
@@ -755,8 +754,7 @@ public interface ICurrentUserService
 }
 
 public interface IClientService { /* CRUD methods, ver §7 endpoints */ }
-public interface IProjectService { /* CRUD + ownership */ }
-public interface IActionService { /* CRUD */ }
+public interface IServiceService { /* CRUD + ownership (unifica los antiguos IProjectService + IActionService) */ }
 public interface IConceptService { /* CRUD + validación fórmula */ }
 public interface IUserService { /* CRUD + cambio password */ }
 public interface IRoleService { Task<IReadOnlyList<RoleDto>> ListAsync(CancellationToken ct); }
@@ -784,7 +782,7 @@ public interface IDashboardService
 {
     Task<DashboardKpisDto> GetKpisAsync(int periodId, int usuarioId, CancellationToken ct);
     Task<IReadOnlyList<DashboardAvisoDto>> GetAvisosAsync(int usuarioId, CancellationToken ct);
-    Task<IReadOnlyList<MiProyectoDto>> GetMisProyectosAsync(int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct);
 }
 
 public interface ICalculationService
@@ -884,24 +882,19 @@ public interface IClientRepository
     Task<Client?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
     Task<PagedResult<Client>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, string? search, CancellationToken ct);
     Task AddAsync(Client client, CancellationToken ct);
-    Task<bool> HasProjectsAsync(int clientId, CancellationToken ct);
+    Task<bool> HasServicesAsync(int clientId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
-public interface IProjectRepository
+// Unifica los antiguos IProjectRepository + IActionRepository.
+public interface IServiceRepository
 {
-    Task<Project?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task<PagedResult<Project>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
-    Task AddAsync(Project project, CancellationToken ct);
-    Task<bool> IsUserAssignedAsync(int projectId, int usuarioId, CancellationToken ct);
-    Task SaveChangesAsync(CancellationToken ct);
-}
-
-public interface IActionRepository
-{
-    Task<Action?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task<PagedResult<Action>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? projectId, string? search, CancellationToken ct);
-    Task AddAsync(Action action, CancellationToken ct);
+    Task<Service?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
+    Task<Service?> GetByIdAsync(int id, CancellationToken ct);
+    Task<PagedResult<Service>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
+    Task AddAsync(Service service, CancellationToken ct);
+    Task<bool> IsUserAssignedAsync(int serviceId, int usuarioId, CancellationToken ct);
+    Task<bool> HasClosuresAsync(int serviceId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
@@ -927,7 +920,7 @@ public interface IClosureRepository
 {
     Task<Closure?> GetByIdAsync(int id, CancellationToken ct);                          // con líneas, para motor
     Task<Closure?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task<Closure?> GetByProjectAndPeriodAsync(int projectId, int periodId, CancellationToken ct);
+    Task<Closure?> GetByServiceAndPeriodAsync(int serviceId, int periodId, CancellationToken ct);
     Task<PagedResult<Closure>> ListPaginatedForUserAsync(int usuarioId, ApprovalFilterRequest filter, CancellationToken ct);
     Task<PagedResult<Closure>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct);
     Task AddAsync(Closure closure, CancellationToken ct);
@@ -1014,7 +1007,7 @@ public class AuthController(IAuthService authService) : ControllerBase
 }
 ```
 
-(Estructura análoga para `ClientsController`, `ProjectsController`, `ActionsController`, `ConceptsController`, `UsersController`, `RolesController`, `DepartmentsController`, `CostCentersController`, `PeriodsController`, `ClosuresController`, `ApprovalsController`, `DashboardController`, `CalculationsController`, `AuditController`, `SyncController`, `ExportsController`, `DevController`. La tabla completa con verbos y DTOs en §7.)
+(Estructura análoga para `ClientsController`, `ServicesController` (`api/services`, sustituye a los antiguos `ProjectsController` + `ActionsController`), `ConceptsController`, `UsersController`, `RolesController`, `DepartmentsController`, `CostCentersController`, `PeriodsController`, `ClosuresController`, `ApprovalsController`, `DashboardController`, `CalculationsController`, `AuditController`, `SyncController`, `ExportsController`, `DevController`. La tabla completa con verbos y DTOs en §7.)
 
 ### 5.5 Jerarquía de excepciones (Domain/Exceptions)
 
@@ -1140,7 +1133,7 @@ export interface UsuarioBrief { id: number; nombre: string; apellidos: string; e
 ```typescript
 export interface DashboardKpis { periodId: number; periodNombre: string; cierresCompletados: number; cierresPendientes: number; facturacionTotal: number; costeTotal: number; margen: number; }
 export interface DashboardAviso { tipo: 'CierrePendiente' | 'PeriodoBloqueado' | 'ErrorSync'; descripcion: string; entityId?: number; }
-export interface MiProyecto { projectId: number; nombre: string; clientId: number; clientNombre: string; closureId?: number; estado?: EstadoClosure; pasoActual?: ApprovalStep; }
+export interface MiServicio { serviceId: number; nombre: string; clientId: number; clientNombre: string; closureId?: number; estado?: EstadoClosure; pasoActual?: ApprovalStep; costeTotal?: number; facturacionTotal?: number; margen?: number; }
 ```
 
 #### Client
@@ -1150,21 +1143,21 @@ export interface ClientDetail { id: number; nombre: string; nif: string; direcci
 export interface ClientCreate { nombre: string; nif: string; direccion?: string; ciudad?: string; provincia?: string; pais?: string; codigoPostal?: string; contactoNombre?: string; contactoEmail?: string; contactoTelefono?: string; }
 ```
 
-#### Project / Action / Concept
+#### Service / Concept
 ```typescript
-export interface ProjectListItem { id: number; nombre: string; clientId: number; clientNombre: string; estado: EstadoProyecto; fechaAlta: string; }
-export interface ProjectDetail { id: number; nombre: string; clientId: number; clientNombre: string; estado: EstadoProyecto; interlocutorNombre?: string; interlocutorEmail?: string; interlocutorTelefono?: string; fechaAlta: string; costCenterIds: number[]; userIds: number[]; }
-export interface ActionDetail { id: number; nombre: string; projectId: number; clientId: number; departmentId?: number; estado: EstadoAccion; conceptIds: number[]; userIds: number[]; }
-export interface ConceptDetail { id: number; nombre: string; tipo: TipoConcepto; fechaDesde: string; fechaHasta?: string; formulaJson: string; actionIds: number[]; userIds: number[]; }
+export interface ServiceListItem { id: number; nombre: string; clientId: number; clientNombre: string; departmentId?: number; estado: EstadoServicio; }
+export interface ServiceDetail { id: number; nombre: string; clientId: number; clientNombre: string; departmentId?: number; estado: EstadoServicio; interlocutorNombre?: string; interlocutorEmail?: string; interlocutorTelefono?: string; fechaAlta: string; costCenterIds: number[]; userIds: number[]; conceptIds: number[]; }
+export interface ConceptDetail { id: number; nombre: string; tipo: TipoConcepto; fechaDesde: string; fechaHasta?: string; formulaJson: string; serviceIds: number[]; userIds: number[]; }
 ```
 
 #### Period / Closure / Approval
 ```typescript
 export interface PeriodDto { id: number; nombre: string; fechaInicio: string; fechaFin: string; estado: EstadoPeriodo; }
-export interface ClosureListItem { id: number; projectId: number; projectNombre: string; periodId: number; periodNombre: string; costeTotal: number; facturacionTotal: number; margen: number; estado: EstadoClosure; pasoActual: ApprovalStep; }
-export interface ClosureDetail { id: number; projectId: number; projectNombre: string; periodId: number; periodNombre: string; costeTotal: number; facturacionTotal: number; margen: number; estado: EstadoClosure; pasoActual: ApprovalStep; comentarios?: string; rowVersion: number; lines: ClosureLine[]; approvals: ApprovalDto[]; }
+export interface ClosureListItem { id: number; serviceId: number; serviceNombre: string; periodId: number; periodNombre: string; costeTotal: number; facturacionTotal: number; margen: number; estado: EstadoClosure; pasoActual: ApprovalStep; }
+export interface ClosureDetail { id: number; serviceId: number; serviceNombre: string; periodId: number; periodNombre: string; costeTotal: number; facturacionTotal: number; margen: number; estado: EstadoClosure; pasoActual: ApprovalStep; comentarios?: string; rowVersion: number; lines: ClosureLine[]; approvals: ApprovalDto[]; alertas: ClosureAlerta[]; }
+export interface ClosureAlerta { id: number; tipo: TipoAlerta; codigo: string; descripcion: string; detalle?: string; confirmada: boolean; confirmadaPorNombre?: string; fechaConfirmacion?: string; }
 export interface ClosureLine { id: number; conceptId: number; conceptNombre: string; userId?: number; userNombre?: string; importe: number; tipo: TipoConcepto; tieneIncidencia: boolean; rowVersion: number; }
-export interface ApprovalPanelItem { closureId: number; projectId: number; projectNombre: string; clientId: number; clientNombre: string; periodId: number; periodNombre: string; estado: EstadoClosure; pasoActual: ApprovalStep; pasoActualRol: string; margen: number; updatedAt: string; }
+export interface ApprovalPanelItem { closureId: number; serviceId: number; serviceNombre: string; clientId: number; clientNombre: string; periodId: number; periodNombre: string; estado: EstadoClosure; pasoActual: ApprovalStep; pasoActualRol: string; margen: number; updatedAt: string; }
 ```
 
 #### Enums (string)
@@ -1172,9 +1165,9 @@ export interface ApprovalPanelItem { closureId: number; projectId: number; proje
 export type EstadoPeriodo = 'Abierto' | 'Cerrado' | 'Bloqueado';
 export type EstadoClosure = 'Borrador' | 'Calculado' | 'EnRevision' | 'AprobadoFico' | 'AprobadoDir' | 'Cerrado';
 export type ApprovalStep = 'Calculo' | 'Gestion' | 'Backoffice' | 'Fico' | 'Direccion';
-export type EstadoProyecto = 'Activo' | 'Pausado' | 'Cerrado';
-export type EstadoAccion = 'Activa' | 'Inactiva';
+export type EstadoServicio = 'Activo' | 'Inactivo';
 export type TipoConcepto = 'Pago' | 'Factura';
+export type TipoAlerta = 'Bloqueante' | 'Advertencia';
 export type AuditAction = 'Crear' | 'Actualizar' | 'Eliminar' | 'Aprobar' | 'Rechazar';
 ```
 
@@ -1200,7 +1193,7 @@ export class ClientsService {
 export interface PagedResult<T> { items: T[]; total: number; page: number; pageSize: number; }
 ```
 
-El resto de servicios (ProjectsService, ActionsService, ConceptsService, UsersService, PeriodsService, ClosuresService, ApprovalsService, DashboardService, AuditService, SyncService, ExportsService) siguen el mismo patrón con métodos `getAll/getById/create/update/delete` según corresponda. El Frontend los implementa con `HttpClient` tipado + interceptor JWT.
+El resto de servicios (ServiceService — `core/api/services.service.ts`, sustituye a los antiguos ProjectsService + ActionsService —, ConceptsService, UsersService, PeriodsService, ClosuresService, ApprovalsService, DashboardService, AuditService, SyncService, ExportsService) siguen el mismo patrón con métodos `getAll/getById/create/update/delete` según corresponda. El Frontend los implementa con `HttpClient` tipado + interceptor JWT.
 
 ---
 
@@ -1234,7 +1227,7 @@ Filtros válidos por entidad origen:
 
 Filtros implícitos siempre aplicados por el motor (NO escritos en el JSON):
 - Período del Closure: `Fecha >= Closure.Period.FechaInicio AND Fecha <= Closure.Period.FechaFin`.
-- Proyecto del Closure: `ProjectId == Closure.ProjectId`.
+- Servicio del Closure: el motor filtra las filas staging por el servicio del cierre (`Closure.ServiceId`) usando el campo externo `project`/`ProjectId` que esos sistemas ajenos exponen. (El campo externo NO se renombra; solo la entidad interna Project desapareció.)
 - Si la línea es por recurso (`ClosureLine.UserId` se está calculando): `UserId == ClosureLine.UserId`.
 
 ### 6.3 Ejemplos JSON
@@ -1395,22 +1388,18 @@ Códigos HTTP estándar: 200 OK / 201 Created / 204 NoContent / 400 ValidationPr
 | 6 | GET | /api/clients/{id} | Idem | — | ClientDetailDto | id>0 | 200/401/403/404 |
 | 7 | POST | /api/clients | Administrator | ClientCreateRequest | ClientDetailDto | Nombre 2-200; NIF regex española; Email formato | 201/400/401/403/409 |
 | 8 | PUT | /api/clients/{id} | Administrator | ClientUpdateRequest | ClientDetailDto | Idem POST | 200/400/401/403/404/409 |
-| 9 | DELETE | /api/clients/{id} | Administrator | — | — | sin Projects activos | 204/401/403/404/409 |
-| 10 | GET | /api/projects | All roles | query: page,pageSize,clientId,search | PagedResult<ProjectListItemDto> | filtrado ownership | 200/401 |
-| 11 | GET | /api/projects/{id} | All roles | — | ProjectDetailDto | ownership | 200/401/403/404 |
-| 12 | POST | /api/projects | Administrator,Backoffice | ProjectCreateRequest | ProjectDetailDto | Nombre 2-200; ClientId existe; FechaAlta válida; CostCenterIds/UserIds existen | 201/400/401/403 |
-| 13 | PUT | /api/projects/{id} | Administrator,Backoffice | ProjectUpdateRequest | ProjectDetailDto | Idem | 200/400/401/403/404 |
-| 14 | DELETE | /api/projects/{id} | Administrator | — | — | sin Actions ni Closures | 204/401/403/404/409 |
-| 15 | GET | /api/actions | All roles | query: page,pageSize,projectId,search | PagedResult<ActionListItemDto> | ownership | 200/401 |
-| 16 | GET | /api/actions/{id} | All roles | — | ActionDetailDto | ownership | 200/401/403/404 |
-| 17 | POST | /api/actions | Administrator,Backoffice | ActionCreateRequest | ActionDetailDto | Nombre; ProjectId/ClientId coherentes; ConceptIds/UserIds existen | 201/400/401/403 |
-| 18 | PUT | /api/actions/{id} | Administrator,Backoffice | ActionUpdateRequest | ActionDetailDto | Idem | 200/400/401/403/404 |
-| 19 | DELETE | /api/actions/{id} | Administrator | — | — | sin Closures asociados | 204/401/403/404/409 |
+| 9 | DELETE | /api/clients/{id} | Administrator | — | — | sin Services activos | 204/401/403/404/409 |
+| 10 | GET | /api/services | All roles | query: page,pageSize,clientId,search | PagedResult<ServiceListItemDto> | filtrado ownership | 200/401 |
+| 11 | GET | /api/services/{id} | All roles | — | ServiceDetailDto | ownership | 200/401/403/404 |
+| 12 | POST | /api/services | Administrator,Backoffice | ServiceCreateRequest | ServiceDetailDto | Nombre 2-200; ClientId existe; FechaAlta válida; CostCenterIds/UserIds/ConceptIds existen | 201/400/401/403 |
+| 13 | PUT | /api/services/{id} | Administrator,Backoffice | ServiceUpdateRequest | ServiceDetailDto | Idem | 200/400/401/403/404 |
+| 14 | DELETE | /api/services/{id} | Administrator | — | — | sin Closures asociados | 204/401/403/404/409 |
+| 15-19 | — | *(antiguos `/api/actions` eliminados)* | — | — | — | el CRUD de Action se consolidó en `/api/services` (RF-C02); Tarifas/Presupuestos cuelgan de `api/services/{serviceId}/...` | — |
 | 20 | GET | /api/concepts | All roles | query: page,pageSize,tipo,search | PagedResult<ConceptListItemDto> | — | 200/401 |
 | 21 | GET | /api/concepts/{id} | All roles | — | ConceptDetailDto | — | 200/401/404 |
 | 22 | POST | /api/concepts | Administrator,Backoffice | ConceptCreateRequest | ConceptDetailDto | Nombre; Tipo válido; FechaDesde<=FechaHasta; FormulaJson parseable | 201/400/401/403 |
 | 23 | PUT | /api/concepts/{id} | Administrator,Backoffice | ConceptUpdateRequest | ConceptDetailDto | Idem; FormulaJson valida AST | 200/400/401/403/404 |
-| 24 | DELETE | /api/concepts/{id} | Administrator | — | — | sin Actions que lo referencien | 204/401/403/404/409 |
+| 24 | DELETE | /api/concepts/{id} | Administrator | — | — | sin Services que lo referencien | 204/401/403/404/409 |
 | 25 | POST | /api/concepts/{id}/validar-formula | Administrator,Backoffice | { formulaJson: string } | { ok: bool, errores: string[] } | parsea sin ejecutar | 200/400/401/403/404 |
 | 26 | GET | /api/users | Administrator,Auditor | query: page,pageSize,search | PagedResult<UserListItemDto> | — | 200/401/403 |
 | 27 | GET | /api/users/{id} | Administrator,Auditor + selfMe | — | UserDetailDto | — | 200/401/403/404 |
@@ -1422,11 +1411,11 @@ Códigos HTTP estándar: 200 OK / 201 Created / 204 NoContent / 400 ValidationPr
 | 33 | GET | /api/departments | All roles | — | DepartmentDto[] | — | 200/401 |
 | 34 | POST | /api/departments | Administrator | DepartmentCreateRequest | DepartmentDto | Nombre 2-100 | 201/400/401/403 |
 | 35 | PUT | /api/departments/{id} | Administrator | DepartmentUpdateRequest | DepartmentDto | Nombre | 200/400/401/403/404 |
-| 36 | DELETE | /api/departments/{id} | Administrator | — | — | sin Users ni Actions | 204/401/403/404/409 |
+| 36 | DELETE | /api/departments/{id} | Administrator | — | — | sin Users ni Services | 204/401/403/404/409 |
 | 37 | GET | /api/costcenters | All roles | — | CostCenterDto[] | — | 200/401 |
 | 38 | POST | /api/costcenters | Administrator | CostCenterCreateRequest | CostCenterDto | Codigo regex `^\d{6}$`; Nombre | 201/400/401/403/409 |
 | 39 | PUT | /api/costcenters/{id} | Administrator | CostCenterUpdateRequest | CostCenterDto | Idem | 200/400/401/403/404/409 |
-| 40 | DELETE | /api/costcenters/{id} | Administrator | — | — | sin Projects | 204/401/403/404/409 |
+| 40 | DELETE | /api/costcenters/{id} | Administrator | — | — | sin Services | 204/401/403/404/409 |
 | 41 | GET | /api/periods | All roles | — | PeriodDto[] | — | 200/401 |
 | 42 | GET | /api/periods/activo | All roles | — | PeriodDto | — | 200/401/404 |
 | 43 | POST | /api/periods | Administrator | PeriodCreateRequest | PeriodDto | Nombre único; FechaInicio<=FechaFin | 201/400/401/403/409 |
@@ -1435,10 +1424,10 @@ Códigos HTTP estándar: 200 OK / 201 Created / 204 NoContent / 400 ValidationPr
 | 46 | POST | /api/periods/{id}/reabrir | Administrator | — | PeriodDto | Estado actual Cerrado | 200/401/403/404/409 |
 | 47 | GET | /api/dashboard | All roles | query: periodId? | DashboardKpisDto | — | 200/401 |
 | 48 | GET | /api/dashboard/avisos | All roles | — | DashboardAvisoDto[] | — | 200/401 |
-| 49 | GET | /api/dashboard/mis-proyectos | All roles | query: periodId? | MiProyectoDto[] | — | 200/401 |
+| 49 | GET | /api/dashboard/mis-proyectos | All roles | query: periodId? | MiServicioDto[] | — | 200/401 |
 | 50 | GET | /api/closures | All roles | query: ApprovalFilterRequest | PagedResult<ClosureListItemDto> | ownership | 200/401 |
 | 51 | GET | /api/closures/{id} | All roles | — | ClosureDetailDto | ownership | 200/401/403/404 |
-| 52 | POST | /api/closures | ProjectManager,Backoffice,Administrator | ClosureCreateRequest | ClosureDetailDto | Period.Estado=Abierto; Project visible al user; no existe ya Closure(Project,Period) | 201/400/401/403/409 |
+| 52 | POST | /api/closures | ProjectManager,Backoffice,Administrator | ClosureCreateRequest | ClosureDetailDto | Period.Estado=Abierto; Service visible al user; no existe ya Closure(Service,Period) | 201/400/401/403/409 |
 | 53 | POST | /api/closures/{id}/recalcular | ProjectManager,Backoffice,Administrator | ClosureRecalcRequest, If-Match | ClosureDetailDto | Period.Estado=Abierto; estado=Borrador o Rechazado | 200/400/401/403/404/409/412 |
 | 54 | POST | /api/closures/{id}/aprobar | ProjectManager,Backoffice,Fico,Direction (según paso actual) | ClosureApproveRequest, If-Match | ClosureDetailDto | rol del usuario coincide con paso actual | 200/400/401/403/404/409/412 |
 | 55 | POST | /api/closures/{id}/rechazar | Backoffice,Fico,Direction (según paso actual) | ClosureRejectRequest, If-Match | ClosureDetailDto | Motivo obligatorio; transición válida | 200/400/401/403/404/409/412 |
@@ -1544,9 +1533,9 @@ Adicionales implícitos por simetría CRUD que el Desarrollador implementará si
 ### 9.2 Schema bi (Power BI)
 
 Migración con SQL crudo crea schema `bi` y vistas:
-- `bi.v_cierres_por_periodo` (ProjectId, Nombre, PeriodId, PeriodoNombre, CosteTotal, FacturacionTotal, Margen, Estado).
+- `bi.v_cierres_por_periodo` (ServiceId, Nombre, PeriodId, PeriodoNombre, CosteTotal, FacturacionTotal, Margen, Estado).
 - `bi.v_lineas_por_concepto` (ClosureLineId, ConceptId, ConceptoNombre, Tipo, Importe, UserId, RecursoNombre, PeriodoId).
-- `bi.v_aprobaciones_pendientes` (ClosureId, ProjectId, ProjectoNombre, PasoActual, RolPendiente, DiasPendiente).
+- `bi.v_aprobaciones_pendientes` (ClosureId, ServiceId, ServiceNombre, PasoActual, RolPendiente, DiasPendiente).
 - `bi.v_audit_resumen` (UserId, Email, Acciones30dias, ÚltimaActividad).
 
 Power BI se conecta directamente con su conector PostgreSQL nativo a `sig_plataforma_dev|prod`, schema `bi`. RF-F03.
@@ -1649,9 +1638,9 @@ C:\dev\sig-plataforma\
 │   ├── SIG.slnx                         (solution .NET 10)
 │   ├── Directory.Packages.props         (Central Package Management)
 │   ├── SIG.Domain\
-│   │   ├── Entities\                    (User, Client, Project, Action, Concept, Variable, Period, Role, UserRole, Department, CostCenter, ProjectCostCenter, ProjectUser, ActionConcept, ActionUser, ConceptUser, Closure, ClosureLine, Approval, ApprovalHistory, AuditLog, CalculationLog, RefreshToken)
-│   │   ├── Entities\Staging\            (StagingCeleroVisita, StagingBizneoEmpleado, StagingBizneoHora, StagingIntratimeFichaje, StagingPayHawkGasto)
-│   │   ├── Enums\                       (EstadoUsuario, EstadoProyecto, EstadoAccion, TipoConcepto, EstadoPeriodo, EstadoClosure, ApprovalStep, EstadoApproval, AuditAction)
+│   │   ├── Entities\                    (User, Client, Service, Concept, Variable, Period, Role, UserRole, Department, CostCenter, ServiceConcept, ServiceUser, ServiceCostCenter, ConceptUser, TarifaServicio, PresupuestoServicio, Closure, ClosureLine, Approval, ApprovalHistory, ClosureAlerta, AuditLog, CalculationLog, RefreshToken)
+│   │   ├── Entities\Staging\            (canónico: staging_galan_{entradas,salidas,stocks}, staging_mediapost_{pedidos,recepciones}; más StagingCeleroVisita, StagingBizneoEmpleado, StagingBizneoHora, StagingIntratimeFichaje, StagingPayHawkGasto)
+│   │   ├── Enums\                       (EstadoUsuario, EstadoServicio, TipoConcepto, EstadoPeriodo, EstadoClosure, ApprovalStep, EstadoApproval, TipoAlerta, AuditAction)
 │   │   ├── Exceptions\                  (DomainException + derivadas)
 │   │   └── Common\                      (IAuditable, ISoftDeletable, IStagingRow)
 │   ├── SIG.Application\
@@ -1660,7 +1649,7 @@ C:\dev\sig-plataforma\
 │   │   │   ├── Services\                (IAuthService, IClosureService, …)
 │   │   │   ├── Repositories\            (IUserRepository, IClosureRepository, …)
 │   │   │   └── Integrations\            (ICeleroClient, IBizneoClient, …)
-│   │   ├── Services\                    (ProjectService, ClientService, ClosureService, ApprovalService, DashboardService, CalculationService, AuditService, SyncService, ExportService, SeedService — NO AuthService, ese va a Infrastructure)
+│   │   ├── Services\                    (ServiceService, ClientService, ClosureService, ApprovalService, DashboardService, CalculationService, AuditService, SyncService, ExportService, SeedService — NO AuthService, ese va a Infrastructure)
 │   │   ├── Calculation\                 (CalculationEngine, FormulaParser, CalculationContext, CalculationDataLoader, VariableResolver, FormulaNode AST, NumberNode, VariableNode, SourceNode, AggregateNode, BinaryOpNode)
 │   │   ├── Validators\                  (LoginRequestValidator, ClientCreateRequestValidator, …)
 │   │   └── Common\                      (PagedResult, CurrentUserService interface — impl en Infra)
@@ -1678,7 +1667,7 @@ C:\dev\sig-plataforma\
 │   │   ├── Seed\                        (DataSeeder con ejecución idempotente)
 │   │   └── DependencyInjection.cs       (AddInfrastructure(IServiceCollection, IConfiguration))
 │   ├── SIG.API\
-│   │   ├── Controllers\                 (AuthController, ClientsController, ProjectsController, ActionsController, ConceptsController, UsersController, RolesController, DepartmentsController, CostCentersController, PeriodsController, ClosuresController, ApprovalsController, DashboardController, CalculationsController, AuditController, SyncController, ExportsController, DevController, HealthController)
+│   │   ├── Controllers\                 (AuthController, ClientsController, ServicesController, ConceptsController, UsersController, RolesController, DepartmentsController, CostCentersController, PeriodsController, ClosuresController, ApprovalsController, DashboardController, CalculationsController, AuditController, SyncController, ExportsController, GalanController, MediapostController, DevController, HealthController)
 │   │   ├── Filters\                     (ValidationFilter : IAsyncActionFilter)
 │   │   ├── Middleware\                  (ExceptionHandlingMiddleware)
 │   │   ├── Properties\launchSettings.json (puertos 5180/5181 pinned)
@@ -1701,14 +1690,13 @@ C:\dev\sig-plataforma\
     │   │   ├── app.routes.ts            (redirect a /home PRIMERO, layouts después — gotcha orden de rutas)
     │   │   ├── core\
     │   │   │   ├── auth\                (AuthService, JWTInterceptor, AuthGuard, RoleGuard)
-    │   │   │   └── api\                 (ApiBase, ClientService, ProjectsService, ClosuresService, ApprovalsService, DashboardService, …)
+    │   │   │   └── api\                 (ApiBase, ClientService, ServiceService — services.service.ts, ClosuresService, ApprovalsService, DashboardService, …)
     │   │   ├── shared\                  (Material modules, layout AppBar+SideNav, breadcrumbs, table-paged, period-selector, demo-credentials-banner)
     │   │   ├── features\
     │   │   │   ├── login\
     │   │   │   ├── dashboard\
     │   │   │   ├── clients\
-    │   │   │   ├── projects\
-    │   │   │   ├── actions\
+    │   │   │   ├── services\            (services-list, service-form, service-detail + tarifas\ + presupuestos\)
     │   │   │   ├── concepts\            (incluye editor visual de fórmula — Designer)
     │   │   │   ├── variables\
     │   │   │   ├── periods\
@@ -1762,10 +1750,10 @@ Ambas métricas cumplen el umbral (CS ≥ 1.0, GS > 0.8).
 | RF-A03 | RefreshToken | IAuthService | IRefreshTokenRepository | AuthController | — (interceptor) |
 | RF-B01 | Closure, Period | IDashboardService | IClosureRepository, IPeriodRepository | DashboardController | dashboard |
 | RF-B02 | Closure, StagingX | IDashboardService | IClosureRepository | DashboardController | dashboard |
-| RF-B03 | Project, ProjectUser | IDashboardService | IProjectRepository | DashboardController | dashboard |
+| RF-B03 | Service, ServiceUser | IDashboardService | IServiceRepository | DashboardController | dashboard |
 | RF-C01 | Client | IClientService | IClientRepository | ClientsController | clients |
-| RF-C02 | Project, ProjectCostCenter, ProjectUser | IProjectService | IProjectRepository | ProjectsController | proyectos |
-| RF-C03 | Action, ActionConcept, ActionUser | IActionService | IActionRepository | ActionsController | acciones |
+| RF-C02 | Service, ServiceCostCenter, ServiceUser, ServiceConcept | IServiceService | IServiceRepository | ServicesController | services |
+| RF-C03 | *(consolidado en RF-C02 — Action eliminado)* | IServiceService | IServiceRepository | ServicesController | services |
 | RF-C04 | Concept | IConceptService | IConceptRepository | ConceptsController | conceptos |
 | RF-C05 | User, UserRole | IUserService | IUserRepository | UsersController | admin/usuarios |
 | RF-C06 | Role, Department, CostCenter | IRoleService, IDepartmentService, ICostCenterService | IRoleRepository, IDepartmentRepository, ICostCenterRepository | RolesController, DepartmentsController, CostCentersController | admin/roles, admin/departments, admin/cost-centers |

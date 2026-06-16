@@ -27,10 +27,9 @@
 
 ## 1. Resumen ejecutivo
 
-- **65 endpoints explícitos** documentados con firma completa.
-- 4 endpoints derivables por simetría (Variables CRUD) no contabilizados en CS/GS.
-- **CS (Contract Score)** = 65/65 = **1.0** ✓
-- **GS (Guard Score)** = 64/64 = **1.0** ✓ (`/api/health` es Anonymous por diseño y no cuenta)
+- Catálogo de endpoints actualizado tras el refactor **Project→Service** (módulos `Projects` y `Actions` eliminados, unificados en `Services` con subrutas `tarifas` y `presupuestos`) y la incorporación de **closure alerts**.
+- Numeración: los IDs de fila se mantienen estables salvo en bloques refactorizados, donde se usan sufijos (`19a..19e`, `55a..55c`) para no renumerar el resto del documento.
+- Reglas transversales (ownership, `If-Match`, enums como string) sin cambios.
 
 ---
 
@@ -55,25 +54,41 @@
 | 8 | PUT | `/api/clients/{id}` | Administrator | `ClientUpdateRequest` | `ClientDetailDto` | 200/400/401/403/404/409 |
 | 9 | DELETE | `/api/clients/{id}` | Administrator | — | — | 204/401/403/404/409 |
 
-### 2.3 Projects (RF-C02, RF-G01)
+### 2.3 Services (RF-C02, RF-C03, RF-G01)
+
+> Unifica los antiguos módulos Projects y Actions, ambos eliminados. La entidad operativa única es **Service**. Subrutas anidadas para Tarifas y Presupuestos del servicio.
 
 | # | Método | Ruta | Auth | Request | Response | Códigos |
 |---|---|---|---|---|---|---|
-| 10 | GET | `/api/projects` | All (filtrado ownership) | `?page,pageSize,clientId,search` | `PagedResult<ProjectListItemDto>` | 200/401 |
-| 11 | GET | `/api/projects/{id}` | All (ownership) | — | `ProjectDetailDto` | 200/401/403/404 |
-| 12 | POST | `/api/projects` | Administrator, Backoffice | `ProjectCreateRequest` | `ProjectDetailDto` | 201/400/401/403 |
-| 13 | PUT | `/api/projects/{id}` | Administrator, Backoffice | `ProjectUpdateRequest` | `ProjectDetailDto` | 200/400/401/403/404 |
-| 14 | DELETE | `/api/projects/{id}` | Administrator | — | — | 204/401/403/404/409 |
+| 10 | GET | `/api/services` | All (filtrado ownership) | `?page,pageSize,clientId,search` | `PagedResult<ServiceListItemDto>` | 200/401 |
+| 11 | GET | `/api/services/{id}` | All (ownership) | — | `ServiceDetailDto` | 200/401/403/404 |
+| 12 | POST | `/api/services` | Administrator, Backoffice | `ServiceCreateRequest` | `ServiceDetailDto` | 201/400/401/403 |
+| 13 | PUT | `/api/services/{id}` | Administrator, Backoffice | `ServiceUpdateRequest` | `ServiceDetailDto` | 200/400/401/403/404 |
+| 14 | DELETE | `/api/services/{id}` | Administrator | — | — | 204/401/403/404/409 |
 
-### 2.4 Actions (RF-C03)
+#### 2.3.1 Tarifas del servicio (`TarifasController`)
+
+> Ruta anidada `/api/services/{serviceId}/tarifas`. GET es Authenticated; mutaciones requieren Administrator o Backoffice.
 
 | # | Método | Ruta | Auth | Request | Response | Códigos |
 |---|---|---|---|---|---|---|
-| 15 | GET | `/api/actions` | All (ownership) | `?page,pageSize,projectId,search` | `PagedResult<ActionListItemDto>` | 200/401 |
-| 16 | GET | `/api/actions/{id}` | All (ownership) | — | `ActionDetailDto` | 200/401/403/404 |
-| 17 | POST | `/api/actions` | Administrator, Backoffice | `ActionCreateRequest` | `ActionDetailDto` | 201/400/401/403 |
-| 18 | PUT | `/api/actions/{id}` | Administrator, Backoffice | `ActionUpdateRequest` | `ActionDetailDto` | 200/400/401/403/404 |
-| 19 | DELETE | `/api/actions/{id}` | Administrator | — | — | 204/401/403/404/409 |
+| 15 | GET | `/api/services/{serviceId}/tarifas` | Authenticated | — | `TarifaServicioDto[]` | 200/401/403/404 |
+| 16 | GET | `/api/services/{serviceId}/tarifas/{id}` | Authenticated | — | `TarifaServicioDto` | 200/401/403/404 |
+| 17 | POST | `/api/services/{serviceId}/tarifas` | Administrator, Backoffice | `TarifaServicioCreateRequest` | `TarifaServicioDto` | 201/400/401/403/404 |
+| 18 | PUT | `/api/services/{serviceId}/tarifas/{id}` | Administrator, Backoffice | `TarifaServicioUpdateRequest` | `TarifaServicioDto` | 200/400/401/403/404 |
+| 19 | DELETE | `/api/services/{serviceId}/tarifas/{id}` | Administrator, Backoffice | — | — | 204/401/403/404 |
+
+#### 2.3.2 Presupuestos del servicio (`PresupuestosController`)
+
+> Ruta anidada `/api/services/{serviceId}/presupuestos`. GET es Authenticated; mutaciones requieren Administrator o Backoffice.
+
+| # | Método | Ruta | Auth | Request | Response | Códigos |
+|---|---|---|---|---|---|---|
+| 19a | GET | `/api/services/{serviceId}/presupuestos` | Authenticated | — | `PresupuestoServicioDto[]` | 200/401/403/404 |
+| 19b | GET | `/api/services/{serviceId}/presupuestos/{id}` | Authenticated | — | `PresupuestoServicioDto` | 200/401/403/404 |
+| 19c | POST | `/api/services/{serviceId}/presupuestos` | Administrator, Backoffice | `PresupuestoServicioCreateRequest` | `PresupuestoServicioDto` | 201/400/401/403/404 |
+| 19d | PUT | `/api/services/{serviceId}/presupuestos/{id}` | Administrator, Backoffice | `PresupuestoServicioUpdateRequest` | `PresupuestoServicioDto` | 200/400/401/403/404 |
+| 19e | DELETE | `/api/services/{serviceId}/presupuestos/{id}` | Administrator, Backoffice | — | — | 204/401/403/404 |
 
 ### 2.5 Concepts (RF-C04, RF-D07)
 
@@ -127,14 +142,28 @@
 
 ### 2.9 Closures (RF-D01)
 
+> `ClosureCreateRequest` referencia el servicio vía `ServiceId` (antes `ProjectId`).
+
 | # | Método | Ruta | Auth | Request | Response | Códigos |
 |---|---|---|---|---|---|---|
 | 50 | GET | `/api/closures` | All (ownership) | `?ApprovalFilterRequest` | `PagedResult<ClosureListItemDto>` | 200/401 |
 | 51 | GET | `/api/closures/{id}` | All (ownership) | — | `ClosureDetailDto` | 200/401/403/404 |
-| 52 | POST | `/api/closures` | ProjectManager, Backoffice, Administrator | `ClosureCreateRequest` | `ClosureDetailDto` | 201/400/401/403/409 |
+| 52 | POST | `/api/closures` | ProjectManager, Backoffice, Administrator | `ClosureCreateRequest { serviceId, periodId, comentarios? }` | `ClosureDetailDto` | 201/400/401/403/409 |
 | 53 | POST | `/api/closures/{id}/recalcular` | ProjectManager, Backoffice, Administrator | `ClosureRecalcRequest` + `If-Match` | `ClosureDetailDto` | 200/400/401/403/404/409/412 |
 | 54 | POST | `/api/closures/{id}/aprobar` | Según paso actual (PM/Back/Fico/Dir) | `ClosureApproveRequest` + `If-Match` | `ClosureDetailDto` | 200/400/401/403/404/409/412 |
 | 55 | POST | `/api/closures/{id}/rechazar` | Según paso actual | `ClosureRejectRequest { motivo }` + `If-Match` | `ClosureDetailDto` | 200/400/401/403/404/409/412 |
+
+#### 2.9.1 Alertas de cierre (closure alerts)
+
+> Alertas calculadas sobre cada Closure. La confirmación devuelve el `ClosureDetailDto` actualizado. Todos validan acceso (ownership) al closure.
+
+| # | Método | Ruta | Auth | Request | Response | Códigos |
+|---|---|---|---|---|---|---|
+| 55a | GET | `/api/closures/{id}/alertas` | All (ownership) | — | `ClosureAlertaDto[]` | 200/401/403/404 |
+| 55b | POST | `/api/closures/{id}/alertas/{alertaId}/confirmar` | ProjectManager, Backoffice, Fico, Direction, Administrator | — | `ClosureDetailDto` | 200/401/403/404/409 |
+| 55c | GET | `/api/closures/todas-alertas` | All (ownership) | — | `ClosureAlertaResumida[]` | 200/401 |
+
+> `ClosureAlertaResumida` (resumen de alertas de todos los cierres visibles): `{ id, tipo (string), codigo, descripcion, confirmada, closureId, serviceId, closureNombre }`.
 
 ### 2.10 Approvals (RF-D02..D06)
 
@@ -184,8 +213,12 @@ Las firmas completas (con tipos, validaciones FluentValidation y anotaciones) es
 
 DTOs clave:
 - **Auth**: `LoginRequest`, `LoginResponse`, `RefreshRequest`, `RefreshResponse`, `UsuarioBriefDto`
-- **Catálogos**: `ClientDetailDto`, `ProjectDetailDto`, `ActionDetailDto`, `ConceptDetailDto`, `UserDetailDto`
-- **Closures**: `ClosureDetailDto`, `ClosureLineDto`, `ClosureCreateRequest`, `ClosureRecalcRequest`, `ClosureApproveRequest`, `ClosureRejectRequest`
+- **Catálogos**: `ClientDetailDto`, `ServiceDetailDto`, `ServiceListItemDto`, `ConceptDetailDto`, `UserDetailDto`
+- **Service (campos)**: `ServiceListItemDto { id, nombre, clientId, clientNombre, departmentId?, estado }`; `ServiceDetailDto { id, nombre, clientId, clientNombre, departmentId?, estado, interlocutorNombre?, interlocutorEmail?, interlocutorTelefono?, fechaAlta, costCenterIds[], userIds[], conceptIds[] }`; `ServiceCreateRequest`/`ServiceUpdateRequest` con los mismos campos editables (`nombre, clientId, departmentId?, estado, interlocutor*, fechaAlta, costCenterIds[], userIds[], conceptIds[]`).
+- **Tarifas/Presupuestos**: `TarifaServicioDto { id, serviceId, nombre, valor, unidad?, fechaDesde, fechaHasta? }` (+ Create/Update); `PresupuestoServicioDto { id, serviceId, periodId?, tipo, importe, descripcion? }` (+ Create/Update).
+- **Concept**: `ConceptDetailDto` y `ConceptCreateRequest`/`ConceptUpdateRequest` usan `serviceIds[]` (antes `actionIds[]`) y `userIds[]`.
+- **Closures**: `ClosureListItemDto { id, serviceId, serviceNombre, periodId, periodNombre, costeTotal, facturacionTotal, margen, estado, pasoActual }`; `ClosureDetailDto { ..., serviceId, serviceNombre, ..., lines[], approvals[], alertas[] }`; `ClosureCreateRequest { serviceId, periodId, comentarios? }`; `ClosureRecalcRequest`, `ClosureApproveRequest`, `ClosureRejectRequest`.
+- **Closure alerts**: `ClosureAlertaDto { id, tipo, codigo, descripcion, detalle?, confirmada, confirmadaPorNombre?, fechaConfirmacion? }`; `ClosureAlertaResumida { id, tipo, codigo, descripcion, confirmada, closureId, serviceId, closureNombre }`.
 - **Approvals**: `ApprovalPanelItemDto`, `ApprovalHistoryDto`
 - **Cálculo**: `CalculationDetailDto` (incluye `formulaJson`, `inputsJson`, `resultado`)
 - **Dashboard**: `DashboardKpisDto`, `DashboardAvisoDto`, `MiProyectoDto`
