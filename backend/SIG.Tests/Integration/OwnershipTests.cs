@@ -99,7 +99,7 @@ public class OwnershipTests : IntegrationTestBase
     public async Task Reader_NoPuedeCrearCliente_Devuelve403()
     {
         var reader = await CreateAuthenticatedClientAsync("reader@sig.local");
-        var req = new ClientCreateRequest("X", "X99999999", null, null, null, null, null, null, null, null);
+        var req = new ClientCreateRequest("X", "X99999999", null, null, null, null, null, null, null, null, null);
         var resp = await reader.PostAsJsonAsync("/api/clients", req);
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

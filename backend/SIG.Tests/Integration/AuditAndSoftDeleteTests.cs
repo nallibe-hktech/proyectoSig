@@ -28,7 +28,7 @@ public class AuditAndSoftDeleteTests : IntegrationTestBase
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var auditCountBefore = await db.AuditLogs.CountAsync();
 
-        var resp = await client.PostAsJsonAsync("/api/clients", new ClientCreateRequest("AuditTest", nif, null, null, null, null, null, null, null, null));
+        var resp = await client.PostAsJsonAsync("/api/clients", new ClientCreateRequest("AuditTest", nif, null, null, null, null, null, null, null, null, null));
         resp.StatusCode.Should().Be(HttpStatusCode.Created);
         var detail = await ReadJsonAsync<ClientDetailDto>(resp);
 
@@ -73,7 +73,7 @@ public class AuditAndSoftDeleteTests : IntegrationTestBase
     {
         var client = await CreateAuthenticatedClientAsync();
         var nif = $"S{DateTime.UtcNow.Ticks % 90000000:00000000}";
-        var create = await client.PostAsJsonAsync("/api/clients", new ClientCreateRequest("SoftDeleteTest", nif, null, null, null, null, null, null, null, null));
+        var create = await client.PostAsJsonAsync("/api/clients", new ClientCreateRequest("SoftDeleteTest", nif, null, null, null, null, null, null, null, null, null));
         var detail = await ReadJsonAsync<ClientDetailDto>(create);
         var id = detail!.Id;
 
@@ -99,7 +99,7 @@ public class AuditAndSoftDeleteTests : IntegrationTestBase
     {
         var client = await CreateAuthenticatedClientAsync();
         var nif = $"L{DateTime.UtcNow.Ticks % 90000000:00000000}";
-        var create = await client.PostAsJsonAsync("/api/clients", new ClientCreateRequest("ListSoftDel", nif, null, null, null, null, null, null, null, null));
+        var create = await client.PostAsJsonAsync("/api/clients", new ClientCreateRequest("ListSoftDel", nif, null, null, null, null, null, null, null, null, null));
         var detail = await ReadJsonAsync<ClientDetailDto>(create);
 
         await client.DeleteAsync($"/api/clients/{detail!.Id}");

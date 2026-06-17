@@ -46,7 +46,7 @@ public class PeriodServiceTests
     [Fact]
     public async Task CreateAsync_NombreDuplicado_LanzaDuplicateException()
     {
-        var req = new PeriodCreateRequest("Abril 2026", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 30));
+        var req = new PeriodCreateRequest("Abril 2026", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 30), 30);
         _repo.ExistsByNombreAsync("Abril 2026", null, Arg.Any<CancellationToken>()).Returns(true);
 
         await FluentActions.Awaiting(() => _sut.CreateAsync(req, CancellationToken.None))
@@ -56,7 +56,7 @@ public class PeriodServiceTests
     [Fact]
     public async Task CreateAsync_PersistePeriodoEnEstadoAbierto()
     {
-        var req = new PeriodCreateRequest("Abril 2026", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 30));
+        var req = new PeriodCreateRequest("Abril 2026", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 30), 30);
         _repo.ExistsByNombreAsync("Abril 2026", null, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _sut.CreateAsync(req, CancellationToken.None);

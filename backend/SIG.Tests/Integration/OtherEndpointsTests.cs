@@ -380,7 +380,7 @@ public class OtherEndpointsTests : IntegrationTestBase
         var client = await CreateAuthenticatedClientAsync();
         var clients = await ReadJsonAsync<PagedResult<ClientListItemDto>>(await client.GetAsync("/api/clients"));
         var existingNif = clients!.Items.First().NIF;
-        var resp = await client.PostAsJsonAsync("/api/clients", new ClientCreateRequest("Dup", existingNif, null, null, null, null, null, null, null, null));
+        var resp = await client.PostAsJsonAsync("/api/clients", new ClientCreateRequest("Dup", existingNif, null, null, null, null, null, null, null, null, null));
         resp.StatusCode.Should().Be(HttpStatusCode.Conflict);
         var content = await resp.Content.ReadAsStringAsync();
         content.Should().Contain("duplicate");
