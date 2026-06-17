@@ -199,12 +199,14 @@ public class Client : ISoftDeletable, IAuditable
     public string? ContactoNombre { get; set; }
     public string? ContactoEmail { get; set; }
     public string? ContactoTelefono { get; set; }
+    public EstadoCliente Estado { get; set; }         // Ola 2 (#6): Activo | Inactivo — único estado del cliente
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public ICollection<Service> Services { get; set; } = new List<Service>();
 }
+public enum EstadoCliente { Activo, Inactivo }
 ```
 
 #### Service (RF-C02)
@@ -1780,3 +1782,31 @@ Ambas métricas cumplen el umbral (CS ≥ 1.0, GS > 0.8).
 - `docs/PROGRESO.md` — estado del pipeline.
 - `docs/EXPORTS.md` — estructura XML A3 Innuva y A3 ERP (a generar por el Desarrollador en su fase; placeholder).
 - `docs/BLOQUEANTES.md` — sin entradas; no hay bloqueantes en Fase 1.
+
+---
+
+## 15. Cambios funcionales — Ola 2 (decisiones 2026-06-17)
+
+> Esta sección es **autoritativa** y enmienda las secciones referenciadas. Recoge 11 cambios pedidos por cliente y las decisiones de diseño tomadas. Implementación por olas; estado en `docs/PROGRESO.md`. Ambigüedades menores y aparcamientos en `docs/SUPOSICIONES_CRITICAS.md`.
+
+### 15.1 Estado del flujo de implementación
+
+| Ola | Items | Riesgo | Estado |
+|-----|-------|--------|--------|
+| 1 | #6 EstadoCliente · #4 Cliente→Servicios · #3b Cecos display · #7 Conceptos (alta solo admin + UI separada) | Bajo | ✅ Completada (migración `20260617113452_AddEstadoCliente`; build+212 tests verde) |
+| 2 | #3a Incentivos manuales · #8 Conceptos por cliente · #2 Contratos un día · #9 Periodos fechas pago | Medio | ✅ Completada + testeada (migraciones AddDiaPagoToPeriod / AddContratoIgnorado / AddManualLineFields; +72 tests, suite 284 verde) |
+| 3 | #1 Flujo aprobación (Grupo→FICO) · #10 Dos cierres | Alto / estructural | Pendiente |
+| — | #5 Panel facturas pagadas/pendientes por cliente | — | **APARCADO** |
+
+### 15.2 Decisiones autoritativas
+
+- **#1 Aprobaciones (Ola 3, enmienda §3.3 y §4):** flujo nuevo **Grupo → FICO → Exportado**. El "grupo" del servicio = facilitador + interlocutor + gestor + usuarios asignados (`ServiceUser`). Con que **un** miembro del grupo apruebe, avanza a FICO. Se **eliminan** los pasos `ProjectManager`, `Backoffice` y `Direction` del `enum ApprovalStep` y de `StepToRole`/autorizaciones. **Sub-decisión pendiente (al abordar Ola 3):** cómo se asignan facilitador/interlocutor/gestor como usuarios reales del servicio (hoy `Service.InterlocutorNombre/Email/Telefono` son texto plano, no enlaces a `User`).
+- **#10 Cierres (Ola 3, enmienda §3.2):** separar el `Closure` único en **dos procesos independientes**: **Cierre de Costes** (mensual) y **Cierre de Facturación** (puede quedar pendiente varios meses; no mensual; no bloquea el de costes). Cada uno con su propio estado y ciclo de vida.
+- **#7 + #8 Conceptos (enmienda §3.1 Concept):** el **alta** de conceptos queda restringida a rol **Administrador** (hoy `POST /api/concepts` permite `Administrator,Backoffice`). El resto de usuarios **no crea** conceptos: solo selecciona/añade/quita/ajusta conceptos por cliente/servicio sobre el catálogo existente (`Concept.ServiceId`, `ServiceConcept`). UI de conceptos **separada en Pagos y Facturación** (`TipoConcepto` ya distingue).
+- **#6 Cliente (enmienda §3.1 Client):** añadido `EstadoCliente { Activo, Inactivo }` como único estado del cliente. No existían otros estados (el cliente solo tenía `IsDeleted`); "eliminar pendiente/en revisión" no aplica.
+- **#4 (frontend):** desde el detalle de cliente, navegación a sus servicios para editarlos (hoy `client-detail` no lista servicios).
+- **#3b Cecos (enmienda §3.1 CostCenter, presentación):** mostrar el **nombre** del ceco (`CostCenter.Nombre`) en lugar del código numérico (`Codigo`). Ver suposición en `SUPOSICIONES_CRITICAS.md`.
+- **#3a Incentivos manuales (Ola 2, enmienda §6):** introducir importes/incentivos manuales en el motor como línea no calculada por fórmula. Reutilizar el scaffolding existente (`OverrideExceptionDialog`, `PresupuestoServicio`).
+- **#2 Contratos de un día (Ola 2):** detectar `StagingA3InnuvaContrato` con `FechaInicio == FechaFin`; permitir marcarlos "a ignorar" con motivo/nota; excluirlos de las validaciones de cierre.
+- **#9 Periodos (Ola 2, enmienda §3.1 Period):** diferenciar fechas de pago 30/15/9. Interpretación en `SUPOSICIONES_CRITICAS.md` (pendiente confirmar si día del mes o plazo en días).
+- **#5 APARCADO:** panel de facturas pagadas/pendientes por cliente. No existe entidad Factura/Pago ni estado de pago. Retomar cuando el cliente defina el origen del estado.
