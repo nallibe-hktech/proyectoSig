@@ -10,12 +10,12 @@ public class CalculationDataLoader : ICalculationDataLoader
     private readonly AppDbContext _db;
     public CalculationDataLoader(AppDbContext db) { _db = db; }
 
-    public async Task<CalculationContext> LoadAsync(Closure closure, CancellationToken ct)
+    public async Task<CalculationContext> LoadAsync(CalculationTarget target, CancellationToken ct)
     {
         var ctx = new CalculationContext();
-        var desde = closure.Period.FechaInicio;
-        var hasta = closure.Period.FechaFin;
-        var serviceId = closure.ServiceId;
+        var desde = target.Period.FechaInicio;
+        var hasta = target.Period.FechaFin;
+        var serviceId = target.ServiceId;
 
         ctx.Visitas = await _db.StagingCeleroVisitas.AsNoTracking()
             .Where(v => v.ServiceId == serviceId && v.Fecha >= desde && v.Fecha <= hasta).ToListAsync(ct);

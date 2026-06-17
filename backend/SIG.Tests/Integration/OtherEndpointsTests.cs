@@ -174,8 +174,8 @@ public class OtherEndpointsTests : IntegrationTestBase
     public async Task GetExportA3Innuva_ClosureNoAprobado_Devuelve409()
     {
         var client = await CreateAuthenticatedClientAsync();
-        // Pick un closure no Aprobado
-        var all = await ReadJsonAsync<PagedResult<ClosureListItemDto>>(await client.GetAsync("/api/closures?pageSize=100"));
+        // A3 Innuva (pagos) exporta un CierreCostes (Ola 3b #10). Tomar uno no Aprobado.
+        var all = await ReadJsonAsync<PagedResult<CierreListItemDto>>(await client.GetAsync("/api/cierres-costes?pageSize=100"));
         var target = all!.Items.FirstOrDefault(c => c.Estado != EstadoClosure.Aprobado && c.Estado != EstadoClosure.Exportado);
         if (target is null) return;
         var resp = await client.GetAsync($"/api/exports/a3-innuva/{target.Id}");
@@ -186,7 +186,7 @@ public class OtherEndpointsTests : IntegrationTestBase
     public async Task GetExportA3Innuva_ClosureAprobado_DevuelveExcel()
     {
         var client = await CreateAuthenticatedClientAsync();
-        var all = await ReadJsonAsync<PagedResult<ClosureListItemDto>>(await client.GetAsync("/api/closures?pageSize=100"));
+        var all = await ReadJsonAsync<PagedResult<CierreListItemDto>>(await client.GetAsync("/api/cierres-costes?pageSize=100"));
         var target = all!.Items.FirstOrDefault(c => c.Estado == EstadoClosure.Aprobado);
         if (target is null) return; // No closures aprobados disponibles
         var resp = await client.GetAsync($"/api/exports/a3-innuva/{target.Id}");
@@ -209,7 +209,8 @@ public class OtherEndpointsTests : IntegrationTestBase
     public async Task GetExportA3Erp_ClosureNoAprobado_Devuelve409()
     {
         var client = await CreateAuthenticatedClientAsync();
-        var all = await ReadJsonAsync<PagedResult<ClosureListItemDto>>(await client.GetAsync("/api/closures?pageSize=100"));
+        // A3 ERP (facturas) exporta un CierreFacturacion (Ola 3b #10). Tomar uno no Aprobado.
+        var all = await ReadJsonAsync<PagedResult<CierreListItemDto>>(await client.GetAsync("/api/cierres-facturacion?pageSize=100"));
         var target = all!.Items.FirstOrDefault(c => c.Estado != EstadoClosure.Aprobado && c.Estado != EstadoClosure.Exportado);
         if (target is null) return;
         var resp = await client.GetAsync($"/api/exports/a3-erp/{target.Id}");
@@ -251,7 +252,7 @@ public class OtherEndpointsTests : IntegrationTestBase
         var client = await CreateAuthenticatedClientAsync();
         var resp = await client.GetAsync("/api/approvals?page=1&pageSize=25");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await ReadJsonAsync<PagedResult<ApprovalPanelItemDto>>(resp);
+        var body = await ReadJsonAsync<PagedResult<CierrePanelItemDto>>(resp);
         body.Should().NotBeNull();
     }
 
@@ -261,15 +262,16 @@ public class OtherEndpointsTests : IntegrationTestBase
         var client = await CreateAuthenticatedClientAsync("pm.alpha@sig.local");
         var resp = await client.GetAsync("/api/approvals/pendientes?page=1&pageSize=25");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await ReadJsonAsync<PagedResult<ApprovalPanelItemDto>>(resp);
+        var body = await ReadJsonAsync<PagedResult<CierrePanelItemDto>>(resp);
         body.Should().NotBeNull();
     }
 
     [Fact]
     public async Task GetApprovalsHistorial_ClosureInexistente_Devuelve404()
     {
+        // Ola 3b (#10): el historial vive en el controlador del cierre (api/cierres-costes/{id}/historial).
         var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.GetAsync("/api/approvals/historial/999999");
+        var resp = await client.GetAsync("/api/cierres-costes/999999/historial");
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 

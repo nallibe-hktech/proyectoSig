@@ -175,3 +175,32 @@ public class ClosureRejectRequestValidator : AbstractValidator<ClosureRejectRequ
 {
     public ClosureRejectRequestValidator() { RuleFor(x => x.Motivo).NotEmpty().MaximumLength(2000); }
 }
+
+// Ola 3b (#10): validadores para los DTOs de cierre separados.
+public class CierreCreateRequestValidator : AbstractValidator<CierreCreateRequest>
+{
+    public CierreCreateRequestValidator()
+    {
+        RuleFor(x => x.ServiceId).GreaterThan(0);
+        RuleFor(x => x.PeriodId).GreaterThan(0);
+    }
+}
+
+public class CierreRejectRequestValidator : AbstractValidator<CierreRejectRequest>
+{
+    public CierreRejectRequestValidator() { RuleFor(x => x.Motivo).NotEmpty().MaximumLength(2000); }
+}
+
+public class CierreLineOverrideRequestValidator : AbstractValidator<CierreLineOverrideRequest>
+{
+    public CierreLineOverrideRequestValidator() { RuleFor(x => x.Motivo).NotEmpty().MaximumLength(2000); }
+}
+
+public class CierreLineIncentivoRequestValidator : AbstractValidator<CierreLineIncentivoRequest>
+{
+    public CierreLineIncentivoRequestValidator()
+    {
+        RuleFor(x => x.ConceptId).GreaterThan(0);
+        RuleFor(x => x.Motivo).NotEmpty().MaximumLength(2000);
+    }
+}

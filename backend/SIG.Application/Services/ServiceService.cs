@@ -86,7 +86,7 @@ public class ServiceService : IServiceService
     {
         var a = await _repo.GetByIdAndUsuarioIdAsync(id, usuarioId, ct)
                 ?? throw new EntityNotFoundException("Service", id);
-        if (await _repo.HasClosuresAsync(id, ct))
+        if (await _repo.HasCierresAsync(id, ct))
             throw new DependenciesExistException(1);
         a.IsDeleted = true;
         a.DeletedAt = DateTime.UtcNow;

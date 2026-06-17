@@ -13,5 +13,7 @@ public enum ApprovalStep
     SystemExports = 3
 }
 public enum EstadoApproval { Pendiente, Aprobado, Rechazado }
+// Ola 3b (#10): discrimina a qué tipo de cierre (raíz) pertenece una línea/aprobación/alerta.
+public enum TipoCierre { Costes, Facturacion }
 public enum AuditAction { Create, Update, Delete, Login, Logout, Export, Recalc }
 public enum TipoAlerta { Bloqueante, Advertencia }

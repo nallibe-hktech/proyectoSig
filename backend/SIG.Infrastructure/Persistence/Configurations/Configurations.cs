@@ -208,25 +208,38 @@ public class PeriodConfiguration : IEntityTypeConfiguration<Period>
     }
 }
 
-public class ClosureConfiguration : IEntityTypeConfiguration<Closure>
+// Ola 3b (#10): dos raíces de cierre con tablas separadas.
+public class CierreCostesConfiguration : IEntityTypeConfiguration<CierreCostes>
 {
-    public void Configure(EntityTypeBuilder<Closure> b)
+    public void Configure(EntityTypeBuilder<CierreCostes> b)
     {
+        b.ToTable("cierres_costes");
         b.HasIndex(c => new { c.ServiceId, c.PeriodId }).IsUnique();
-        b.Property(c => c.CosteTotal).HasPrecision(18, 4);
-        b.Property(c => c.FacturacionTotal).HasPrecision(18, 4);
-        b.Property(c => c.Margen).HasPrecision(18, 4);
+        b.Property(c => c.Total).HasPrecision(18, 4);
         b.Property(c => c.Estado).HasConversion<string>().HasMaxLength(30);
         b.Property(c => c.PasoActual).HasConversion<int>();
         b.Property(c => c.Comentarios).HasMaxLength(2000);
-        b.Property(c => c.RowVersion)
-            .IsRowVersion()
-            .HasColumnName("xmin")
-            .HasColumnType("xid")
-            .ValueGeneratedOnAddOrUpdate()
-            .IsConcurrencyToken();
-        b.HasOne(c => c.Service).WithMany(p => p.Closures).HasForeignKey(c => c.ServiceId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne(c => c.Period).WithMany(p => p.Closures).HasForeignKey(c => c.PeriodId).OnDelete(DeleteBehavior.Restrict);
+        b.Property(c => c.RowVersion).IsRowVersion().HasColumnName("xmin").HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+        b.HasOne(c => c.Service).WithMany(p => p.CierresCostes).HasForeignKey(c => c.ServiceId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(c => c.Period).WithMany(p => p.CierresCostes).HasForeignKey(c => c.PeriodId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class CierreFacturacionConfiguration : IEntityTypeConfiguration<CierreFacturacion>
+{
+    public void Configure(EntityTypeBuilder<CierreFacturacion> b)
+    {
+        b.ToTable("cierres_facturacion");
+        b.HasIndex(c => new { c.ServiceId, c.PeriodId }).IsUnique();
+        b.Property(c => c.Total).HasPrecision(18, 4);
+        b.Property(c => c.Estado).HasConversion<string>().HasMaxLength(30);
+        b.Property(c => c.PasoActual).HasConversion<int>();
+        b.Property(c => c.Comentarios).HasMaxLength(2000);
+        b.Property(c => c.RowVersion).IsRowVersion().HasColumnName("xmin").HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+        b.HasOne(c => c.Service).WithMany(p => p.CierresFacturacion).HasForeignKey(c => c.ServiceId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(c => c.Period).WithMany(p => p.CierresFacturacion).HasForeignKey(c => c.PeriodId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -240,13 +253,13 @@ public class ClosureLineConfiguration : IEntityTypeConfiguration<ClosureLine>
         b.Property(c => c.ImporteOriginal).HasPrecision(18, 4);
         b.Property(c => c.MotivoManual).HasMaxLength(2000);
         b.Property(c => c.DatosEntradaJson).HasColumnType("jsonb").IsRequired();
-        b.Property(c => c.RowVersion)
-            .IsRowVersion()
-            .HasColumnName("xmin")
-            .HasColumnType("xid")
-            .ValueGeneratedOnAddOrUpdate()
-            .IsConcurrencyToken();
-        b.HasOne(c => c.Closure).WithMany(cl => cl.Lines).HasForeignKey(c => c.ClosureId).OnDelete(DeleteBehavior.Cascade);
+        b.Property(c => c.RowVersion).IsRowVersion().HasColumnName("xmin").HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+        // Ola 3b (#10): dueño por una de las dos FK nullable (exactamente una poblada).
+        b.HasIndex(c => c.CierreCostesId);
+        b.HasIndex(c => c.CierreFacturacionId);
+        b.HasOne(c => c.CierreCostes).WithMany(cl => cl.Lines).HasForeignKey(c => c.CierreCostesId).IsRequired(false).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(c => c.CierreFacturacion).WithMany(cl => cl.Lines).HasForeignKey(c => c.CierreFacturacionId).IsRequired(false).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(c => c.Concept).WithMany().HasForeignKey(c => c.ConceptId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.SetNull);
     }
@@ -259,7 +272,10 @@ public class ApprovalConfiguration : IEntityTypeConfiguration<Approval>
         b.Property(a => a.Estado).HasConversion<string>().HasMaxLength(20);
         b.Property(a => a.Paso).HasConversion<int>();
         b.Property(a => a.Motivo).HasMaxLength(2000);
-        b.HasOne(a => a.Closure).WithMany(c => c.Approvals).HasForeignKey(a => a.ClosureId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(a => a.CierreCostesId);
+        b.HasIndex(a => a.CierreFacturacionId);
+        b.HasOne(a => a.CierreCostes).WithMany(c => c.Approvals).HasForeignKey(a => a.CierreCostesId).IsRequired(false).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(a => a.CierreFacturacion).WithMany(c => c.Approvals).HasForeignKey(a => a.CierreFacturacionId).IsRequired(false).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(a => a.Role).WithMany(r => r.Approvals).HasForeignKey(a => a.RoleId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.SetNull);
     }
@@ -273,7 +289,10 @@ public class ApprovalHistoryConfiguration : IEntityTypeConfiguration<ApprovalHis
         b.Property(a => a.PasoDestino).HasConversion<int>();
         b.Property(a => a.Accion).HasMaxLength(50).IsRequired();
         b.Property(a => a.Motivo).HasMaxLength(2000);
-        b.HasOne(a => a.Closure).WithMany(c => c.ApprovalHistory).HasForeignKey(a => a.ClosureId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(a => a.CierreCostesId);
+        b.HasIndex(a => a.CierreFacturacionId);
+        b.HasOne(a => a.CierreCostes).WithMany(c => c.ApprovalHistory).HasForeignKey(a => a.CierreCostesId).IsRequired(false).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(a => a.CierreFacturacion).WithMany(c => c.ApprovalHistory).HasForeignKey(a => a.CierreFacturacionId).IsRequired(false).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -480,9 +499,11 @@ public class ClosureAlertaConfiguration : IEntityTypeConfiguration<ClosureAlerta
         b.Property(a => a.Descripcion).HasMaxLength(500).IsRequired();
         b.Property(a => a.Detalle).HasColumnType("jsonb");
         b.Property(a => a.FechaConfirmacion).HasColumnType("timestamp with time zone");
-        b.HasIndex(a => a.ClosureId);
+        b.HasIndex(a => a.CierreCostesId);
+        b.HasIndex(a => a.CierreFacturacionId);
         b.HasIndex(a => a.ConfirmadaPorUserId);
-        b.HasOne(a => a.Closure).WithMany().HasForeignKey(a => a.ClosureId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(a => a.CierreCostes).WithMany(c => c.Alertas).HasForeignKey(a => a.CierreCostesId).IsRequired(false).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(a => a.CierreFacturacion).WithMany(c => c.Alertas).HasForeignKey(a => a.CierreFacturacionId).IsRequired(false).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(a => a.ConfirmadaPor).WithMany().HasForeignKey(a => a.ConfirmadaPorUserId).OnDelete(DeleteBehavior.SetNull);
     }
 }

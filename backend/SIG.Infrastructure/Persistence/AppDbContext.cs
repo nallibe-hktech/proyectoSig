@@ -24,7 +24,8 @@ public class AppDbContext : DbContext
     public DbSet<PresupuestoServicio> PresupuestosServicio => Set<PresupuestoServicio>();
     public DbSet<Variable> Variables => Set<Variable>();
     public DbSet<Period> Periods => Set<Period>();
-    public DbSet<Closure> Closures => Set<Closure>();
+    public DbSet<CierreCostes> CierresCostes => Set<CierreCostes>();
+    public DbSet<CierreFacturacion> CierresFacturacion => Set<CierreFacturacion>();
     public DbSet<ClosureLine> ClosureLines => Set<ClosureLine>();
     public DbSet<Approval> Approvals => Set<Approval>();
     public DbSet<ApprovalHistory> ApprovalHistory => Set<ApprovalHistory>();

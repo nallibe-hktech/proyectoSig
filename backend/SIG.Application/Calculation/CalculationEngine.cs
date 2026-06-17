@@ -18,15 +18,15 @@ public class CalculationEngine : ICalculationEngine
         _varResolver = varResolver;
     }
 
-    public async Task<CalculationResult> EvaluateAsync(Concept concept, Closure closure, int? recursoId, CancellationToken ct)
+    public async Task<CalculationResult> EvaluateAsync(Concept concept, CalculationTarget target, int? recursoId, CancellationToken ct)
     {
         var ast = _parser.Parse(concept.FormulaJson);
-        var ctx = await _loader.LoadAsync(closure, ct);
+        var ctx = await _loader.LoadAsync(target, ct);
         var incidencias = new List<CalculationIncidencia>();
-        var resultado = EvaluateNode(ast, ctx, closure, concept, recursoId, incidencias);
+        var resultado = EvaluateNode(ast, ctx, target, concept, recursoId, incidencias);
         ctx.UsedInputs["concepto"] = concept.Nombre;
-        ctx.UsedInputs["periodo"] = closure.Period?.Nombre ?? string.Empty;
-        ctx.UsedInputs["serviceId"] = closure.ServiceId;
+        ctx.UsedInputs["periodo"] = target.Period?.Nombre ?? string.Empty;
+        ctx.UsedInputs["serviceId"] = target.ServiceId;
         if (recursoId.HasValue) ctx.UsedInputs["recursoId"] = recursoId.Value;
         ctx.UsedInputs["filasVisitas"] = ctx.Visitas.Count;
         ctx.UsedInputs["filasGastos"] = ctx.Gastos.Count;
@@ -38,23 +38,23 @@ public class CalculationEngine : ICalculationEngine
         return new CalculationResult(Math.Round(resultado, 2), inputsJson, concept.FormulaJson, sistemaOrigen, incidencias);
     }
 
-    private decimal EvaluateNode(FormulaNode node, CalculationContext ctx, Closure closure, Concept concept, int? recursoId, List<CalculationIncidencia> inc) =>
+    private decimal EvaluateNode(FormulaNode node, CalculationContext ctx, CalculationTarget target, Concept concept, int? recursoId, List<CalculationIncidencia> inc) =>
         node switch
         {
             NumberNode n => (decimal)n.Value,
             VariableNode v => _varResolver.Resolve(v.VariableId, ctx),
-            AggregateNode a => Aggregate(a, ctx, closure, recursoId, inc),
+            AggregateNode a => Aggregate(a, ctx, target, recursoId, inc),
             BinaryOpNode b => ApplyBinary(b.Op,
-                EvaluateNode(b.Left, ctx, closure, concept, recursoId, inc),
-                EvaluateNode(b.Right, ctx, closure, concept, recursoId, inc),
+                EvaluateNode(b.Left, ctx, target, concept, recursoId, inc),
+                EvaluateNode(b.Right, ctx, target, concept, recursoId, inc),
                 inc),
             SourceNode => throw new FormulaInvalidException("SourceNode no puede evaluarse directamente. Debe envolverse en Aggregate."),
             _ => throw new FormulaInvalidException($"Tipo de nodo desconocido: {node.GetType().Name}")
         };
 
-    private decimal Aggregate(AggregateNode a, CalculationContext ctx, Closure closure, int? recursoId, List<CalculationIncidencia> inc)
+    private decimal Aggregate(AggregateNode a, CalculationContext ctx, CalculationTarget target, int? recursoId, List<CalculationIncidencia> inc)
     {
-        var rows = ctx.FilteredRows(a.Source, closure, recursoId);
+        var rows = ctx.FilteredRows(a.Source, target, recursoId);
         if (rows.Count == 0)
         {
             inc.Add(new CalculationIncidencia("EmptyDataset", $"Sin datos para {a.Source.Entity} en el período."));

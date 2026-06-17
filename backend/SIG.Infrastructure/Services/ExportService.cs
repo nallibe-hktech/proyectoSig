@@ -32,7 +32,7 @@ public class ExportService : IExportService
         var timestamp = DateTime.UtcNow;
         _logger.LogInformation($"Iniciando export A3 Innuva para cierre {closureId} por usuario {usuarioId}");
 
-        var closure = await LoadClosureForExportAsync(closureId, ct);
+        var closure = await LoadClosureForExportAsync(closureId, TipoCierre.Costes, ct);
         EnsureApproved(closure);
         _logger.LogInformation($"Validación completada: Cierre {closureId} en estado {closure.Estado}");
 
@@ -123,7 +123,7 @@ public class ExportService : IExportService
         var timestamp = DateTime.UtcNow;
         _logger.LogInformation($"Iniciando export A3 ERP para cierre {closureId} por usuario {usuarioId}");
 
-        var closure = await LoadClosureForExportAsync(closureId, ct);
+        var closure = await LoadClosureForExportAsync(closureId, TipoCierre.Facturacion, ct);
         EnsureApproved(closure);
         _logger.LogInformation($"Validación completada: Cierre {closureId} en estado {closure.Estado}");
 
@@ -211,18 +211,20 @@ public class ExportService : IExportService
         return 0m;
     }
 
-    private async Task<Closure> LoadClosureForExportAsync(int id, CancellationToken ct)
+    // Ola 3b (#10): A3 Innuva (pagos) exporta un CierreCostes; A3 ERP (facturas) un CierreFacturacion.
+    private async Task<ICierre> LoadClosureForExportAsync(int id, TipoCierre tipo, CancellationToken ct)
     {
-        var closure = await _db.Closures
-            .Include(c => c.Service)
-            .Include(c => c.Period)
-            .Include(c => c.Lines)
-            .Include(c => c.Lines).ThenInclude(l => l.User).ThenInclude(u => u!.Department)
-            .IgnoreQueryFilters()  // Ignore soft-delete filter for Closure and related entities
-            .FirstOrDefaultAsync(c => c.Id == id, ct)
-            ?? throw new EntityNotFoundException("Closure", id);
+        ICierre? closure = tipo == TipoCierre.Costes
+            ? await _db.CierresCostes
+                .Include(c => c.Service).Include(c => c.Period)
+                .Include(c => c.Lines).ThenInclude(l => l.User).ThenInclude(u => u!.Department)
+                .IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Id == id, ct)
+            : await _db.CierresFacturacion
+                .Include(c => c.Service).Include(c => c.Period)
+                .Include(c => c.Lines).ThenInclude(l => l.User).ThenInclude(u => u!.Department)
+                .IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (closure is null) throw new EntityNotFoundException("Cierre", id);
 
-        // Explicitly load Client with IgnoreQueryFilters to bypass soft-delete filter
         if (closure.Service?.ClientId > 0)
         {
             var client = await _db.Clients
@@ -232,14 +234,12 @@ public class ExportService : IExportService
                 closure.Service.Client = client;
         }
 
-        // Explicitly load Concepts with IgnoreQueryFilters to bypass soft-delete filter
         var conceptIds = closure.Lines.Select(l => l.ConceptId).Distinct().ToList();
         var concepts = await _db.Concepts
             .IgnoreQueryFilters()
             .Where(c => conceptIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, ct);
 
-        // Attach loaded concepts to the lines
         foreach (var line in closure.Lines)
         {
             if (concepts.TryGetValue(line.ConceptId, out var concept))
@@ -249,7 +249,7 @@ public class ExportService : IExportService
         return closure;
     }
 
-    private static void EnsureApproved(Closure c)
+    private static void EnsureApproved(ICierre c)
     {
         if (c.Estado != EstadoClosure.Aprobado && c.Estado != EstadoClosure.Exportado)
             throw new ClosureNotApprovedException();
@@ -260,7 +260,7 @@ public class ExportService : IExportService
         await _auditRepo.AddAsync(new AuditLog
         {
             UserId = _currentUser.UserId,
-            EntityType = "Closure",
+            EntityType = "Cierre",
             EntityId = closureId.ToString(),
             Action = AuditAction.Export,
             NewValueJson = $"{{\"formato\":\"{formato}\"}}",

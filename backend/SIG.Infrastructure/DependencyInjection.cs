@@ -50,7 +50,8 @@ public static class DependencyInjection
         services.AddScoped<IConceptRepository, ConceptRepository>();
         services.AddScoped<IVariableRepository, VariableRepository>();
         services.AddScoped<IPeriodRepository, PeriodRepository>();
-        services.AddScoped<IClosureRepository, ClosureRepository>();
+        services.AddScoped<ICierreCostesRepository, CierreCostesRepository>();
+        services.AddScoped<ICierreFacturacionRepository, CierreFacturacionRepository>();
         services.AddScoped<IClosureLineRepository, ClosureLineRepository>();
         services.AddScoped<IApprovalRepository, ApprovalRepository>();
         services.AddScoped<ICalculationLogRepository, CalculationLogRepository>();
@@ -82,7 +83,8 @@ public static class DependencyInjection
         services.AddScoped<ITarifaServicioService, TarifaServicioService>();
         services.AddScoped<IPresupuestoServicioService, PresupuestoServicioService>();
         services.AddScoped<IContratoService, ContratoService>();
-        services.AddScoped<IClosureService, ClosureService>();
+        services.AddScoped<ICierreCostesService, CierreCostesService>();
+        services.AddScoped<ICierreFacturacionService, CierreFacturacionService>();
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IClosureValidationService, ClosureValidationService>();
         services.AddScoped<IDashboardService, DashboardService>();
