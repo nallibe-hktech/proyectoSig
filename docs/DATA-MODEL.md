@@ -30,29 +30,37 @@
 | 3 | `UserRole` | `user_roles` | N:M | RF-C05 | ✗ | ✗ | ARQUITECTURA §3.1 |
 | 4 | `Department` | `departments` | Maestro | RF-C06 | ✓ | ✓ | ARQUITECTURA §3.1 |
 | 5 | `Client` | `clients` | Maestro | RF-C01 | ✓ | ✓ | ARQUITECTURA §3.1 |
-| 6 | `Project` | `projects` | Maestro | RF-C02 | ✓ | ✓ | ARQUITECTURA §3.1 |
+| 6 | `Service` | `services` | Maestro | RF-C02 | ✓ | ✓ | ARQUITECTURA §3.1 |
 | 7 | `CostCenter` | `cost_centers` | Maestro | RF-C06 | ✓ | ✓ | ARQUITECTURA §3.1 |
-| 8 | `ProjectCostCenter` | `project_cost_centers` | N:M | RF-C02 | ✗ | ✗ | ARQUITECTURA §3.1 |
-| 9 | `ProjectUser` | `project_users` | N:M | RF-C02, RF-G01 | ✗ | ✗ | ARQUITECTURA §3.1 |
-| 10 | `Action` | `actions` | Maestro | RF-C03 | ✓ | ✓ | ARQUITECTURA §3.1 |
-| 11 | `Concept` | `concepts` | Maestro | RF-C04 | ✓ | ✓ | ARQUITECTURA §3.1 |
-| 12 | `ActionConcept` | `action_concepts` | N:M | RF-C03 | ✗ | ✗ | ARQUITECTURA §3.1 |
-| 13 | `ActionUser` | `action_users` | N:M | RF-C03 | ✗ | ✗ | ARQUITECTURA §3.1 |
-| 14 | `Variable` | `variables` | Maestro | RF-C04 | ✓ | ✓ | ARQUITECTURA §3.1 |
+| 8 | `ServiceCostCenter` | `service_cost_centers` | N:M | RF-C02 | ✗ | ✗ | ARQUITECTURA §3.1 |
+| 9 | `ServiceUser` | `service_users` | N:M | RF-C02, RF-G01 | ✗ | ✗ | ARQUITECTURA §3.1 |
+| 10 | `Concept` | `concepts` | Maestro | RF-C04 | ✓ | ✓ | ARQUITECTURA §3.1 |
+| 11 | `ServiceConcept` | `service_concepts` | N:M | RF-C03 | ✗ | ✗ | ARQUITECTURA §3.1 |
+| 12 | `Variable` | `variables` | Maestro | RF-C04 | ✓ | ✓ | ARQUITECTURA §3.1 |
+| 13 | `TarifaServicio` | `tarifa_servicios` | Maestro | RF-C02 | ✓ | ✓ | ARQUITECTURA §3.1 |
+| 14 | `PresupuestoServicio` | `presupuesto_servicios` | Maestro | RF-C02 | ✓ | ✓ | ARQUITECTURA §3.1 |
 | 15 | `Period` | `periods` | Maestro | RF-C07 | ✗ | ✓ | ARQUITECTURA §3.2 |
 | 16 | `Closure` | `closures` | Transaccional | RF-D01..D06 | ✗ | ✓ + xmin | ARQUITECTURA §3.2 |
 | 17 | `ClosureLine` | `closure_lines` | Transaccional | RF-D01, RF-D07 | ✗ | ✓ + xmin | ARQUITECTURA §3.2 |
-| 18 | `Approval` | `approvals` | Transaccional | RF-D02..D06 | ✗ | ✓ | ARQUITECTURA §3.2 |
-| 19 | `ApprovalHistory` | `approval_history` | Inmutable | RF-D05, RF-D06 | ✗ | append-only | ARQUITECTURA §3.2 |
-| 20 | `CalculationLog` | `calculation_logs` | Inmutable | RF-D01, RF-D07 | ✗ | append-only | ARQUITECTURA §3.2 |
-| 21 | `RefreshToken` | `refresh_tokens` | Token | RF-A02, RF-A03 | ✗ | ✗ | ARQUITECTURA §3.1 |
-| 22 | `AuditLog` | `audit_logs` | Inmutable | RF-F01, RF-F02 | ✗ | append-only | ARQUITECTURA §3.3 |
-| 23 | `StagingCelero` | `staging_celero_visitas` | Staging | RF-E01 | ✗ | hash idempotencia | ARQUITECTURA §3.3 |
-| 24 | `StagingBizneo` | `staging_bizneo_horas` | Staging | RF-E01 | ✗ | hash idempotencia | ARQUITECTURA §3.3 |
-| 25 | `StagingIntratime` | `staging_intratime_fichajes` | Staging | RF-E01 | ✗ | hash idempotencia | ARQUITECTURA §3.3 |
-| 26 | `StagingPayHawk` | `staging_payhawk_gastos` | Staging | RF-E01 | ✗ | hash idempotencia | ARQUITECTURA §3.3 |
+| 18 | `ClosureAlerta` | `closure_alertas` | Transaccional | RF-D01..D06 | ✗ | ✓ | ARQUITECTURA §3.2 |
+| 19 | `Approval` | `approvals` | Transaccional | RF-D02..D06 | ✗ | ✓ | ARQUITECTURA §3.2 |
+| 20 | `ApprovalHistory` | `approval_history` | Inmutable | RF-D05, RF-D06 | ✗ | append-only | ARQUITECTURA §3.2 |
+| 21 | `CalculationLog` | `calculation_logs` | Inmutable | RF-D01, RF-D07 | ✗ | append-only | ARQUITECTURA §3.2 |
+| 22 | `RefreshToken` | `refresh_tokens` | Token | RF-A02, RF-A03 | ✗ | ✗ | ARQUITECTURA §3.1 |
+| 23 | `AuditLog` | `audit_logs` | Inmutable | RF-F01, RF-F02 | ✗ | append-only | ARQUITECTURA §3.3 |
+| 24 | `StagingCelero` | `staging_celero_visitas` | Staging | RF-E01 | ✗ | hash idempotencia | ARQUITECTURA §3.3 |
+| 25 | `StagingBizneo` | `staging_bizneo_horas` | Staging | RF-E01 | ✗ | hash idempotencia | ARQUITECTURA §3.3 |
+| 26 | `StagingIntratime` | `staging_intratime_fichajes` | Staging | RF-E01 | ✗ | hash idempotencia | ARQUITECTURA §3.3 |
+| 27 | `StagingPayHawk` | `staging_payhawk_gastos` | Staging | RF-E01 | ✗ | hash idempotencia | ARQUITECTURA §3.3 |
 
 > **Detalle completo (propiedades, tipos C#, configuración Fluent API, índices, FKs):** `docs/ARQUITECTURA.md` §3.
+>
+> **Notas del modelo actual (refactor Project→Service):**
+> - La jerarquía es `Client → Service → Concept`. No existen las entidades `Project` ni `Action`; la entidad de dominio es `Service` (tabla `services`).
+> - `Concept` tiene FK opcional `service_id` (`null` = concepto global, aplica a todos los servicios) y columna opcional `columna_a3` (mapeo a A3).
+> - `ClosureAlerta` (`closure_alertas`): alertas generadas en el cálculo del cierre — `Tipo` (enum `TipoAlerta`: `Bloqueante`, `Advertencia`), `Codigo`, `Descripcion`, `Detalle?`, `Confirmada`, `ConfirmadaPorUserId?`, `FechaConfirmacion?`.
+> - `TarifaServicio` (`tarifa_servicios`): tarifas por servicio — `Valor` (decimal EUR), `Unidad?` (visita|hora|km|dia, informativo), `FechaDesde`/`FechaHasta?` (`DateOnly`).
+> - `PresupuestoServicio` (`presupuesto_servicios`): presupuesto por servicio — `PeriodId?` (`null` = todos los periodos), `Tipo` (enum `TipoConcepto`: `Pago`|`Factura`), `Importe` (decimal), `Descripcion?`.
 
 ---
 
@@ -65,19 +73,17 @@
                                 │ 1
                                 │
                           ┌─────▼────┐
-                          │ Project  │──N:M── CostCenter
-                          └─────┬────┘   ──N:M── User (ProjectUser, ownership)
+                          │ Service  │──N:M── CostCenter (ServiceCostCenter)
+                          │          │──N:M── User       (ServiceUser, ownership)
+                          │          │──N:M── Concept    (ServiceConcept)
+                          └─────┬────┘
                                 │ 1
-                                │
-                          ┌─────▼────┐
-                          │ Action   │──N:M── Concept (ActionConcept)
-                          └─────┬────┘   ──N:M── User (ActionUser, recurso)
-                                │
-                                │  (referenciada en cálculo)
+                                │  (Concept.service_id opcional: null = global)
                                 │
    Period ◄──────── Closure ────┤
-     1                1│        │
+     1                1│  N:1   │ N
                        │N       │
+                       │        ├──1:N── ClosureAlerta (Bloqueante/Advertencia)
                        │        │
                ┌───────▼────────▼──────┐
                │   ClosureLine         │──1:1── CalculationLog
@@ -117,7 +123,7 @@
 | 2 | `Direction` | Aprobación final, KPIs globales |
 | 3 | `Fico` | Aprobación financiera |
 | 4 | `Backoffice` | Validación de cálculos, devolución a gestor |
-| 5 | `ProjectManager` | Inicia cierres de proyectos asignados (ownership) |
+| 5 | `ProjectManager` | Inicia cierres de servicios asignados (ownership) |
 | 6 | `Auditor` | Solo lectura de AuditLog y CalculationLog |
 | 7 | `Reader` | Solo lectura operativa |
 
@@ -127,7 +133,7 @@
 
 ### 3.3 Datos de prueba
 
-Detallados en `context_SIG_es.md` §15 — clientes: Amex, Granini, Apple, Coty, Dyson, Future Cosmetics. Proyectos: "Amex Shop Small", "Granini GPVs", etc.
+Detallados en `context_SIG_es.md` §15 — clientes: Amex, Granini, Apple, Coty, Dyson, Future Cosmetics. Servicios: "Amex Shop Small", "Granini GPVs", etc.
 
 ---
 
@@ -140,7 +146,8 @@ Detallados en `context_SIG_es.md` §15 — clientes: Amex, Granini, Apple, Coty,
 | `clients` | `nif` | UNIQUE | Identificación fiscal |
 | `cost_centers` | `codigo` | UNIQUE | Catálogo |
 | `concepts` | `tipo, is_deleted` | BTREE | Filtros UI |
-| `closures` | `project_id, period_id` | UNIQUE (compuesto) | 1 closure por proyecto/periodo |
+| `closures` | `service_id, period_id` | UNIQUE (compuesto) | 1 closure por servicio/periodo |
+| `closure_alertas` | `closure_id` | BTREE | Carga de alertas del cierre |
 | `closure_lines` | `closure_id` | BTREE | Carga de detalle |
 | `approval_history` | `closure_id, created_at` | BTREE | Histórico ordenado |
 | `audit_logs` | `entity_name, entity_id, created_at` | BTREE | Consulta auditoría |
@@ -156,11 +163,11 @@ Detallados en `context_SIG_es.md` §15 — clientes: Amex, Granini, Apple, Coty,
 
 | Vista | Origen | Uso |
 |---|---|---|
-| `bi.vw_closures_summary` | Closure + Project + Client + Period | Cuadros KPI por periodo |
+| `bi.vw_closures_summary` | Closure + Service + Client + Period | Cuadros KPI por periodo |
 | `bi.vw_closure_lines_detail` | ClosureLine + Concept + User | Margen por concepto/empleado |
 | `bi.vw_approvals_timeline` | ApprovalHistory + User | Tiempo medio aprobación |
 | `bi.vw_audit_trail` | AuditLog + User | Compliance y trazabilidad |
-| `bi.vw_costcenter_distribution` | ProjectCostCenter + Closure | Distribución coste por CECO |
+| `bi.vw_costcenter_distribution` | ServiceCostCenter + Closure | Distribución coste por CECO |
 
 > Detalles SQL en `docs/EXPORTS.md` y `docs/ARQUITECTURA.md` §5 (RF-F03). Power BI conecta vía conector nativo PostgreSQL (read-only role `bi_reader`).
 
@@ -168,7 +175,7 @@ Detallados en `context_SIG_es.md` §15 — clientes: Amex, Granini, Apple, Coty,
 
 ## 6. Reglas de integridad clave
 
-1. **Closure único por (Project, Period)** — UNIQUE compuesto + validación de servicio antes del INSERT.
+1. **Closure único por (Service, Period)** — UNIQUE compuesto + validación de servicio antes del INSERT.
 2. **ClosureLine.Importe = CalculationLog.Resultado** — el motor de cálculo escribe ambos en la misma transacción.
 3. **Approval.Estado** sólo transiciona vía `Aprobar` o `Rechazar` (máquina de estados en `ApprovalService`); historial obligatorio en `ApprovalHistory`.
 4. **No DELETE físico** en entidades maestras: soft delete via `IsDeleted` + filtro global.

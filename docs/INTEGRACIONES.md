@@ -38,7 +38,7 @@ Sistema Externo (API/SFTP)
         │
         ▼
 ┌─────────────────────────────┐
-│  CalculationEngine          │ ← Lee staging filtrado por período/proyecto
+│  CalculationEngine          │ ← Lee staging filtrado por período/servicio
 │  (Motor de cálculo)         │
 └─────────────────────────────┘
 ```
@@ -90,10 +90,9 @@ Las implementaciones HTTP reales usarán `HttpClient` tipado con políticas de r
 
 | Entidad | Tabla staging | Descripción |
 |---|---|---|
-| Visitas de campo | `StagingCeleroVisita` | Registro de visitas de GPV a puntos de venta |
+| Visitas de campo | `StagingCeleroVisita` | Registro de visitas de GPV a puntos de venta. Cada visita se vincula internamente a un `Service` (`serviceId`) |
 | Clientes | Sincronización directa a `Client` | Clientes contratantes |
-| Proyectos (ServiceType) | Sincronización directa a `Project` | Tipos de servicio contratados |
-| Acciones (Service) | Sincronización directa a `Action` | Acciones/campañas dentro de proyecto |
+| Servicios | Sincronización directa a `Service` | Servicios contratados (modelo interno tras refactor Project/Action → Service) |
 
 ### Interface (Application)
 
@@ -103,7 +102,10 @@ public interface ICeleroClient
     Task<IReadOnlyList<CeleroVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
 }
 
-public record CeleroVisitaDto(string VisitaIdExterno, int UserId, int ProjectId, int ActionId, DateOnly Fecha, int TipoVisita, int PuntoMontado);
+public record CeleroVisitaDto(string VisitaIdExterno, string ResourceNif, string ServiceName, string MissionName, DateOnly Fecha);
+
+// El mapeo interno de cada visita al modelo de SIG se hace contra Service (serviceId), no contra Project/Action.
+public record CeleroVisitaUpdateRequest(int? UserId, int? ServiceId, string? Notas, string? EstadoMapeo);
 ```
 
 ### Fake (MVP)
@@ -111,7 +113,7 @@ public record CeleroVisitaDto(string VisitaIdExterno, int UserId, int ProjectId,
 ```csharp
 // Infrastructure/Integrations/Fake/CeleroFakeClient.cs
 // Bogus con Randomizer.Seed = new Random(20260101)
-// Genera ~300-600 visitas en el rango de fechas, distribuidas entre los proyectos y usuarios de prueba
+// Genera ~300-600 visitas en el rango de fechas, distribuidas entre los servicios y usuarios de prueba
 ```
 
 ---
@@ -131,7 +133,7 @@ public record CeleroVisitaDto(string VisitaIdExterno, int UserId, int ProjectId,
 | Entidad | Tabla staging | Descripción |
 |---|---|---|
 | Empleados | `StagingBizneoEmpleado` | Maestro de empleados (NIF, nombre, departamento) |
-| Horas imputadas | `StagingBizneoHora` | Registro de horas por empleado/proyecto/fecha |
+| Horas imputadas | `StagingBizneoHora` | Registro de horas por empleado/servicio/fecha |
 
 ### Interfaces (Application)
 
@@ -139,11 +141,11 @@ public record CeleroVisitaDto(string VisitaIdExterno, int UserId, int ProjectId,
 public interface IBizneoClient
 {
     Task<IReadOnlyList<BizneoEmpleadoDto>> GetEmpleadosAsync(CancellationToken ct);
-    Task<IReadOnlyList<BizneoHoraDto>> GetHorasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
+    Task<IReadOnlyList<BizneoAbsenceDto>> GetAbsencesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
 }
 
 public record BizneoEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento);
-public record BizneoHoraDto(string RegistroIdExterno, int UserId, int ProjectId, DateOnly Fecha, decimal Horas);
+public record BizneoAbsenceDto(string RegistroIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Horas);
 ```
 
 ---
@@ -191,7 +193,7 @@ public record IntratimeFichajeDto(string FichajeIdExterno, int UserId, DateTime 
 
 | Entidad | Tabla staging | Descripción |
 |---|---|---|
-| Gastos | `StagingPayHawkGasto` | Gastos, dietas, kilometraje por empleado/proyecto |
+| Gastos | `StagingPayHawkGasto` | Gastos, dietas, kilometraje por empleado/servicio |
 
 ### Interface (Application)
 
@@ -201,7 +203,7 @@ public interface IPayHawkClient
     Task<IReadOnlyList<PayHawkGastoDto>> GetGastosAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
 }
 
-public record PayHawkGastoDto(string GastoIdExterno, int UserId, int ProjectId, DateOnly Fecha, decimal Importe, string Categoria);
+public record PayHawkGastoDto(string GastoIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Importe, string Categoria);
 ```
 
 ---
@@ -231,7 +233,7 @@ public interface IExportService
 
 **Flujo:**
 1. Verificar `Closure.Estado == Aprobado` (si no → `ClosureNotApprovedException`, 409).
-2. Cargar líneas de cierre del período filtradas por proyecto.
+2. Cargar líneas de cierre del período filtradas por servicio.
 3. Agrupar por empleado (UserId).
 4. Generar XML con nodos: `Nomina → Empleado (NIF, Nombre) → Conceptos (Tipo, Importe) → Totales`.
 5. Grabar AuditLog `Action=Export`.

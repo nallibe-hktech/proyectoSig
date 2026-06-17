@@ -96,7 +96,7 @@ public class GalanController : ControllerBase
 
     /// <summary>Carga un archivo CSV/Excel de Galán para procesamiento</summary>
     [HttpPost("upload")]
-    [Authorize(Roles = "Administrator,Admin SIG")]
+    [Authorize(Roles = "Administrator")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string tipo, [FromServices] IConfiguration config, CancellationToken ct)
     {

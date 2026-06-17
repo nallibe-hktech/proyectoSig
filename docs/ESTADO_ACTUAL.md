@@ -1,5 +1,14 @@
 # ESTADO ACTUAL DE LA APLICACIÓN — SIG-es
 
+> ⚠️ **AVISO DE VIGENCIA (leer antes de usar este documento).** Este snapshot es un estado **PRE-refactor**. Refleja la jerarquía antigua `Cliente → Proyecto → Acción → Concepto` con las entidades internas `Project` y `Action`, que **ya NO existen en el código actual**.
+>
+> Sobre el código vigente se han aplicado, posteriores a esta fotografía:
+> 1. **Refactor Project → Service (PPT):** se eliminaron `Project` y `Action`; la entidad de dominio es **`Service`** (tabla `services`) con la jerarquía **Cliente → Servicio → Concepto**. Endpoints `/api/services` (ya no `/api/projects` ni `/api/actions`). `Concept.ServiceId` y `Closure.ServiceId` (antes `ProjectId`). Relaciones `ServiceConcept`/`ServiceUser`/`ServiceCostCenter`. Migración data-preserving `20260612071833_RenameProjectActionToService`.
+> 2. **Sistema de alertas de cierre:** nueva entidad `ClosureAlerta` (+ contratos A3). Migración `20260612121215_AddClosureAlertasAndA3Contratos`.
+> 3. **Staging canónico:** `staging_galan_{entradas,salidas,stocks}` y `staging_mediapost_{pedidos,recepciones}`; las `staging_mdp_*` ya no existen.
+>
+> **Fuente de verdad vigente:** `docs/ARQUITECTURA.md`, `docs/DATA-MODEL.md`, `docs/API-SPEC.md`. Donde este documento diga "Project"/"Acción", léase "Service" según el modelo nuevo. Se conserva el histórico abajo sin modificar.
+
 > **Fecha:** 2026-06-12
 > **Propósito:** fotografía completa y sin omisiones de cómo está construida la app HOY, como base para aplicar los cambios de `CAMBIOS_PPT_10062026.md`.
 > **Método:** lectura directa del código (Domain, Application, API, Infrastructure, Frontend Angular). Cada afirmación es verificable en el repo.

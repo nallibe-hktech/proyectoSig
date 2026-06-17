@@ -12,7 +12,7 @@
 | Dirección | Aprobación final de cierres (paso 4 del flujo). Visión global KPIs. | `Direction` |
 | FICO | Aprobación financiera (paso 3 del flujo). | `Fico` |
 | Backoffice | Validación de datos, gestión de conceptos, periodos (paso 2 del flujo). | `Backoffice` |
-| ProjectManager | Gestión de sus proyectos asignados, inicio de cierres (paso 1 del flujo). | `ProjectManager` |
+| ProjectManager | Gestión de sus servicios asignados, inicio de cierres (paso 1 del flujo). | `ProjectManager` |
 | Auditor | Solo lectura de AuditLog, CalculationLog. Sin acciones de aprobación. | `Auditor` |
 | Reader | Solo lectura de información operativa. Sin acciones de escritura ni aprobación. | `Reader` |
 
@@ -24,8 +24,7 @@
 |---|---|---|---|---|---|---|---|
 | **Dashboard** | R | R | R | R | R | R | R |
 | **Clientes** | CRUD | R | R | CRUD | R | R | R |
-| **Proyectos** | CRUD | R | R | CRUD | R (ownership) | R | R |
-| **Acciones** | CRUD | R | R | CRUD | R (ownership) | R | R |
+| **Servicios** | CRUD | R | R | CRUD | R (ownership) | R | R |
 | **Conceptos** | CRUD | R | R | CRUD | R | R | R |
 | **Periodos** | CRUD | R | R | CRUD | R | R | R |
 | **Cierres** | CRUD | Aprobar (paso 4) | Aprobar (paso 3) | Aprobar (paso 2) | Crear + Aprobar (paso 1) | R | R |
@@ -86,14 +85,14 @@ La plataforma implementa **filtrado por ownership** para el rol `ProjectManager`
 | Direction | Ve TODO. Sin restricción. |
 | Fico | Ve TODO. Sin restricción. |
 | Backoffice | Ve TODO. Sin restricción. |
-| ProjectManager | Solo ve entidades donde tiene asignación (`ProjectUser`, `ActionUser`). |
+| ProjectManager | Solo ve entidades donde tiene asignación (`ServiceUser`). |
 | Auditor | Ve TODO (solo lectura). |
 | Reader | Ve TODO (solo lectura). |
 
 Implementación en repositorios:
 ```csharp
-Task<Project?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
-Task<PagedResult<Project>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, ...);
+Task<Service?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
+Task<PagedResult<Service>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, ...);
 ```
 
 ---
@@ -110,11 +109,14 @@ Task<PagedResult<Project>> ListPaginatedForUserAsync(int usuarioId, int page, in
 | GET `/api/clients` | `[Authorize(Roles = "Administrator,Direction,Fico,Backoffice,ProjectManager,Auditor,Reader")]` |
 | POST `/api/clients` | `[Authorize(Roles = "Administrator")]` |
 | PUT/DELETE `/api/clients/{id}` | `[Authorize(Roles = "Administrator")]` |
-| GET `/api/projects` | `[Authorize]` |
-| POST/PUT `/api/projects` | `[Authorize(Roles = "Administrator,Backoffice")]` |
-| DELETE `/api/projects/{id}` | `[Authorize(Roles = "Administrator")]` |
-| POST/PUT `/api/actions` | `[Authorize(Roles = "Administrator,Backoffice")]` |
-| DELETE `/api/actions/{id}` | `[Authorize(Roles = "Administrator")]` |
+| GET `/api/services` | `[Authorize]` |
+| GET `/api/services/{id}` | `[Authorize]` |
+| POST/PUT `/api/services` | `[Authorize(Roles = "Administrator,Backoffice")]` |
+| DELETE `/api/services/{id}` | `[Authorize(Roles = "Administrator")]` |
+| GET `/api/services/{serviceId}/tarifas` | `[Authorize]` |
+| POST/PUT/DELETE `/api/services/{serviceId}/tarifas` | `[Authorize(Roles = "Administrator,Backoffice")]` |
+| GET `/api/services/{serviceId}/presupuestos` | `[Authorize]` |
+| POST/PUT/DELETE `/api/services/{serviceId}/presupuestos` | `[Authorize(Roles = "Administrator,Backoffice")]` |
 | POST/PUT `/api/concepts` | `[Authorize(Roles = "Administrator,Backoffice")]` |
 | DELETE `/api/concepts/{id}` | `[Authorize(Roles = "Administrator")]` |
 | GET `/api/users` | `[Authorize(Roles = "Administrator,Auditor")]` |
@@ -124,6 +126,9 @@ Task<PagedResult<Project>> ListPaginatedForUserAsync(int usuarioId, int page, in
 | POST `/api/closures` | `[Authorize(Roles = "ProjectManager,Backoffice,Administrator")]` |
 | POST `/api/closures/{id}/aprobar` | `[Authorize]` + validación interna de paso actual |
 | POST `/api/closures/{id}/rechazar` | `[Authorize(Roles = "Backoffice,Fico,Direction")]` + validación paso |
+| GET `/api/closures/{id}/alertas` | `[Authorize]` + acceso al cierre |
+| POST `/api/closures/{id}/alertas/{alertaId}/confirmar` | `[Authorize(Roles = "ProjectManager,Backoffice,Fico,Direction,Administrator")]` |
+| GET `/api/closures/todas-alertas` | `[Authorize]` |
 | POST `/api/sync/{system}` | `[Authorize(Roles = "Administrator")]` |
 | GET `/api/exports/a3-*` | `[Authorize(Roles = "Administrator,Fico,Direction")]` |
 | GET `/api/audit` | `[Authorize(Roles = "Administrator,Auditor")]` |

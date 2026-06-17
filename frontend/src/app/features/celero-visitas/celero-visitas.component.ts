@@ -12,22 +12,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatDialogModule, MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { NotifyService } from '../../core/notify.service';
+import { CeleroService, CeleroVisitaDto } from '../../core/api/celero.service';
+import { UserService } from '../../core/api/users.service';
+import { ServiceService } from '../../core/api/services.service';
 
-interface CeleroVisita {
-  id: number;
-  visitaIdExterno: string;
-  resourceNif: string;
-  serviceName: string;
-  missionName: string;
-  fecha: string;
-  userId?: number;
-  serviceId?: number;
-  notas?: string;
-  estadoMapeo?: string;
-}
+type CeleroVisita = CeleroVisitaDto;
 
 interface SelectOption {
   id: number;
@@ -140,7 +131,9 @@ interface SelectOption {
   `]
 })
 export class CeleroVisitasComponent {
-  private http = inject(HttpClient);
+  private celero = inject(CeleroService);
+  private userSvc = inject(UserService);
+  private serviceSvc = inject(ServiceService);
   private notify = inject(NotifyService);
   private dialog = inject(MatDialog);
   private router = inject(Router);
@@ -165,41 +158,35 @@ export class CeleroVisitasComponent {
   }
 
   private cargarRefData() {
-    this.http.get<any>('/api/users').subscribe(
-      res => this.usuarios.set(res.items || []),
-      () => this.notify.error('Error cargando usuarios')
-    );
-    this.http.get<any>('/api/services').subscribe(
-      res => this.servicios.set(res.items || []),
-      () => this.notify.error('Error cargando servicios')
-    );
+    this.userSvc.list(1, 1000).subscribe({
+      next: res => this.usuarios.set((res.items || []).map(u => ({ id: u.id, nombre: u.nombre }))),
+      error: () => this.notify.error('Error cargando usuarios'),
+    });
+    this.serviceSvc.list(1, 1000).subscribe({
+      next: res => this.servicios.set((res.items || []).map(s => ({ id: s.id, nombre: s.nombre }))),
+      error: () => this.notify.error('Error cargando servicios'),
+    });
   }
 
   private cargarVisitas() {
     this.loading.set(true);
-    let params = new HttpParams()
-      .set('page', this.page().toString())
-      .set('pageSize', this.pageSize().toString());
-
-    if (this.searchNif) {
-      params = params.set('searchNif', this.searchNif);
-    }
-    if (this.searchService) {
-      params = params.set('searchService', this.searchService);
-    }
-
-    this.http.get<any>('/api/celero-visitas', { params }).subscribe(
-      res => {
+    this.celero.listVisitas({
+      page: this.page(),
+      pageSize: this.pageSize(),
+      searchNif: this.searchNif || undefined,
+      searchService: this.searchService || undefined,
+    }).subscribe({
+      next: res => {
         this.visitas.set(res.items || []);
         this.total.set(res.total || 0);
         this.loading.set(false);
       },
-      err => {
+      error: err => {
         console.error('Error cargando visitas:', err);
         this.notify.error('Error cargando visitas');
         this.loading.set(false);
-      }
-    );
+      },
+    });
   }
 
   onSearch() {
@@ -280,7 +267,7 @@ export class CeleroVisitasComponent {
   `
 })
 export class CeleroVisitasEditComponent {
-  private http = inject(HttpClient);
+  private celero = inject(CeleroService);
   private dialogRef = inject(MatDialogRef);
   private notify = inject(NotifyService);
   private fb = inject(FormBuilder);
@@ -303,12 +290,12 @@ export class CeleroVisitasEditComponent {
   }
 
   guardar() {
-    this.http.put(`/api/celero-visitas/${this.data.visita.id}`, this.form.value).subscribe(
-      () => {
+    this.celero.updateVisita(this.data.visita.id, this.form.value).subscribe({
+      next: () => {
         this.notify.success('Visita actualizada');
         this.dialogRef.close(true);
       },
-      err => this.notify.error('Error actualizando visita')
-    );
+      error: () => this.notify.error('Error actualizando visita'),
+    });
   }
 }

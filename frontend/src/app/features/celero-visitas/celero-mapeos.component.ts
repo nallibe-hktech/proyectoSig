@@ -9,23 +9,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatBadgeModule } from '@angular/material/badge';
-import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { NotifyService } from '../../core/notify.service';
+import { CeleroService, CeleroPendingValueDto } from '../../core/api/celero.service';
+import { UserService } from '../../core/api/users.service';
+import { ServiceService } from '../../core/api/services.service';
 
-interface PendingValue {
-  valor: string;
-  cantidad: number;
-  estaMapado: boolean;
-  selectedId?: number; // Para seleccionar el SIG-ES ID
-}
-
-interface PendientesResponse {
-  recursos: PendingValue[];
-  servicios: PendingValue[];
-  misiones: PendingValue[];
-  totalVisitasSinMapear: number;
-}
+type PendingValue = CeleroPendingValueDto;
 
 interface SelectOption {
   id: number;
@@ -421,7 +412,9 @@ interface SelectOption {
   `]
 })
 export class CeleroMapeosComponent implements OnInit {
-  private http = inject(HttpClient);
+  private celero = inject(CeleroService);
+  private userSvc = inject(UserService);
+  private serviceSvc = inject(ServiceService);
   private notify = inject(NotifyService);
 
   // Señales para datos
@@ -465,9 +458,9 @@ export class CeleroMapeosComponent implements OnInit {
     this.cargando.set(true);
 
     Promise.all([
-      this.http.get<PendientesResponse>('/api/celero-mappings/pendientes').toPromise(),
-      this.http.get<any>('/api/users').toPromise(),
-      this.http.get<any>('/api/services').toPromise()
+      firstValueFrom(this.celero.getPendientes()),
+      firstValueFrom(this.userSvc.list(1, 1000)),
+      firstValueFrom(this.serviceSvc.list(1, 1000)),
     ]).then(
       ([mapeos, users, services]) => {
         if (mapeos) {
@@ -477,10 +470,10 @@ export class CeleroMapeosComponent implements OnInit {
           this.totalVisitasSinMapear.set(mapeos.totalVisitasSinMapear);
         }
         if (users?.items) {
-          this.usuarios.set(users.items);
+          this.usuarios.set(users.items.map(u => ({ id: u.id, nombre: u.nombre })));
         }
         if (services?.items) {
-          this.serviciosSig.set(services.items);
+          this.serviciosSig.set(services.items.map(s => ({ id: s.id, nombre: s.nombre })));
         }
         this.cargando.set(false);
       },
@@ -515,12 +508,12 @@ export class CeleroMapeosComponent implements OnInit {
       return;
     }
 
-    const promesas: Promise<any>[] = [];
+    const promesas: Promise<unknown>[] = [];
 
     // Guardar recursos
     recursosNuevos.forEach(r => {
       promesas.push(
-        this.http.post('/api/celero-mappings/resources', r).toPromise()
+        firstValueFrom(this.celero.createResourceMapping(r))
           .catch(err => {
             console.error('Error guardando recurso:', err);
             throw err; // Re-lanzar error para que Promise.all lo capture
@@ -531,7 +524,7 @@ export class CeleroMapeosComponent implements OnInit {
     // Guardar servicios
     serviciosNuevos.forEach(s => {
       promesas.push(
-        this.http.post('/api/celero-mappings/services', s).toPromise()
+        firstValueFrom(this.celero.createServiceMapping(s))
           .catch(err => {
             console.error('Error guardando servicio:', err);
             throw err;
@@ -542,7 +535,7 @@ export class CeleroMapeosComponent implements OnInit {
     // Guardar misiones
     misionesNuevos.forEach(m => {
       promesas.push(
-        this.http.post('/api/celero-mappings/missions', m).toPromise()
+        firstValueFrom(this.celero.createMissionMapping(m))
           .catch(err => {
             console.error('Error guardando misión:', err);
             throw err;
@@ -570,34 +563,34 @@ export class CeleroMapeosComponent implements OnInit {
   sincronizar() {
     this.sincronizando.set(true);
 
-    this.http.post('/api/sync/celero', {}).subscribe(
-      (res: any) => {
-        this.notify.success(`Sincronización completada: ${res.filasInsertadas} nuevos registros`);
+    this.celero.syncCelero().subscribe({
+      next: (res) => {
+        this.notify.success(`Sincronización completada: ${res.registrosInsertados} nuevos registros`);
         this.cargarDatos(); // Recargar datos de mapeos y estadísticas
         this.sincronizando.set(false);
       },
-      (err) => {
+      error: (err) => {
         this.notify.error('Error al sincronizar con Celero');
         console.error('Error:', err);
         this.sincronizando.set(false);
-      }
-    );
+      },
+    });
   }
 
   reprocesarVisitas() {
     this.reprocesando.set(true);
 
-    this.http.post('/api/celero-mappings/reprocesar', {}).subscribe(
-      (res: any) => {
+    this.celero.reprocesar().subscribe({
+      next: (res) => {
         this.notify.success(`Datos resueltos: ${res.resueltos} visitas procesadas`);
         this.cargarDatos(); // Recargar datos
         this.reprocesando.set(false);
       },
-      (err) => {
+      error: (err) => {
         this.notify.error('Error al resolver datos');
         console.error('Error:', err);
         this.reprocesando.set(false);
-      }
-    );
+      },
+    });
   }
 }

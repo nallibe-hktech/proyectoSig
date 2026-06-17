@@ -183,7 +183,7 @@ public class OtherEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task GetExportA3Innuva_ClosureAprobado_DevuelveXML()
+    public async Task GetExportA3Innuva_ClosureAprobado_DevuelveExcel()
     {
         var client = await CreateAuthenticatedClientAsync();
         var all = await ReadJsonAsync<PagedResult<ClosureListItemDto>>(await client.GetAsync("/api/closures?pageSize=100"));
@@ -191,8 +191,9 @@ public class OtherEndpointsTests : IntegrationTestBase
         if (target is null) return; // No closures aprobados disponibles
         var resp = await client.GetAsync($"/api/exports/a3-innuva/{target.Id}");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        resp.Content.Headers.ContentType?.MediaType.Should().Be("application/xml");
-        var content = await resp.Content.ReadAsStringAsync();
+        // El export genera un libro Excel (NPOI XSSFWorkbook); el controlador lo sirve como vnd.ms-excel.
+        resp.Content.Headers.ContentType?.MediaType.Should().Be("application/vnd.ms-excel");
+        var content = await resp.Content.ReadAsByteArrayAsync();
         content.Should().NotBeNullOrEmpty();
     }
 

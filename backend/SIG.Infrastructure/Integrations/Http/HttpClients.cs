@@ -492,6 +492,13 @@ public class PayHawkClient : IPayHawkClient
         {
             _logger.LogInformation($"[PayHawk] Sincronizando gastos desde {desde:yyyy-MM-dd} hasta {hasta:yyyy-MM-dd}");
 
+            // Si el AccountId no está configurado (placeholder/vacío), no llamar a la API: evita un 400 garantizado
+            if (string.IsNullOrWhiteSpace(_accountId) || _accountId.Contains("__SET_VIA_ENVIRONMENT__"))
+            {
+                _logger.LogWarning("[PayHawk] AccountId no configurado ('{AccountId}'). Se omite la sincronización de gastos.", _accountId);
+                return Array.Empty<PayHawkGastoDto>();
+            }
+
             // PayHawk API v3: /accounts/{accountId}/expenses (sin filtros, filtramos después en memoria)
             var url = $"accounts/{_accountId}/expenses";
             _logger.LogInformation($"[PayHawk] GET {_httpClient.BaseAddress}{url}");

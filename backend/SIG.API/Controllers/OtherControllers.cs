@@ -75,7 +75,7 @@ public class SyncController : ControllerBase
     /// <summary>
     /// Sincronizar datos de sistemas externos.
     /// Nota: 'galan' y 'mediapost' no requieren autenticación (archivos locales).
-    /// Otros sistemas requieren rol Administrator o Admin SIG.
+    /// Otros sistemas requieren rol Administrator.
     /// </summary>
     [HttpPost("{system}")]
     public async Task<IActionResult> Sync(string system, CancellationToken ct)
@@ -84,10 +84,14 @@ public class SyncController : ControllerBase
         if (!system.Equals("galan", StringComparison.OrdinalIgnoreCase) &&
             !system.Equals("mediapost", StringComparison.OrdinalIgnoreCase))
         {
-            // Otros sistemas requieren autenticación
-            if (!User.IsInRole("Administrator") && !User.IsInRole("Admin SIG"))
+            // Sin token → 401; autenticado pero sin rol Administrator → 403 (semántica HTTP correcta)
+            if (User.Identity?.IsAuthenticated != true)
             {
                 return Unauthorized("Solo administradores pueden sincronizar sistemas externos");
+            }
+            if (!User.IsInRole("Administrator"))
+            {
+                return Forbid();
             }
         }
 
@@ -95,7 +99,7 @@ public class SyncController : ControllerBase
     }
 
     [HttpPost("process")]
-    [Authorize(Roles = "Administrator,Admin SIG")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> ProcessPending(CancellationToken ct) =>
         Ok(await _processor.ProcessAllPendingAsync(ct));
 

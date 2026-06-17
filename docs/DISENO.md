@@ -18,8 +18,7 @@
 │ OPERATIVO    │  ┌─── page__header (title + actions) ──┐  │
 │  Dashboard   │  │   [Breadcrumbs]                      │  │
 │  Clients     │  │   <h1>Title</h1>    [btn] [btn]     │  │
-│  Projects    │  └─────────────────────────────────────┘  │
-│  Actions     │                                           │
+│  Servicios   │  └─────────────────────────────────────┘  │
 │  Concepts    │  ┌─── filters ──────────────────────────┐  │
 │  Variables   │  │   [search] [filter1] [filter2]       │  │
 │  Periods     │  └─────────────────────────────────────┘  │
@@ -101,33 +100,21 @@
 
 ---
 
-### 2.4 Projects (`/projects`)
+### 2.4 Servicios (`/services`)
+
+> Pantalla resultante del refactor PPT que unificó las antiguas pantallas Projects + Actions. La jerarquía es ahora **Cliente → Servicio → Concepto**: el Servicio cuelga directamente del Cliente y agrupa CECOs, usuarios y conceptos.
 
 | Atributo | Valor |
 |----------|-------|
-| Rutas | `/projects`, `/projects/nuevo`, `/projects/:id`, `/projects/:id/editar` |
+| Rutas | `/services`, `/services/nuevo`, `/services/:id`, `/services/:id/editar` (más sub-rutas `tarifas\` y `presupuestos\`) |
 | Roles | Administrator, ProjectManager, Backoffice |
-| Componentes | `ProjectsList`, `ProjectForm`, `ProjectDetail` |
+| Componentes | `ServicesList` (`services-list.component.ts`), `ServiceForm` (`service-form.component.ts`), `ServiceDetail` (`service-detail.component.ts`) |
 
-**Listado:** Filtros por cliente + estado + búsqueda. Tabla (Nombre, Cliente, Estado, Fecha alta, Acciones).
+**Listado:** Filtros por cliente + estado + búsqueda. Tabla (Nombre, Cliente, Estado, Fecha alta, acciones).
 
-**Formulario:** Nombre*, Cliente* (autocomplete), Estado*, CECO(s) multi-select, Departamento, Interlocutor (nombre, email, teléfono), Usuarios asignados (multi-select).
+**Formulario:** Nombre*, Cliente* (autocomplete), Departamento, Estado*, CECO(s) multi-select, Conceptos asociados (multi-select), Interlocutor (nombre, email, teléfono), Usuarios asignados (multi-select, ownership).
 
-**Detalle:** Cabecera con nombre + badge estado. Pestañas: Información, Acciones (sub-listado), Cierres (si existen).
-
----
-
-### 2.5 Actions (`/actions`)
-
-| Atributo | Valor |
-|----------|-------|
-| Rutas | `/actions`, `/actions/nuevo`, `/actions/:id`, `/actions/:id/editar` |
-| Roles | Administrator, ProjectManager, Backoffice |
-| Componentes | `ActionsList`, `ActionForm`, `ActionDetail` |
-
-**Relación:** Pertenece a un Proyecto. Tiene N Conceptos.
-
-**Detalle (especial):** Sub-tabla de conceptos asociados con acciones Ver/Editar/Quitar/Duplicar. Botón "Añadir Concepto existente" + "Nuevo Concepto".
+**Detalle:** Cabecera con nombre + badge estado. Pestañas: Información, Conceptos (sub-listado con Ver/Editar/Quitar/Duplicar + "Añadir Concepto existente"/"Nuevo Concepto"), Tarifas, Presupuestos, Cierres (si existen).
 
 ---
 
@@ -284,7 +271,7 @@ Pie de tabla: nota fina (`--sig-text-muted`, 11px): "El permiso 'Editar' incluye
 
 **Listado:** Tabla (NIF, Nombre, Email, Roles, Estado, Acciones). Search por NIF/nombre/email.
 
-**Formulario:** NIF*, Nombre*, Apellidos*, Email*, Contraseña*, Rol(es) multi-select, Departamento(s) multi-select, Asignaciones (Clientes/Proyectos/Acciones multi-select).
+**Formulario:** NIF*, Nombre*, Apellidos*, Email*, Contraseña*, Rol(es) multi-select, Departamento(s) multi-select, Asignaciones (Servicios multi-select — ownership vía ServiceUser).
 
 ### 2.16 Sync (`/sync`)
 
