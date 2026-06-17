@@ -53,6 +53,7 @@ public class PeriodService : IPeriodService
             Nombre = req.Nombre,
             FechaInicio = req.FechaInicio,
             FechaFin = req.FechaFin,
+            DiaPago = req.DiaPago,
             Estado = EstadoPeriodo.Abierto
         };
         await _repo.AddAsync(p, ct);
@@ -68,6 +69,7 @@ public class PeriodService : IPeriodService
         p.Nombre = req.Nombre;
         p.FechaInicio = req.FechaInicio;
         p.FechaFin = req.FechaFin;
+        p.DiaPago = req.DiaPago;
         await _repo.SaveChangesAsync(ct);
         return Map(p);
     }
@@ -92,5 +94,5 @@ public class PeriodService : IPeriodService
         return Map(p);
     }
 
-    private static PeriodDto Map(Period p) => new(p.Id, p.Nombre, p.FechaInicio, p.FechaFin, p.Estado);
+    private static PeriodDto Map(Period p) => new(p.Id, p.Nombre, p.FechaInicio, p.FechaFin, p.DiaPago, p.Estado);
 }

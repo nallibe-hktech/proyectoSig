@@ -362,9 +362,23 @@ public class ClosureLineRepository : IClosureLineRepository
         return closure is null ? null : line;
     }
 
+    // Ola 2 (#3a): el recálculo no borra líneas manuales/incentivos (EsManual == true).
     public async Task RemoveAllByClosureAsync(int closureId, CancellationToken ct)
     {
-        await _db.ClosureLines.Where(l => l.ClosureId == closureId).ExecuteDeleteAsync(ct);
+        await _db.ClosureLines.Where(l => l.ClosureId == closureId && !l.EsManual).ExecuteDeleteAsync(ct);
+    }
+
+    public async Task<ClosureLine?> GetByIdAsync(int id, CancellationToken ct) =>
+        await _db.ClosureLines.Include(l => l.Closure).ThenInclude(c => c.Period)
+            .FirstOrDefaultAsync(l => l.Id == id, ct);
+
+    public async Task<IReadOnlyList<ClosureLine>> ListByClosureAsync(int closureId, CancellationToken ct) =>
+        await _db.ClosureLines.AsNoTracking().Where(l => l.ClosureId == closureId).ToListAsync(ct);
+
+    public Task AddAsync(ClosureLine line, CancellationToken ct)
+    {
+        _db.ClosureLines.Add(line);
+        return Task.CompletedTask;
     }
 
     public Task AddRangeAsync(IEnumerable<ClosureLine> lines, CancellationToken ct)
@@ -613,8 +627,10 @@ public class StagingA3InnuvaContratoRepository : IStagingA3InnuvaContratoReposit
             .Include(c => c.User)
             .ToListAsync(ct);
 
+    // Excluye contratos marcados "a ignorar en cierre" (Ola 2 #2): no participan en las validaciones de cierre.
     public async Task<IReadOnlyList<StagingA3InnuvaContrato>> GetAllAsync(CancellationToken ct) =>
         await _db.StagingA3InnuvaContratos.AsNoTracking()
+            .Where(c => !c.IgnoradoEnCierre)
             .Include(c => c.User)
             .ToListAsync(ct);
 
@@ -623,10 +639,23 @@ public class StagingA3InnuvaContratoRepository : IStagingA3InnuvaContratoReposit
         var desdeUtc = DateTime.SpecifyKind(desde, DateTimeKind.Utc);
         var hastaUtc = DateTime.SpecifyKind(hasta, DateTimeKind.Utc);
         return await _db.StagingA3InnuvaContratos.AsNoTracking()
-            .Where(c => c.FechaInicio <= hastaUtc && c.FechaFin >= desdeUtc)
+            .Where(c => !c.IgnoradoEnCierre && c.FechaInicio <= hastaUtc && c.FechaFin >= desdeUtc)
             .Include(c => c.User)
             .ToListAsync(ct);
     }
+
+    // Contratos de un día (FechaInicio == FechaFin), señalados para revisión (Ola 2 #2). Incluye ignorados para poder desmarcarlos.
+    public async Task<IReadOnlyList<StagingA3InnuvaContrato>> ListContratosUnDiaAsync(CancellationToken ct) =>
+        await _db.StagingA3InnuvaContratos.AsNoTracking()
+            .Where(c => c.FechaInicio == c.FechaFin)
+            .Include(c => c.User)
+            .OrderBy(c => c.FechaInicio)
+            .ToListAsync(ct);
+
+    public async Task<StagingA3InnuvaContrato?> GetByIdAsync(int id, CancellationToken ct) =>
+        await _db.StagingA3InnuvaContratos
+            .Include(c => c.User)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public Task AddAsync(StagingA3InnuvaContrato contrato, CancellationToken ct)
     {

@@ -68,6 +68,7 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
     {
         b.Property(c => c.Nombre).HasMaxLength(200).IsRequired();
         b.Property(c => c.NIF).HasMaxLength(20).IsRequired();
+        b.Property(c => c.Estado).HasConversion<string>().HasMaxLength(20);
         b.Property(c => c.Direccion).HasMaxLength(500);
         b.Property(c => c.Ciudad).HasMaxLength(100);
         b.Property(c => c.Provincia).HasMaxLength(100);
@@ -202,6 +203,7 @@ public class PeriodConfiguration : IEntityTypeConfiguration<Period>
     {
         b.HasIndex(p => p.Nombre).IsUnique();
         b.Property(p => p.Nombre).HasMaxLength(100).IsRequired();
+        b.Property(p => p.DiaPago).HasDefaultValue(30);
         b.Property(p => p.Estado).HasConversion<string>().HasMaxLength(20);
     }
 }
@@ -234,6 +236,9 @@ public class ClosureLineConfiguration : IEntityTypeConfiguration<ClosureLine>
     {
         b.Property(c => c.Importe).HasPrecision(18, 4);
         b.Property(c => c.Tipo).HasConversion<string>().HasMaxLength(20);
+        b.Property(c => c.EsManual).HasDefaultValue(false);
+        b.Property(c => c.ImporteOriginal).HasPrecision(18, 4);
+        b.Property(c => c.MotivoManual).HasMaxLength(2000);
         b.Property(c => c.DatosEntradaJson).HasColumnType("jsonb").IsRequired();
         b.Property(c => c.RowVersion)
             .IsRowVersion()
@@ -491,6 +496,8 @@ public class StagingA3InnuvaContratoConfiguration : IEntityTypeConfiguration<Sta
         b.Property(c => c.ContratoIdExterno).HasMaxLength(100).IsRequired();
         b.Property(c => c.NIF).HasMaxLength(20).IsRequired();
         b.Property(c => c.ImporteBruto).HasPrecision(18, 4);
+        b.Property(c => c.IgnoradoEnCierre).HasDefaultValue(false);
+        b.Property(c => c.MotivoIgnorar).HasMaxLength(500);
         b.Property(c => c.PayloadJson).HasColumnType("jsonb").IsRequired();
         b.Property(c => c.Hash).HasMaxLength(100).IsRequired();
         b.Property(c => c.ErrorProcesamiento).HasMaxLength(2000);

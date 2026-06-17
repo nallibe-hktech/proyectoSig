@@ -37,6 +37,9 @@ public interface IServiceService
     Task<ServiceDetailDto> CreateAsync(ServiceCreateRequest req, int usuarioId, CancellationToken ct);
     Task<ServiceDetailDto> UpdateAsync(int id, ServiceUpdateRequest req, int usuarioId, CancellationToken ct);
     Task DeleteAsync(int id, int usuarioId, CancellationToken ct);
+    // Ola 2 (#8): gestionar conceptos del catálogo por servicio (no crea conceptos nuevos).
+    Task<ServiceDetailDto> AddConceptAsync(int serviceId, int conceptId, int usuarioId, CancellationToken ct);
+    Task<ServiceDetailDto> RemoveConceptAsync(int serviceId, int conceptId, int usuarioId, CancellationToken ct);
 }
 
 public interface IConceptService
@@ -123,6 +126,12 @@ public interface IPresupuestoServicioService
     Task DeleteAsync(int id, int serviceId, CancellationToken ct);
 }
 
+public interface IContratoService
+{
+    Task<IReadOnlyList<ContratoUnDiaDto>> ListContratosUnDiaAsync(CancellationToken ct);
+    Task<ContratoUnDiaDto> MarcarIgnorarAsync(int id, ContratoIgnorarRequest req, CancellationToken ct);
+}
+
 public interface IClosureService
 {
     Task<PagedResult<ClosureListItemDto>> ListAsync(ApprovalFilterRequest filter, int usuarioId, CancellationToken ct);
@@ -131,6 +140,8 @@ public interface IClosureService
     Task<ClosureDetailDto> RecalcAsync(int closureId, ClosureRecalcRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
     Task<ClosureDetailDto> ApproveAsync(int closureId, ClosureApproveRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
     Task<ClosureDetailDto> RejectAsync(int closureId, ClosureRejectRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
+    Task<ClosureDetailDto> OverrideLineAsync(int closureId, int lineId, ClosureLineOverrideRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
+    Task<ClosureDetailDto> AddIncentivoAsync(int closureId, ClosureLineIncentivoRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
 }
 
 public interface IApprovalService

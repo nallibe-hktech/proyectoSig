@@ -6,6 +6,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
@@ -20,7 +21,7 @@ import { SkeletonComponent } from '../../shared/page-skeleton.component';
   standalone: true,
   imports: [
     CommonModule, RouterLink, ReactiveFormsModule,
-    MatCardModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule, MatDatepickerModule, MatNativeDateModule, MatProgressSpinnerModule,
+    MatCardModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatIconModule, MatDatepickerModule, MatNativeDateModule, MatProgressSpinnerModule,
     BreadcrumbsComponent, SkeletonComponent,
   ],
   template: `
@@ -46,6 +47,14 @@ import { SkeletonComponent } from '../../shared/page-skeleton.component';
                 <mat-datepicker-toggle matIconSuffix [for]="dpF" /><mat-datepicker #dpF />
               </mat-form-field>
             </div>
+            <mat-form-field class="sig-form-field" style="width: 100%; max-width: 400px;">
+              <mat-label>Día de pago *</mat-label>
+              <mat-select formControlName="diaPago" data-testid="select-dia-pago">
+                <mat-option [value]="30">30</mat-option>
+                <mat-option [value]="15">15</mat-option>
+                <mat-option [value]="9">9</mat-option>
+              </mat-select>
+            </mat-form-field>
             <div class="sig-form-actions">
               <a mat-stroked-button routerLink="/periods" data-testid="btn-cancelar">Cancelar</a>
               <button mat-flat-button color="primary" type="submit" [disabled]="submitting() || form.invalid" data-testid="btn-guardar">
@@ -75,6 +84,7 @@ export class PeriodFormComponent implements OnInit {
     nombre: ['', [Validators.required]],
     fechaInicio: [new Date(), [Validators.required]],
     fechaFin: [new Date(), [Validators.required]],
+    diaPago: [30, [Validators.required]],
   });
 
   ngOnInit(): void {
@@ -85,7 +95,7 @@ export class PeriodFormComponent implements OnInit {
       this.loading.set(true);
       this.periodSvc.getById(this.id()!).subscribe({
         next: (p) => {
-          this.form.patchValue({ nombre: p.nombre, fechaInicio: new Date(p.fechaInicio), fechaFin: new Date(p.fechaFin) });
+          this.form.patchValue({ nombre: p.nombre, fechaInicio: new Date(p.fechaInicio), fechaFin: new Date(p.fechaFin), diaPago: p.diaPago });
           this.loading.set(false);
         },
         error: () => { this.loading.set(false); this.notify.error('No se pudo cargar el período'); },
@@ -97,7 +107,7 @@ export class PeriodFormComponent implements OnInit {
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
-    const payload = { nombre: v.nombre, fechaInicio: v.fechaInicio.toISOString().slice(0, 10), fechaFin: v.fechaFin.toISOString().slice(0, 10) };
+    const payload = { nombre: v.nombre, fechaInicio: v.fechaInicio.toISOString().slice(0, 10), fechaFin: v.fechaFin.toISOString().slice(0, 10), diaPago: v.diaPago };
     this.submitting.set(true);
     const obs = this.isEdit() ? this.periodSvc.update(this.id()!, payload) : this.periodSvc.create(payload);
     obs.subscribe({

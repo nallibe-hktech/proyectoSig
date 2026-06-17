@@ -96,7 +96,10 @@ public interface IClosureRepository
 public interface IClosureLineRepository
 {
     Task<ClosureLine?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
+    Task<ClosureLine?> GetByIdAsync(int id, CancellationToken ct);
+    Task<IReadOnlyList<ClosureLine>> ListByClosureAsync(int closureId, CancellationToken ct);
     Task RemoveAllByClosureAsync(int closureId, CancellationToken ct);
+    Task AddAsync(ClosureLine line, CancellationToken ct);
     Task AddRangeAsync(IEnumerable<ClosureLine> lines, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
@@ -194,6 +197,8 @@ public interface IStagingA3InnuvaContratoRepository
     Task<IReadOnlyList<StagingA3InnuvaContrato>> GetByNifAsync(string nif, CancellationToken ct);
     Task<IReadOnlyList<StagingA3InnuvaContrato>> GetAllAsync(CancellationToken ct);
     Task<IReadOnlyList<StagingA3InnuvaContrato>> GetActivosEnPeriodoAsync(DateTime desde, DateTime hasta, CancellationToken ct);
+    Task<IReadOnlyList<StagingA3InnuvaContrato>> ListContratosUnDiaAsync(CancellationToken ct);
+    Task<StagingA3InnuvaContrato?> GetByIdAsync(int id, CancellationToken ct);
     Task AddAsync(StagingA3InnuvaContrato contrato, CancellationToken ct);
     Task AddRangeAsync(IEnumerable<StagingA3InnuvaContrato> contratos, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);

@@ -214,9 +214,9 @@ public class DataSeeder : ISeedService
     {
         var clients = new List<Client>
         {
-            new() { Nombre = "Alpha Foods",     NIF = "A12345678", Direccion = "Calle Mayor 1",  Ciudad = "Madrid",   Provincia = "Madrid",   Pais = "España", CodigoPostal = "28001", ContactoNombre = "Ana Foods",    ContactoEmail = "ana@alpha.es",    ContactoTelefono = "910000001" },
-            new() { Nombre = "Beta Cosmetics",  NIF = "B23456789", Direccion = "Av. Diagonal 50",Ciudad = "Barcelona",Provincia = "Barcelona",Pais = "España", CodigoPostal = "08001", ContactoNombre = "Belén Cosmo",  ContactoEmail = "belen@beta.es",   ContactoTelefono = "930000002" },
-            new() { Nombre = "Gamma Retail",    NIF = "C34567890", Direccion = "Calle Larga 99", Ciudad = "Valencia", Provincia = "Valencia", Pais = "España", CodigoPostal = "46001", ContactoNombre = "Gabriel Reta", ContactoEmail = "gabriel@gamma.es",ContactoTelefono = "960000003" },
+            new() { Nombre = "Alpha Foods",     NIF = "A12345678", Estado = EstadoCliente.Activo, Direccion = "Calle Mayor 1",  Ciudad = "Madrid",   Provincia = "Madrid",   Pais = "España", CodigoPostal = "28001", ContactoNombre = "Ana Foods",    ContactoEmail = "ana@alpha.es",    ContactoTelefono = "910000001" },
+            new() { Nombre = "Beta Cosmetics",  NIF = "B23456789", Estado = EstadoCliente.Activo, Direccion = "Av. Diagonal 50",Ciudad = "Barcelona",Provincia = "Barcelona",Pais = "España", CodigoPostal = "08001", ContactoNombre = "Belén Cosmo",  ContactoEmail = "belen@beta.es",   ContactoTelefono = "930000002" },
+            new() { Nombre = "Gamma Retail",    NIF = "C34567890", Estado = EstadoCliente.Activo, Direccion = "Calle Larga 99", Ciudad = "Valencia", Provincia = "Valencia", Pais = "España", CodigoPostal = "46001", ContactoNombre = "Gabriel Reta", ContactoEmail = "gabriel@gamma.es",ContactoTelefono = "960000003" },
         };
         _db.Clients.AddRange(clients);
         await _db.SaveChangesAsync(ct);
@@ -320,11 +320,11 @@ public class DataSeeder : ISeedService
     {
         var periods = new List<Period>
         {
-            new() { Nombre = "Noviembre 2025", FechaInicio = new(2025,11,1), FechaFin = new(2025,11,30), Estado = EstadoPeriodo.Cerrado },
-            new() { Nombre = "Diciembre 2025", FechaInicio = new(2025,12,1), FechaFin = new(2025,12,31), Estado = EstadoPeriodo.Cerrado },
-            new() { Nombre = "Enero 2026",     FechaInicio = new(2026,1,1),  FechaFin = new(2026,1,31),  Estado = EstadoPeriodo.Cerrado },
-            new() { Nombre = "Febrero 2026",   FechaInicio = new(2026,2,1),  FechaFin = new(2026,2,28),  Estado = EstadoPeriodo.Abierto },
-            new() { Nombre = "Marzo 2026",     FechaInicio = new(2026,3,1),  FechaFin = new(2026,3,31),  Estado = EstadoPeriodo.Abierto },
+            new() { Nombre = "Noviembre 2025", FechaInicio = new(2025,11,1), FechaFin = new(2025,11,30), DiaPago = 30, Estado = EstadoPeriodo.Cerrado },
+            new() { Nombre = "Diciembre 2025", FechaInicio = new(2025,12,1), FechaFin = new(2025,12,31), DiaPago = 30, Estado = EstadoPeriodo.Cerrado },
+            new() { Nombre = "Enero 2026",     FechaInicio = new(2026,1,1),  FechaFin = new(2026,1,31),  DiaPago = 30, Estado = EstadoPeriodo.Cerrado },
+            new() { Nombre = "Febrero 2026",   FechaInicio = new(2026,2,1),  FechaFin = new(2026,2,28),  DiaPago = 30, Estado = EstadoPeriodo.Abierto },
+            new() { Nombre = "Marzo 2026",     FechaInicio = new(2026,3,1),  FechaFin = new(2026,3,31),  DiaPago = 30, Estado = EstadoPeriodo.Abierto },
         };
         _db.Periods.AddRange(periods);
         await _db.SaveChangesAsync(ct);

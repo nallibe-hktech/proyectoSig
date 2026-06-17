@@ -2,7 +2,7 @@
 // Nombres, casing y tipos respetan fidelidad nominal con el backend .NET.
 
 import type {
-  EstadoUsuario, EstadoServicio, TipoConcepto, EstadoPeriodo,
+  EstadoUsuario, EstadoCliente, EstadoServicio, TipoConcepto, EstadoPeriodo,
   EstadoClosure, ApprovalStep, EstadoApproval, AuditAction
 } from './enums';
 
@@ -40,12 +40,14 @@ export interface ClientListItemDto {
   nombre: string;
   nif: string;
   ciudad?: string | null;
+  estado: EstadoCliente;
   serviceCount: number;
 }
 export interface ClientDetailDto {
   id: number;
   nombre: string;
   nif: string;
+  estado: EstadoCliente;
   direccion?: string | null;
   ciudad?: string | null;
   provincia?: string | null;
@@ -182,12 +184,14 @@ export interface PeriodDto {
   nombre: string;
   fechaInicio: string;
   fechaFin: string;
+  diaPago: number;
   estado: EstadoPeriodo;
 }
 export interface PeriodCreateRequest {
   nombre: string;
   fechaInicio: string;
   fechaFin: string;
+  diaPago: number;
 }
 export type PeriodUpdateRequest = PeriodCreateRequest;
 
@@ -217,7 +221,12 @@ export interface ClosureLineDto {
   tipo: TipoConcepto;
   tieneIncidencia: boolean;
   rowVersion: number;
+  esManual?: boolean;
+  importeOriginal?: number | null;
+  motivoManual?: string | null;
 }
+export interface ClosureLineOverrideRequest { importe: number; motivo: string; }
+export interface ClosureLineIncentivoRequest { conceptId: number; tipo: TipoConcepto; importe: number; motivo: string; userId?: number | null; }
 
 // Alias para compatibilidad (algunos componentes usan ClosureLine en lugar de ClosureLineDto)
 export type ClosureLine = ClosureLineDto;
@@ -266,6 +275,21 @@ export interface ClosureCreateRequest { serviceId: number; periodId: number; com
 export interface ClosureRecalcRequest { comentarios?: string | null; }
 export interface ClosureApproveRequest { comentarios?: string | null; }
 export interface ClosureRejectRequest { motivo: string; }
+
+// ------------------ Contratos A3 Innuva (Ola 2 #2 — contratos de un día) ------------------
+export interface ContratoUnDiaDto {
+  id: number;
+  contratoIdExterno: string;
+  nif: string;
+  fechaInicio: string;
+  fechaFin: string;
+  importeBruto: number;
+  userId?: number | null;
+  userNombre?: string | null;
+  ignoradoEnCierre: boolean;
+  motivoIgnorar?: string | null;
+}
+export interface ContratoIgnorarRequest { ignorar: boolean; motivo?: string | null; }
 
 export interface ApprovalFilterRequest {
   periodId?: number | null;

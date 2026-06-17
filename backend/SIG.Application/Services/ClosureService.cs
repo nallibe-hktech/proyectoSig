@@ -267,6 +267,97 @@ public class ClosureService : IClosureService
         return await BuildDetailAsync(closure, ct);
     }
 
+    public async Task<ClosureDetailDto> OverrideLineAsync(int closureId, int lineId, ClosureLineOverrideRequest req, uint rowVersion, int usuarioId, CancellationToken ct)
+    {
+        var closure = await _repo.GetByIdAndUsuarioIdAsync(closureId, usuarioId, ct)
+                      ?? throw new EntityNotFoundException("Closure", closureId);
+        if (closure.RowVersion != rowVersion) throw new ConcurrencyConflictException();
+        if (closure.Estado != EstadoClosure.Borrador && closure.Estado != EstadoClosure.Rechazado)
+            throw new InvalidApprovalTransitionException("Solo se pueden ajustar líneas de closures en Borrador o Rechazado.");
+
+        var line = await _lineRepo.GetByIdAsync(lineId, ct)
+                   ?? throw new EntityNotFoundException("ClosureLine", lineId);
+        if (line.ClosureId != closureId)
+            throw new EntityNotFoundException("ClosureLine", lineId);
+
+        if (!line.EsManual)
+            line.ImporteOriginal = line.Importe;
+        line.Importe = req.Importe;
+        line.EsManual = true;
+        line.MotivoManual = req.Motivo;
+        await _lineRepo.SaveChangesAsync(ct);
+
+        await RecomputeTotalsAsync(closure, ct);
+
+        await _approvalRepo.AddHistoryAsync(new ApprovalHistory
+        {
+            ClosureId = closureId,
+            UserId = usuarioId,
+            PasoOrigen = closure.PasoActual,
+            PasoDestino = closure.PasoActual,
+            Accion = "OverrideLinea",
+            Motivo = req.Motivo,
+            Timestamp = DateTime.UtcNow
+        }, ct);
+        await _approvalRepo.SaveChangesAsync(ct);
+
+        return await BuildDetailAsync(closure, ct);
+    }
+
+    public async Task<ClosureDetailDto> AddIncentivoAsync(int closureId, ClosureLineIncentivoRequest req, uint rowVersion, int usuarioId, CancellationToken ct)
+    {
+        var closure = await _repo.GetByIdAndUsuarioIdAsync(closureId, usuarioId, ct)
+                      ?? throw new EntityNotFoundException("Closure", closureId);
+        if (closure.RowVersion != rowVersion) throw new ConcurrencyConflictException();
+        if (closure.Estado != EstadoClosure.Borrador && closure.Estado != EstadoClosure.Rechazado)
+            throw new InvalidApprovalTransitionException("Solo se pueden añadir incentivos a closures en Borrador o Rechazado.");
+
+        var concept = await _conceptRepo.GetByIdAsync(req.ConceptId, ct)
+                      ?? throw new EntityNotFoundException("Concept", req.ConceptId);
+
+        var line = new ClosureLine
+        {
+            ClosureId = closureId,
+            ConceptId = req.ConceptId,
+            UserId = req.UserId,
+            Importe = req.Importe,
+            DatosEntradaJson = "{}",
+            Tipo = req.Tipo,
+            TieneIncidencia = false,
+            EsManual = true,
+            MotivoManual = req.Motivo
+        };
+        await _lineRepo.AddAsync(line, ct);
+        await _lineRepo.SaveChangesAsync(ct);
+
+        await RecomputeTotalsAsync(closure, ct);
+
+        await _approvalRepo.AddHistoryAsync(new ApprovalHistory
+        {
+            ClosureId = closureId,
+            UserId = usuarioId,
+            PasoOrigen = closure.PasoActual,
+            PasoDestino = closure.PasoActual,
+            Accion = "AddIncentivo",
+            Motivo = req.Motivo,
+            Timestamp = DateTime.UtcNow
+        }, ct);
+        await _approvalRepo.SaveChangesAsync(ct);
+
+        return await BuildDetailAsync(closure, ct);
+    }
+
+    private async Task RecomputeTotalsAsync(Closure closure, CancellationToken ct)
+    {
+        var lines = await _lineRepo.ListByClosureAsync(closure.Id, ct);
+        decimal coste = lines.Where(l => l.Tipo == TipoConcepto.Pago).Sum(l => l.Importe);
+        decimal factura = lines.Where(l => l.Tipo == TipoConcepto.Factura).Sum(l => l.Importe);
+        closure.CosteTotal = Math.Round(coste, 2);
+        closure.FacturacionTotal = Math.Round(factura, 2);
+        closure.Margen = Math.Round(factura - coste, 2);
+        await _repo.SaveChangesAsync(ct);
+    }
+
     private async Task ComputeLinesAsync(Closure closure, CancellationToken ct)
     {
         // Identifica conceptos aplicables al período del closure
@@ -276,7 +367,6 @@ public class ClosureService : IClosureService
             (c.FechaHasta == null || c.FechaHasta >= closure.Period.FechaInicio) &&
             (c.ServiceId == null || c.ServiceId == closure.ServiceId)).ToList();
 
-        decimal coste = 0, factura = 0;
         var lines = new List<ClosureLine>();
         var logs = new List<CalculationLog>();
 
@@ -293,8 +383,6 @@ public class ClosureService : IClosureService
                 TieneIncidencia = result.Incidencias.Any()
             };
             lines.Add(line);
-            if (concept.Tipo == TipoConcepto.Pago) coste += result.Resultado;
-            else factura += result.Resultado;
         }
 
         await _lineRepo.AddRangeAsync(lines, ct);
@@ -321,10 +409,8 @@ public class ClosureService : IClosureService
         await _calcLogRepo.AddRangeAsync(logs, ct);
         await _calcLogRepo.SaveChangesAsync(ct);
 
-        closure.CosteTotal = Math.Round(coste, 2);
-        closure.FacturacionTotal = Math.Round(factura, 2);
-        closure.Margen = Math.Round(factura - coste, 2);
-        await _repo.SaveChangesAsync(ct);
+        // Incluir en los totales las líneas manuales/incentivos preservadas en el recálculo (Ola 2 #3a).
+        await RecomputeTotalsAsync(closure, ct);
     }
 
     private static string StepToRole(ApprovalStep step) => step switch
@@ -349,6 +435,7 @@ public class ClosureService : IClosureService
             l.Id, l.ConceptId, l.Concept?.Nombre ?? "", l.UserId,
             l.User != null ? $"{l.User.Nombre} {l.User.Apellidos}" : null,
             l.Importe, l.Tipo, l.TieneIncidencia, l.RowVersion,
+            l.EsManual, l.ImporteOriginal, l.MotivoManual,
             null,  // SourceDataSummary - Se puede enriquecer con CalculationLog data
             null)).ToArray();  // InputMetadata - Se puede enriquecer con período info
 

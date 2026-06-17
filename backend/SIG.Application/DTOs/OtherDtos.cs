@@ -2,6 +2,20 @@ using SIG.Domain.Enums;
 
 namespace SIG.Application.DTOs;
 
+// Contratos A3 Innuva (Ola 2 #2 — contratos de un día)
+public record ContratoUnDiaDto(
+    int Id,
+    string ContratoIdExterno,
+    string NIF,
+    DateTime FechaInicio,
+    DateTime FechaFin,
+    decimal ImporteBruto,
+    int? UserId,
+    string? UserNombre,
+    bool IgnoradoEnCierre,
+    string? MotivoIgnorar);
+public record ContratoIgnorarRequest(bool Ignorar, string? Motivo);
+
 // Dashboard
 public record KpiClienteDto(int ClientId, string Nombre, decimal Facturacion, decimal Coste, decimal Margen, decimal PctTotal);
 public record EvolucionPeriodoDto(string PeriodNombre, decimal Facturacion, decimal Coste, decimal Margen);

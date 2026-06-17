@@ -81,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<IPeriodService, PeriodService>();
         services.AddScoped<ITarifaServicioService, TarifaServicioService>();
         services.AddScoped<IPresupuestoServicioService, PresupuestoServicioService>();
+        services.AddScoped<IContratoService, ContratoService>();
         services.AddScoped<IClosureService, ClosureService>();
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IClosureValidationService, ClosureValidationService>();

@@ -148,6 +148,7 @@ public class PeriodCreateRequestValidator : AbstractValidator<PeriodCreateReques
     {
         RuleFor(x => x.Nombre).NotEmpty().Length(2, 100);
         RuleFor(x => x).Must(p => p.FechaInicio <= p.FechaFin).WithMessage("FechaInicio debe ser <= FechaFin");
+        RuleFor(x => x.DiaPago).Must(d => d == 30 || d == 15 || d == 9).WithMessage("DiaPago debe ser 30, 15 o 9");
     }
 }
 
@@ -157,6 +158,7 @@ public class PeriodUpdateRequestValidator : AbstractValidator<PeriodUpdateReques
     {
         RuleFor(x => x.Nombre).NotEmpty().Length(2, 100);
         RuleFor(x => x).Must(p => p.FechaInicio <= p.FechaFin).WithMessage("FechaInicio debe ser <= FechaFin");
+        RuleFor(x => x.DiaPago).Must(d => d == 30 || d == 15 || d == 9).WithMessage("DiaPago debe ser 30, 15 o 9");
     }
 }
 

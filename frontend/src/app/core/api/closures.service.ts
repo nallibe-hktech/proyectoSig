@@ -5,6 +5,7 @@ import {
   ClosureListItemDto, ClosureDetailDto, ClosureCreateRequest, ClosureRecalcRequest,
   ClosureApproveRequest, ClosureRejectRequest, ApprovalFilterRequest,
   ApprovalHistoryDto, PagedResult,
+  ClosureLineOverrideRequest, ClosureLineIncentivoRequest,
 } from '../../models/dtos';
 import { toHttpParams } from './api.helpers';
 
@@ -33,6 +34,18 @@ export class ClosureService {
   }
   rechazar(id: number, rowVersion: number, req: ClosureRejectRequest) {
     return this.http.post<ClosureDetailDto>(`${this.base}/${id}/rechazar`, req, {
+      headers: new HttpHeaders({ 'If-Match': String(rowVersion) }),
+    });
+  }
+
+  // Ola 2 (#3a): override manual de importe de línea e incentivos manuales.
+  overrideLinea(closureId: number, lineId: number, rowVersion: number, req: ClosureLineOverrideRequest) {
+    return this.http.post<ClosureDetailDto>(`${this.base}/${closureId}/lines/${lineId}/override`, req, {
+      headers: new HttpHeaders({ 'If-Match': String(rowVersion) }),
+    });
+  }
+  agregarIncentivo(closureId: number, rowVersion: number, req: ClosureLineIncentivoRequest) {
+    return this.http.post<ClosureDetailDto>(`${this.base}/${closureId}/lines/incentivo`, req, {
       headers: new HttpHeaders({ 'If-Match': String(rowVersion) }),
     });
   }

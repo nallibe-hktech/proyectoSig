@@ -71,6 +71,7 @@ public class Client : ISoftDeletable, IAuditable
     public int Id { get; set; }
     public string Nombre { get; set; } = null!;
     public string NIF { get; set; } = null!;
+    public EstadoCliente Estado { get; set; }
     public string? Direccion { get; set; }
     public string? Ciudad { get; set; }
     public string? Provincia { get; set; }
@@ -215,6 +216,7 @@ public class Period : IAuditable
     public string Nombre { get; set; } = null!;
     public DateOnly FechaInicio { get; set; }
     public DateOnly FechaFin { get; set; }
+    public int DiaPago { get; set; }                  // día del mes de pago: 30, 15 o 9
     public EstadoPeriodo Estado { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -256,6 +258,10 @@ public class ClosureLine : IAuditable
     public string DatosEntradaJson { get; set; } = null!;
     public TipoConcepto Tipo { get; set; }
     public bool TieneIncidencia { get; set; }
+    // Ola 2 (#3a): override manual de importe e incentivos manuales.
+    public bool EsManual { get; set; }                // línea introducida o ajustada a mano (no recalculable por fórmula)
+    public decimal? ImporteOriginal { get; set; }     // importe calculado original, si hubo override
+    public string? MotivoManual { get; set; }         // auditoría del ajuste/incentivo manual
     public uint RowVersion { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

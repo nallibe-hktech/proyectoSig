@@ -156,6 +156,24 @@ public class ExportsController : ControllerBase
 }
 
 [ApiController]
+[Route("api/contratos")]
+[Authorize(Roles = "Administrator,Backoffice")]
+public class ContratosController : ControllerBase
+{
+    private readonly IContratoService _svc;
+    public ContratosController(IContratoService svc) { _svc = svc; }
+
+    // Contratos de un día (FechaInicio == FechaFin): se señalan para revisión manual (Ola 2 #2).
+    [HttpGet("un-dia")]
+    public async Task<IActionResult> ListUnDia(CancellationToken ct) =>
+        Ok(await _svc.ListContratosUnDiaAsync(ct));
+
+    [HttpPost("{id:int}/ignorar")]
+    public async Task<IActionResult> MarcarIgnorar(int id, SIG.Application.DTOs.ContratoIgnorarRequest req, CancellationToken ct) =>
+        Ok(await _svc.MarcarIgnorarAsync(id, req, ct));
+}
+
+[ApiController]
 [Route("api/services/{serviceId:int}/tarifas")]
 [Authorize(Roles = "Administrator,Backoffice")]
 public class TarifasController : ControllerBase

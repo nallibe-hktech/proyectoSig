@@ -24,7 +24,7 @@ public class ConceptsController : ControllerBase
     public async Task<IActionResult> Get(int id, CancellationToken ct) => Ok(await _svc.GetByIdAsync(id, UserId, ct));
 
     [HttpPost]
-    [Authorize(Roles = "Administrator,Backoffice")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> Create(ConceptCreateRequest req, CancellationToken ct)
     {
         var r = await _svc.CreateAsync(req, UserId, ct);

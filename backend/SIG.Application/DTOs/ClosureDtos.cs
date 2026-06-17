@@ -14,8 +14,15 @@ public record ClosureLineDto(
     TipoConcepto Tipo,
     bool TieneIncidencia,
     uint RowVersion,
+    bool EsManual = false,
+    decimal? ImporteOriginal = null,
+    string? MotivoManual = null,
     string? SourceDataSummary = null,
     string? InputMetadata = null);
+
+// Ola 2 (#3a): override manual de importe de línea y alta de línea de incentivo manual.
+public record ClosureLineOverrideRequest(decimal Importe, string Motivo);
+public record ClosureLineIncentivoRequest(int ConceptId, TipoConcepto Tipo, decimal Importe, string Motivo, int? UserId);
 public record ClosureCreateRequest(int ServiceId, int PeriodId, string? Comentarios);
 public record ClosureRecalcRequest(string? Comentarios);
 

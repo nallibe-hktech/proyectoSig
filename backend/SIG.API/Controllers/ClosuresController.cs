@@ -61,6 +61,22 @@ public class ClosuresController : ControllerBase
         return Ok(await _svc.RejectAsync(id, req, rv, UserId, ct));
     }
 
+    [HttpPost("{id:int}/lines/{lineId:int}/override")]
+    [Authorize(Roles = "ProjectManager,Backoffice,Administrator")]
+    public async Task<IActionResult> OverrideLine(int id, int lineId, ClosureLineOverrideRequest req, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
+    {
+        uint rv = ParseIfMatch(ifMatch);
+        return Ok(await _svc.OverrideLineAsync(id, lineId, req, rv, UserId, ct));
+    }
+
+    [HttpPost("{id:int}/lines/incentivo")]
+    [Authorize(Roles = "ProjectManager,Backoffice,Administrator")]
+    public async Task<IActionResult> AddIncentivo(int id, ClosureLineIncentivoRequest req, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
+    {
+        uint rv = ParseIfMatch(ifMatch);
+        return Ok(await _svc.AddIncentivoAsync(id, req, rv, UserId, ct));
+    }
+
     [HttpGet("{id:int}/alertas")]
     public async Task<IActionResult> GetAlertas(int id, CancellationToken ct)
     {

@@ -1,6 +1,7 @@
 namespace SIG.Domain.Enums;
 
 public enum EstadoUsuario { Activo, Inactivo }
+public enum EstadoCliente { Activo, Inactivo }
 public enum EstadoServicio { Activo, Inactivo }
 public enum TipoConcepto { Pago, Factura }
 public enum EstadoPeriodo { Abierto, Cerrado, Bloqueado }

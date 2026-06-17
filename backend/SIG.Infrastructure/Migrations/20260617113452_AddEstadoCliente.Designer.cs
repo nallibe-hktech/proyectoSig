@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SIG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SIG.Infrastructure.Persistence;
 namespace SIG.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260617113452_AddEstadoCliente")]
+    partial class AddEstadoCliente
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -511,26 +514,10 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("datos_entrada_json");
 
-                    b.Property<bool>("EsManual")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("es_manual");
-
                     b.Property<decimal>("Importe")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)")
                         .HasColumnName("importe");
-
-                    b.Property<decimal?>("ImporteOriginal")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("importe_original");
-
-                    b.Property<string>("MotivoManual")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("motivo_manual");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -754,12 +741,6 @@ namespace SIG.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
-
-                    b.Property<int>("DiaPago")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(30)
-                        .HasColumnName("dia_pago");
 
                     b.Property<string>("Estado")
                         .IsRequired()
@@ -1250,21 +1231,10 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("hash");
 
-                    b.Property<bool>("IgnoradoEnCierre")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("ignorado_en_cierre");
-
                     b.Property<decimal>("ImporteBruto")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)")
                         .HasColumnName("importe_bruto");
-
-                    b.Property<string>("MotivoIgnorar")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("motivo_ignorar");
 
                     b.Property<string>("NIF")
                         .IsRequired()

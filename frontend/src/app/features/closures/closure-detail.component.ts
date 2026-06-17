@@ -13,12 +13,14 @@ import { ClosureService } from '../../core/api/closures.service';
 import { ExportService } from '../../core/api/misc.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotifyService } from '../../core/notify.service';
-import { ClosureDetailDto, ClosureAlertaDto, ApprovalHistoryDto } from '../../models/dtos';
+import { ClosureDetailDto, ClosureAlertaDto, ApprovalHistoryDto, ClosureLineDto, ClosureLineIncentivoRequest } from '../../models/dtos';
 import { ApprovalStep } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { StateBadgeComponent } from '../../shared/state-badge.component';
 import { RejectDialogComponent } from './reject-dialog.component';
+import { OverrideExceptionDialog } from './override-exception.dialog';
+import { IncentivoDialog } from './incentivo.dialog';
 
 @Component({
   selector: 'app-closure-detail',
@@ -139,7 +141,12 @@ import { RejectDialogComponent } from './reject-dialog.component';
 
         <!-- Líneas -->
         <mat-card style="margin-bottom: 16px;">
-          <mat-card-header><mat-card-title>Líneas de cierre</mat-card-title></mat-card-header>
+          <mat-card-header style="display:flex;align-items:center;justify-content:space-between;">
+            <mat-card-title>Líneas de cierre</mat-card-title>
+            @if (canEditLines()) {
+              <button mat-stroked-button (click)="onAnadirIncentivo()" data-testid="btn-anadir-incentivo"><mat-icon>add_card</mat-icon> Añadir incentivo</button>
+            }
+          </mat-card-header>
           <mat-card-content>
             @if (closure()!.lines.length === 0) {
               <p style="color: var(--mat-sys-on-surface-variant);">Sin líneas calculadas.</p>
@@ -148,7 +155,14 @@ import { RejectDialogComponent } from './reject-dialog.component';
                 <ng-container matColumnDef="concepto"><th mat-header-cell *matHeaderCellDef>Concepto</th><td mat-cell *matCellDef="let l">{{ l.conceptNombre }}</td></ng-container>
                 <ng-container matColumnDef="tipo"><th mat-header-cell *matHeaderCellDef>Tipo</th><td mat-cell *matCellDef="let l"><mat-chip>{{ l.tipo }}</mat-chip></td></ng-container>
                 <ng-container matColumnDef="usuario"><th mat-header-cell *matHeaderCellDef>Usuario</th><td mat-cell *matCellDef="let l">{{ l.userNombre ?? '—' }}</td></ng-container>
-                <ng-container matColumnDef="importe"><th mat-header-cell *matHeaderCellDef>Importe</th><td mat-cell *matCellDef="let l" class="mono-num">{{ l.importe | number:'1.0-2' }} €</td></ng-container>
+                <ng-container matColumnDef="importe"><th mat-header-cell *matHeaderCellDef>Importe</th>
+                  <td mat-cell *matCellDef="let l" class="mono-num">
+                    {{ l.importe | number:'1.0-2' }} €
+                    @if (l.esManual) {
+                      <mat-icon style="font-size:16px;height:16px;width:16px;vertical-align:middle;color:var(--sig-warning);" [title]="l.motivoManual ?? 'Línea manual'">edit_note</mat-icon>
+                    }
+                  </td>
+                </ng-container>
                 <ng-container matColumnDef="incidencia"><th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let l">
                     @if (l.tieneIncidencia) {
@@ -158,6 +172,9 @@ import { RejectDialogComponent } from './reject-dialog.component';
                 </ng-container>
                 <ng-container matColumnDef="acciones"><th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let l">
+                    @if (canEditLines()) {
+                      <button mat-icon-button (click)="onOverrideLinea(l)" [attr.data-testid]="'btn-override-' + l.id" aria-label="Ajustar importe"><mat-icon>edit</mat-icon></button>
+                    }
                     <a mat-icon-button [routerLink]="['/calculations', l.id]" [attr.data-testid]="'btn-detalle-' + l.id" aria-label="Ver detalle"><mat-icon>visibility</mat-icon></a>
                   </td>
                 </ng-container>
@@ -223,6 +240,12 @@ export class ClosureDetailComponent implements OnInit {
     return !!c && (c.estado === 'Borrador' || c.estado === 'EnAprobacion' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager');
   });
 
+  // Ola 2 (#3a): override de importe e incentivos solo en estados editables (Borrador/Rechazado).
+  protected readonly canEditLines = computed(() => {
+    const c = this.closure();
+    return !!c && (c.estado === 'Borrador' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager');
+  });
+
   protected readonly canApprove = computed(() => {
     const c = this.closure();
     if (!c) return false;
@@ -264,6 +287,30 @@ export class ClosureDetailComponent implements OnInit {
     this.closureSvc.recalcular(c.id, c.rowVersion, { comentarios: null }).subscribe({
       next: (updated) => { this.closure.set(updated); this.notify.success('Cierre recalculado'); },
       error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo recalcular'),
+    });
+  }
+
+  protected onOverrideLinea(line: ClosureLineDto): void {
+    const c = this.closure(); if (!c) return;
+    this.dialog.open(OverrideExceptionDialog, {
+      data: { line, resultadoOriginal: line.importeOriginal ?? line.importe, razon: line.motivoManual ?? '' },
+    }).afterClosed().subscribe((res) => {
+      if (!res) return;
+      this.closureSvc.overrideLinea(c.id, line.id, c.rowVersion, { importe: res.nuevoImporte, motivo: res.razon }).subscribe({
+        next: (updated) => { this.closure.set(updated); this.notify.success('Importe ajustado'); },
+        error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo ajustar la línea'),
+      });
+    });
+  }
+
+  protected onAnadirIncentivo(): void {
+    const c = this.closure(); if (!c) return;
+    this.dialog.open(IncentivoDialog, {}).afterClosed().subscribe((req: ClosureLineIncentivoRequest | undefined) => {
+      if (!req) return;
+      this.closureSvc.agregarIncentivo(c.id, c.rowVersion, req).subscribe({
+        next: (updated) => { this.closure.set(updated); this.notify.success('Incentivo añadido'); },
+        error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo añadir el incentivo'),
+      });
     });
   }
 

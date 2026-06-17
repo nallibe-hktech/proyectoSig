@@ -76,6 +76,9 @@ export const routes: Routes = [
       // Alertas de Cierre
       { path: 'alertas', loadComponent: () => import('./features/closures/alerts-list.component').then((m) => m.AlertsListComponent), title: 'Alertas de Cierre — SIG' },
 
+      // Contratos de un día (Ola 2 #2)
+      { path: 'contratos-un-dia', loadComponent: () => import('./features/contratos/contratos-un-dia.component').then((m) => m.ContratosUnDiaComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Backoffice'] }, title: 'Contratos de un día — SIG' },
+
       // Calculations
       { path: 'calculations/:closureLineId', loadComponent: () => import('./features/calculations/calculation-detail.component').then((m) => m.CalculationDetailComponent), title: 'Detalle de cálculo — SIG' },
 

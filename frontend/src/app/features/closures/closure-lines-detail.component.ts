@@ -1,4 +1,4 @@
-import { Component, Input, signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe, DecimalPipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -309,6 +309,8 @@ import { ClosureLine, CalculationDetailDto } from '../../models/dtos';
 export class ClosureLinesDetailComponent {
   @Input() lineas: ClosureLine[] = [];
   @Input() detallesCalculos: Map<number, CalculationDetailDto> = new Map();
+  @Output() editarLinea = new EventEmitter<ClosureLine>();
+  @Output() overrideLinea = new EventEmitter<ClosureLine>();
 
   protected expandido = signal<number | null>(null);
 
@@ -319,13 +321,11 @@ export class ClosureLinesDetailComponent {
   }
 
   protected editar(line: ClosureLine) {
-    alert(`Editar línea ${line.id}: ${line.conceptNombre}`);
-    // TODO: Abrir dialog de edición
+    this.editarLinea.emit(line);
   }
 
   protected abrirOverride(line: ClosureLine) {
-    alert(`Override manual para línea ${line.id}`);
-    // TODO: Abrir dialog de override
+    this.overrideLinea.emit(line);
   }
 
   protected parseInputs(inputsJson: string): { key: string; value: string }[] {
