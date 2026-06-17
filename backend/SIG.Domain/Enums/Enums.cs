@@ -8,11 +8,9 @@ public enum EstadoPeriodo { Abierto, Cerrado, Bloqueado }
 public enum EstadoClosure { Borrador, EnAprobacion, Aprobado, Rechazado, Exportado }
 public enum ApprovalStep
 {
-    ProjectManager = 1,
-    Backoffice = 2,
-    Fico = 3,
-    Direction = 4,
-    SystemExports = 5
+    Grupo = 1,
+    Fico = 2,
+    SystemExports = 3
 }
 public enum EstadoApproval { Pendiente, Aprobado, Rechazado }
 public enum AuditAction { Create, Update, Delete, Login, Logout, Export, Recalc }

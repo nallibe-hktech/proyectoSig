@@ -22,13 +22,14 @@ public class ClosureServiceOla2Tests
     private readonly IApprovalRepository _approvalRepo = Substitute.For<IApprovalRepository>();
     private readonly IRoleRepository _roleRepo = Substitute.For<IRoleRepository>();
     private readonly IConceptRepository _conceptRepo = Substitute.For<IConceptRepository>();
+    private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly ICalculationEngine _engine = Substitute.For<ICalculationEngine>();
     private readonly IClosureValidationService _validationSvc = Substitute.For<IClosureValidationService>();
     private readonly ClosureService _sut;
 
     public ClosureServiceOla2Tests()
     {
-        _sut = new ClosureService(_repo, _lineRepo, _calcLogRepo, _serviceRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _engine, _validationSvc);
+        _sut = new ClosureService(_repo, _lineRepo, _calcLogRepo, _serviceRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _userRepo, _engine, _validationSvc);
     }
 
     private static Period MakePeriod() =>
@@ -38,7 +39,7 @@ public class ClosureServiceOla2Tests
     {
         Id = 555, ServiceId = 100, Service = new Service { Id = 100, Nombre = "Serv1", ClientId = 1 },
         PeriodId = 1, Period = MakePeriod(),
-        Estado = estado, PasoActual = ApprovalStep.ProjectManager, RowVersion = rowVersion,
+        Estado = estado, PasoActual = ApprovalStep.Grupo, RowVersion = rowVersion,
         Lines = new List<ClosureLine>(), Approvals = new List<Approval>()
     };
 

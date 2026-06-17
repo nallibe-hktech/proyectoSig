@@ -15,6 +15,8 @@ namespace SIG.Infrastructure.Repositories;
 internal static class OwnershipHelper
 {
     public static readonly string[] PrivilegedRoles = new[] { "Administrator", "Direction", "Fico", "Backoffice", "Auditor", "Reader" };
+    // Ola 3a (#1): roles globales que (junto con la asignación al servicio) constituyen el "grupo" del servicio.
+    public static readonly string[] GrupoRoles = new[] { "Facilitador", "Interlocutor", "Gestor" };
 }
 
 public class UserRepository : IUserRepository
@@ -326,13 +328,13 @@ public class ClosureRepository : IClosureRepository
             .Include(c => c.Service).ThenInclude(p => p.Client)
             .Include(c => c.Period)
             .Where(c => c.Estado == EstadoClosure.EnAprobacion || c.Estado == EstadoClosure.Borrador);
-        // filtra por paso/rol
-        var step = roles.Contains("ProjectManager") ? ApprovalStep.ProjectManager :
-                   roles.Contains("Backoffice") ? ApprovalStep.Backoffice :
-                   roles.Contains("Fico") ? ApprovalStep.Fico :
-                   roles.Contains("Direction") ? ApprovalStep.Direction : (ApprovalStep?)null;
+        // Ola 3a (#1): flujo Grupo → Fico. Filtra por paso según el rol global del usuario.
+        var esGrupo = roles.Any(r => OwnershipHelper.GrupoRoles.Contains(r));
+        var step = esGrupo ? ApprovalStep.Grupo :
+                   roles.Contains("Fico") ? ApprovalStep.Fico : (ApprovalStep?)null;
         if (step.HasValue) q = q.Where(c => c.PasoActual == step.Value);
-        if (roles.Contains("ProjectManager") && !roles.Intersect(OwnershipHelper.PrivilegedRoles).Any())
+        // Miembro del grupo no privilegiado: solo ve los closures de servicios a los que está asignado.
+        if (esGrupo && !roles.Intersect(OwnershipHelper.PrivilegedRoles).Any())
         {
             var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
             q = q.Where(c => serviceIds.Contains(c.ServiceId));

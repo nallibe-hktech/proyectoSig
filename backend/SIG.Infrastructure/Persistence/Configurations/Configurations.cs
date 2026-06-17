@@ -260,7 +260,7 @@ public class ApprovalConfiguration : IEntityTypeConfiguration<Approval>
         b.Property(a => a.Paso).HasConversion<int>();
         b.Property(a => a.Motivo).HasMaxLength(2000);
         b.HasOne(a => a.Closure).WithMany(c => c.Approvals).HasForeignKey(a => a.ClosureId).OnDelete(DeleteBehavior.Cascade);
-        b.HasOne(a => a.Role).WithMany(r => r.Approvals).HasForeignKey(a => a.RoleId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(a => a.Role).WithMany(r => r.Approvals).HasForeignKey(a => a.RoleId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.SetNull);
     }
 }

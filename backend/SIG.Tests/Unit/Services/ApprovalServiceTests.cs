@@ -31,7 +31,7 @@ public class ApprovalServiceTests
         var closure = new Closure
         {
             Id = 555, ServiceId = 100, Service = service, PeriodId = 1, Period = period,
-            Estado = EstadoClosure.EnAprobacion, PasoActual = ApprovalStep.Backoffice,
+            Estado = EstadoClosure.EnAprobacion, PasoActual = ApprovalStep.Fico,
             Margen = 1000m, UpdatedAt = DateTime.UtcNow
         };
         _closureRepo.ListPaginatedForUserAsync(99, filter, Arg.Any<CancellationToken>())
@@ -44,7 +44,7 @@ public class ApprovalServiceTests
         result.Items[0].ClosureId.Should().Be(555);
         result.Items[0].ServiceNombre.Should().Be("Proj1");
         result.Items[0].ClientNombre.Should().Be("Alpha");
-        result.Items[0].PasoActual.Should().Be(ApprovalStep.Backoffice);
+        result.Items[0].PasoActual.Should().Be(ApprovalStep.Fico);
         result.Items[0].Margen.Should().Be(1000m);
     }
 
@@ -77,7 +77,7 @@ public class ApprovalServiceTests
 
         var historial = new List<ApprovalHistory>
         {
-            new() { Id = 1, ClosureId = 1, UserId = 5, User = new User { Nombre = "Ana", Apellidos = "Gómez" }, PasoOrigen = ApprovalStep.ProjectManager, PasoDestino = ApprovalStep.Backoffice, Accion = "Aprobar", Timestamp = DateTime.UtcNow }
+            new() { Id = 1, ClosureId = 1, UserId = 5, User = new User { Nombre = "Ana", Apellidos = "Gómez" }, PasoOrigen = ApprovalStep.Grupo, PasoDestino = ApprovalStep.Fico, Accion = "Aprobar", Timestamp = DateTime.UtcNow }
         };
         _approvalRepo.ListHistoryByClosureAsync(1, Arg.Any<CancellationToken>()).Returns(historial);
 

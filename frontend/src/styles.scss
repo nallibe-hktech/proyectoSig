@@ -584,6 +584,7 @@ body {
   // Approval states (backwards compat)
   &--pending-pm,
   &--pending-backoffice,
+  &--pending-grupo,
   &--pending-fico,
   &--pending-direction { background: var(--sig-warning-bg); color: var(--sig-warning); &::before { background: var(--sig-warning); } }
   &--approved          { background: var(--sig-success-bg); color: var(--sig-success); &::before { background: var(--sig-success); } }

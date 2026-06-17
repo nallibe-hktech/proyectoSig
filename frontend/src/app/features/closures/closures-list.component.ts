@@ -43,8 +43,8 @@ interface FlowStep { label: string; idx: number; done: boolean; current: boolean
       <mat-card style="margin-bottom: 16px;">
         <mat-card-content>
           <div style="display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--mat-sys-on-surface-variant);">
-            <strong>Flujo de aprobaci&oacute;n (5 pasos):</strong>
-            <span>1 PM &rarr; 2 Backoffice &rarr; 3 Fico &rarr; 4 Direction &rarr; 5 Exportado</span>
+            <strong>Flujo de aprobaci&oacute;n (3 pasos):</strong>
+            <span>1 Grupo &rarr; 2 FICO &rarr; 3 Exportado</span>
           </div>
         </mat-card-content>
       </mat-card>
@@ -89,7 +89,7 @@ interface FlowStep { label: string; idx: number; done: boolean; current: boolean
                 <div class="sig-flow">
                   @for (s of stepsFor(row); track s.idx) {
                     <span class="sig-flow-dot" [class.sig-flow-dot--done]="s.done" [class.sig-flow-dot--current]="s.current" [class.sig-flow-dot--rejected]="s.rejected" [title]="s.label"></span>
-                    @if (s.idx < 5) { <span class="sig-flow-line" [class.sig-flow-line--done]="s.done"></span> }
+                    @if (s.idx < 3) { <span class="sig-flow-line" [class.sig-flow-line--done]="s.done"></span> }
                   }
                 </div>
                 <sig-state-badge [estado]="row.estado" [paso]="row.pasoActual" />
@@ -147,8 +147,8 @@ export class ClosuresListComponent implements OnInit {
   protected onPage(e: PageEvent): void { this.pageSize.set(e.pageSize); this.page.set(e.pageIndex + 1); this.load(); }
   protected onExportCSV(): void { exportCSV('closures.csv', this.items().map((c) => ({ Id: c.id, Servicio: c.serviceNombre, Periodo: c.periodNombre, Coste: c.costeTotal, Facturacion: c.facturacionTotal, Margen: c.margen, Estado: c.estado }))); }
   protected stepsFor(row: ClosureListItemDto): FlowStep[] {
-    const stepOrder: ApprovalStep[] = ['ProjectManager', 'Backoffice', 'Fico', 'Direction', 'SystemExports'];
-    const labels = ['PM', 'BO', 'Fico', 'Dir', 'Export'];
+    const stepOrder: ApprovalStep[] = ['Grupo', 'Fico', 'SystemExports'];
+    const labels = ['Grupo', 'FICO', 'Export'];
     const currentIdx = stepOrder.indexOf(row.pasoActual);
     const rejected = row.estado === 'Rechazado';
     return stepOrder.map((s, i) => ({

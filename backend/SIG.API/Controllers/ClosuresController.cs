@@ -30,7 +30,7 @@ public class ClosuresController : ControllerBase
         Ok(await _svc.GetByIdForUserAsync(id, UserId, ct));
 
     [HttpPost]
-    [Authorize(Roles = "ProjectManager,Backoffice,Administrator")]
+    [Authorize(Roles = "Facilitador,Interlocutor,Gestor,ProjectManager,Backoffice,Administrator")]
     public async Task<IActionResult> Create(ClosureCreateRequest req, CancellationToken ct)
     {
         var r = await _svc.CreateAsync(req, UserId, ct);
@@ -38,7 +38,7 @@ public class ClosuresController : ControllerBase
     }
 
     [HttpPost("{id:int}/recalcular")]
-    [Authorize(Roles = "ProjectManager,Backoffice,Administrator")]
+    [Authorize(Roles = "Facilitador,Interlocutor,Gestor,ProjectManager,Backoffice,Administrator")]
     public async Task<IActionResult> Recalc(int id, ClosureRecalcRequest req, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
         uint rv = ParseIfMatch(ifMatch);
@@ -46,7 +46,7 @@ public class ClosuresController : ControllerBase
     }
 
     [HttpPost("{id:int}/aprobar")]
-    [Authorize(Roles = "ProjectManager,Backoffice,Fico,Direction,Administrator")]
+    [Authorize(Roles = "Facilitador,Interlocutor,Gestor,Fico,Administrator")]
     public async Task<IActionResult> Approve(int id, ClosureApproveRequest req, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
         uint rv = ParseIfMatch(ifMatch);
@@ -54,7 +54,7 @@ public class ClosuresController : ControllerBase
     }
 
     [HttpPost("{id:int}/rechazar")]
-    [Authorize(Roles = "Backoffice,Fico,Direction,Administrator")]
+    [Authorize(Roles = "Facilitador,Interlocutor,Gestor,Fico,Administrator")]
     public async Task<IActionResult> Reject(int id, ClosureRejectRequest req, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
         uint rv = ParseIfMatch(ifMatch);
@@ -62,7 +62,7 @@ public class ClosuresController : ControllerBase
     }
 
     [HttpPost("{id:int}/lines/{lineId:int}/override")]
-    [Authorize(Roles = "ProjectManager,Backoffice,Administrator")]
+    [Authorize(Roles = "Facilitador,Interlocutor,Gestor,ProjectManager,Backoffice,Administrator")]
     public async Task<IActionResult> OverrideLine(int id, int lineId, ClosureLineOverrideRequest req, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
         uint rv = ParseIfMatch(ifMatch);
@@ -70,7 +70,7 @@ public class ClosuresController : ControllerBase
     }
 
     [HttpPost("{id:int}/lines/incentivo")]
-    [Authorize(Roles = "ProjectManager,Backoffice,Administrator")]
+    [Authorize(Roles = "Facilitador,Interlocutor,Gestor,ProjectManager,Backoffice,Administrator")]
     public async Task<IActionResult> AddIncentivo(int id, ClosureLineIncentivoRequest req, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
         uint rv = ParseIfMatch(ifMatch);

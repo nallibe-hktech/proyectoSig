@@ -65,7 +65,7 @@ import { IncentivoDialog } from './incentivo.dialog';
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
           <strong>Estado:</strong>
           <sig-state-badge [estado]="closure()!.estado" [paso]="closure()!.pasoActual" />
-          <span style="color: var(--mat-sys-on-surface-variant);">Paso {{ pasoNumero(closure()!.pasoActual) }} de 5</span>
+          <span style="color: var(--mat-sys-on-surface-variant);">Paso {{ pasoNumero(closure()!.pasoActual) }} de 3</span>
         </div>
       }
 
@@ -237,28 +237,30 @@ export class ClosureDetailComponent implements OnInit {
 
   protected readonly canRecalculate = computed(() => {
     const c = this.closure();
-    return !!c && (c.estado === 'Borrador' || c.estado === 'EnAprobacion' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager');
+    return !!c && (c.estado === 'Borrador' || c.estado === 'EnAprobacion' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager', 'Facilitador', 'Interlocutor', 'Gestor');
   });
 
   // Ola 2 (#3a): override de importe e incentivos solo en estados editables (Borrador/Rechazado).
   protected readonly canEditLines = computed(() => {
     const c = this.closure();
-    return !!c && (c.estado === 'Borrador' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager');
+    return !!c && (c.estado === 'Borrador' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager', 'Facilitador', 'Interlocutor', 'Gestor');
   });
 
   protected readonly canApprove = computed(() => {
     const c = this.closure();
     if (!c) return false;
-    if (c.estado === 'Aprobado' || c.estado === 'Exportado' || c.estado === 'Rechazado') return false;
-    const rolePerStep: Record<ApprovalStep, string> = {
-      ProjectManager: 'ProjectManager',
-      Backoffice: 'Backoffice',
-      Fico: 'Fico',
-      Direction: 'Direction',
-      SystemExports: 'Administrator',
-    };
-    const needed = rolePerStep[c.pasoActual];
-    return this.auth.hasRole(needed as 'Administrator' | 'Direction' | 'Fico' | 'Backoffice' | 'ProjectManager') || this.auth.hasRole('Administrator');
+    if (c.estado === 'Aprobado' || c.estado === 'Exportado') return false;
+    if (this.auth.hasRole('Administrator')) return true;
+    // Ola 3a (#1): flujo Grupo → FICO. El paso Grupo lo aprueba un miembro del grupo
+    // (rol global Facilitador/Interlocutor/Gestor); el refuerzo de la asignación al
+    // servicio lo aplica el backend. El paso Fico lo aprueba el rol Fico.
+    if (c.pasoActual === 'Grupo') {
+      return this.auth.hasAnyRole('Facilitador', 'Interlocutor', 'Gestor');
+    }
+    if (c.pasoActual === 'Fico') {
+      return this.auth.hasRole('Fico');
+    }
+    return false;
   });
 
   ngOnInit(): void {
@@ -271,7 +273,7 @@ export class ClosureDetailComponent implements OnInit {
   }
 
   protected pasoNumero(p: ApprovalStep): number {
-    return { ProjectManager: 1, Backoffice: 2, Fico: 3, Direction: 4, SystemExports: 5 }[p];
+    return { Grupo: 1, Fico: 2, SystemExports: 3 }[p];
   }
 
   private load(id: number): void {

@@ -20,8 +20,13 @@ public class ClosureService : IClosureService
     private readonly IApprovalRepository _approvalRepo;
     private readonly IRoleRepository _roleRepo;
     private readonly IConceptRepository _conceptRepo;
+    private readonly IUserRepository _userRepo;
     private readonly ICalculationEngine _engine;
     private readonly IClosureValidationService _validationSvc;
+
+    // Ola 3a (#1): roles globales que, junto con la asignación al servicio vía ServiceUser,
+    // habilitan a un usuario como miembro del "grupo" del servicio.
+    private static readonly string[] GrupoRoles = { "Facilitador", "Interlocutor", "Gestor" };
 
     public ClosureService(
         IClosureRepository repo,
@@ -32,6 +37,7 @@ public class ClosureService : IClosureService
         IApprovalRepository approvalRepo,
         IRoleRepository roleRepo,
         IConceptRepository conceptRepo,
+        IUserRepository userRepo,
         ICalculationEngine engine,
         IClosureValidationService validationSvc)
     {
@@ -43,6 +49,7 @@ public class ClosureService : IClosureService
         _approvalRepo = approvalRepo;
         _roleRepo = roleRepo;
         _conceptRepo = conceptRepo;
+        _userRepo = userRepo;
         _engine = engine;
         _validationSvc = validationSvc;
     }
@@ -84,7 +91,7 @@ public class ClosureService : IClosureService
             PeriodId = req.PeriodId,
             Period = period,
             Estado = EstadoClosure.Borrador,
-            PasoActual = ApprovalStep.ProjectManager,
+            PasoActual = ApprovalStep.Grupo,
             Comentarios = req.Comentarios,
             FechaCreacion = DateTime.UtcNow
         };
@@ -97,19 +104,16 @@ public class ClosureService : IClosureService
         // Validar y generar alertas
         await _validationSvc.ValidarYPersistirAsync(closure.Id, closure.ServiceId, closure.PeriodId, ct);
 
-        // Crear primer Approval pendiente PM
-        var pmRole = await _roleRepo.GetByNombreAsync("ProjectManager", ct);
-        if (pmRole is not null)
+        // Crear primer Approval pendiente en el paso Grupo (sin rol único: la pertenencia
+        // se resuelve por rol global + asignación al servicio, no por Approval.RoleId).
+        await _approvalRepo.AddAsync(new Approval
         {
-            await _approvalRepo.AddAsync(new Approval
-            {
-                ClosureId = closure.Id,
-                RoleId = pmRole.Id,
-                Paso = ApprovalStep.ProjectManager,
-                Estado = EstadoApproval.Pendiente
-            }, ct);
-            await _approvalRepo.SaveChangesAsync(ct);
-        }
+            ClosureId = closure.Id,
+            RoleId = null,
+            Paso = ApprovalStep.Grupo,
+            Estado = EstadoApproval.Pendiente
+        }, ct);
+        await _approvalRepo.SaveChangesAsync(ct);
 
         return await BuildDetailAsync(closure, ct);
     }
@@ -166,37 +170,34 @@ public class ClosureService : IClosureService
                       ?? throw new InvalidApprovalTransitionException("No hay Approval pendiente para este Closure.");
 
         var pasoOrigen = current.Paso;
+
+        // Autorización a nivel de servicio (refuerzo, además del [Authorize] del controlador).
+        await EnsureCanActOnStepAsync(closure, pasoOrigen, usuarioId, ct);
+
         current.Estado = EstadoApproval.Aprobado;
         current.UserId = usuarioId;
         current.FechaDecision = DateTime.UtcNow;
         current.Motivo = req.Comentarios;
 
-        if ((int)pasoOrigen >= (int)ApprovalStep.SystemExports)
+        if (pasoOrigen == ApprovalStep.Grupo)
         {
-            // Caso límite, ya en último paso
-            closure.Estado = EstadoClosure.Aprobado;
+            // Grupo aprueba → pasa a FICO.
+            closure.PasoActual = ApprovalStep.Fico;
+            closure.Estado = EstadoClosure.EnAprobacion;
+            var ficoRole = await _roleRepo.GetByNombreAsync("Fico", ct);
+            await _approvalRepo.AddAsync(new Approval
+            {
+                ClosureId = closureId,
+                RoleId = ficoRole?.Id,
+                Paso = ApprovalStep.Fico,
+                Estado = EstadoApproval.Pendiente
+            }, ct);
         }
         else
         {
-            var siguiente = (ApprovalStep)((int)pasoOrigen + 1);
-            closure.PasoActual = siguiente;
-            closure.Estado = (siguiente == ApprovalStep.SystemExports) ? EstadoClosure.Aprobado : EstadoClosure.EnAprobacion;
-            // Crear Approval siguiente solo si no es SystemExports (último ya marca Aprobado)
-            if (siguiente != ApprovalStep.SystemExports)
-            {
-                var roleName = StepToRole(siguiente);
-                var role = await _roleRepo.GetByNombreAsync(roleName, ct);
-                if (role is not null)
-                {
-                    await _approvalRepo.AddAsync(new Approval
-                    {
-                        ClosureId = closureId,
-                        RoleId = role.Id,
-                        Paso = siguiente,
-                        Estado = EstadoApproval.Pendiente
-                    }, ct);
-                }
-            }
+            // FICO aprueba → estado terminal Aprobado en el paso SystemExports (sin nuevo Approval).
+            closure.PasoActual = ApprovalStep.SystemExports;
+            closure.Estado = EstadoClosure.Aprobado;
         }
 
         await _approvalRepo.AddHistoryAsync(new ApprovalHistory
@@ -227,36 +228,35 @@ public class ClosureService : IClosureService
                       ?? throw new InvalidApprovalTransitionException("No hay Approval pendiente.");
 
         var pasoOrigen = current.Paso;
+
+        // Autorización a nivel de servicio (refuerzo, además del [Authorize] del controlador).
+        await EnsureCanActOnStepAsync(closure, pasoOrigen, usuarioId, ct);
+
         current.Estado = EstadoApproval.Rechazado;
         current.UserId = usuarioId;
         current.FechaDecision = DateTime.UtcNow;
         current.Motivo = req.Motivo;
 
-        var anterior = pasoOrigen == ApprovalStep.ProjectManager ? ApprovalStep.ProjectManager
-                                                                  : (ApprovalStep)((int)pasoOrigen - 1);
-        closure.PasoActual = anterior;
+        // Rechazo en FICO → vuelve a Grupo (re-editable). Rechazo en Grupo → permanece en Grupo.
+        var destino = ApprovalStep.Grupo;
+        closure.PasoActual = destino;
         closure.Estado = EstadoClosure.Rechazado;
 
-        // Crear nuevo Approval pendiente en paso anterior
-        var roleName = StepToRole(anterior);
-        var role = await _roleRepo.GetByNombreAsync(roleName, ct);
-        if (role is not null)
+        // Nuevo Approval pendiente en Grupo (sin rol único: pertenencia por rol global + asignación).
+        await _approvalRepo.AddAsync(new Approval
         {
-            await _approvalRepo.AddAsync(new Approval
-            {
-                ClosureId = closureId,
-                RoleId = role.Id,
-                Paso = anterior,
-                Estado = EstadoApproval.Pendiente
-            }, ct);
-        }
+            ClosureId = closureId,
+            RoleId = null,
+            Paso = destino,
+            Estado = EstadoApproval.Pendiente
+        }, ct);
 
         await _approvalRepo.AddHistoryAsync(new ApprovalHistory
         {
             ClosureId = closureId,
             UserId = usuarioId,
             PasoOrigen = pasoOrigen,
-            PasoDestino = anterior,
+            PasoDestino = destino,
             Accion = "Rechazar",
             Motivo = req.Motivo,
             Timestamp = DateTime.UtcNow
@@ -413,14 +413,36 @@ public class ClosureService : IClosureService
         await RecomputeTotalsAsync(closure, ct);
     }
 
-    private static string StepToRole(ApprovalStep step) => step switch
+    // Ola 3a (#1): autorización por paso reforzada a nivel de servicio.
+    //  - Grupo: Administrator, o (rol global Facilitador/Interlocutor/Gestor Y asignado al servicio vía ServiceUser).
+    //  - Fico: Administrator, o rol global Fico.
+    // La fuente de verdad de qué exige cada paso es Approval.Paso (no Approval.RoleId).
+    private async Task EnsureCanActOnStepAsync(Closure closure, ApprovalStep paso, int usuarioId, CancellationToken ct)
     {
-        ApprovalStep.ProjectManager => "ProjectManager",
-        ApprovalStep.Backoffice => "Backoffice",
-        ApprovalStep.Fico => "Fico",
-        ApprovalStep.Direction => "Direction",
-        _ => "Administrator"
-    };
+        var roles = await _userRepo.ListRoleNamesForUserAsync(usuarioId, ct);
+        if (roles.Contains("Administrator")) return;
+
+        if (paso == ApprovalStep.Grupo)
+        {
+            var esRolGrupo = roles.Any(r => GrupoRoles.Contains(r));
+            if (!esRolGrupo)
+                throw new NotOwnerException();
+            var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
+            if (!serviceIds.Contains(closure.ServiceId))
+                throw new NotOwnerException();
+            return;
+        }
+
+        if (paso == ApprovalStep.Fico)
+        {
+            if (!roles.Contains("Fico"))
+                throw new NotOwnerException();
+            return;
+        }
+
+        // SystemExports es terminal: no se aprueba/rechaza manualmente.
+        throw new InvalidApprovalTransitionException("El paso actual no admite aprobación o rechazo manual.");
+    }
 
     private async Task<ClosureDetailDto> BuildDetailAsync(Closure closure, CancellationToken ct)
     {
@@ -440,7 +462,7 @@ public class ClosureService : IClosureService
             null)).ToArray();  // InputMetadata - Se puede enriquecer con período info
 
         var aps = approvals.Select(a => new ApprovalDto(
-            a.Id, a.Paso, a.RoleId, a.Role?.Nombre ?? "", a.Estado, a.UserId,
+            a.Id, a.Paso, a.RoleId ?? 0, a.Role?.Nombre ?? (a.Paso == ApprovalStep.Grupo ? "Grupo" : ""), a.Estado, a.UserId,
             a.User != null ? $"{a.User.Nombre} {a.User.Apellidos}" : null,
             a.Motivo, a.FechaDecision)).ToArray();
         return new ClosureDetailDto(

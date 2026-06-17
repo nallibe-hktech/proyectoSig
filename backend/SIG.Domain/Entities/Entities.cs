@@ -273,8 +273,10 @@ public class Approval : IAuditable
     public int Id { get; set; }
     public int ClosureId { get; set; }
     public Closure Closure { get; set; } = null!;
-    public int RoleId { get; set; }
-    public Role Role { get; set; } = null!;
+    // Ola 3a (#1): el paso Grupo no corresponde a un rol único (rol global + asignación al servicio),
+    // por lo que RoleId es nullable. La fuente de verdad de qué exige cada paso es Approval.Paso.
+    public int? RoleId { get; set; }
+    public Role? Role { get; set; }
     public ApprovalStep Paso { get; set; }
     public int? UserId { get; set; }
     public User? User { get; set; }

@@ -28,10 +28,12 @@ public class ApprovalsController : ControllerBase
         Ok(await _svc.GetHistoryAsync(closureId, UserId, ct));
 
     [HttpPost("batch/aprobar")]
+    [Authorize(Roles = "Facilitador,Interlocutor,Gestor,Fico,Administrator")]
     public async Task<IActionResult> BatchApprove([FromBody] BatchApproveRequest req, CancellationToken ct) =>
         Ok(await _svc.BatchApproveAsync(req, UserId, ct));
 
     [HttpPost("batch/rechazar")]
+    [Authorize(Roles = "Facilitador,Interlocutor,Gestor,Fico,Administrator")]
     public async Task<IActionResult> BatchReject([FromBody] BatchRejectRequest req, CancellationToken ct) =>
         Ok(await _svc.BatchRejectAsync(req, UserId, ct));
 }

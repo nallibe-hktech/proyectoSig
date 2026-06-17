@@ -375,11 +375,9 @@ export class ApprovalsComponent {
   ];
 
   protected flujo: FlujoStep[] = [
-    { nombre:'Calculo',  estado:'ok'      },
-    { nombre:'Revision', estado:'ok'      },
-    { nombre:'FICO',     estado:'pending' },
-    { nombre:'Direccion',estado:'idle'    },
-    { nombre:'Cierre',   estado:'idle'    },
+    { nombre:'Grupo',  estado:'ok'      },
+    { nombre:'FICO',   estado:'pending' },
+    { nombre:'Cierre', estado:'idle'    },
   ];
 
   protected readonly totalCoste       = computed(() => this.pendientes.reduce((s, p) => s + p.coste, 0));

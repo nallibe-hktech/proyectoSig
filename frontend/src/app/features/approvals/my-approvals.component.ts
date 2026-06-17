@@ -213,9 +213,8 @@ export class MyApprovalsComponent implements OnInit {
 
   protected rolActual = computed(() => {
     const roles = this.authSvc.currentUser()?.roles ?? [];
-    if (roles.includes('Direction')) return 'Dirección';
     if (roles.includes('Fico')) return 'FICO';
-    if (roles.includes('ProjectManager')) return 'Gestor';
+    if (roles.includes('Gestor') || roles.includes('Facilitador') || roles.includes('Interlocutor')) return 'Grupo';
     return 'Usuario';
   });
 
@@ -246,12 +245,12 @@ export class MyApprovalsComponent implements OnInit {
       {
         id: 1, periodo: 'Mayo 2026', periodNombre: 'Mayo 2026', clientNombre: 'American Express', serviceNombre: 'Amex Shop Small',
         serviceId: 1, periodId: 1,
-        costeTotal: 15000, facturacionTotal: 20500, margen: 5500, estado: 'EnAprobacion' as EstadoClosure, pasoActual: 'ProjectManager' as ApprovalStep
+        costeTotal: 15000, facturacionTotal: 20500, margen: 5500, estado: 'EnAprobacion' as EstadoClosure, pasoActual: 'Grupo' as ApprovalStep
       },
       {
         id: 2, periodo: 'Mayo 2026', periodNombre: 'Mayo 2026', clientNombre: 'Granini', serviceNombre: 'Granini GPVs',
         serviceId: 2, periodId: 1,
-        costeTotal: 8500, facturacionTotal: 10200, margen: 1700, estado: 'EnAprobacion' as EstadoClosure, pasoActual: 'ProjectManager' as ApprovalStep
+        costeTotal: 8500, facturacionTotal: 10200, margen: 1700, estado: 'EnAprobacion' as EstadoClosure, pasoActual: 'Grupo' as ApprovalStep
       }
     ]);
     this.periodos = ['Mayo 2026', 'Abril 2026', 'Marzo 2026'];

@@ -194,10 +194,12 @@ public class DataSeeder : ISeedService
             New("fico@sig.local",       "34567890C", "Javier",    "López",    dMap["Finanzas"], passwordHash, rMap["Fico"]),
             New("backoffice1@sig.local","45678901D", "Laura",     "Sánchez",  dMap["Backoffice"], passwordHash, rMap["Backoffice"]),
             New("backoffice2@sig.local","56789012E", "Pedro",     "Martín",   dMap["Backoffice"], passwordHash, rMap["Backoffice"]),
-            New("pm.alpha@sig.local",   "67890123F", "María",     "García",   dMap["Operaciones"], passwordHash, rMap["ProjectManager"]),
-            New("pm.beta@sig.local",    "78901234G", "David",     "Pérez",    dMap["Operaciones"], passwordHash, rMap["ProjectManager"]),
-            New("pm.gamma@sig.local",   "89012345H", "Sara",      "Gómez",    dMap["Operaciones"], passwordHash, rMap["ProjectManager"]),
-            New("pm.multi@sig.local",   "90123456J", "Alex",      "Torres",   dMap["Operaciones"], passwordHash, rMap["ProjectManager"]),
+            // Ola 3a (#1): los gestores de servicio son miembros del "grupo" — rol global Facilitador/Interlocutor/Gestor
+            // + asignación al servicio vía ServiceUser (ver SeedServicesAsync). Habilitan el primer paso del flujo.
+            New("pm.alpha@sig.local",   "67890123F", "María",     "García",   dMap["Operaciones"], passwordHash, rMap["Gestor"]),
+            New("pm.beta@sig.local",    "78901234G", "David",     "Pérez",    dMap["Operaciones"], passwordHash, rMap["Facilitador"]),
+            New("pm.gamma@sig.local",   "89012345H", "Sara",      "Gómez",    dMap["Operaciones"], passwordHash, rMap["Interlocutor"]),
+            New("pm.multi@sig.local",   "90123456J", "Alex",      "Torres",   dMap["Operaciones"], passwordHash, rMap["Gestor"]),
             New("auditor@sig.local",    "01234567K", "Inés",      "Romero",   dMap["Finanzas"], passwordHash, rMap["Auditor"]),
             New("reader@sig.local",     "11234567L", "Luis",      "Vega",     dMap["Operaciones"], passwordHash, rMap["Reader"]),
             NewRecurso("gpv1@sig.local","21234567M", "Carlos",    "Ramos",    dMap["Operaciones"], passwordHash),
@@ -475,6 +477,7 @@ public class DataSeeder : ISeedService
 
     private async Task<List<Closure>> SeedClosuresAsync(List<Service> services, List<Period> periods, CancellationToken ct)
     {
+        // Ola 3a (#1): flujo Grupo → Fico → Exportado.
         var closures = new List<Closure>();
         foreach (var period in periods.Take(3))
             foreach (var s in services)
@@ -483,7 +486,8 @@ public class DataSeeder : ISeedService
         var febrero = periods[3];
         for (int idx = 0; idx < services.Count; idx++)
         {
-            var paso = idx < 6 ? ApprovalStep.Fico : ApprovalStep.Backoffice;
+            // Mitad esperando aprobación de FICO, mitad aún en el grupo.
+            var paso = idx < 6 ? ApprovalStep.Fico : ApprovalStep.Grupo;
             closures.Add(NewClosureBare(services[idx].Id, febrero.Id, EstadoClosure.EnAprobacion, paso));
         }
 
@@ -492,8 +496,8 @@ public class DataSeeder : ISeedService
         {
             var s = services[i];
             closures.Add(i < 5
-                ? NewClosureBare(s.Id, marzo.Id, EstadoClosure.Borrador, ApprovalStep.ProjectManager)
-                : NewClosureBare(s.Id, marzo.Id, EstadoClosure.Rechazado, ApprovalStep.ProjectManager));
+                ? NewClosureBare(s.Id, marzo.Id, EstadoClosure.Borrador, ApprovalStep.Grupo)
+                : NewClosureBare(s.Id, marzo.Id, EstadoClosure.Rechazado, ApprovalStep.Grupo));
         }
 
         _db.Closures.AddRange(closures);
@@ -554,10 +558,10 @@ public class DataSeeder : ISeedService
 
     private async Task SeedApprovalsAsync(List<Closure> closuresFull, Dictionary<string, Role> rMap, Dictionary<string, User> uByEmail, CancellationToken ct)
     {
-        var pmId = uByEmail["pm.alpha@sig.local"].Id;
-        var bofId = uByEmail["backoffice1@sig.local"].Id;
+        // Ola 3a (#1): flujo Grupo → Fico → Exportado. El paso Grupo no tiene rol único (RoleId = null);
+        // el aprobador del grupo es un Gestor/Facilitador/Interlocutor asignado al servicio.
+        var grupoId = uByEmail["pm.alpha@sig.local"].Id;  // Gestor asignado a los servicios
         var ficoId = uByEmail["fico@sig.local"].Id;
-        var dirId = uByEmail["direccion@sig.local"].Id;
 
         var approvals = new List<Approval>();
         var history = new List<ApprovalHistory>();
@@ -566,41 +570,36 @@ public class DataSeeder : ISeedService
         {
             if (c.Estado == EstadoClosure.Aprobado)
             {
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, UserId = pmId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id,     Paso = ApprovalStep.Backoffice,     UserId = bofId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(1) });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Fico"].Id,           Paso = ApprovalStep.Fico,           UserId = ficoId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(2) });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Direction"].Id,      Paso = ApprovalStep.Direction,      UserId = dirId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(3) });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = pmId, PasoOrigen = ApprovalStep.ProjectManager, PasoDestino = ApprovalStep.Backoffice, Accion = "Aprobar", Timestamp = ts });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = bofId, PasoOrigen = ApprovalStep.Backoffice, PasoDestino = ApprovalStep.Fico, Accion = "Aprobar", Timestamp = ts.AddHours(1) });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = ficoId, PasoOrigen = ApprovalStep.Fico, PasoDestino = ApprovalStep.Direction, Accion = "Aprobar", Timestamp = ts.AddHours(2) });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = dirId, PasoOrigen = ApprovalStep.Direction, PasoDestino = ApprovalStep.SystemExports, Accion = "Aprobar", Timestamp = ts.AddHours(3) });
+                approvals.Add(new Approval { ClosureId = c.Id, RoleId = null,             Paso = ApprovalStep.Grupo, UserId = grupoId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
+                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Fico"].Id,  Paso = ApprovalStep.Fico,  UserId = ficoId,  Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(1) });
+                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = grupoId, PasoOrigen = ApprovalStep.Grupo, PasoDestino = ApprovalStep.Fico, Accion = "Aprobar", Timestamp = ts });
+                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = ficoId, PasoOrigen = ApprovalStep.Fico, PasoDestino = ApprovalStep.SystemExports, Accion = "Aprobar", Timestamp = ts.AddHours(1) });
             }
             else if (c.Estado == EstadoClosure.EnAprobacion)
             {
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, UserId = pmId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = pmId, PasoOrigen = ApprovalStep.ProjectManager, PasoDestino = ApprovalStep.Backoffice, Accion = "Aprobar", Timestamp = ts });
                 if (c.PasoActual == ApprovalStep.Fico)
                 {
-                    approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id, Paso = ApprovalStep.Backoffice, UserId = bofId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(1) });
-                    history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = bofId, PasoOrigen = ApprovalStep.Backoffice, PasoDestino = ApprovalStep.Fico, Accion = "Aprobar", Timestamp = ts.AddHours(1) });
+                    approvals.Add(new Approval { ClosureId = c.Id, RoleId = null, Paso = ApprovalStep.Grupo, UserId = grupoId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
+                    history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = grupoId, PasoOrigen = ApprovalStep.Grupo, PasoDestino = ApprovalStep.Fico, Accion = "Aprobar", Timestamp = ts });
                     approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Fico"].Id, Paso = ApprovalStep.Fico, Estado = EstadoApproval.Pendiente });
                 }
                 else
                 {
-                    approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id, Paso = ApprovalStep.Backoffice, Estado = EstadoApproval.Pendiente });
+                    approvals.Add(new Approval { ClosureId = c.Id, RoleId = null, Paso = ApprovalStep.Grupo, Estado = EstadoApproval.Pendiente });
                 }
             }
             else if (c.Estado == EstadoClosure.Borrador)
             {
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, Estado = EstadoApproval.Pendiente });
+                approvals.Add(new Approval { ClosureId = c.Id, RoleId = null, Paso = ApprovalStep.Grupo, Estado = EstadoApproval.Pendiente });
             }
             else if (c.Estado == EstadoClosure.Rechazado)
             {
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, UserId = pmId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id, Paso = ApprovalStep.Backoffice, UserId = bofId, Estado = EstadoApproval.Rechazado, FechaDecision = ts.AddHours(1), Motivo = "Datos inconsistentes" });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, Estado = EstadoApproval.Pendiente });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = pmId, PasoOrigen = ApprovalStep.ProjectManager, PasoDestino = ApprovalStep.Backoffice, Accion = "Aprobar", Timestamp = ts });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = bofId, PasoOrigen = ApprovalStep.Backoffice, PasoDestino = ApprovalStep.ProjectManager, Accion = "Rechazar", Motivo = "Datos inconsistentes", Timestamp = ts.AddHours(1) });
+                // Rechazo de FICO devuelve el cierre al grupo, con un nuevo Approval pendiente en Grupo.
+                approvals.Add(new Approval { ClosureId = c.Id, RoleId = null, Paso = ApprovalStep.Grupo, UserId = grupoId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
+                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Fico"].Id, Paso = ApprovalStep.Fico, UserId = ficoId, Estado = EstadoApproval.Rechazado, FechaDecision = ts.AddHours(1), Motivo = "Datos inconsistentes" });
+                approvals.Add(new Approval { ClosureId = c.Id, RoleId = null, Paso = ApprovalStep.Grupo, Estado = EstadoApproval.Pendiente });
+                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = grupoId, PasoOrigen = ApprovalStep.Grupo, PasoDestino = ApprovalStep.Fico, Accion = "Aprobar", Timestamp = ts });
+                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = ficoId, PasoOrigen = ApprovalStep.Fico, PasoDestino = ApprovalStep.Grupo, Accion = "Rechazar", Motivo = "Datos inconsistentes", Timestamp = ts.AddHours(1) });
             }
         }
         _db.Approvals.AddRange(approvals);
