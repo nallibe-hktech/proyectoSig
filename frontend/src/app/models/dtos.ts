@@ -3,10 +3,10 @@
 
 import type {
   EstadoUsuario, EstadoCliente, EstadoServicio, TipoConcepto, EstadoPeriodo,
-  EstadoClosure, ApprovalStep, EstadoApproval, AuditAction
+  EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta
 } from './enums';
 
-export type { EstadoClosure, ApprovalStep, EstadoApproval, AuditAction };
+export type { EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta };
 
 // ------------------ Paginación ------------------
 export interface PagedResult<T> {
@@ -224,9 +224,11 @@ export interface ClosureLineDto {
   esManual?: boolean;
   importeOriginal?: number | null;
   motivoManual?: string | null;
+  sourceDataSummary?: string | null;
+  inputMetadata?: string | null;
 }
 export interface ClosureLineOverrideRequest { importe: number; motivo: string; }
-export interface ClosureLineIncentivoRequest { conceptId: number; tipo: TipoConcepto; importe: number; motivo: string; userId?: number | null; }
+export interface ClosureLineIncentivoRequest { conceptId: number; importe: number; motivo: string; userId?: number | null; }
 
 // Alias para compatibilidad (algunos componentes usan ClosureLine en lugar de ClosureLineDto)
 export type ClosureLine = ClosureLineDto;
@@ -243,7 +245,7 @@ export interface ApprovalDto {
 }
 export interface ClosureAlertaDto {
   id: number;
-  tipo: string;
+  tipo: TipoAlerta;
   codigo: string;
   descripcion: string;
   detalle?: string | null;
@@ -275,6 +277,72 @@ export interface ClosureCreateRequest { serviceId: number; periodId: number; com
 export interface ClosureRecalcRequest { comentarios?: string | null; }
 export interface ClosureApproveRequest { comentarios?: string | null; }
 export interface ClosureRejectRequest { motivo: string; }
+
+// ───────────── Ola 3b (#10): cierres separados (Costes mensual / Facturación plurianual) ─────────────
+// Cada cierre evalúa SOLO sus conceptos (Costes -> Pago, Facturación -> Factura) y expone un único Total.
+// El margen es "al vuelo" (facturación − costes) y se calcula en el Dashboard, no en el cierre.
+export interface CierreListItemDto {
+  id: number;
+  tipoCierre: TipoCierre;
+  serviceId: number;
+  serviceNombre: string;
+  periodId: number;
+  periodNombre: string;
+  total: number;
+  estado: EstadoClosure;
+  pasoActual: ApprovalStep;
+}
+export interface CierreDetailDto {
+  id: number;
+  tipoCierre: TipoCierre;
+  serviceId: number;
+  serviceNombre: string;
+  periodId: number;
+  periodNombre: string;
+  total: number;
+  estado: EstadoClosure;
+  pasoActual: ApprovalStep;
+  comentarios?: string | null;
+  rowVersion: number;
+  lines: ClosureLineDto[];
+  approvals: ApprovalDto[];
+  alertas: ClosureAlertaDto[];
+}
+export interface CierreCreateRequest { serviceId: number; periodId: number; comentarios?: string | null; }
+export interface CierreRecalcRequest { comentarios?: string | null; }
+export interface CierreLineOverrideRequest { importe: number; motivo: string; }
+export interface CierreLineIncentivoRequest { conceptId: number; importe: number; motivo: string; userId?: number | null; }
+export interface CierreApproveRequest { comentarios?: string | null; }
+export interface CierreRejectRequest { motivo: string; }
+
+// Panel de aprobaciones agregando AMBOS tipos de cierre (cada item indica su TipoCierre).
+export interface CierrePanelItemDto {
+  cierreId: number;
+  tipoCierre: TipoCierre;
+  serviceId: number;
+  serviceNombre: string;
+  clientId: number;
+  clientNombre: string;
+  periodId: number;
+  periodNombre: string;
+  estado: EstadoClosure;
+  pasoActual: ApprovalStep;
+  pasoActualRol: string;
+  total: number;
+  updatedAt: string;
+}
+export interface CierreHistoryDto {
+  id: number;
+  cierreId: number;
+  tipoCierre: TipoCierre;
+  userId: number;
+  userNombre: string;
+  pasoOrigen: ApprovalStep;
+  pasoDestino: ApprovalStep;
+  accion: string;
+  motivo?: string | null;
+  timestamp: string;
+}
 
 // ------------------ Contratos A3 Innuva (Ola 2 #2 — contratos de un día) ------------------
 export interface ContratoUnDiaDto {

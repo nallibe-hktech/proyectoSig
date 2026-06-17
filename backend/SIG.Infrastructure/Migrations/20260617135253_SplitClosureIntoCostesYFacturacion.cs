@@ -266,6 +266,10 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'closures') THEN
 
+        -- 3.0 Relajar closure_id a NULL en approvals: el nuevo Approval de facturación (3.5) se inserta
+        --     sin closure_id, y la columna no se elimina hasta el PASO 4. Idempotente.
+        ALTER TABLE approvals ALTER COLUMN closure_id DROP NOT NULL;
+
         -- 3.1 Cierres de COSTES (uno por closure) si no existen ya para (service, period).
         INSERT INTO cierres_costes (service_id, period_id, total, estado, paso_actual, comentarios, fecha_creacion, created_at, updated_at)
         SELECT c.service_id, c.period_id, c.coste_total, c.estado, c.paso_actual, c.comentarios, c.fecha_creacion, c.created_at, c.updated_at

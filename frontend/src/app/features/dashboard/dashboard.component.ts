@@ -10,7 +10,7 @@ import { interval } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DashboardService } from '../../core/api/dashboard.service';
 import { PeriodService } from '../../core/api/periods.service';
-import { ClosureService } from '../../core/api/closures.service';
+import { CierresService } from '../../core/api/cierres.service';
 import { AlertReadStateService } from '../../core/services/alert-read-state.service';
 import { NotifyService } from '../../core/notify.service';
 import { DashboardKpisDto, DashboardAvisoDto, MiServicioDto, PeriodDto, ClosureAlertaDto } from '../../models/dtos';
@@ -339,7 +339,9 @@ import { environment } from '../../../environments/environment';
               <th mat-header-cell *matHeaderCellDef> Acci&oacute;n </th>
               <td mat-cell *matCellDef="let p">
                 @if (p.closureId) {
-                  <a mat-icon-button [routerLink]="['/closures', p.closureId]" class="sig-row-action" aria-label="Ir al cierre">
+                  <!-- Ola 3b (#10): MiServicioDto.closureId no discrimina el tipo de cierre;
+                       navegamos al servicio, desde donde se accede a sus cierres de costes y facturación. -->
+                  <a mat-icon-button [routerLink]="['/services', p.serviceId]" class="sig-row-action" aria-label="Ir al servicio">
                     <mat-icon>launch</mat-icon>
                   </a>
                 } @else {
@@ -803,7 +805,7 @@ import { environment } from '../../../environments/environment';
 })
 export class DashboardComponent implements OnInit {
   private readonly dashboardSvc = inject(DashboardService);
-  private readonly closureSvc   = inject(ClosureService);
+  private readonly cierresSvc   = inject(CierresService);
   private readonly periodSvc    = inject(PeriodService);
   protected readonly alertReadSvc = inject(AlertReadStateService);
   private readonly notify       = inject(NotifyService);
@@ -906,8 +908,8 @@ export class DashboardComponent implements OnInit {
     });
 
     interval(30_000).pipe(takeUntilDestroyed()).subscribe(() => {
-      this.closureSvc.getAllAlertas().subscribe({
-        next: d => this.alertasCierre.set(d as ClosureAlertaDto[])
+      this.cierresSvc.getAllAlertas().subscribe({
+        next: d => this.alertasCierre.set(d)
       });
     });
   }
@@ -937,8 +939,8 @@ export class DashboardComponent implements OnInit {
       next:  (d) => { this.misServicios.set(d);   this.loadingMis.set(false); },
       error: ()  => { this.misServicios.set([]);   this.loadingMis.set(false); },
     });
-    this.closureSvc.getAllAlertas().subscribe({
-      next: (d) => { this.alertasCierre.set(d as ClosureAlertaDto[]); this.loadingAlertasCierre.set(false); },
+    this.cierresSvc.getAllAlertas().subscribe({
+      next: (d) => { this.alertasCierre.set(d); this.loadingAlertasCierre.set(false); },
       error: () => { this.alertasCierre.set([]); this.loadingAlertasCierre.set(false); },
     });
   }

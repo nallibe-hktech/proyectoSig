@@ -9,12 +9,12 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ClosureService } from '../../core/api/closures.service';
+import { CierresService } from '../../core/api/cierres.service';
 import { ExportService } from '../../core/api/misc.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotifyService } from '../../core/notify.service';
-import { ClosureDetailDto, ClosureAlertaDto, ApprovalHistoryDto, ClosureLineDto, ClosureLineIncentivoRequest } from '../../models/dtos';
-import { ApprovalStep } from '../../models/enums';
+import { CierreDetailDto, ClosureAlertaDto, CierreHistoryDto, ClosureLineDto, CierreLineIncentivoRequest } from '../../models/dtos';
+import { ApprovalStep, TipoCierre } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { StateBadgeComponent } from '../../shared/state-badge.component';
@@ -32,7 +32,7 @@ import { IncentivoDialog } from './incentivo.dialog';
   ],
   template: `
     <div class="sig-page">
-      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Closures', route: '/closures' }, { label: closure() ? closure()!.serviceNombre + ' — ' + closure()!.periodNombre : 'Detalle' }]" />
+      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: tituloLista(), route: baseRoute() }, { label: closure() ? closure()!.serviceNombre + ' — ' + closure()!.periodNombre : 'Detalle' }]" />
 
       <div class="sig-page__header">
         <h1 class="sig-page__title">{{ closure() ? closure()!.serviceNombre + ' — ' + closure()!.periodNombre : 'Cargando...' }}</h1>
@@ -71,27 +71,25 @@ import { IncentivoDialog } from './incentivo.dialog';
 
       @if (loading()) { <mat-card><mat-card-content><sig-skeleton [count]="6" /></mat-card-content></mat-card> }
       @else if (closure()) {
-        <!-- KPIs -->
+        <!-- KPIs: cada cierre expone un único total (Coste o Facturación según el tipo).
+             El margen es "al vuelo" y vive en el Dashboard, no aquí. -->
         <div class="sig-kpi-row">
-          <mat-card class="sig-kpi-card" data-testid="kpi-coste-total">
+          <mat-card class="sig-kpi-card" data-testid="kpi-total">
             <mat-card-content>
-              <div class="sig-kpi-label">Coste total</div>
-              <div class="sig-kpi-value mono-num">{{ closure()!.costeTotal | number:'1.0-2' }} €</div>
+              <div class="sig-kpi-label">{{ totalLabel() }}</div>
+              <div class="sig-kpi-value mono-num">{{ closure()!.total | number:'1.0-2' }} €</div>
             </mat-card-content>
           </mat-card>
-          <mat-card class="sig-kpi-card" data-testid="kpi-facturacion">
+          <mat-card class="sig-kpi-card" data-testid="kpi-tipo">
             <mat-card-content>
-              <div class="sig-kpi-label">Facturación</div>
-              <div class="sig-kpi-value mono-num">{{ closure()!.facturacionTotal | number:'1.0-2' }} €</div>
+              <div class="sig-kpi-label">Tipo de cierre</div>
+              <div class="sig-kpi-value">{{ closure()!.tipoCierre === 'Costes' ? 'Costes' : 'Facturación' }}</div>
             </mat-card-content>
           </mat-card>
-          <mat-card class="sig-kpi-card" data-testid="kpi-margen">
+          <mat-card class="sig-kpi-card" data-testid="kpi-lineas">
             <mat-card-content>
-              <div class="sig-kpi-label">Margen</div>
-              <div class="sig-kpi-value mono-num">{{ closure()!.margen | number:'1.0-2' }} €</div>
-              <div class="sig-kpi-trend" [class.sig-kpi-trend--up]="closure()!.margen >= 0" [class.sig-kpi-trend--down]="closure()!.margen < 0">
-                {{ closure()!.facturacionTotal > 0 ? ((closure()!.margen / closure()!.facturacionTotal) * 100 | number:'1.0-1') : '0' }}%
-              </div>
+              <div class="sig-kpi-label">Líneas</div>
+              <div class="sig-kpi-value mono-num">{{ closure()!.lines.length }}</div>
             </mat-card-content>
           </mat-card>
         </div>
@@ -218,15 +216,21 @@ import { IncentivoDialog } from './incentivo.dialog';
   `],
 })
 export class ClosureDetailComponent implements OnInit {
-  private readonly closureSvc = inject(ClosureService);
+  private readonly cierresSvc = inject(CierresService);
   private readonly exportSvc = inject(ExportService);
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotifyService);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
 
-  protected readonly closure = signal<ClosureDetailDto | null>(null);
-  protected readonly historial = signal<ApprovalHistoryDto[]>([]);
+  // Ola 3b (#10): el tipo de cierre se inyecta por data de ruta.
+  protected readonly tipo = signal<TipoCierre>((this.route.snapshot.data['tipoCierre'] as TipoCierre) ?? 'Costes');
+  protected readonly tituloLista = () => this.tipo() === 'Costes' ? 'Cierres de Costes' : 'Cierres de Facturación';
+  protected readonly totalLabel = () => this.tipo() === 'Costes' ? 'Coste total' : 'Facturación total';
+  protected readonly baseRoute = () => this.tipo() === 'Costes' ? '/cierres-costes' : '/cierres-facturacion';
+
+  protected readonly closure = signal<CierreDetailDto | null>(null);
+  protected readonly historial = signal<CierreHistoryDto[]>([]);
   protected readonly loading = signal(true);
   protected readonly lineCols = ['concepto', 'tipo', 'usuario', 'importe', 'incidencia', 'acciones'];
 
@@ -266,7 +270,7 @@ export class ClosureDetailComponent implements OnInit {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.load(id);
-    this.closureSvc.historial(id).subscribe({
+    this.cierresSvc.historial(this.tipo(), id).subscribe({
       next: (h) => this.historial.set(h),
       error: () => this.historial.set([]),
     });
@@ -278,7 +282,7 @@ export class ClosureDetailComponent implements OnInit {
 
   private load(id: number): void {
     this.loading.set(true);
-    this.closureSvc.getById(id).subscribe({
+    this.cierresSvc.getById(this.tipo(), id).subscribe({
       next: (c) => { this.closure.set(c); this.loading.set(false); },
       error: () => { this.loading.set(false); this.notify.error('No se pudo cargar el cierre'); },
     });
@@ -286,7 +290,7 @@ export class ClosureDetailComponent implements OnInit {
 
   protected onRecalcular(): void {
     const c = this.closure(); if (!c) return;
-    this.closureSvc.recalcular(c.id, c.rowVersion, { comentarios: null }).subscribe({
+    this.cierresSvc.recalcular(this.tipo(), c.id, c.rowVersion, { comentarios: null }).subscribe({
       next: (updated) => { this.closure.set(updated); this.notify.success('Cierre recalculado'); },
       error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo recalcular'),
     });
@@ -298,7 +302,7 @@ export class ClosureDetailComponent implements OnInit {
       data: { line, resultadoOriginal: line.importeOriginal ?? line.importe, razon: line.motivoManual ?? '' },
     }).afterClosed().subscribe((res) => {
       if (!res) return;
-      this.closureSvc.overrideLinea(c.id, line.id, c.rowVersion, { importe: res.nuevoImporte, motivo: res.razon }).subscribe({
+      this.cierresSvc.overrideLinea(this.tipo(), c.id, line.id, c.rowVersion, { importe: res.nuevoImporte, motivo: res.razon }).subscribe({
         next: (updated) => { this.closure.set(updated); this.notify.success('Importe ajustado'); },
         error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo ajustar la línea'),
       });
@@ -307,9 +311,9 @@ export class ClosureDetailComponent implements OnInit {
 
   protected onAnadirIncentivo(): void {
     const c = this.closure(); if (!c) return;
-    this.dialog.open(IncentivoDialog, {}).afterClosed().subscribe((req: ClosureLineIncentivoRequest | undefined) => {
+    this.dialog.open(IncentivoDialog, {}).afterClosed().subscribe((req: CierreLineIncentivoRequest | undefined) => {
       if (!req) return;
-      this.closureSvc.agregarIncentivo(c.id, c.rowVersion, req).subscribe({
+      this.cierresSvc.agregarIncentivo(this.tipo(), c.id, c.rowVersion, req).subscribe({
         next: (updated) => { this.closure.set(updated); this.notify.success('Incentivo añadido'); },
         error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo añadir el incentivo'),
       });
@@ -318,11 +322,11 @@ export class ClosureDetailComponent implements OnInit {
 
   protected onAprobar(): void {
     const c = this.closure(); if (!c) return;
-    this.closureSvc.aprobar(c.id, c.rowVersion, { comentarios: null }).subscribe({
+    this.cierresSvc.aprobar(this.tipo(), c.id, c.rowVersion, { comentarios: null }).subscribe({
       next: (updated) => {
         this.closure.set(updated);
         this.notify.success('Cierre aprobado');
-        this.closureSvc.historial(c.id).subscribe({ next: (h) => this.historial.set(h) });
+        this.cierresSvc.historial(this.tipo(), c.id).subscribe({ next: (h) => this.historial.set(h) });
       },
       error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo aprobar'),
     });
@@ -332,11 +336,11 @@ export class ClosureDetailComponent implements OnInit {
     const c = this.closure(); if (!c) return;
     this.dialog.open(RejectDialogComponent, { minWidth: 480 }).afterClosed().subscribe((motivo?: string | null) => {
       if (!motivo) return;
-      this.closureSvc.rechazar(c.id, c.rowVersion, { motivo }).subscribe({
+      this.cierresSvc.rechazar(this.tipo(), c.id, c.rowVersion, { motivo }).subscribe({
         next: (updated) => {
           this.closure.set(updated);
           this.notify.warning('Cierre rechazado');
-          this.closureSvc.historial(c.id).subscribe({ next: (h) => this.historial.set(h) });
+          this.cierresSvc.historial(this.tipo(), c.id).subscribe({ next: (h) => this.historial.set(h) });
         },
         error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo rechazar'),
       });
@@ -361,8 +365,8 @@ export class ClosureDetailComponent implements OnInit {
 
   protected onConfirmarAlerta(alertaId: number): void {
     const c = this.closure(); if (!c) return;
-    this.closureSvc.confirmarAlerta(c.id, alertaId).subscribe({
-      next: (updated: ClosureDetailDto) => {
+    this.cierresSvc.confirmarAlerta(this.tipo(), c.id, alertaId).subscribe({
+      next: (updated: CierreDetailDto) => {
         this.closure.set(updated);
         this.notify.success('Advertencia confirmada');
       },

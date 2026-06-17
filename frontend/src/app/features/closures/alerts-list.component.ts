@@ -5,9 +5,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTableModule } from '@angular/material/table';
-import { MatSortModule, MatSort } from '@angular/material/sort';
-import { ClosureService } from '../../core/api/closures.service';
+import { MatSortModule } from '@angular/material/sort';
+import { forkJoin, of } from 'rxjs';
+import { map, mergeMap } from 'rxjs/operators';
+import { CierresService } from '../../core/api/cierres.service';
 import { NotifyService } from '../../core/notify.service';
+import { ApprovalFilterRequest, CierreListItemDto } from '../../models/dtos';
+import { TipoCierre } from '../../models/enums';
 
 interface AlertaResumida {
   id: number;
@@ -15,6 +19,7 @@ interface AlertaResumida {
   codigo: string;
   descripcion: string;
   confirmada: boolean;
+  tipoCierre: TipoCierre;
   closureId: number;
   closureNombre: string;
 }
@@ -82,10 +87,14 @@ interface AlertaResumida {
             <th mat-header-cell *matHeaderCellDef mat-sort-header> Descripción </th>
             <td mat-cell *matCellDef="let a">{{ a.descripcion }}</td>
           </ng-container>
+          <ng-container matColumnDef="tipoCierre">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> Tipo cierre </th>
+            <td mat-cell *matCellDef="let a">{{ a.tipoCierre === 'Costes' ? 'Costes' : 'Facturación' }}</td>
+          </ng-container>
           <ng-container matColumnDef="closureNombre">
             <th mat-header-cell *matHeaderCellDef mat-sort-header> Cierre </th>
             <td mat-cell *matCellDef="let a">
-              <a [routerLink]="['/closures', a.closureId]" class="sig-cell-link">{{ a.closureNombre }}</a>
+              <a [routerLink]="[a.tipoCierre === 'Costes' ? '/cierres-costes' : '/cierres-facturacion', a.closureId]" class="sig-cell-link">{{ a.closureNombre }}</a>
             </td>
           </ng-container>
           <ng-container matColumnDef="confirmada">
@@ -145,12 +154,12 @@ interface AlertaResumida {
   `],
 })
 export class AlertsListComponent implements OnInit {
-  private readonly closureSvc = inject(ClosureService);
+  private readonly cierresSvc = inject(CierresService);
   private readonly notify = inject(NotifyService);
 
   protected readonly alertas = signal<AlertaResumida[]>([]);
   protected readonly loading = signal(true);
-  protected readonly displayedColumns = ['tipo', 'codigo', 'descripcion', 'closureNombre', 'confirmada'];
+  protected readonly displayedColumns = ['tipo', 'codigo', 'descripcion', 'tipoCierre', 'closureNombre', 'confirmada'];
 
   protected readonly totalAlertas = computed(() => this.alertas().length);
   protected readonly bloqueantes = computed(() => this.alertas().filter(a => a.tipo === 'Bloqueante').length);
@@ -158,10 +167,35 @@ export class AlertsListComponent implements OnInit {
   protected readonly confirmadas = computed(() => this.alertas().filter(a => a.confirmada).length);
 
   ngOnInit(): void {
-    this.closureSvc.getAllAlertas().subscribe({
-      next: (data) => this.alertas.set(data as AlertaResumida[]),
+    // Ola 3b (#10): no existe un endpoint global de alertas. Se agregan al vuelo
+    // recorriendo ambos tipos de cierre y consultando sus alertas (api/cierres-*/{id}/alertas).
+    const filter: ApprovalFilterRequest = { page: 1, pageSize: 500 };
+    forkJoin({
+      costes: this.cierresSvc.list('Costes', filter),
+      facturacion: this.cierresSvc.list('Facturacion', filter),
+    }).pipe(
+      mergeMap((listas) => {
+        const todos: CierreListItemDto[] = [...listas.costes.items, ...listas.facturacion.items];
+        if (todos.length === 0) return of([] as AlertaResumida[]);
+        const calls = todos.map((c) =>
+          this.cierresSvc.getAlertas(c.tipoCierre, c.id).pipe(
+            map((alertas) => alertas.map((a) => ({
+              id: a.id,
+              tipo: a.tipo,
+              codigo: a.codigo,
+              descripcion: a.descripcion,
+              confirmada: a.confirmada,
+              tipoCierre: c.tipoCierre,
+              closureId: c.id,
+              closureNombre: `${c.serviceNombre} — ${c.periodNombre}`,
+            } as AlertaResumida)))
+          )
+        );
+        return forkJoin(calls).pipe(map((arrs) => arrs.flat()));
+      })
+    ).subscribe({
+      next: (data) => { this.alertas.set(data); this.loading.set(false); },
       error: () => { this.notify.error('No se pudieron cargar las alertas'); this.loading.set(false); },
-      complete: () => this.loading.set(false),
     });
   }
 }

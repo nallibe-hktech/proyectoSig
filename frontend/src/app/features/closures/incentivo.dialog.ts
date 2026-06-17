@@ -8,8 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { ConceptService } from '../../core/api/concepts.service';
-import { ConceptListItemDto, ClosureLineIncentivoRequest } from '../../models/dtos';
-import { TipoConcepto } from '../../models/enums';
+import { ConceptListItemDto, CierreLineIncentivoRequest } from '../../models/dtos';
 
 // Ola 2 (#3a): alta de una línea de incentivo manual en un cierre.
 @Component({
@@ -24,13 +23,6 @@ import { TipoConcepto } from '../../models/enums';
           <mat-label>Concepto *</mat-label>
           <mat-select formControlName="conceptId" data-testid="select-incentivo-concepto">
             @for (c of conceptos(); track c.id) { <mat-option [value]="c.id">{{ c.nombre }} ({{ c.tipo }})</mat-option> }
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Tipo *</mat-label>
-          <mat-select formControlName="tipo" data-testid="select-incentivo-tipo">
-            <mat-option value="Pago">Pago</mat-option>
-            <mat-option value="Factura">Factura</mat-option>
           </mat-select>
         </mat-form-field>
         <mat-form-field>
@@ -56,7 +48,6 @@ export class IncentivoDialog implements OnInit {
 
   protected readonly form = this.fb.nonNullable.group({
     conceptId: [0, [Validators.required, Validators.min(1)]],
-    tipo: ['Pago' as TipoConcepto, [Validators.required]],
     importe: [0, [Validators.required]],
     motivo: ['', [Validators.required, Validators.minLength(10)]],
   });
@@ -75,7 +66,7 @@ export class IncentivoDialog implements OnInit {
   protected guardar(): void {
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
-    const req: ClosureLineIncentivoRequest = { conceptId: v.conceptId, tipo: v.tipo, importe: v.importe, motivo: v.motivo, userId: null };
+    const req: CierreLineIncentivoRequest = { conceptId: v.conceptId, importe: v.importe, motivo: v.motivo, userId: null };
     this.dialogRef.close(req);
   }
 }

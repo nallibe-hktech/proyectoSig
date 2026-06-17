@@ -1,36 +1,44 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { ClosureService } from './closures.service';
+import { CierresService } from './cierres.service';
 import { environment } from '../../../environments/environment';
 import { ApprovalFilterRequest } from '../../models/dtos';
 
-describe('ClosureService', () => {
-  let svc: ClosureService;
+describe('CierresService', () => {
+  let svc: CierresService;
   let http: HttpTestingController;
-  const base = `${environment.apiUrl}/closures`;
+  const baseCostes = `${environment.apiUrl}/cierres-costes`;
+  const baseFact = `${environment.apiUrl}/cierres-facturacion`;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [ClosureService, provideHttpClient(), provideHttpClientTesting()],
+      providers: [CierresService, provideHttpClient(), provideHttpClientTesting()],
     });
-    svc = TestBed.inject(ClosureService);
+    svc = TestBed.inject(CierresService);
     http = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => http.verify());
 
-  it('list: usa query string completo del filtro', () => {
+  it('list (Costes): pega contra api/cierres-costes con query del filtro', () => {
     const filter = { periodId: 3, page: 1, pageSize: 25 } as ApprovalFilterRequest;
-    svc.list(filter).subscribe();
-    const req = http.expectOne((r) => r.url === base);
+    svc.list('Costes', filter).subscribe();
+    const req = http.expectOne((r) => r.url === baseCostes);
     expect(req.request.params.get('periodId')).toBe('3');
     req.flush({ items: [], total: 0, page: 1, pageSize: 25 });
   });
 
+  it('list (Facturacion): pega contra api/cierres-facturacion', () => {
+    svc.list('Facturacion', { page: 1, pageSize: 25 } as ApprovalFilterRequest).subscribe();
+    const req = http.expectOne((r) => r.url === baseFact);
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], total: 0, page: 1, pageSize: 25 });
+  });
+
   it('aprobar: envía header If-Match con rowVersion (concurrencia optimista RNF-03)', () => {
-    svc.aprobar(99, 42, { comentarios: 'OK' } as any).subscribe();
-    const req = http.expectOne(`${base}/99/aprobar`);
+    svc.aprobar('Costes', 99, 42, { comentarios: 'OK' }).subscribe();
+    const req = http.expectOne(`${baseCostes}/99/aprobar`);
     expect(req.request.method).toBe('POST');
     expect(req.request.headers.get('If-Match')).toBe('42');
     expect(req.request.body).toEqual({ comentarios: 'OK' });
@@ -38,23 +46,23 @@ describe('ClosureService', () => {
   });
 
   it('rechazar: envía If-Match con rowVersion y body con motivo', () => {
-    svc.rechazar(99, 7, { motivo: 'Falta info' } as any).subscribe();
-    const req = http.expectOne(`${base}/99/rechazar`);
+    svc.rechazar('Facturacion', 99, 7, { motivo: 'Falta info' }).subscribe();
+    const req = http.expectOne(`${baseFact}/99/rechazar`);
     expect(req.request.headers.get('If-Match')).toBe('7');
     expect(req.request.body).toEqual({ motivo: 'Falta info' });
     req.flush({} as any);
   });
 
   it('recalcular: envía If-Match', () => {
-    svc.recalcular(5, 100, {} as any).subscribe();
-    const req = http.expectOne(`${base}/5/recalcular`);
+    svc.recalcular('Costes', 5, 100, {}).subscribe();
+    const req = http.expectOne(`${baseCostes}/5/recalcular`);
     expect(req.request.headers.get('If-Match')).toBe('100');
     req.flush({} as any);
   });
 
-  it('historial: GET /approvals/historial/:id', () => {
-    svc.historial(5).subscribe();
-    const req = http.expectOne(`${environment.apiUrl}/approvals/historial/5`);
+  it('historial: GET /cierres-costes/:id/historial', () => {
+    svc.historial('Costes', 5).subscribe();
+    const req = http.expectOne(`${baseCostes}/5/historial`);
     expect(req.request.method).toBe('GET');
     req.flush([]);
   });

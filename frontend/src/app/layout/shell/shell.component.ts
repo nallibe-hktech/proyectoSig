@@ -82,7 +82,8 @@ export class ShellComponent implements OnInit {
     { label: 'Variables', route: '/variables', icon: 'data_object', testId: 'nav-variables' },
     { label: 'Periods', route: '/periods', icon: 'calendar_month', testId: 'nav-periods' },
     { label: 'Approvals', route: '/approvals', icon: 'approval', testId: 'nav-approvals' },
-    { label: 'Closures', route: '/closures', icon: 'lock_clock', testId: 'nav-closures' },
+    { label: 'Cierres de Costes', route: '/cierres-costes', icon: 'payments', testId: 'nav-cierres-costes' },
+    { label: 'Cierres de Facturación', route: '/cierres-facturacion', icon: 'receipt_long', testId: 'nav-cierres-facturacion' },
     { label: 'Reports', route: '/reports', icon: 'bar_chart', testId: 'nav-reports' },
   ];
 

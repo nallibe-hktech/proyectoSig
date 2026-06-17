@@ -1795,8 +1795,8 @@ Ambas métricas cumplen el umbral (CS ≥ 1.0, GS > 0.8).
 |-----|-------|--------|--------|
 | 1 | #6 EstadoCliente · #4 Cliente→Servicios · #3b Cecos display · #7 Conceptos (alta solo admin + UI separada) | Bajo | ✅ Completada (migración `20260617113452_AddEstadoCliente`; build+212 tests verde) |
 | 2 | #3a Incentivos manuales · #8 Conceptos por cliente · #2 Contratos un día · #9 Periodos fechas pago | Medio | ✅ Completada + testeada (migraciones AddDiaPagoToPeriod / AddContratoIgnorado / AddManualLineFields; +72 tests, suite 284 verde) |
-| 3a | #1 Flujo aprobación (Grupo→FICO; grupo = rol global + asignación) | Alto | En curso |
-| 3b | #10 Dos cierres separados (CierreCostes / CierreFacturacion) + migración de datos | Alto / estructural | Pendiente (tras 3a) |
+| 3a | #1 Flujo aprobación (Grupo→FICO; grupo = rol global + asignación) | Alto | ✅ Completada (migración RedesignApprovalFlowGrupoFico; 293 tests verde) |
+| 3b | #10 Dos cierres separados (CierreCostes / CierreFacturacion) + migración de datos | Alto / estructural | ✅ Completada (migración SplitClosureIntoCostesYFacturacion; Margen al vuelo; 293 tests verde; split verificado en dev: 40→40+40) |
 | — | #5 Panel facturas pagadas/pendientes por cliente | — | **APARCADO** |
 
 ### 15.2 Decisiones autoritativas

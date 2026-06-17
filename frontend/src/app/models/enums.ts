@@ -25,6 +25,11 @@ export type ApprovalStep =
 
 export type EstadoApproval = 'Pendiente' | 'Aprobado' | 'Rechazado';
 
+// Ola 3b (#10): discrimina la raíz de cierre (mensual de costes / plurianual de facturación).
+export type TipoCierre = 'Costes' | 'Facturacion';
+
+export type TipoAlerta = 'Bloqueante' | 'Advertencia';
+
 export type AuditAction =
   | 'Create'
   | 'Update'
