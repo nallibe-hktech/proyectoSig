@@ -256,8 +256,8 @@ export class RolesListComponent implements OnInit {
     { nombre:'Interlocutor',  ambito:'Servicio', pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Sin permisos',         roles:'Sin permisos' },
     { nombre:'Gestor',        ambito:'Servicio', pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Sin permisos',         roles:'Sin permisos' },
     { nombre:'Backoffice',    ambito:'Servicio', pagos:'Ver / Validar',          facturaciones:'Sin permisos',          usuarios:'Sin permisos',         roles:'Sin permisos' },
-    { nombre:'Auxiliar',      ambito:'Servicio', pagos:'Ver',                    facturaciones:'Sin permisos',          usuarios:'Sin permisos',         roles:'Sin permisos' },
-  ]);
+    { nombre:'Auxiliar',      ambito:'Servicio', pagos:'Ver',                    facturaciones:'Sin permisos',          usuarios:'Sin permisos',         roles:'Sin permisos' }
+  ];
 
   get roles() { return this.items; }
 
