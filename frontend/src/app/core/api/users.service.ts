@@ -17,6 +17,11 @@ export class UserService {
       params: toHttpParams({ page, pageSize, search }),
     });
   }
+  listPaginated(page: number, pageSize: number, search?: string) {
+    return this.http.get<PagedResult<UserListItemDto>>(`${this.base}/paginated`, {
+      params: toHttpParams({ page, pageSize, search }),
+    });
+  }
   getById(id: number) { return this.http.get<UserDetailDto>(`${this.base}/${id}`); }
   create(req: UserCreateRequest) { return this.http.post<UserDetailDto>(this.base, req); }
   update(id: number, req: UserUpdateRequest) { return this.http.put<UserDetailDto>(`${this.base}/${id}`, req); }

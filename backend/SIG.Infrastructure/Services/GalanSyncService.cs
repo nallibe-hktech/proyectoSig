@@ -38,8 +38,9 @@ public class GalanSyncService
 
         try
         {
-            var nuevasEntradas = ReadEntradasFromExcel(filePath);
+            // Obtener registros EXISTENTES ANTES de procesar (para deduplicación)
             var entradasExistentes = await _db.StagingGalanEntradas.ToListAsync(ct);
+            var nuevasEntradas = ReadEntradasFromExcel(filePath);
 
             foreach (var nueva in nuevasEntradas)
             {
@@ -54,6 +55,7 @@ public class GalanSyncService
                     if (existe == null)
                     {
                         // Nuevo registro
+                        nueva.Hash = hash;
                         _db.StagingGalanEntradas.Add(nueva);
                         insertados++;
                     }
@@ -108,6 +110,7 @@ public class GalanSyncService
 
     /// <summary>
     /// Procesa un archivo Excel de Stock (STOCK_*.xlsx)
+    /// Deduplicación: compara con BD existente, inserta solo nuevos, actualiza si cambió
     /// </summary>
     public async Task<FileSyncResultDto> SyncStockFromFileAsync(string filePath, CancellationToken ct)
     {
@@ -116,8 +119,9 @@ public class GalanSyncService
 
         try
         {
-            var nuevoStock = ReadStockFromExcel(filePath);
+            // Obtener registros EXISTENTES ANTES de procesar (para deduplicación)
             var stockExistente = await _db.StagingGalanStocks.ToListAsync(ct);
+            var nuevoStock = ReadStockFromExcel(filePath);
 
             foreach (var nueva in nuevoStock)
             {
@@ -129,6 +133,7 @@ public class GalanSyncService
 
                     if (existe == null)
                     {
+                        nueva.Hash = hash;
                         _db.StagingGalanStocks.Add(nueva);
                         insertados++;
                     }
@@ -203,6 +208,7 @@ public class GalanSyncService
 
                     if (existe == null)
                     {
+                        nueva.Hash = hash;
                         _db.StagingGalanStocks.Add(nueva);
                         insertados++;
                     }
@@ -255,6 +261,7 @@ public class GalanSyncService
 
     /// <summary>
     /// Procesa un archivo Excel de Salidas (FACT_MENSUAL_*.xlsx)
+    /// Deduplicación: compara con BD existente, inserta solo nuevos, actualiza si cambió
     /// </summary>
     public async Task<FileSyncResultDto> SyncSalidasFromFileAsync(string filePath, CancellationToken ct)
     {
@@ -263,8 +270,9 @@ public class GalanSyncService
 
         try
         {
-            var nuevasSalidas = ReadSalidasFromExcel(filePath);
+            // Obtener registros EXISTENTES ANTES de procesar (para deduplicación)
             var salidasExistentes = await _db.StagingGalanSalidas.ToListAsync(ct);
+            var nuevasSalidas = ReadSalidasFromExcel(filePath);
 
             foreach (var nueva in nuevasSalidas)
             {
@@ -277,6 +285,7 @@ public class GalanSyncService
 
                     if (existe == null)
                     {
+                        nueva.Hash = hash;
                         _db.StagingGalanSalidas.Add(nueva);
                         insertados++;
                     }
@@ -354,39 +363,77 @@ public class GalanSyncService
                     }
                 }
 
-                // Leer datos
+                // Detectar formato UNA SOLA VEZ al inicio
+                bool isCsvFile = IsFileCsvFormat(rows, headerRowIndex);
+                _logger.LogInformation("Entradas file format: {Format}", isCsvFile ? "CSV" : "Columnar");
+
+                // Leer datos (ÚNICAMENTE en el formato detectado)
                 for (int i = headerRowIndex + 1; i < rows.Count; i++)
                 {
                     try
                     {
                         var row = rows[i];
-                        var codigo = row.Cell(1).Value.ToString().Trim();
-                        if (string.IsNullOrEmpty(codigo)) continue;
 
-                        // Intentar parsear fecha de Cell(5), si falla usar UtcNow
-                        DateTime fecha = DateTime.UtcNow;
-                        if (DateTime.TryParse(row.Cell(5).Value.ToString(), out var parsedDate))
+                        if (isCsvFile)
                         {
-                            fecha = parsedDate;
+                            // SOLO procesamiento CSV
+                            var fields = ParseCsvRow(row);
+                            if (fields.Length < 9) continue; // Necesita al menos 9 campos CSV
+
+                            var codigo = fields[0];
+                            if (string.IsNullOrEmpty(codigo)) continue;
+
+                            DateTime fecha = DateTime.UtcNow;
+                            if (DateTime.TryParse(fields[4], out var parsedDate))
+                                fecha = parsedDate;
+
+                            entradas.Add(new StagingGalanEntrada
+                            {
+                                CodigoArticulo = codigo,
+                                CodigoDepartamento = fields[1],
+                                CodigoFamilia = fields[2],
+                                Descripcion = fields[3],
+                                Fecha = fecha,
+                                Unidades = int.TryParse(fields[5], out int u) ? u : 0,
+                                Empresa = fields[6],
+                                Almacen = fields[7],
+                                Celda = fields[8],
+                                Hash = "",
+                                PayloadJson = "",
+                                FechaUltimaSincronizacion = DateTime.UtcNow
+                            });
                         }
-
-                        entradas.Add(new StagingGalanEntrada
+                        else
                         {
-                            CodigoArticulo = codigo,
-                            CodigoDepartamento = row.Cell(2).Value.ToString().Trim(),
-                            CodigoFamilia = row.Cell(3).Value.ToString().Trim(),
-                            Descripcion = row.Cell(4).Value.ToString().Trim(),
-                            Fecha = fecha,
-                            Unidades = int.TryParse(row.Cell(6).Value.ToString(), out int u) ? u : 0,
-                            Empresa = row.Cell(7).Value.ToString().Trim(),
-                            Almacen = row.Cell(8).Value.ToString().Trim(),
-                            Celda = row.Cell(9).Value.ToString().Trim(),
-                            Hash = "",
-                            PayloadJson = "",
-                            FechaUltimaSincronizacion = DateTime.UtcNow
-                        });
+                            // SOLO procesamiento columnar
+                            var codigo = row.Cell(1).Value.ToString().Trim();
+                            if (string.IsNullOrEmpty(codigo)) continue;
+
+                            DateTime fecha = DateTime.UtcNow;
+                            if (DateTime.TryParse(row.Cell(5).Value.ToString(), out var parsedDate))
+                                fecha = parsedDate;
+
+                            entradas.Add(new StagingGalanEntrada
+                            {
+                                CodigoArticulo = codigo,
+                                CodigoDepartamento = row.Cell(2).Value.ToString().Trim(),
+                                CodigoFamilia = row.Cell(3).Value.ToString().Trim(),
+                                Descripcion = row.Cell(4).Value.ToString().Trim(),
+                                Fecha = fecha,
+                                Unidades = int.TryParse(row.Cell(6).Value.ToString(), out int u) ? u : 0,
+                                Empresa = row.Cell(7).Value.ToString().Trim(),
+                                Almacen = row.Cell(8).Value.ToString().Trim(),
+                                Celda = row.Cell(9).Value.ToString().Trim(),
+                                Hash = "",
+                                PayloadJson = "",
+                                FechaUltimaSincronizacion = DateTime.UtcNow
+                            });
+                        }
                     }
-                    catch { /* skip malformed rows */ }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error leyendo fila {RowNumber} de Entradas", i);
+                    }
                 }
             }
         }
@@ -399,8 +446,49 @@ public class GalanSyncService
     }
 
     /// <summary>
+    /// Detecta si el archivo usa CSV (en columna 1) o formato columnar normal
+    /// Lo detecta una sola vez en la primera fila de datos para aplicar consistentemente
+    /// </summary>
+    private bool IsFileCsvFormat(List<IXLRow> rows, int headerRowIndex)
+    {
+        if (rows.Count <= headerRowIndex + 1) return false;
+
+        var firstDataRow = rows[headerRowIndex + 1];
+        var cell1 = firstDataRow.Cell(1).Value.ToString()?.Trim() ?? "";
+        var cell2 = firstDataRow.Cell(2).Value.ToString()?.Trim() ?? "";
+
+        // Si Cell(1) contiene comas Y Cell(2) está vacío → es CSV
+        return cell1.Contains(",") && string.IsNullOrEmpty(cell2);
+    }
+
+    /// <summary>
+    /// Parsea una fila CSV (separada por comas en Cell(1))
+    /// </summary>
+    private string[] ParseCsvRow(IXLRow row)
+    {
+        var cell1 = row.Cell(1).Value.ToString()?.Trim() ?? "";
+        return cell1.Split(',').Select(f => f.Trim()).ToArray();
+    }
+
+    /// <summary>
+    /// Lee una fila en formato columnar normal (datos en células 1-6)
+    /// </summary>
+    private string[] ParseColumnRow(IXLRow row)
+    {
+        return new[] {
+            row.Cell(1).Value.ToString()?.Trim() ?? "",
+            row.Cell(2).Value.ToString()?.Trim() ?? "",
+            row.Cell(3).Value.ToString()?.Trim() ?? "",
+            row.Cell(4).Value.ToString()?.Trim() ?? "",
+            row.Cell(5).Value.ToString()?.Trim() ?? "",
+            row.Cell(6).Value.ToString()?.Trim() ?? ""
+        };
+    }
+
+    /// <summary>
     /// Lee Stock desde STOCK_*.xlsx
-    /// Estructura: CodigoDeArticulo(1) | Código Departamento(2) | Código Familia(3) | Descripcion(4) | Stock(5) | Empresa(6)
+    /// Detecta si es CSV o columnar, pero usa CONSISTENTEMENTE un formato único
+    /// CSV: CodigoArticulo,CodigoDepartamento,CodigoFamilia,CodigoCelda,StockB,StockA,Stock,ALM,stock,almacen,Familia,SubFamilia,Descripcion,Empresa,TipoCelda,Clasificacion
     /// </summary>
     private List<StagingGalanStock> ReadStockFromExcel(string filePath)
     {
@@ -416,7 +504,7 @@ public class GalanSyncService
                 var rows = worksheet.Rows().ToList();
                 int headerRowIndex = 0;
 
-                // Buscar headers
+                // Buscar headers (busca "codigo" en Cell 1)
                 for (int i = 0; i < Math.Min(10, rows.Count); i++)
                 {
                     var cellValue = rows[i].Cell(1).Value.ToString()?.ToLower() ?? "";
@@ -427,39 +515,78 @@ public class GalanSyncService
                     }
                 }
 
+                // Detectar formato UNA SOLA VEZ
+                bool isCsvFile = IsFileCsvFormat(rows, headerRowIndex);
+                _logger.LogInformation("Stock file format: {Format}", isCsvFile ? "CSV" : "Columnar");
+
                 for (int i = headerRowIndex + 1; i < rows.Count; i++)
                 {
                     try
                     {
                         var row = rows[i];
-                        var codigo = row.Cell(1).Value.ToString().Trim();
-                        if (string.IsNullOrEmpty(codigo)) continue;
 
-                        stock.Add(new StagingGalanStock
+                        if (isCsvFile)
                         {
-                            CodigoArticulo = codigo,
-                            CodigoDepartamento = row.Cell(2).Value.ToString().Trim(),
-                            CodigoFamilia = row.Cell(3).Value.ToString().Trim(),
-                            Descripcion = row.Cell(4).Value.ToString().Trim(),
-                            Stock = decimal.TryParse(row.Cell(5).Value.ToString(), out decimal s) ? s : 0,
-                            StockA = 0,
-                            StockB = 0,
-                            Almacen = row.Cell(6).Value.ToString().Trim(),
-                            CodigoCelda = "",
-                            Familia = "",
-                            SubFamilia = "",
-                            Hash = "",
-                            PayloadJson = "",
-                            FechaUltimaSincronizacion = DateTime.UtcNow
-                        });
+                            // SOLO procesamiento CSV
+                            var fields = ParseCsvRow(row);
+                            if (fields.Length < 13) continue; // Necesita al menos 13 campos CSV
+
+                            var codigo = fields[0];
+                            if (string.IsNullOrEmpty(codigo)) continue;
+
+                            stock.Add(new StagingGalanStock
+                            {
+                                CodigoArticulo = codigo,
+                                CodigoDepartamento = fields[1],
+                                CodigoFamilia = fields[2],
+                                Descripcion = fields[12], // campo 12 en CSV es descripcion
+                                Stock = decimal.TryParse(fields[6], out decimal s) ? s : 0,
+                                StockA = decimal.TryParse(fields[5], out decimal sa) ? sa : 0,
+                                StockB = decimal.TryParse(fields[4], out decimal sb) ? sb : 0,
+                                Almacen = fields[7], // ALM
+                                CodigoCelda = fields[3],
+                                Familia = fields[10],
+                                SubFamilia = fields[11],
+                                Hash = "",
+                                PayloadJson = "",
+                                FechaUltimaSincronizacion = DateTime.UtcNow
+                            });
+                        }
+                        else
+                        {
+                            // SOLO procesamiento columnar
+                            var codigo = row.Cell(1).Value.ToString().Trim();
+                            if (string.IsNullOrEmpty(codigo)) continue;
+
+                            stock.Add(new StagingGalanStock
+                            {
+                                CodigoArticulo = codigo,
+                                CodigoDepartamento = row.Cell(2).Value.ToString().Trim(),
+                                CodigoFamilia = row.Cell(3).Value.ToString().Trim(),
+                                Descripcion = row.Cell(4).Value.ToString().Trim(),
+                                Stock = decimal.TryParse(row.Cell(5).Value.ToString(), out decimal s) ? s : 0,
+                                StockA = 0,
+                                StockB = 0,
+                                Almacen = row.Cell(6).Value.ToString().Trim(),
+                                CodigoCelda = "",
+                                Familia = "",
+                                SubFamilia = "",
+                                Hash = "",
+                                PayloadJson = "",
+                                FechaUltimaSincronizacion = DateTime.UtcNow
+                            });
+                        }
                     }
-                    catch { /* skip malformed rows */ }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error procesando fila {RowNumber} de Stock", i);
+                    }
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error leyendo Stock desde STOCK_*.xlsx");
+            _logger.LogError(ex, "Error leyendo Stock desde STOCK_*.xlsx: {FilePath}", filePath);
         }
 
         return stock;
@@ -581,6 +708,8 @@ public class GalanSyncService
                             Albaran = albaran,
                             NumeroPedidoTercero = row.Cell(2).Value.ToString().Trim(),
                             CodigoArticulo = row.Cell(3).Value.ToString().Trim(),
+                            CodigoDepartamento = row.Cell(4).Value.ToString().Trim(),
+                            CodigoFamilia = row.Cell(5).Value.ToString().Trim(),
                             Descripcion = row.Cell(6).Value.ToString().Trim(),
                             Unidades = int.TryParse(row.Cell(8).Value.ToString(), out int u) ? u : 0,
                             Fecha = fecha,
@@ -604,13 +733,38 @@ public class GalanSyncService
     }
 
     /// <summary>
-    /// Genera SHA-256 hash de un objeto para deduplicación
+    /// Genera SHA-256 hash basado en campos clave para deduplicación
+    /// Cada tipo de entidad define sus propios campos clave
     /// </summary>
     private string ComputeHash(object obj)
     {
-        var json = System.Text.Json.JsonSerializer.Serialize(obj);
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
-        return Convert.ToHexString(hashBytes);
+        try
+        {
+            // Concatenar campos clave según tipo de objeto
+            string hashInput = obj switch
+            {
+                StagingGalanEntrada e => $"{e.CodigoArticulo ?? ""}|{e.Fecha:yyyy-MM-dd}|{e.Almacen ?? ""}|{e.Unidades}",
+                StagingGalanStock s => $"{s.CodigoArticulo ?? ""}|{s.Stock}|{s.StockA}|{s.StockB}",
+                StagingGalanSalida s => $"{s.Albaran ?? ""}|{s.CodigoArticulo ?? ""}|{s.Unidades}|{s.Fecha:yyyy-MM-dd}",
+                _ => ""
+            };
+
+            if (string.IsNullOrEmpty(hashInput))
+            {
+                _logger.LogWarning("ComputeHash: hashInput is empty for type {Type}", obj.GetType().Name);
+                return "";
+            }
+
+            using var sha256 = SHA256.Create();
+            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(hashInput));
+            var hash = Convert.ToHexString(hashBytes);
+            _logger.LogInformation("✅ ComputeHash: type={Type}, input={Input}, hash={Hash}", obj.GetType().Name, hashInput, hash);
+            return hash;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error computing hash for type {Type}", obj.GetType().Name);
+            return "";
+        }
     }
 }

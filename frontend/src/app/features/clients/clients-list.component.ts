@@ -153,6 +153,7 @@ export class ClientsListComponent implements OnInit {
   protected onPage(e: PageEvent): void {
     this.pageSize.set(e.pageSize);
     this.page.set(e.pageIndex + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     this.load();
   }
 

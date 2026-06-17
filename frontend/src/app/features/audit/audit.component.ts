@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 
 
 interface AuditLog {
@@ -13,7 +14,7 @@ interface AuditLog {
 @Component({
   selector: 'app-audit',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, MatPaginatorModule],
   template: `
     <div class="sig-list-page">
       <div class="sig-list-topbar">
@@ -104,12 +105,14 @@ interface AuditLog {
                 }
               </tbody>
             </table>
-            <div class="sig-pagination">
-              <span>Mostrando {{ logs().length }} de {{ logs().length }}</span>
-              <button class="sig-page-btn" disabled>&#8249;</button>
-              <div class="sig-page-current">1</div>
-              <button class="sig-page-btn" disabled>&#8250;</button>
-            </div>
+            <mat-paginator
+              [length]="total()"
+              [pageSize]="pageSize()"
+              [pageIndex]="page() - 1"
+              [pageSizeOptions]="[10, 25, 50]"
+              showFirstLastButtons
+              (page)="onPageChange($event)">
+            </mat-paginator>
           </div>
         </div>
 
@@ -235,7 +238,12 @@ export class AuditComponent implements OnInit {
   protected clientes:  string[] = [];
   protected usuarios:  string[] = [];
 
-  protected readonly logs = signal<AuditLog[]>([
+  protected readonly page = signal(1);
+  protected readonly pageSize = signal(25);
+  protected readonly total = signal(0);
+  protected readonly items = signal<AuditLog[]>([]);
+
+  private readonly allLogs: AuditLog[] = [
     { id:1,  fecha:'15/04/2026', hora:'17:32', usuario:'Silvia Garzon',  tipoAccion:'Aprobar',  cliente:'Amex', proyecto:'Amex',   accion:'Amex Shop Small',     recurso:'Antonio Pastor',  entidad:'Pago por visitas', tipo:'Pago' },
     { id:2,  fecha:'15/04/2026', hora:'18:12', usuario:'Silvia Garzon',  tipoAccion:'Aprobar',  cliente:'Amex', proyecto:'Amex',   accion:'Amex Shop Small',     recurso:'Jorge Diaz',      entidad:'Pago por visitas', tipo:'Pago' },
     { id:3,  fecha:'12/04/2026', hora:'14:11', usuario:'Tino Fanjul',    tipoAccion:'Editar',   cliente:'ITC',  proyecto:'ITC',    accion:'ITC GPVs',            recurso:'—',               entidad:'Mantenimiento BI', tipo:'Facturacion' },
@@ -244,11 +252,30 @@ export class AuditComponent implements OnInit {
     { id:6,  fecha:'16/03/2026', hora:'10:02', usuario:'Adrian Tomas',   tipoAccion:'Aprobar',  cliente:'Apple', proyecto:'Apple',  accion:'Apple BA',            recurso:'Juan Moreno',     entidad:'NPI Watch 03-26', tipo:'Pago' },
     { id:7,  fecha:'08/02/2026', hora:'14:01', usuario:'Adrian Tomas',   tipoAccion:'Aprobar',  cliente:'Apple', proyecto:'Apple',  accion:'Apple RST',           recurso:'Diego Pontevedra', entidad:'Facturacion formaciones', tipo:'Facturacion' },
     { id:8,  fecha:'05/02/2026', hora:'15:23', usuario:'Arantxa Val',    tipoAccion:'Crear',    cliente:'Coty',  proyecto:'Coty',   accion:'Coty implantaciones', recurso:'—',               entidad:'Logistica', tipo:'Facturacion' },
-  ]);
+  ];
+
+  get logs() { return this.items; }
 
   ngOnInit(): void {
-    const logs = this.logs();
-    if (logs.length && !this.selectedLog()) this.selectedLog.set(logs[0]);
+    this.loadPaginated();
+  }
+
+  protected onPageChange(event: PageEvent): void {
+    this.pageSize.set(event.pageSize);
+    this.page.set(event.pageIndex + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadPaginated();
+  }
+
+  private loadPaginated(): void {
+    this.total.set(this.allLogs.length);
+    const start = (this.page() - 1) * this.pageSize();
+    const end = start + this.pageSize();
+    const paginated = this.allLogs.slice(start, end);
+    this.items.set(paginated);
+    if (paginated.length && !this.selectedLog()) {
+      this.selectedLog.set(paginated[0]);
+    }
   }
 
   protected selectLog(log: AuditLog): void { this.selectedLog.set(log); }

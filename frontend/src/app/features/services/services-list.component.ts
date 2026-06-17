@@ -80,7 +80,9 @@ import { ServiceListItemDto } from '../../models/dtos';
           <mat-paginator
             [length]="total()"
             [pageSize]="pageSize()"
+            [pageIndex]="page() - 1"
             [pageSizeOptions]="[10, 25, 50]"
+            showFirstLastButtons
             (page)="onPageChange($event)">
           </mat-paginator>
         </div>
@@ -240,6 +242,7 @@ export class ServicesListComponent implements OnInit {
   protected onPageChange(event: PageEvent): void {
     this.page.set(event.pageIndex + 1);
     this.pageSize.set(event.pageSize);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     this.loadPage();
   }
 

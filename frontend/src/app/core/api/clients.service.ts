@@ -17,6 +17,11 @@ export class ClientService {
       params: toHttpParams({ page, pageSize, search }),
     });
   }
+  listPaginated(page: number, pageSize: number, search?: string) {
+    return this.http.get<PagedResult<ClientListItemDto>>(`${this.base}/paginated`, {
+      params: toHttpParams({ page, pageSize, search }),
+    });
+  }
   getById(id: number) { return this.http.get<ClientDetailDto>(`${this.base}/${id}`); }
   create(req: ClientCreateRequest) { return this.http.post<ClientDetailDto>(this.base, req); }
   update(id: number, req: ClientUpdateRequest) { return this.http.put<ClientDetailDto>(`${this.base}/${id}`, req); }

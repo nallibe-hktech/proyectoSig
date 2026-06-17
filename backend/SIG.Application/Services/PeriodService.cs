@@ -1,3 +1,4 @@
+using SIG.Application.Common;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Repositories;
 using SIG.Application.Interfaces.Services;
@@ -17,6 +18,18 @@ public class PeriodService : IPeriodService
     {
         var list = await _repo.ListAsync(ct);
         return list.Select(Map).ToList();
+    }
+
+    public async Task<PagedResult<PeriodDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct)
+    {
+        var list = await _repo.ListAsync(ct);
+        var total = list.Count;
+        var items = list
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(Map)
+            .ToList();
+        return new PagedResult<PeriodDto>(items, total, page, pageSize);
     }
 
     public async Task<PeriodDto> GetActivoAsync(CancellationToken ct)

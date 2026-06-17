@@ -11,6 +11,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GalanService, GalanEntradaDto, GalanSalidaDto, GalanStockDto } from '../services/galan.service';
@@ -46,6 +47,7 @@ type GalanStock = GalanStockDto;
     MatIconModule,
     MatButtonModule,
     MatDividerModule,
+    MatPaginatorModule,
   ],
   template: `
     <div class="sig-page">
@@ -173,6 +175,15 @@ type GalanStock = GalanStockDto;
                 <tr mat-header-row></tr>
                 <tr mat-row *matRowDef="let row; columns: entradasColumns"></tr>
               </table>
+
+              <mat-paginator
+                [pageSizeOptions]="[25, 50, 100]"
+                [pageSize]="entradasPageSize()"
+                [length]="entradasTotal()"
+                [pageIndex]="entradasPage() - 1"
+                showFirstLastButtons
+                (page)="onEntradasPageChange($event)"
+              ></mat-paginator>
             }
           </div>
         </mat-tab>
@@ -226,6 +237,15 @@ type GalanStock = GalanStockDto;
                 <tr mat-header-row></tr>
                 <tr mat-row *matRowDef="let row; columns: salidasColumns"></tr>
               </table>
+
+              <mat-paginator
+                [pageSizeOptions]="[25, 50, 100]"
+                [pageSize]="salidasPageSize()"
+                [length]="salidasTotal()"
+                [pageIndex]="salidasPage() - 1"
+                showFirstLastButtons
+                (page)="onSalidasPageChange($event)"
+              ></mat-paginator>
             }
           </div>
         </mat-tab>
@@ -279,6 +299,15 @@ type GalanStock = GalanStockDto;
                 <tr mat-header-row></tr>
                 <tr mat-row *matRowDef="let row; columns: stockColumns"></tr>
               </table>
+
+              <mat-paginator
+                [pageSizeOptions]="[25, 50, 100]"
+                [pageSize]="stockPageSize()"
+                [length]="stockTotal()"
+                [pageIndex]="stockPage() - 1"
+                showFirstLastButtons
+                (page)="onStockPageChange($event)"
+              ></mat-paginator>
             }
           </div>
         </mat-tab>
@@ -515,6 +544,18 @@ export class GalanDashboardComponent implements OnInit {
   salidas = signal<GalanSalida[]>([]);
   stock = signal<GalanStock[]>([]);
 
+  entradasTotal = signal(0);
+  salidasTotal = signal(0);
+  stockTotal = signal(0);
+
+  entradasPage = signal(1);
+  salidasPage = signal(1);
+  stockPage = signal(1);
+
+  entradasPageSize = signal(25);
+  salidasPageSize = signal(25);
+  stockPageSize = signal(25);
+
   entradasLoading = signal(false);
   salidasLoading = signal(false);
   stockLoading = signal(false);
@@ -527,9 +568,9 @@ export class GalanDashboardComponent implements OnInit {
   salidasColumns = ['albaran', 'codigoArticulo', 'descripcion', 'unidades', 'fecha'];
   stockColumns = ['codigoArticulo', 'descripcion', 'stock', 'familia', 'almacen'];
 
-  entradasCount = computed(() => this.entradas().length);
-  salidasCount = computed(() => this.salidas().length);
-  stockCount = computed(() => this.stock().reduce((sum, s) => sum + s.stock, 0));
+  entradasCount = computed(() => this.entradasTotal());
+  salidasCount = computed(() => this.salidasTotal());
+  stockCount = computed(() => this.stockTotal());
 
   private entradasSearch$ = new Subject<string>();
   private salidasSearch$ = new Subject<string>();
@@ -538,15 +579,15 @@ export class GalanDashboardComponent implements OnInit {
   constructor() {
     this.entradasSearch$
       .pipe(debounceTime(300), takeUntilDestroyed())
-      .subscribe((search) => this.loadEntradas(search));
+      .subscribe((search) => { this.entradasPage.set(1); this.loadEntradas(search); });
 
     this.salidasSearch$
       .pipe(debounceTime(300), takeUntilDestroyed())
-      .subscribe((search) => this.loadSalidas(search));
+      .subscribe((search) => { this.salidasPage.set(1); this.loadSalidas(search); });
 
     this.stockSearch$
       .pipe(debounceTime(300), takeUntilDestroyed())
-      .subscribe((search) => this.loadStock(search));
+      .subscribe((search) => { this.stockPage.set(1); this.loadStock(search); });
   }
 
   ngOnInit() {
@@ -606,8 +647,13 @@ export class GalanDashboardComponent implements OnInit {
         setTimeout(() => {
           delete this.uploadStatus[tipoKey];
         }, 5000);
-        // Sincronizar automáticamente después del upload
-        this.syncManual();
+        // Backend ya sincroniza automáticamente, solo recargar datos
+        this.entradasPage.set(1);
+        this.salidasPage.set(1);
+        this.stockPage.set(1);
+        this.loadEntradas();
+        this.loadSalidas();
+        this.loadStock();
       },
       error: (err) => {
         this.uploadingTypes[tipoKey] = false;
@@ -618,13 +664,15 @@ export class GalanDashboardComponent implements OnInit {
 
   private loadEntradas(search?: string) {
     this.entradasLoading.set(true);
-    this.galanSvc.getEntradas(1, 500, search || '').subscribe({
+    this.galanSvc.getEntradas(this.entradasPage(), this.entradasPageSize(), search || '').subscribe({
       next: (response) => {
         this.entradas.set(response.items || []);
+        this.entradasTotal.set(response.total || 0);
         this.entradasLoading.set(false);
       },
       error: () => {
         this.entradas.set([]);
+        this.entradasTotal.set(0);
         this.entradasLoading.set(false);
       },
     });
@@ -632,13 +680,15 @@ export class GalanDashboardComponent implements OnInit {
 
   private loadSalidas(search?: string) {
     this.salidasLoading.set(true);
-    this.galanSvc.getSalidas(1, 500, search || '').subscribe({
+    this.galanSvc.getSalidas(this.salidasPage(), this.salidasPageSize(), search || '').subscribe({
       next: (response) => {
         this.salidas.set(response.items || []);
+        this.salidasTotal.set(response.total || 0);
         this.salidasLoading.set(false);
       },
       error: () => {
         this.salidas.set([]);
+        this.salidasTotal.set(0);
         this.salidasLoading.set(false);
       },
     });
@@ -646,17 +696,42 @@ export class GalanDashboardComponent implements OnInit {
 
   private loadStock(search?: string) {
     this.stockLoading.set(true);
-    // Load all stock data without pagination for dashboard
-    this.galanSvc.getStock(1, 10000).subscribe({
+    this.galanSvc.getStock(this.stockPage(), this.stockPageSize(), search || '').subscribe({
       next: (response) => {
         this.stock.set(response.items || []);
+        this.stockTotal.set(response.total || 0);
         this.stockLoading.set(false);
+        // Scroll after data loads
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 200);
       },
       error: () => {
         this.stock.set([]);
+        this.stockTotal.set(0);
         this.stockLoading.set(false);
       },
     });
+  }
+
+  onEntradasPageChange(event: PageEvent): void {
+    this.entradasPage.set(event.pageIndex + 1);
+    this.entradasPageSize.set(event.pageSize);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadEntradas();
+  }
+
+  onSalidasPageChange(event: PageEvent): void {
+    this.salidasPage.set(event.pageIndex + 1);
+    this.salidasPageSize.set(event.pageSize);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadSalidas();
+  }
+
+  onStockPageChange(event: PageEvent): void {
+    this.stockPage.set(event.pageIndex + 1);
+    this.stockPageSize.set(event.pageSize);
+    this.loadStock();
   }
 
   protected syncManual(): void {
@@ -665,6 +740,10 @@ export class GalanDashboardComponent implements OnInit {
       next: (r) => {
         this.syncing.set(false);
         this.notify.success(`Sincronizado: ${r.registrosInsertados} registros nuevos`);
+        // Reset pages to 1 after sync
+        this.entradasPage.set(1);
+        this.salidasPage.set(1);
+        this.stockPage.set(1);
         this.loadEntradas();
         this.loadSalidas();
         this.loadStock();

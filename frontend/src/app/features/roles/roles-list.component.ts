@@ -2,6 +2,9 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { RoleService } from '../../core/api/catalogs.service';
+import { RoleDto } from '../../models/dtos';
 
 interface RolDef {
   nombre: string; ambito: string;
@@ -11,7 +14,7 @@ interface RolDef {
 @Component({
   selector: 'app-roles-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, MatPaginatorModule],
   template: `
     <div class="sig-list-page">
       <div class="sig-list-topbar">
@@ -78,6 +81,14 @@ interface RolDef {
           <div class="sig-footer-note">
             El permiso "Editar" incluye Eliminar &middot; Los datos de Ceco / Cliente / Servicio / Concepto se alimentan de Celero
           </div>
+          <mat-paginator
+            [length]="total()"
+            [pageSize]="pageSize()"
+            [pageIndex]="page() - 1"
+            [pageSizeOptions]="[10, 25, 50]"
+            showFirstLastButtons
+            (page)="onPageChange($event)"
+          ></mat-paginator>
         </div>
 
         @if (selected()) {
@@ -231,7 +242,12 @@ export class RolesListComponent implements OnInit {
   protected readonly selected = signal<RolDef | null>(null);
   protected selectedIndex = 0;
 
-  protected readonly roles = signal<RolDef[]>([
+  protected readonly page = signal(1);
+  protected readonly pageSize = signal(25);
+  protected readonly total = signal(0);
+  protected readonly items = signal<RolDef[]>([]);
+
+  private readonly allRoles: RolDef[] = [
     { nombre:'Administrador', ambito:'Global',   pagos:'Control total',       facturaciones:'Control total',       usuarios:'Control total',   roles:'Control total' },
     { nombre:'Direccion',     ambito:'Global',   pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Ver / Editar / Crear', roles:'Sin permisos' },
     { nombre:'FICO',          ambito:'Global',   pagos:'Ver / Validar / Editar', facturaciones:'Ver / Validar / Editar', usuarios:'Ver / Editar / Crear', roles:'Sin permisos' },
@@ -243,7 +259,30 @@ export class RolesListComponent implements OnInit {
     { nombre:'Auxiliar',      ambito:'Servicio', pagos:'Ver',                    facturaciones:'Sin permisos',          usuarios:'Sin permisos',         roles:'Sin permisos' },
   ]);
 
-  ngOnInit(): void { const r = this.roles(); if (r.length) this.selected.set(r[0]); }
+  get roles() { return this.items; }
+
+  ngOnInit(): void {
+    this.load();
+  }
+
+  protected onPageChange(event: PageEvent): void {
+    this.pageSize.set(event.pageSize);
+    this.page.set(event.pageIndex + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.load();
+  }
+
+  private load(): void {
+    this.total.set(this.allRoles.length);
+    const start = (this.page() - 1) * this.pageSize();
+    const end = start + this.pageSize();
+    const paginated = this.allRoles.slice(start, end);
+    this.items.set(paginated);
+    if (paginated.length && !this.selected()) {
+      this.selected.set(paginated[0]);
+    }
+  }
+
   protected selectRow(r: RolDef): void { this.selected.set(r); }
   protected onFilter(): void { }
   protected clearFilters(): void { this.searchQ = ''; }

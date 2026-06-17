@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -11,8 +11,8 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { debounceTime, Subject } from 'rxjs';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { debounceTime, Subject, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MediapostService, MediapostPedidoDto, MediapostRecepcionDto } from '../services/mediapost.service';
 import { SyncService } from '../../../core/api/misc.service';
@@ -184,6 +184,14 @@ type MediapostRecepcion = MediapostRecepcionDto;
                 <tr mat-header-row></tr>
                 <tr mat-row *matRowDef="let row; columns: pedidosColumns"></tr>
               </table>
+              <mat-paginator
+                [length]="pedidosTotal()"
+                [pageSize]="pedidosPageSize()"
+                [pageSizeOptions]="[25, 50, 100]"
+                [pageIndex]="pedidosPage() - 1"
+                showFirstLastButtons
+                (page)="onPedidosPageChange($event)"
+              ></mat-paginator>
             }
           </div>
         </mat-tab>
@@ -242,6 +250,14 @@ type MediapostRecepcion = MediapostRecepcionDto;
                 <tr mat-header-row></tr>
                 <tr mat-row *matRowDef="let row; columns: recepcionesColumns"></tr>
               </table>
+              <mat-paginator
+                [length]="recepcionesTotal()"
+                [pageSize]="recepcionesPageSize()"
+                [pageSizeOptions]="[25, 50, 100]"
+                [pageIndex]="recepcionesPage() - 1"
+                showFirstLastButtons
+                (page)="onRecepcionesPageChange($event)"
+              ></mat-paginator>
             }
           </div>
         </mat-tab>
@@ -475,43 +491,54 @@ export class MediapostDashboardComponent implements OnInit {
   private readonly mediapostSvc = inject(MediapostService);
   private readonly syncSvc = inject(SyncService);
   private readonly notify = inject(NotifyService);
+  private readonly zone = inject(NgZone);
 
   fileTypes: FileType[] = [
     { key: 'pedidos', label: 'Pedidos', pattern: 'infpedsit11_*.xlsx', icon: 'receipt' },
     { key: 'recepciones', label: 'Recepciones', pattern: 'infrecep07_*.xlsx', icon: 'check_circle' },
   ];
 
-  pedidos = signal<MediapostPedido[]>([]);
-  recepciones = signal<MediapostRecepcion[]>([]);
+  // Pedidos signals
+  protected readonly pedidos = signal<MediapostPedido[]>([]);
+  protected readonly pedidosTotal = signal(0);
+  protected readonly pedidosPage = signal(1);
+  protected readonly pedidosPageSize = signal(25);
+  protected readonly pedidosLoading = signal(false);
+  protected readonly pedidosEntregadosTotal = signal(0);
 
-  pedidosLoading = signal(false);
-  recepcionesLoading = signal(false);
-  syncing = signal(false);
+  // Recepciones signals
+  protected readonly recepciones = signal<MediapostRecepcion[]>([]);
+  protected readonly recepcionesTotal = signal(0);
+  protected readonly recepcionesPage = signal(1);
+  protected readonly recepcionesPageSize = signal(25);
+  protected readonly recepcionesLoading = signal(false);
 
+  // UI
+  protected readonly syncing = signal(false);
   uploadingTypes: { [key: string]: boolean } = {};
   uploadStatus: { [key: string]: string } = {};
 
   pedidosColumns = ['pedidoId', 'referenciaPedido', 'fechaPedido', 'estado', 'destinatarioNombre'];
   recepcionesColumns = ['recepcionId', 'codigoArticulo', 'fechaRecepcion', 'cantidad', 'cantidadDanada', 'estado'];
 
-  pedidosCount = computed(() => this.pedidos().length);
-  recepcionesCount = computed(() => this.recepciones().length);
-  pedidosEntregados = computed(() =>
-    this.pedidos().filter(p => p.estado?.toLowerCase().includes('entregado')).length
-  );
+  pedidosCount = computed(() => this.pedidosTotal());
+  recepcionesCount = computed(() => this.recepcionesTotal());
+  pedidosEntregados = computed(() => this.pedidosEntregadosTotal());
 
   private pedidosSearch$ = new Subject<string>();
   private recepcionesSearch$ = new Subject<string>();
+  private pedidosSearchValue = '';
+  private recepcionesSearchValue = '';
   private estadoFilter$ = '';
 
   constructor() {
     this.pedidosSearch$
-      .pipe(debounceTime(300), takeUntilDestroyed())
-      .subscribe((search) => this.loadPedidos(search));
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe(() => { this.pedidosPage.set(1); this.loadPedidos(); });
 
     this.recepcionesSearch$
-      .pipe(debounceTime(300), takeUntilDestroyed())
-      .subscribe((search) => this.loadRecepciones(search));
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe(() => { this.recepcionesPage.set(1); this.loadRecepciones(); });
   }
 
   ngOnInit() {
@@ -521,17 +548,20 @@ export class MediapostDashboardComponent implements OnInit {
 
   onPedidosSearch(event: Event) {
     const search = (event.target as HTMLInputElement).value;
+    this.pedidosSearchValue = search;
     this.pedidosSearch$.next(search);
   }
 
   onRecepcionesSearch(event: Event) {
     const search = (event.target as HTMLInputElement).value;
+    this.recepcionesSearchValue = search;
     this.recepcionesSearch$.next(search);
   }
 
   onEstadoFilter(event: Event) {
     const select = event.target as HTMLSelectElement;
     this.estadoFilter$ = select.value;
+    this.pedidosPage.set(1);
     this.loadPedidos();
   }
 
@@ -571,8 +601,11 @@ export class MediapostDashboardComponent implements OnInit {
         setTimeout(() => {
           delete this.uploadStatus[tipoKey];
         }, 5000);
-        // Sincronizar automáticamente después del upload
-        this.syncManual();
+        // Backend ya sincroniza automáticamente, solo recargar datos
+        this.pedidosPage.set(1);
+        this.recepcionesPage.set(1);
+        this.loadPedidos();
+        this.loadRecepciones();
       },
       error: (err) => {
         this.uploadingTypes[tipoKey] = false;
@@ -581,29 +614,50 @@ export class MediapostDashboardComponent implements OnInit {
     });
   }
 
-  private loadPedidos(search?: string) {
+  protected onPedidosPageChange(event: PageEvent): void {
+    this.pedidosPageSize.set(event.pageSize);
+    this.pedidosPage.set(event.pageIndex + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadPedidos();
+  }
+
+  protected onRecepcionesPageChange(event: PageEvent): void {
+    this.recepcionesPageSize.set(event.pageSize);
+    this.recepcionesPage.set(event.pageIndex + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadRecepciones();
+  }
+
+  private loadPedidos(): void {
     this.pedidosLoading.set(true);
-    this.mediapostSvc.getPedidos(1, 500, search || '', this.estadoFilter$ || '').subscribe({
+    this.mediapostSvc.getPedidos(this.pedidosPage(), this.pedidosPageSize(), this.pedidosSearchValue, this.estadoFilter$).subscribe({
       next: (response) => {
         this.pedidos.set(response.items || []);
+        this.pedidosTotal.set(response.total || 0);
+        const entregados = (response.items || []).filter(p => p.estado?.toLowerCase().includes('entregado')).length;
+        this.pedidosEntregadosTotal.set(entregados);
         this.pedidosLoading.set(false);
       },
       error: () => {
         this.pedidos.set([]);
+        this.pedidosTotal.set(0);
+        this.pedidosEntregadosTotal.set(0);
         this.pedidosLoading.set(false);
       },
     });
   }
 
-  private loadRecepciones(search?: string) {
+  private loadRecepciones(): void {
     this.recepcionesLoading.set(true);
-    this.mediapostSvc.getRecepciones(1, 500, search || '').subscribe({
+    this.mediapostSvc.getRecepciones(this.recepcionesPage(), this.recepcionesPageSize(), this.recepcionesSearchValue).subscribe({
       next: (response) => {
         this.recepciones.set(response.items || []);
+        this.recepcionesTotal.set(response.total || 0);
         this.recepcionesLoading.set(false);
       },
       error: () => {
         this.recepciones.set([]);
+        this.recepcionesTotal.set(0);
         this.recepcionesLoading.set(false);
       },
     });
@@ -615,8 +669,13 @@ export class MediapostDashboardComponent implements OnInit {
       next: (r) => {
         this.syncing.set(false);
         this.notify.success(`Sincronizado: ${r.registrosInsertados} registros nuevos`);
-        this.loadPedidos();
-        this.loadRecepciones();
+        // Reset pages y reload en Angular zone
+        this.zone.run(() => {
+          this.pedidosPage.set(1);
+          this.recepcionesPage.set(1);
+          this.loadPedidos();
+          this.loadRecepciones();
+        });
       },
       error: (err) => {
         this.syncing.set(false);

@@ -18,6 +18,11 @@ export class ConceptService {
       params: toHttpParams({ page, pageSize, tipo, search }),
     });
   }
+  listPaginated(page: number, pageSize: number, tipo?: TipoConcepto | null, search?: string) {
+    return this.http.get<PagedResult<ConceptListItemDto>>(`${this.base}/paginated`, {
+      params: toHttpParams({ page, pageSize, tipo, search }),
+    });
+  }
   getById(id: number) { return this.http.get<ConceptDetailDto>(`${this.base}/${id}`); }
   create(req: ConceptCreateRequest) { return this.http.post<ConceptDetailDto>(this.base, req); }
   update(id: number, req: ConceptUpdateRequest) { return this.http.put<ConceptDetailDto>(`${this.base}/${id}`, req); }

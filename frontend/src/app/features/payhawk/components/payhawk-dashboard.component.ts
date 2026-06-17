@@ -11,6 +11,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { PayHawkService, StagingPayHawkGasto } from '../services/payhawk.service';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -32,6 +33,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     MatDividerModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatPaginatorModule,
   ],
   template: `
     <div class="sig-page">
@@ -84,35 +86,43 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
           <p>Sin datos sincronizados</p>
         </div>
       } @else {
-        <table mat-table [dataSource]="gastos()" class="data-table">
+        <table mat-table [dataSource]="gastosPaginated()" class="data-table">
           <ng-container matColumnDef="fecha">
             <th mat-header-cell>Fecha</th>
-            <td mat-cell>{{ $any(row).fecha | date: 'short' }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.fecha | date: 'short' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="categoria">
             <th mat-header-cell>Categoría</th>
-            <td mat-cell>{{ $any(row).categoria }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.categoria }}</td>
           </ng-container>
 
           <ng-container matColumnDef="importe">
             <th mat-header-cell>Importe</th>
-            <td mat-cell>€ {{ $any(row).importe | number: '1.2-2' }}</td>
+            <td mat-cell *matCellDef="let row">€ {{ row.importe | number: '1.2-2' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="userId">
             <th mat-header-cell>ID Usuario</th>
-            <td mat-cell>{{ $any(row).userId }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.userId }}</td>
           </ng-container>
 
           <ng-container matColumnDef="projectId">
             <th mat-header-cell>Proyecto</th>
-            <td mat-cell>{{ $any(row).projectId }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.projectId }}</td>
           </ng-container>
 
           <tr mat-header-row></tr>
           <tr mat-row *matRowDef="let row; columns: columns"></tr>
         </table>
+        <mat-paginator
+          [length]="gastosTotal()"
+          [pageSize]="gastosPageSize()"
+          [pageIndex]="gastosPage() - 1"
+          [pageSizeOptions]="[10, 25, 50]"
+          showFirstLastButtons
+          (page)="onPageChange($event)"
+        ></mat-paginator>
       }
     </div>
   `,
@@ -216,21 +226,25 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 export class PayHawkDashboardComponent implements OnInit {
   private readonly payHawkSvc = inject(PayHawkService);
 
-  // Dummy property for template type checking (actual row comes from *matRowDef)
-  protected row: StagingPayHawkGasto | any;
+  protected readonly gastos = signal<StagingPayHawkGasto[]>([]);
+  protected readonly gastosTotal = signal(0);
+  protected readonly gastosPage = signal(1);
+  protected readonly gastosPageSize = signal(25);
+  protected readonly importeTotalValue = signal(0);
+  protected readonly categoriasUnicasTotal = signal(0);
+  protected readonly loading = signal(false);
 
-  gastos = signal<StagingPayHawkGasto[]>([]);
-  loading = signal(false);
+  protected readonly gastosPaginated = computed(() => {
+    const start = (this.gastosPage() - 1) * this.gastosPageSize();
+    const end = start + this.gastosPageSize();
+    return this.gastos().slice(start, end);
+  });
 
   columns = ['fecha', 'categoria', 'importe', 'userId', 'projectId'];
 
-  gastosCount = computed(() => this.gastos().length);
-  importeTotal = computed(() =>
-    this.gastos().reduce((sum, g) => sum + g.importe, 0)
-  );
-  categoriasUnicas = computed(() =>
-    new Set(this.gastos().map(g => g.categoria)).size
-  );
+  gastosCount = computed(() => this.gastosTotal());
+  importeTotal = computed(() => this.importeTotalValue());
+  categoriasUnicas = computed(() => this.categoriasUnicasTotal());
 
   private search$ = new Subject<string>();
   private desde: string | undefined;
@@ -239,40 +253,56 @@ export class PayHawkDashboardComponent implements OnInit {
   constructor() {
     this.search$
       .pipe(debounceTime(300), takeUntilDestroyed())
-      .subscribe((search) => this.loadGastos(search));
+      .subscribe((search) => { this.gastosPage.set(1); this.loadGastos(search); });
   }
 
   ngOnInit() {
     this.loadGastos();
   }
 
-  onSearch(event: Event) {
+  protected onSearch(event: Event) {
     const search = (event.target as HTMLInputElement).value;
     this.search$.next(search);
   }
 
-  onDesdeChange(event: Event) {
+  protected onDesdeChange(event: Event) {
     const input = event.target as HTMLInputElement;
     this.desde = input.value ? new Date(input.value).toISOString().split('T')[0] : undefined;
+    this.gastosPage.set(1);
     this.loadGastos();
   }
 
-  onHastaChange(event: Event) {
+  protected onHastaChange(event: Event) {
     const input = event.target as HTMLInputElement;
     this.hasta = input.value ? new Date(input.value).toISOString().split('T')[0] : undefined;
+    this.gastosPage.set(1);
     this.loadGastos();
   }
 
-  private loadGastos(search?: string) {
+  protected onPageChange(event: PageEvent): void {
+    this.gastosPageSize.set(event.pageSize);
+    this.gastosPage.set(event.pageIndex + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadGastos();
+  }
+
+  protected loadGastos(search?: string) {
     this.loading.set(true);
     this.payHawkSvc.getGastos(search, this.desde, this.hasta).subscribe({
       next: (data) => {
-        this.gastos.set(data);
+        const gastos = data ?? [];
+        this.gastos.set(gastos);
+        this.gastosTotal.set(gastos.length);
+        this.importeTotalValue.set(gastos.reduce((sum, g) => sum + (g.importe || 0), 0));
+        this.categoriasUnicasTotal.set(new Set(gastos.map(g => g.categoria)).size);
         this.loading.set(false);
       },
       error: (err) => {
         console.error('Error loading gastos', err);
         this.gastos.set([]);
+        this.gastosTotal.set(0);
+        this.importeTotalValue.set(0);
+        this.categoriasUnicasTotal.set(0);
         this.loading.set(false);
       },
     });

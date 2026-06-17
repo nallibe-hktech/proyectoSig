@@ -18,6 +18,18 @@ public class VariableService : IVariableService
         return list.Select(v => new VariableDto(v.Id, v.Nombre, v.QuestionIdExterno, v.MapeoValoresJson)).ToList();
     }
 
+    public async Task<PagedResult<VariableDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct)
+    {
+        var list = await _repo.ListAsync(ct);
+        var total = list.Count;
+        var items = list
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(v => new VariableDto(v.Id, v.Nombre, v.QuestionIdExterno, v.MapeoValoresJson))
+            .ToList();
+        return new PagedResult<VariableDto>(items, total, page, pageSize);
+    }
+
     public async Task<VariableDto> GetByIdAsync(int id, CancellationToken ct)
     {
         var v = await _repo.GetByIdAsync(id, ct) ?? throw new EntityNotFoundException("Variable", id);
@@ -55,10 +67,23 @@ public class RoleService : IRoleService
 {
     private readonly IRoleRepository _repo;
     public RoleService(IRoleRepository repo) { _repo = repo; }
+
     public async Task<IReadOnlyList<RoleDto>> ListAsync(CancellationToken ct)
     {
         var list = await _repo.ListAsync(ct);
         return list.Select(r => new RoleDto(r.Id, r.Nombre, r.Descripcion)).ToList();
+    }
+
+    public async Task<PagedResult<RoleDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct)
+    {
+        var list = await _repo.ListAsync(ct);
+        var total = list.Count;
+        var items = list
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(r => new RoleDto(r.Id, r.Nombre, r.Descripcion))
+            .ToList();
+        return new PagedResult<RoleDto>(items, total, page, pageSize);
     }
 }
 
@@ -71,6 +96,18 @@ public class DepartmentService : IDepartmentService
     {
         var list = await _repo.ListAsync(ct);
         return list.Select(d => new DepartmentDto(d.Id, d.Nombre)).ToList();
+    }
+
+    public async Task<PagedResult<DepartmentDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct)
+    {
+        var list = await _repo.ListAsync(ct);
+        var total = list.Count;
+        var items = list
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(d => new DepartmentDto(d.Id, d.Nombre))
+            .ToList();
+        return new PagedResult<DepartmentDto>(items, total, page, pageSize);
     }
 
     public async Task<DepartmentDto> CreateAsync(DepartmentCreateRequest req, CancellationToken ct)
@@ -109,6 +146,18 @@ public class CostCenterService : ICostCenterService
     {
         var list = await _repo.ListAsync(ct);
         return list.Select(c => new CostCenterDto(c.Id, c.Codigo, c.Nombre)).ToList();
+    }
+
+    public async Task<PagedResult<CostCenterDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct)
+    {
+        var list = await _repo.ListAsync(ct);
+        var total = list.Count;
+        var items = list
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(c => new CostCenterDto(c.Id, c.Codigo, c.Nombre))
+            .ToList();
+        return new PagedResult<CostCenterDto>(items, total, page, pageSize);
     }
 
     public async Task<CostCenterDto> CreateAsync(CostCenterCreateRequest req, CancellationToken ct)

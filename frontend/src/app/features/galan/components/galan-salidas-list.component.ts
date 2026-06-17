@@ -74,7 +74,9 @@ interface GalanSalida {
       <mat-paginator
         [pageSizeOptions]="[25, 50, 100]"
         [pageSize]="pageSize"
+        [pageIndex]="currentPage - 1"
         [length]="total"
+        showFirstLastButtons
         (page)="onPageChange($event)"
       ></mat-paginator>
     </div>
@@ -149,6 +151,7 @@ export class GalanSalidasListComponent implements OnInit {
   onPageChange(event: PageEvent): void {
     this.pageSize = event.pageSize;
     this.currentPage = event.pageIndex + 1;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     this.loadSalidas();
   }
 }

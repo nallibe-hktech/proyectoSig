@@ -52,6 +52,7 @@ public interface IConceptService
 public interface IVariableService
 {
     Task<IReadOnlyList<VariableDto>> ListAsync(CancellationToken ct);
+    Task<PagedResult<VariableDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct);
     Task<VariableDto> GetByIdAsync(int id, CancellationToken ct);
     Task<VariableDto> CreateAsync(VariableCreateRequest req, CancellationToken ct);
     Task<VariableDto> UpdateAsync(int id, VariableUpdateRequest req, CancellationToken ct);
@@ -71,11 +72,13 @@ public interface IUserService
 public interface IRoleService
 {
     Task<IReadOnlyList<RoleDto>> ListAsync(CancellationToken ct);
+    Task<PagedResult<RoleDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct);
 }
 
 public interface IDepartmentService
 {
     Task<IReadOnlyList<DepartmentDto>> ListAsync(CancellationToken ct);
+    Task<PagedResult<DepartmentDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct);
     Task<DepartmentDto> CreateAsync(DepartmentCreateRequest req, CancellationToken ct);
     Task<DepartmentDto> UpdateAsync(int id, DepartmentUpdateRequest req, CancellationToken ct);
     Task DeleteAsync(int id, CancellationToken ct);
@@ -84,6 +87,7 @@ public interface IDepartmentService
 public interface ICostCenterService
 {
     Task<IReadOnlyList<CostCenterDto>> ListAsync(CancellationToken ct);
+    Task<PagedResult<CostCenterDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct);
     Task<CostCenterDto> CreateAsync(CostCenterCreateRequest req, CancellationToken ct);
     Task<CostCenterDto> UpdateAsync(int id, CostCenterUpdateRequest req, CancellationToken ct);
     Task DeleteAsync(int id, CancellationToken ct);
@@ -92,6 +96,7 @@ public interface ICostCenterService
 public interface IPeriodService
 {
     Task<IReadOnlyList<PeriodDto>> ListAsync(CancellationToken ct);
+    Task<PagedResult<PeriodDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct);
     Task<PeriodDto> GetActivoAsync(CancellationToken ct);
     Task<PeriodDto> GetByIdAsync(int id, CancellationToken ct);
     Task<PeriodDto> CreateAsync(PeriodCreateRequest req, CancellationToken ct);

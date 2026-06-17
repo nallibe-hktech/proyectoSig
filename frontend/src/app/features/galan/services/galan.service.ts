@@ -99,10 +99,14 @@ export class GalanService {
     return this.http.get<PagedResult<GalanSalidaDto>>(`${this.apiUrl}/salidas`, { params });
   }
 
-  getStock(page: number = 1, pageSize: number = 25): Observable<PagedResult<GalanStockDto>> {
-    const params = new HttpParams()
+  getStock(page: number = 1, pageSize: number = 25, search: string = ''): Observable<PagedResult<GalanStockDto>> {
+    let params = new HttpParams()
       .set('page', page.toString())
       .set('pageSize', pageSize.toString());
+
+    if (search) {
+      params = params.set('search', search);
+    }
 
     return this.http.get<PagedResult<GalanStockDto>>(`${this.apiUrl}/stock`, { params });
   }

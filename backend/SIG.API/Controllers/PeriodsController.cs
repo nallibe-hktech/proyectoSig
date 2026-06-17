@@ -14,7 +14,12 @@ public class PeriodsController : ControllerBase
     public PeriodsController(IPeriodService svc) { _svc = svc; }
 
     [HttpGet]
-    public async Task<IActionResult> List(CancellationToken ct) => Ok(await _svc.ListAsync(ct));
+    public async Task<IActionResult> List(CancellationToken ct = default) =>
+        Ok(await _svc.ListAsync(ct));
+
+    [HttpGet("paginated")]
+    public async Task<IActionResult> ListPaginated([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default) =>
+        Ok(await _svc.ListPaginatedAsync(page, pageSize, ct));
 
     [HttpGet("activo")]
     public async Task<IActionResult> GetActivo(CancellationToken ct) => Ok(await _svc.GetActivoAsync(ct));

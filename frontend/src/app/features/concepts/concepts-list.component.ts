@@ -119,7 +119,7 @@ export class ConceptsListComponent implements OnInit {
     this.tipoFilter.valueChanges.subscribe(() => { this.page.set(1); this.load(); });
     this.load();
   }
-  protected onPage(e: PageEvent): void { this.pageSize.set(e.pageSize); this.page.set(e.pageIndex + 1); this.load(); }
+  protected onPage(e: PageEvent): void { this.pageSize.set(e.pageSize); this.page.set(e.pageIndex + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); this.load(); }
   protected onEmptyCta(): void {
     if (this.search.value || this.tipoFilter.value) { this.search.setValue(''); this.tipoFilter.setValue(null); }
     else { void this.router.navigate(['/concepts/nuevo']); }

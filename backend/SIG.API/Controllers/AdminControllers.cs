@@ -18,7 +18,12 @@ public class RolesController : ControllerBase
     public RolesController(IRoleService svc) { _svc = svc; }
 
     [HttpGet]
-    public async Task<IActionResult> List(CancellationToken ct) => Ok(await _svc.ListAsync(ct));
+    public async Task<IActionResult> List(CancellationToken ct = default) =>
+        Ok(await _svc.ListAsync(ct));
+
+    [HttpGet("paginated")]
+    public async Task<IActionResult> ListPaginated([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default) =>
+        Ok(await _svc.ListPaginatedAsync(page, pageSize, ct));
 }
 
 [ApiController]
@@ -30,7 +35,12 @@ public class DepartmentsController : ControllerBase
     public DepartmentsController(IDepartmentService svc) { _svc = svc; }
 
     [HttpGet]
-    public async Task<IActionResult> List(CancellationToken ct) => Ok(await _svc.ListAsync(ct));
+    public async Task<IActionResult> List(CancellationToken ct = default) =>
+        Ok(await _svc.ListAsync(ct));
+
+    [HttpGet("paginated")]
+    public async Task<IActionResult> ListPaginated([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default) =>
+        Ok(await _svc.ListPaginatedAsync(page, pageSize, ct));
 
     [HttpPost]
     [Authorize(Roles = "Administrator")]
@@ -60,7 +70,12 @@ public class CostCentersController : ControllerBase
     public CostCentersController(ICostCenterService svc) { _svc = svc; }
 
     [HttpGet]
-    public async Task<IActionResult> List(CancellationToken ct) => Ok(await _svc.ListAsync(ct));
+    public async Task<IActionResult> List(CancellationToken ct = default) =>
+        Ok(await _svc.ListAsync(ct));
+
+    [HttpGet("paginated")]
+    public async Task<IActionResult> ListPaginated([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default) =>
+        Ok(await _svc.ListPaginatedAsync(page, pageSize, ct));
 
     [HttpPost]
     [Authorize(Roles = "Administrator")]
@@ -90,7 +105,12 @@ public class VariablesController : ControllerBase
     public VariablesController(IVariableService svc) { _svc = svc; }
 
     [HttpGet]
-    public async Task<IActionResult> List(CancellationToken ct) => Ok(await _svc.ListAsync(ct));
+    public async Task<IActionResult> List(CancellationToken ct = default) =>
+        Ok(await _svc.ListAsync(ct));
+
+    [HttpGet("paginated")]
+    public async Task<IActionResult> ListPaginated([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default) =>
+        Ok(await _svc.ListPaginatedAsync(page, pageSize, ct));
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> Get(int id, CancellationToken ct) => Ok(await _svc.GetByIdAsync(id, ct));
@@ -500,5 +520,44 @@ public class PayHawkController : ControllerBase
         if (hasta.HasValue)
             q = q.Where(g => g.Fecha <= hasta.Value);
         return Ok(await q.OrderByDescending(g => g.Fecha).ToListAsync(ct));
+    }
+}
+
+/// <summary>
+/// Endpoint temporal para limpiar BD (elimina datos rotos)
+/// SOLO para desarrollo - eliminar en producción
+/// </summary>
+[ApiController]
+[Route("api/admin/cleanup")]
+[Authorize(Roles = "Administrator")]
+public class CleanupController : ControllerBase
+{
+    private readonly AppDbContext _db;
+
+    public CleanupController(AppDbContext db) { _db = db; }
+
+    [HttpPost("clear-staging-data")]
+    public async Task<IActionResult> ClearStagingData(CancellationToken ct)
+    {
+        try
+        {
+            // Limpiar tablas de staging
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingGalanEntradas", cancellationToken: ct);
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingGalanSalidas", cancellationToken: ct);
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingGalanStocks", cancellationToken: ct);
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingGalanFacturasMensuales", cancellationToken: ct);
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingGalanAlmacenajes", cancellationToken: ct);
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingMediapostPedidos", cancellationToken: ct);
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingMediapostRecepciones", cancellationToken: ct);
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingBizneoEmpleados", cancellationToken: ct);
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingBizneoAbsences", cancellationToken: ct);
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM StagingIntratimeFichajes", cancellationToken: ct);
+
+            return Ok(new { message = "Base de datos limpiada exitosamente. Listo para re-sincronizar." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Error limpiando BD: {ex.Message}" });
+        }
     }
 }

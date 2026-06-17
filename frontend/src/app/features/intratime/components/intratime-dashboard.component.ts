@@ -12,6 +12,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { IntratimeService, StagingIntratimeFichaje } from '../services/intratime.service';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -34,6 +35,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     MatDividerModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatPaginatorModule,
   ],
   template: `
     <div class="sig-page">
@@ -86,7 +88,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
           <p>Sin datos sincronizados</p>
         </div>
       } @else {
-        <table mat-table [dataSource]="fichajes()" class="data-table">
+        <table mat-table [dataSource]="fichajesPaginated()" class="data-table">
           <ng-container matColumnDef="userIdExterno">
             <th mat-header-cell>ID Empleado</th>
             <td mat-cell *matCellDef="let row">{{ row.userIdExterno }}</td>
@@ -110,6 +112,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
           <tr mat-header-row></tr>
           <tr mat-row *matRowDef="let row; columns: columns"></tr>
         </table>
+        <mat-paginator
+          [length]="fichajesTotal()"
+          [pageSize]="fichajesPageSize()"
+          [pageIndex]="fichajesPage() - 1"
+          [pageSizeOptions]="[10, 25, 50]"
+          showFirstLastButtons
+          (page)="onPageChange($event)"
+        ></mat-paginator>
       }
     </div>
   `,
@@ -216,18 +226,25 @@ export class IntratimedashboardComponent implements OnInit {
   // Dummy property for template type checking (actual row comes from *matRowDef)
   protected row: StagingIntratimeFichaje | any;
 
-  fichajes = signal<StagingIntratimeFichaje[]>([]);
-  loading = signal(false);
+  protected readonly fichajes = signal<StagingIntratimeFichaje[]>([]);
+  protected readonly fichajesTotal = signal(0);
+  protected readonly fichajesPage = signal(1);
+  protected readonly fichajesPageSize = signal(25);
+  protected readonly empleadosUnicosTotal = signal(0);
+  protected readonly horasTotalValue = signal(0);
+  protected readonly loading = signal(false);
+
+  protected readonly fichajesPaginated = computed(() => {
+    const start = (this.fichajesPage() - 1) * this.fichajesPageSize();
+    const end = start + this.fichajesPageSize();
+    return this.fichajes().slice(start, end);
+  });
 
   columns = ['userIdExterno', 'entrada', 'salida', 'horasCalculadas'];
 
-  fichajesCount = computed(() => this.fichajes().length);
-  empleadosUnicos = computed(() =>
-    new Set(this.fichajes().map(f => f.userIdExterno)).size
-  );
-  horasTotal = computed(() =>
-    this.fichajes().reduce((sum, f) => sum + (f.horasCalculadas || 0), 0)
-  );
+  fichajesCount = computed(() => this.fichajesTotal());
+  empleadosUnicos = computed(() => this.empleadosUnicosTotal());
+  horasTotal = computed(() => this.horasTotalValue());
 
   private search$ = new Subject<string>();
   private desde: string | undefined;
@@ -236,7 +253,7 @@ export class IntratimedashboardComponent implements OnInit {
   constructor() {
     this.search$
       .pipe(debounceTime(300), takeUntilDestroyed())
-      .subscribe((search) => this.loadFichajes(search));
+      .subscribe((search) => { this.fichajesPage.set(1); this.loadFichajes(search); });
   }
 
   ngOnInit() {
@@ -251,12 +268,21 @@ export class IntratimedashboardComponent implements OnInit {
   onDesdeChange(event: Event) {
     const input = event.target as HTMLInputElement;
     this.desde = input.value ? new Date(input.value).toISOString().split('T')[0] : undefined;
+    this.fichajesPage.set(1);
     this.loadFichajes();
   }
 
   onHastaChange(event: Event) {
     const input = event.target as HTMLInputElement;
     this.hasta = input.value ? new Date(input.value).toISOString().split('T')[0] : undefined;
+    this.fichajesPage.set(1);
+    this.loadFichajes();
+  }
+
+  protected onPageChange(event: PageEvent): void {
+    this.fichajesPageSize.set(event.pageSize);
+    this.fichajesPage.set(event.pageIndex + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     this.loadFichajes();
   }
 
@@ -265,11 +291,17 @@ export class IntratimedashboardComponent implements OnInit {
     this.intratimeSvc.getFichajes(search, this.desde, this.hasta).subscribe({
       next: (data) => {
         this.fichajes.set(data);
+        this.fichajesTotal.set(data?.length ?? 0);
+        this.empleadosUnicosTotal.set(new Set((data ?? []).map(f => f.userIdExterno)).size);
+        this.horasTotalValue.set((data ?? []).reduce((sum, f) => sum + (f.horasCalculadas || 0), 0));
         this.loading.set(false);
       },
       error: (err) => {
         console.error('Error loading fichajes', err);
         this.fichajes.set([]);
+        this.fichajesTotal.set(0);
+        this.empleadosUnicosTotal.set(0);
+        this.horasTotalValue.set(0);
         this.loading.set(false);
       },
     });

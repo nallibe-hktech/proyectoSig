@@ -35,9 +35,9 @@ public class MediapostExcelClient : IMediapostClient
                 return Array.Empty<MediapostPedidoDto>();
             }
 
-            // Buscar archivo de pedidos (infpedsit11_*.xlsx)
+            // Buscar archivo de pedidos (infpedsit11_*.xlsx) — ordenar por fecha de modificación (más reciente primero)
             var files = Directory.GetFiles(_basePath, "infpedsit11_*.xlsx")
-                .OrderByDescending(f => f)
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
                 .FirstOrDefault();
 
             if (files == null)
@@ -176,9 +176,9 @@ public class MediapostExcelClient : IMediapostClient
                 return Array.Empty<MediapostRecepcionDto>();
             }
 
-            // Buscar archivo de recepciones (infrecep07_*.xlsx)
+            // Buscar archivo de recepciones (infrecep07_*.xlsx) — ordenar por fecha de modificación (más reciente primero)
             var files = Directory.GetFiles(_basePath, "infrecep07_*.xlsx")
-                .OrderByDescending(f => f)
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
                 .FirstOrDefault();
 
             if (files == null)

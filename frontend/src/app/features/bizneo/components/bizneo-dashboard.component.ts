@@ -10,6 +10,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { BizneoService, StagingBizneoEmpleado, StagingBizneoAbsence } from '../services/bizneo.service';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -30,6 +31,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     MatIconModule,
     MatButtonModule,
     MatDividerModule,
+    MatPaginatorModule,
   ],
   template: `
     <div class="sig-page">
@@ -71,7 +73,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                 <p>Sin datos sincronizados</p>
               </div>
             } @else {
-              <table mat-table [dataSource]="empleados()" class="data-table">
+              <table mat-table [dataSource]="empleadosPaginated()" class="data-table">
                 <ng-container matColumnDef="nombre">
                   <th mat-header-cell>Nombre</th>
                   <td mat-cell *matCellDef="let row">{{ row.nombre }}</td>
@@ -95,6 +97,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                 <tr mat-header-row></tr>
                 <tr mat-row *matRowDef="let row; columns: empleadosColumns"></tr>
               </table>
+              <mat-paginator
+                [length]="empleadosTotal()"
+                [pageSize]="empleadosPageSize()"
+                [pageIndex]="empleadosPage() - 1"
+                [pageSizeOptions]="[10, 25, 50]"
+                showFirstLastButtons
+                (page)="onEmpleadosPageChange($event)"
+              ></mat-paginator>
             }
           </div>
         </mat-tab>
@@ -119,7 +129,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                 <p>Sin datos sincronizados</p>
               </div>
             } @else {
-              <table mat-table [dataSource]="ausencias()" class="data-table">
+              <table mat-table [dataSource]="ausenciasPaginated()" class="data-table">
                 <ng-container matColumnDef="userId">
                   <th mat-header-cell>ID Usuario</th>
                   <td mat-cell *matCellDef="let row">{{ row.userId }}</td>
@@ -143,6 +153,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                 <tr mat-header-row></tr>
                 <tr mat-row *matRowDef="let row; columns: ausenciasColumns"></tr>
               </table>
+              <mat-paginator
+                [length]="ausenciasTotal()"
+                [pageSize]="ausenciasPageSize()"
+                [pageIndex]="ausenciasPage() - 1"
+                [pageSizeOptions]="[10, 25, 50]"
+                showFirstLastButtons
+                (page)="onAusenciasPageChange($event)"
+              ></mat-paginator>
             }
           </div>
         </mat-tab>
@@ -262,13 +280,34 @@ export class BizneoDashboardComponent implements OnInit {
   // Dummy property for template type checking (actual row comes from *matRowDef)
   protected row: StagingBizneoEmpleado | StagingBizneoAbsence | any;
 
-  empleados = signal<StagingBizneoEmpleado[]>([]);
-  ausencias = signal<StagingBizneoAbsence[]>([]);
-  empleadosLoading = signal(false);
-  ausenciasLoading = signal(false);
+  // Empleados signals (all data from service)
+  protected readonly empleadosAll = signal<StagingBizneoEmpleado[]>([]);
+  protected readonly empleados = signal<StagingBizneoEmpleado[]>([]);
+  protected readonly empleadosTotal = signal(0);
+  protected readonly empleadosPage = signal(1);
+  protected readonly empleadosPageSize = signal(25);
+  protected readonly empleadosLoading = signal(false);
+  protected readonly empleadosPaginated = computed(() => {
+    const start = (this.empleadosPage() - 1) * this.empleadosPageSize();
+    const end = start + this.empleadosPageSize();
+    return this.empleados().slice(start, end);
+  });
 
-  empleadosCount = computed(() => this.empleados().length);
-  ausenciasCount = computed(() => this.ausencias().length);
+  // Ausencias signals (all data from service)
+  protected readonly ausenciasAll = signal<StagingBizneoAbsence[]>([]);
+  protected readonly ausencias = signal<StagingBizneoAbsence[]>([]);
+  protected readonly ausenciasTotal = signal(0);
+  protected readonly ausenciasPage = signal(1);
+  protected readonly ausenciasPageSize = signal(25);
+  protected readonly ausenciasLoading = signal(false);
+  protected readonly ausenciasPaginated = computed(() => {
+    const start = (this.ausenciasPage() - 1) * this.ausenciasPageSize();
+    const end = start + this.ausenciasPageSize();
+    return this.ausencias().slice(start, end);
+  });
+
+  empleadosCount = computed(() => this.empleadosTotal());
+  ausenciasCount = computed(() => this.ausenciasTotal());
 
   empleadosColumns = ['nombre', 'nif', 'departamento', 'sincronizado'];
   ausenciasColumns = ['userId', 'fecha', 'horas', 'proyecto'];
@@ -279,11 +318,11 @@ export class BizneoDashboardComponent implements OnInit {
   constructor() {
     this.empleadosSearch$
       .pipe(debounceTime(300), takeUntilDestroyed())
-      .subscribe((search) => this.loadEmpleados(search));
+      .subscribe((search) => { this.empleadosPage.set(1); this.loadEmpleados(search); });
 
     this.ausenciasSearch$
       .pipe(debounceTime(300), takeUntilDestroyed())
-      .subscribe((search) => this.loadAusencias(search));
+      .subscribe((search) => { this.ausenciasPage.set(1); this.loadAusencias(search); });
   }
 
   ngOnInit() {
@@ -301,16 +340,39 @@ export class BizneoDashboardComponent implements OnInit {
     this.ausenciasSearch$.next(search);
   }
 
+  protected onEmpleadosPageChange(event: PageEvent): void {
+    this.empleadosPageSize.set(event.pageSize);
+    this.empleadosPage.set(event.pageIndex + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadEmpleados();
+  }
+
+  protected onAusenciasPageChange(event: PageEvent): void {
+    this.ausenciasPageSize.set(event.pageSize);
+    this.ausenciasPage.set(event.pageIndex + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadAusencias();
+  }
+
   private loadEmpleados(search?: string) {
     this.empleadosLoading.set(true);
     this.bizneoSvc.getEmpleados(search).subscribe({
       next: (data) => {
-        this.empleados.set(data);
+        let filtered = data || [];
+        if (search) {
+          const q = search.toLowerCase();
+          filtered = filtered.filter((e) =>
+            e.nombre.toLowerCase().includes(q) || e.nif.toLowerCase().includes(q)
+          );
+        }
+        this.empleados.set(filtered);
+        this.empleadosTotal.set(filtered.length);
         this.empleadosLoading.set(false);
       },
       error: (err) => {
         console.error('Error loading empleados', err);
         this.empleados.set([]);
+        this.empleadosTotal.set(0);
         this.empleadosLoading.set(false);
       },
     });
@@ -320,12 +382,19 @@ export class BizneoDashboardComponent implements OnInit {
     this.ausenciasLoading.set(true);
     this.bizneoSvc.getAusencias(search).subscribe({
       next: (data) => {
-        this.ausencias.set(data);
+        let filtered = data || [];
+        if (search) {
+          const q = search.toLowerCase();
+          filtered = filtered.filter((a) => a.userId.toString().includes(q));
+        }
+        this.ausencias.set(filtered);
+        this.ausenciasTotal.set(filtered.length);
         this.ausenciasLoading.set(false);
       },
       error: (err) => {
         console.error('Error loading ausencias', err);
         this.ausencias.set([]);
+        this.ausenciasTotal.set(0);
         this.ausenciasLoading.set(false);
       },
     });

@@ -29,6 +29,7 @@ public class MediapostSyncService
 
     /// <summary>
     /// Procesa un archivo Excel de Pedidos (infpedsit11_*.xlsx)
+    /// Deduplicación: compara con BD existente, inserta solo nuevos, actualiza si cambió
     /// </summary>
     public async Task<FileSyncResultDto> SyncPedidosFromFileAsync(string filePath, CancellationToken ct)
     {
@@ -37,8 +38,9 @@ public class MediapostSyncService
 
         try
         {
-            var nuevosPedidos = ReadPedidosFromExcel(filePath);
+            // Obtener registros EXISTENTES ANTES de procesar (para deduplicación)
             var pedidosExistentes = await _db.StagingMediapostPedidos.ToListAsync(ct);
+            var nuevosPedidos = ReadPedidosFromExcel(filePath);
 
             foreach (var nuevo in nuevosPedidos)
             {
@@ -50,6 +52,7 @@ public class MediapostSyncService
 
                     if (existe == null)
                     {
+                        nuevo.Hash = hash;
                         _db.StagingMediapostPedidos.Add(nuevo);
                         insertados++;
                     }
@@ -104,6 +107,7 @@ public class MediapostSyncService
 
     /// <summary>
     /// Procesa un archivo Excel de Recepciones (infrecep07_*.xlsx)
+    /// Deduplicación: compara con BD existente, inserta solo nuevos, actualiza si cambió
     /// </summary>
     public async Task<FileSyncResultDto> SyncRecepcionesFromFileAsync(string filePath, CancellationToken ct)
     {
@@ -112,8 +116,9 @@ public class MediapostSyncService
 
         try
         {
-            var nuevasRecepciones = ReadRecepcionesFromExcel(filePath);
+            // Obtener registros EXISTENTES ANTES de procesar (para deduplicación)
             var recepcionesExistentes = await _db.StagingMediapostRecepciones.ToListAsync(ct);
+            var nuevasRecepciones = ReadRecepcionesFromExcel(filePath);
 
             foreach (var nueva in nuevasRecepciones)
             {
@@ -125,6 +130,7 @@ public class MediapostSyncService
 
                     if (existe == null)
                     {
+                        nueva.Hash = hash;
                         _db.StagingMediapostRecepciones.Add(nueva);
                         insertados++;
                     }
@@ -314,9 +320,24 @@ public class MediapostSyncService
 
     private string ComputeHash(object obj)
     {
-        var json = System.Text.Json.JsonSerializer.Serialize(obj);
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
-        return Convert.ToHexString(hashBytes);
+        try
+        {
+            // Concatenar campos clave según tipo de objeto
+            string hashInput = obj switch
+            {
+                StagingMediapostPedido p => $"{p.PedidoId}|{p.ReferenciaPedido}",
+                StagingMediapostRecepcion r => $"{r.RecepcionId}|{r.CodigoArticulo}",
+                _ => obj.ToString() ?? ""
+            };
+
+            using var sha256 = SHA256.Create();
+            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(hashInput));
+            return Convert.ToHexString(hashBytes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error computing hash, returning empty string");
+            return ""; // Si falla, retorna vacío (no null)
+        }
     }
 }

@@ -32,14 +32,24 @@ public class GalanCsvClient : IGalanClient
     {
         try
         {
-            var filePath = Path.Combine(_basePath, "Entradas_*.csv");
+            // Buscar primero en Excel (Entradas_*.xlsx), luego en CSV — ordenar por fecha de modificación (más reciente primero)
+            var excelFiles = Directory.GetFiles(_basePath, "Entradas_*.xlsx")
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
+                .FirstOrDefault();
+
+            if (excelFiles != null)
+            {
+                return ReadEntradasFromExcel(excelFiles, desde, hasta);
+            }
+
+            // Fallback a CSV si no hay Excel
             var files = Directory.GetFiles(_basePath, "Entradas_*.csv")
-                .OrderByDescending(f => f)
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
                 .FirstOrDefault();
 
             if (files == null)
             {
-                _logger.LogWarning("No se encontraron archivos Entradas_*.csv en {Path}", _basePath);
+                _logger.LogWarning("No se encontraron archivos Entradas_*.xlsx ni Entradas_*.csv en {Path}", _basePath);
                 return Array.Empty<GalanEntradaDto>();
             }
 
@@ -87,9 +97,9 @@ public class GalanCsvClient : IGalanClient
     {
         try
         {
-            // Buscar primero en Excel (FACT_MENSUAL_*.xlsx), luego en CSV
+            // Buscar primero en Excel (FACT_MENSUAL_*.xlsx), luego en CSV — ordenar por fecha de modificación (más reciente primero)
             var excelFiles = Directory.GetFiles(_basePath, "FACT_MENSUAL_*.xlsx")
-                .OrderByDescending(f => f)
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
                 .FirstOrDefault();
 
             if (excelFiles != null)
@@ -97,9 +107,19 @@ public class GalanCsvClient : IGalanClient
                 return ReadSalidasFromExcel(excelFiles, desde, hasta);
             }
 
+            // También buscar directamente Salidas_*.xlsx como alternativa
+            var salidasXlsx = Directory.GetFiles(_basePath, "Salidas_*.xlsx")
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
+                .FirstOrDefault();
+
+            if (salidasXlsx != null)
+            {
+                return ReadSalidasFromExcel(salidasXlsx, desde, hasta);
+            }
+
             // Fallback a CSV si no hay Excel
             var files = Directory.GetFiles(_basePath, "Salidas_*.csv")
-                .OrderByDescending(f => f)
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
                 .FirstOrDefault();
 
             if (files == null)
@@ -156,19 +176,28 @@ public class GalanCsvClient : IGalanClient
     {
         try
         {
-            // Buscar primero en Excel (STOCK_*.xlsx), luego en CSV
-            var excelFiles = Directory.GetFiles(_basePath, "STOCK_*.xlsx")
-                .OrderByDescending(f => f)
+            // Buscar en Excel — preferir STOCK_celda_*.xlsx, luego STOCK_*.xlsx — ordenar por fecha de modificación (más reciente primero)
+            var stockCeldaXlsx = Directory.GetFiles(_basePath, "STOCK_celda_*.xlsx")
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
                 .FirstOrDefault();
 
-            if (excelFiles != null)
+            if (stockCeldaXlsx != null)
             {
-                return ReadStockFromExcel(excelFiles);
+                return ReadStockFromExcel(stockCeldaXlsx);
+            }
+
+            var stockXlsx = Directory.GetFiles(_basePath, "STOCK_*.xlsx")
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
+                .FirstOrDefault();
+
+            if (stockXlsx != null)
+            {
+                return ReadStockFromExcel(stockXlsx);
             }
 
             // Fallback a CSV si no hay Excel
             var files = Directory.GetFiles(_basePath, "STOCK_celda_*.csv")
-                .OrderByDescending(f => f)
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
                 .FirstOrDefault();
 
             if (files == null)
@@ -214,6 +243,98 @@ public class GalanCsvClient : IGalanClient
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error leyendo stock de Galán");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Lee entradas desde un archivo Excel (Entradas_*.xlsx)
+    /// Estructura del Excel: Col1=CodigoArticulo, Col2=CodigoDepartamento, Col3=CodigoFamilia, Col4=Descripcion, Col5=Fecha, Col6=Unidades, Col7=Empresa, Col8=Almacen, Col9=Celda
+    /// </summary>
+    private IReadOnlyList<GalanEntradaDto> ReadEntradasFromExcel(string filePath, DateTime desde, DateTime hasta)
+    {
+        var dtos = new List<GalanEntradaDto>();
+        try
+        {
+            using (var workbook = new XLWorkbook(filePath))
+            {
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null)
+                {
+                    _logger.LogWarning("No hay worksheets en {File}", filePath);
+                    return dtos;
+                }
+
+                var rows = worksheet.Rows().ToList();
+
+                // Detectar fila de headers
+                int headerRowIndex = 0;
+                for (int i = 0; i < Math.Min(10, rows.Count); i++)
+                {
+                    var cellValue = rows[i].Cell(1).Value.ToString()?.ToLower() ?? "";
+                    if (cellValue.Contains("codigo"))
+                    {
+                        headerRowIndex = i;
+                        _logger.LogInformation("Headers detectados en fila {RowNum}", i + 1);
+                        break;
+                    }
+                }
+
+                // Leer datos a partir de la fila siguiente a headers
+                for (int i = headerRowIndex + 1; i < rows.Count; i++)
+                {
+                    try
+                    {
+                        var row = rows[i];
+
+                        var codigoArticulo = row.Cell(1).Value.ToString().Trim();
+                        if (string.IsNullOrEmpty(codigoArticulo)) continue;
+
+                        var codigoDepartamento = row.Cell(2).Value.ToString().Trim();
+                        var codigoFamilia = row.Cell(3).Value.ToString().Trim();
+                        var descripcion = row.Cell(4).Value.ToString().Trim();
+
+                        DateTime fecha = DateTime.UtcNow;
+                        if (DateTime.TryParse(row.Cell(5).Value.ToString(), out var parsedDate))
+                            fecha = parsedDate;
+
+                        int unidades = 0;
+                        if (int.TryParse(row.Cell(6).Value.ToString(), out int u))
+                            unidades = u;
+
+                        var empresa = row.Cell(7).Value.ToString().Trim();
+                        var almacen = row.Cell(8).Value.ToString().Trim();
+                        var celda = row.Cell(9).Value.ToString().Trim();
+
+                        // Filtrar por fecha
+                        if (fecha < desde || fecha > hasta) continue;
+
+                        var dto = new GalanEntradaDto(
+                            codigoArticulo,
+                            codigoDepartamento,
+                            codigoFamilia,
+                            descripcion,
+                            fecha,
+                            unidades,
+                            empresa,
+                            almacen,
+                            celda
+                        );
+                        dtos.Add(dto);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error leyendo fila {RowNum} de entradas Excel", i + 1);
+                    }
+                }
+            }
+
+            _logger.LogInformation("Leídas {Count} entradas de Galán desde Excel {File}", dtos.Count, filePath);
+            return dtos;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error leyendo entradas de Galán desde Excel");
             throw;
         }
     }

@@ -132,14 +132,46 @@ public class GalanController : ControllerBase
                 await file.CopyToAsync(stream, ct);
             }
 
+            // Auto-trigger sync immediately after file save
+            var syncResult = tipo switch
+            {
+                "entradas" => await _syncService.SyncEntradasFromFileAsync(filePath, ct),
+                "salidas" => await _syncService.SyncSalidasFromFileAsync(filePath, ct),
+                "stock" => await _syncService.SyncStockFromFileAsync(filePath, ct),
+                "almacenaje" => await _syncService.SyncAlmacenajeFromFileAsync(filePath, ct),
+                "facturas" => new Application.DTOs.FileSyncResultDto(
+                    "Facturas",
+                    false,
+                    0, 0, 0, 0,
+                    "Sincronización de facturas mensual aún no implementada"
+                ),
+                _ => new Application.DTOs.FileSyncResultDto(
+                    tipo,
+                    false,
+                    0, 0, 0, 0,
+                    $"Tipo de archivo desconocido: {tipo}"
+                )
+            };
+
             return Ok(new
             {
-                success = true,
-                mensaje = $"Archivo '{fileName}' cargado exitosamente. Será procesado en la próxima sincronización.",
+                success = syncResult.Exito,
+                mensaje = syncResult.Exito
+                    ? $"Archivo '{fileName}' cargado y sincronizado exitosamente."
+                    : $"Archivo '{fileName}' cargado pero sincronización falló: {syncResult.MensajeError}",
                 nombre = fileName,
                 tipo = tipo,
                 tamaño = file.Length,
-                ruta = filePath
+                ruta = filePath,
+                sync = new
+                {
+                    success = syncResult.Exito,
+                    registrosInsertados = syncResult.RegistrosInsertados,
+                    registrosActualizados = syncResult.RegistrosActualizados,
+                    registrosDuplicados = syncResult.RegistrosDuplicados,
+                    registrosError = syncResult.RegistrosError,
+                    error = syncResult.MensajeError
+                }
             });
         }
         catch (Exception ex)

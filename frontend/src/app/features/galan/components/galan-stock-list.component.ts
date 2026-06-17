@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
@@ -25,7 +25,7 @@ interface GalanStock {
     <div class="list-container">
       <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
 
-      <table mat-table [dataSource]="items" class="data-table">
+      <table #table mat-table [dataSource]="items" class="data-table">
         <ng-container matColumnDef="codigoArticulo">
           <th mat-header-cell *matHeaderCellDef>Código</th>
           <td mat-cell *matCellDef="let element">{{ element.codigoArticulo }}</td>
@@ -68,7 +68,9 @@ interface GalanStock {
       <mat-paginator
         [pageSizeOptions]="[25, 50, 100]"
         [pageSize]="pageSize"
+        [pageIndex]="currentPage - 1"
         [length]="total"
+        showFirstLastButtons
         (page)="onPageChange($event)">
       </mat-paginator>
     </div>
@@ -99,6 +101,8 @@ interface GalanStock {
   `]
 })
 export class GalanStockListComponent implements OnInit {
+  @ViewChild('table', { static: false }) table: any;
+
   items: GalanStock[] = [];
   loading = false;
   total = 0;
@@ -120,6 +124,11 @@ export class GalanStockListComponent implements OnInit {
           this.items = response.items;
           this.total = response.total;
           this.loading = false;
+
+          // Scroll AFTER data loads, with delay to override automatic scroll
+          setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }, 300);
         },
         error: (err) => {
           console.error('Error loading stock', err);

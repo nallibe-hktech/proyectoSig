@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { PeriodDto, PeriodCreateRequest, PeriodUpdateRequest } from '../../models/dtos';
+import { PeriodDto, PeriodCreateRequest, PeriodUpdateRequest, PagedResult } from '../../models/dtos';
 
 const PERIODO_ACTIVO_KEY = 'sig_periodo_activo';
 
@@ -26,6 +26,7 @@ export class PeriodService {
   }
 
   list() { return this.http.get<PeriodDto[]>(this.base); }
+  listPaginated(page: number, pageSize: number) { return this.http.get<PagedResult<PeriodDto>>(`${this.base}/paginated?page=${page}&pageSize=${pageSize}`); }
   getActivo() { return this.http.get<PeriodDto>(`${this.base}/activo`).pipe(
     tap((p) => { if (this._activeId() === null) this.setActive(p.id); }),
   ); }

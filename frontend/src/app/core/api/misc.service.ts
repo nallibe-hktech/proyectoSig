@@ -65,6 +65,7 @@ export class VariableService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/variables`;
   list() { return this.http.get<VariableDto[]>(this.base); }
+  listPaginated(page: number, pageSize: number) { return this.http.get<PagedResult<VariableDto>>(`${this.base}/paginated?page=${page}&pageSize=${pageSize}`); }
   getById(id: number) { return this.http.get<VariableDto>(`${this.base}/${id}`); }
   create(req: VariableCreateRequest) { return this.http.post<VariableDto>(this.base, req); }
   update(id: number, req: VariableUpdateRequest) { return this.http.put<VariableDto>(`${this.base}/${id}`, req); }

@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -106,7 +106,9 @@ interface SelectOption {
         <mat-paginator
           [length]="total()"
           [pageSize]="pageSize()"
+          [pageIndex]="page() - 1"
           [pageSizeOptions]="[10, 25, 50]"
+          showFirstLastButtons
           (page)="onPageChange($event)">
         </mat-paginator>
       }
@@ -130,7 +132,7 @@ interface SelectOption {
     mat-spinner { margin: 24px auto; }
   `]
 })
-export class CeleroVisitasComponent {
+export class CeleroVisitasComponent implements OnInit {
   private celero = inject(CeleroService);
   private userSvc = inject(UserService);
   private serviceSvc = inject(ServiceService);
@@ -141,16 +143,16 @@ export class CeleroVisitasComponent {
   searchNif = '';
   searchService = '';
 
-  visitas = signal<CeleroVisita[]>([]);
-  total = signal(0);
-  page = signal(1);
-  pageSize = signal(25);
-  loading = signal(false);
+  protected readonly visitas = signal<CeleroVisita[]>([]);
+  protected readonly total = signal(0);
+  protected readonly page = signal(1);
+  protected readonly pageSize = signal(25);
+  protected readonly loading = signal(false);
 
   displayedColumns = ['fecha', 'resourceNif', 'serviceName', 'usuario', 'servicio', 'notas', 'acciones'];
 
-  usuarios = signal<SelectOption[]>([]);
-  servicios = signal<SelectOption[]>([]);
+  protected readonly usuarios = signal<SelectOption[]>([]);
+  protected readonly servicios = signal<SelectOption[]>([]);
 
   ngOnInit() {
     this.cargarRefData();
@@ -168,7 +170,7 @@ export class CeleroVisitasComponent {
     });
   }
 
-  private cargarVisitas() {
+  protected cargarVisitas() {
     this.loading.set(true);
     this.celero.listVisitas({
       page: this.page(),
@@ -184,23 +186,26 @@ export class CeleroVisitasComponent {
       error: err => {
         console.error('Error cargando visitas:', err);
         this.notify.error('Error cargando visitas');
+        this.visitas.set([]);
+        this.total.set(0);
         this.loading.set(false);
       },
     });
   }
 
-  onSearch() {
+  protected onSearch() {
     this.page.set(1);
     this.cargarVisitas();
   }
 
-  onPageChange(event: PageEvent) {
+  protected onPageChange(event: PageEvent) {
     this.page.set(event.pageIndex + 1);
     this.pageSize.set(event.pageSize);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     this.cargarVisitas();
   }
 
-  editarVisita(visita: CeleroVisita) {
+  protected editarVisita(visita: CeleroVisita) {
     this.dialog.open(CeleroVisitasEditComponent, {
       data: { visita, usuarios: this.usuarios(), servicios: this.servicios() },
       width: '600px'
@@ -209,17 +214,17 @@ export class CeleroVisitasComponent {
     });
   }
 
-  getUserName(userId?: number) {
+  protected getUserName(userId?: number) {
     if (!userId) return null;
     return this.usuarios().find(u => u.id === userId)?.nombre;
   }
 
-  getServiceName(serviceId?: number) {
+  protected getServiceName(serviceId?: number) {
     if (!serviceId) return null;
     return this.servicios().find(p => p.id === serviceId)?.nombre;
   }
 
-  irAMapeos() {
+  protected irAMapeos() {
     this.router.navigate(['/celero-mapeos']);
   }
 }

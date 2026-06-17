@@ -2,13 +2,14 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { UserService } from '../../core/api/users.service';
 import { UserListItemDto } from '../../models/dtos';
 
 @Component({
   selector: 'app-users-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, MatPaginatorModule],
   template: `
     <div class="sig-list-page">
       <div class="sig-list-topbar">
@@ -89,12 +90,14 @@ import { UserListItemDto } from '../../models/dtos';
               }
             </tbody>
           </table>
-          <div class="sig-pagination">
-            <span>{{ filtered().length }} usuarios</span>
-            <button class="sig-page-btn" disabled>&#8249;</button>
-            <div class="sig-page-current">1</div>
-            <button class="sig-page-btn" disabled>&#8250;</button>
-          </div>
+          <mat-paginator
+            [length]="total()"
+            [pageSize]="pageSize()"
+            [pageIndex]="page() - 1"
+            [pageSizeOptions]="[10, 25, 50, 100]"
+            showFirstLastButtons
+            (page)="onPageChange($event)"
+          ></mat-paginator>
         </div>
 
         @if (selected()) {
@@ -225,7 +228,11 @@ export class UsersListComponent implements OnInit {
   protected filterDepto  = '';
   protected filterRol    = '';
   protected filterEstado = '';
-  protected readonly total    = computed(() => this.users().length);
+
+  protected readonly page = signal(1);
+  protected readonly pageSize = signal(25);
+  protected readonly total = signal(0);
+
   protected readonly filtered = computed(() => {
     let list = this.users();
     if (this.searchQ) list = list.filter(u =>
@@ -233,15 +240,32 @@ export class UsersListComponent implements OnInit {
     if (this.filterRol) list = list.filter(u => u.roles.includes(this.filterRol));
     return list;
   });
+
   ngOnInit(): void {
-    this.svc.list(1, 100).subscribe({
-      next: (res: any) => { const d = res?.items ?? res ?? []; this.users.set(d); if (!this.selected() && d.length) this.selected.set(d[0]); },
-      error: () => this.users.set([]),
+    this.load();
+  }
+
+  private load(): void {
+    this.svc.list(this.page(), this.pageSize()).subscribe({
+      next: (res: any) => {
+        this.users.set(res?.items ?? []);
+        this.total.set(res?.total ?? 0);
+        if (!this.selected() && res?.items?.length) this.selected.set(res.items[0]);
+      },
+      error: () => { this.users.set([]); this.total.set(0); },
     });
   }
+
+  protected onPageChange(event: PageEvent): void {
+    this.page.set(event.pageIndex + 1);
+    this.pageSize.set(event.pageSize);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.load();
+  }
+
   protected selectRow(u: UserListItemDto): void { this.selected.set(u); }
-  protected onFilter(): void { }
-  protected clearFilters(): void { this.searchQ=''; this.filterDepto=''; this.filterRol=''; this.filterEstado=''; }
+  protected onFilter(): void { this.page.set(1); this.load(); }
+  protected clearFilters(): void { this.searchQ=''; this.filterDepto=''; this.filterRol=''; this.filterEstado=''; this.page.set(1); this.load(); }
   protected openNew(): void { }
   protected userInitials(u: UserListItemDto): string {
     return ((u.nombre?.[0] ?? '') + (u.apellidos?.[0] ?? '')).toUpperCase();
