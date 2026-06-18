@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -11,9 +11,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
+import { MatSelectModule } from '@angular/material/select';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ClientService } from '../../core/api/clients.service';
 import { ClientListItemDto } from '../../models/dtos';
+import { EstadoCliente } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
@@ -27,7 +29,7 @@ import { exportCSV } from '../../core/api/api.helpers';
   imports: [
     CommonModule, RouterLink, ReactiveFormsModule,
     MatCardModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatPaginatorModule, MatSortModule, MatDialogModule,
+    MatFormFieldModule, MatInputModule, MatPaginatorModule, MatSortModule, MatSelectModule, MatDialogModule,
     BreadcrumbsComponent, SkeletonComponent, EmptyStateComponent,
   ],
   template: `
@@ -49,6 +51,14 @@ import { exportCSV } from '../../core/api/api.helpers';
               <mat-label>Buscar por nombre, NIF...</mat-label>
               <input matInput [formControl]="search" data-testid="input-busqueda" />
             </mat-form-field>
+            <mat-form-field appearance="outline" class="sig-filter-estado">
+              <mat-label>Estado</mat-label>
+              <mat-select [formControl]="estadoFilter" data-testid="select-estado">
+                <mat-option [value]="''">Todos</mat-option>
+                <mat-option value="Activo">Activo</mat-option>
+                <mat-option value="Inactivo">Inactivo</mat-option>
+              </mat-select>
+            </mat-form-field>
             <button mat-stroked-button (click)="onExportCSV()" data-testid="btn-exportar-csv">
               <mat-icon>download</mat-icon> Exportar CSV
             </button>
@@ -56,7 +66,7 @@ import { exportCSV } from '../../core/api/api.helpers';
 
           @if (loading()) {
             <sig-skeleton [count]="5" />
-          } @else if (items().length === 0) {
+          } @else if (displayItems().length === 0) {
             <sig-empty-state
               icon="groups"
               title="No hay clientes todavía"
@@ -66,7 +76,7 @@ import { exportCSV } from '../../core/api/api.helpers';
               (ctaClick)="onEmptyCta()"
             />
           } @else {
-            <table mat-table [dataSource]="items()" class="sig-table" data-testid="tabla-clients">
+            <table mat-table [dataSource]="displayItems()" class="sig-table" data-testid="tabla-clients">
               <ng-container matColumnDef="nombre">
                 <th mat-header-cell *matHeaderCellDef>Nombre</th>
                 <td mat-cell *matCellDef="let row">{{ row.nombre }}</td>
@@ -78,6 +88,12 @@ import { exportCSV } from '../../core/api/api.helpers';
               <ng-container matColumnDef="ciudad">
                 <th mat-header-cell *matHeaderCellDef>Ciudad</th>
                 <td mat-cell *matCellDef="let row">{{ row.ciudad ?? '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="estado">
+                <th mat-header-cell *matHeaderCellDef>Estado</th>
+                <td mat-cell *matCellDef="let row">
+                  <span class="sig-badge" [class]="estadoBadge(row.estado)">{{ row.estado }}</span>
+                </td>
               </ng-container>
               <ng-container matColumnDef="serviceCount">
                 <th mat-header-cell *matHeaderCellDef>Servicios</th>
@@ -123,6 +139,11 @@ import { exportCSV } from '../../core/api/api.helpers';
       display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
     }
     .sig-search { flex: 1; max-width: 480px; }
+    .sig-filter-estado { width: 160px; }
+    .sig-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .sig-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .sig-badge--green  { color: #22c55e; background: rgba(34,197,94,.12); }
+    .sig-badge--red    { color: #ef4444; background: rgba(239,68,68,.12); }
   `],
 })
 export class ClientsListComponent implements OnInit {
@@ -137,8 +158,15 @@ export class ClientsListComponent implements OnInit {
   protected readonly pageSize = signal(25);
   protected readonly loading = signal(true);
   protected readonly search = new FormControl<string>('', { nonNullable: true });
+  protected readonly estadoFilter = new FormControl<'' | EstadoCliente>('', { nonNullable: true });
+  protected readonly estadoFilterValue = signal<'' | EstadoCliente>('');
 
-  protected readonly displayedColumns = ['nombre', 'nif', 'ciudad', 'serviceCount', 'acciones'];
+  protected readonly displayItems = computed(() => {
+    const estado = this.estadoFilterValue();
+    return estado ? this.items().filter((c) => c.estado === estado) : this.items();
+  });
+
+  protected readonly displayedColumns = ['nombre', 'nif', 'ciudad', 'estado', 'serviceCount', 'acciones'];
 
   ngOnInit(): void {
     this.search.valueChanges
@@ -147,7 +175,12 @@ export class ClientsListComponent implements OnInit {
         this.page.set(1);
         this.load();
       });
+    this.estadoFilter.valueChanges.subscribe((v) => this.estadoFilterValue.set(v));
     this.load();
+  }
+
+  protected estadoBadge(estado?: string): string {
+    return estado === 'Inactivo' ? 'sig-badge--red' : 'sig-badge--green';
   }
 
   protected onPage(e: PageEvent): void {
@@ -185,8 +218,8 @@ export class ClientsListComponent implements OnInit {
   }
 
   protected onExportCSV(): void {
-    exportCSV('clients.csv', this.items().map((c) => ({
-      Id: c.id, Nombre: c.nombre, NIF: c.nif, Ciudad: c.ciudad ?? '', Servicios: c.serviceCount,
+    exportCSV('clients.csv', this.displayItems().map((c) => ({
+      Id: c.id, Nombre: c.nombre, NIF: c.nif, Ciudad: c.ciudad ?? '', Estado: c.estado, Servicios: c.serviceCount,
     })));
   }
 

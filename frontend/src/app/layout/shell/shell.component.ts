@@ -82,11 +82,14 @@ export class ShellComponent implements OnInit {
     { label: 'Variables', route: '/variables', icon: 'data_object', testId: 'nav-variables' },
     { label: 'Periods', route: '/periods', icon: 'calendar_month', testId: 'nav-periods' },
     { label: 'Approvals', route: '/approvals', icon: 'approval', testId: 'nav-approvals' },
-    { label: 'Closures', route: '/closures', icon: 'lock_clock', testId: 'nav-closures' },
-    { label: 'Reports', route: '/reports', icon: 'bar_chart', testId: 'nav-reports' },
+    { label: 'Cierres de Costes', route: '/cierres-costes', icon: 'payments', testId: 'nav-cierres-costes' },
+    { label: 'Cierres de Facturación', route: '/cierres-facturacion', icon: 'receipt_long', testId: 'nav-cierres-facturacion' },
+    { label: 'Informes', route: '/reports', icon: 'bar_chart', testId: 'nav-reports' },
+    { label: 'Forecast', route: '/forecast', icon: 'trending_up', testId: 'nav-forecast' },
   ];
 
   private readonly allAdminNav: NavItem[] = [
+    { label: 'Contratos un día', route: '/contratos-un-dia', icon: 'description', testId: 'nav-contratos-un-dia', roles: ['Administrator', 'Backoffice'] },
     { label: 'Cost Centers', route: '/cost-centers', icon: 'account_balance', testId: 'nav-cost-centers', roles: ['Administrator'] },
     { label: 'Departments', route: '/departments', icon: 'corporate_fare', testId: 'nav-departments', roles: ['Administrator'] },
     { label: 'Roles', route: '/roles', icon: 'verified_user', testId: 'nav-roles', roles: ['Administrator', 'Auditor'] },

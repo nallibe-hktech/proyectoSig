@@ -3,6 +3,7 @@ using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Repositories;
 using SIG.Application.Services;
 using SIG.Domain.Entities;
+using SIG.Domain.Enums;
 using SIG.Domain.Exceptions;
 
 namespace SIG.Tests.Unit.Services;
@@ -54,7 +55,7 @@ public class ClientServiceTests
     [Fact]
     public async Task CreateAsync_NifDuplicado_LanzaDuplicateException()
     {
-        var req = new ClientCreateRequest("Nuevo", "A99999999", null, null, null, null, null, null, null, null);
+        var req = new ClientCreateRequest("Nuevo", "A99999999", null, null, null, null, null, null, null, null, null);
         _repo.ExistsByNifAsync("A99999999", null, Arg.Any<CancellationToken>()).Returns(true);
 
         await FluentActions.Awaiting(() => _sut.CreateAsync(req, 99, CancellationToken.None))
@@ -64,7 +65,7 @@ public class ClientServiceTests
     [Fact]
     public async Task CreateAsync_NifNuevo_PersisteYDevuelveDetail()
     {
-        var req = new ClientCreateRequest("Nuevo", "A99999999", "Calle 1", "Madrid", "Madrid", "ES", "28001", "Pepe", "pepe@ex.com", "600");
+        var req = new ClientCreateRequest("Nuevo", "A99999999", null, "Calle 1", "Madrid", "Madrid", "ES", "28001", "Pepe", "pepe@ex.com", "600");
         _repo.ExistsByNifAsync("A99999999", null, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _sut.CreateAsync(req, 99, CancellationToken.None);
@@ -80,7 +81,7 @@ public class ClientServiceTests
     {
         _repo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns((Client?)null);
 
-        await FluentActions.Awaiting(() => _sut.UpdateAsync(1, new ClientUpdateRequest("X", "Y", null, null, null, null, null, null, null, null), 99, CancellationToken.None))
+        await FluentActions.Awaiting(() => _sut.UpdateAsync(1, new ClientUpdateRequest("X", "Y", EstadoCliente.Activo, null, null, null, null, null, null, null, null), 99, CancellationToken.None))
             .Should().ThrowAsync<EntityNotFoundException>();
     }
 
@@ -90,7 +91,7 @@ public class ClientServiceTests
         _repo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns(MakeClient());
         _repo.ExistsByNifAsync("B22222222", 1, Arg.Any<CancellationToken>()).Returns(true);
 
-        await FluentActions.Awaiting(() => _sut.UpdateAsync(1, new ClientUpdateRequest("Mod", "B22222222", null, null, null, null, null, null, null, null), 99, CancellationToken.None))
+        await FluentActions.Awaiting(() => _sut.UpdateAsync(1, new ClientUpdateRequest("Mod", "B22222222", EstadoCliente.Activo, null, null, null, null, null, null, null, null), 99, CancellationToken.None))
             .Should().ThrowAsync<DuplicateException>();
     }
 

@@ -1,5 +1,6 @@
 using SIG.Application.Common;
 using SIG.Application.DTOs;
+using SIG.Domain.Enums;
 
 namespace SIG.Application.Interfaces.Services;
 
@@ -30,6 +31,16 @@ public interface IClientService
     Task DeleteAsync(int id, int usuarioId, CancellationToken ct);
 }
 
+// Incidencias del cliente (PPT slide 6). Anidado bajo el cliente, patrón Tarifas/Presupuestos por servicio.
+public interface IClienteIncidenciaService
+{
+    Task<IReadOnlyList<ClienteIncidenciaDto>> ListByClientAsync(int clientId, int usuarioId, CancellationToken ct);
+    Task<ClienteIncidenciaDto> GetByIdAsync(int id, int clientId, int usuarioId, CancellationToken ct);
+    Task<ClienteIncidenciaDto> CreateAsync(int clientId, ClienteIncidenciaCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<ClienteIncidenciaDto> UpdateAsync(int id, int clientId, ClienteIncidenciaUpdateRequest req, int usuarioId, CancellationToken ct);
+    Task DeleteAsync(int id, int clientId, int usuarioId, CancellationToken ct);
+}
+
 public interface IServiceService
 {
     Task<PagedResult<ServiceListItemDto>> ListAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
@@ -37,6 +48,9 @@ public interface IServiceService
     Task<ServiceDetailDto> CreateAsync(ServiceCreateRequest req, int usuarioId, CancellationToken ct);
     Task<ServiceDetailDto> UpdateAsync(int id, ServiceUpdateRequest req, int usuarioId, CancellationToken ct);
     Task DeleteAsync(int id, int usuarioId, CancellationToken ct);
+    // Ola 2 (#8): gestionar conceptos del catálogo por servicio (no crea conceptos nuevos).
+    Task<ServiceDetailDto> AddConceptAsync(int serviceId, int conceptId, int usuarioId, CancellationToken ct);
+    Task<ServiceDetailDto> RemoveConceptAsync(int serviceId, int conceptId, int usuarioId, CancellationToken ct);
 }
 
 public interface IConceptService
@@ -123,30 +137,60 @@ public interface IPresupuestoServicioService
     Task DeleteAsync(int id, int serviceId, CancellationToken ct);
 }
 
-public interface IClosureService
+// Forecast (PPT slide 36): previsión mensual por servicio + resumen pivote con filtros.
+public interface IForecastService
 {
-    Task<PagedResult<ClosureListItemDto>> ListAsync(ApprovalFilterRequest filter, int usuarioId, CancellationToken ct);
-    Task<ClosureDetailDto> GetByIdForUserAsync(int id, int usuarioId, CancellationToken ct);
-    Task<ClosureDetailDto> CreateAsync(ClosureCreateRequest req, int usuarioId, CancellationToken ct);
-    Task<ClosureDetailDto> RecalcAsync(int closureId, ClosureRecalcRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
-    Task<ClosureDetailDto> ApproveAsync(int closureId, ClosureApproveRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
-    Task<ClosureDetailDto> RejectAsync(int closureId, ClosureRejectRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<ForecastDto>> ListByServiceAsync(int serviceId, int anio, CancellationToken ct);
+    Task<ForecastDto> UpsertAsync(int serviceId, ForecastUpsertRequest req, CancellationToken ct);
+    Task<ForecastResumenDto> GetResumenAsync(int anio, int? departmentId, int? clientId, int? serviceId, CancellationToken ct);
 }
 
+public interface IContratoService
+{
+    Task<IReadOnlyList<ContratoUnDiaDto>> ListContratosUnDiaAsync(CancellationToken ct);
+    Task<ContratoUnDiaDto> MarcarIgnorarAsync(int id, ContratoIgnorarRequest req, CancellationToken ct);
+}
+
+// Ola 3b (#10): un servicio por raíz de cierre. La lógica común vive en la base genérica
+// (CierreServiceBase<TCierre>); estos contratos sólo fijan el tipo concreto.
+public interface ICierreService
+{
+    TipoCierre Tipo { get; }
+    Task<PagedResult<CierreListItemDto>> ListAsync(ApprovalFilterRequest filter, int usuarioId, CancellationToken ct);
+    Task<CierreDetailDto> GetByIdForUserAsync(int id, int usuarioId, CancellationToken ct);
+    Task<CierreDetailDto> CreateAsync(CierreCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<CierreDetailDto> RecalcAsync(int cierreId, CierreRecalcRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
+    Task<CierreDetailDto> ApproveAsync(int cierreId, CierreApproveRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
+    Task<CierreDetailDto> RejectAsync(int cierreId, CierreRejectRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
+    Task<CierreDetailDto> OverrideLineAsync(int cierreId, int lineId, CierreLineOverrideRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
+    Task<CierreDetailDto> AddIncentivoAsync(int cierreId, CierreLineIncentivoRequest req, uint rowVersion, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<ClosureAlertaDto>> GetAlertasAsync(int cierreId, int usuarioId, CancellationToken ct);
+    Task<CierreDetailDto> ConfirmarAlertaAsync(int cierreId, int alertaId, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<CierreHistoryDto>> GetHistoryAsync(int cierreId, int usuarioId, CancellationToken ct);
+}
+
+public interface ICierreCostesService : ICierreService { }
+public interface ICierreFacturacionService : ICierreService { }
+
+// Panel/pendientes agregando AMBOS tipos de cierre, indicando el tipo de cada uno.
 public interface IApprovalService
 {
-    Task<PagedResult<ApprovalPanelItemDto>> ListAsync(ApprovalFilterRequest filter, int usuarioId, CancellationToken ct);
-    Task<PagedResult<ApprovalPanelItemDto>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct);
-    Task<IReadOnlyList<ApprovalHistoryDto>> GetHistoryAsync(int closureId, int usuarioId, CancellationToken ct);
-    Task<IReadOnlyList<ClosureDetailDto>> BatchApproveAsync(BatchApproveRequest req, int usuarioId, CancellationToken ct);
-    Task<IReadOnlyList<ClosureDetailDto>> BatchRejectAsync(BatchRejectRequest req, int usuarioId, CancellationToken ct);
+    Task<PagedResult<CierrePanelItemDto>> ListAsync(ApprovalFilterRequest filter, int usuarioId, CancellationToken ct);
+    Task<PagedResult<CierrePanelItemDto>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct);
 }
 
 public interface IDashboardService
 {
-    Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct);
+    Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct, int? serviceId = null);
     Task<IReadOnlyList<DashboardAvisoDto>> GetAvisosAsync(int usuarioId, CancellationToken ct);
-    Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct, int? serviceId = null);
+}
+
+// Informes nativos (PPT slide 23). Reutiliza el emparejado coste+facturación y el Forecast.
+public interface IReportsService
+{
+    Task<ReporteResultadoDto> GetResultadoAsync(int anio, int? departmentId, int? clientId, int? serviceId, int usuarioId, CancellationToken ct);
+    Task<PrevisionRealDto> GetPrevisionVsRealAsync(int anio, int? departmentId, int? clientId, int? serviceId, int usuarioId, CancellationToken ct);
 }
 
 public interface ICalculationService
@@ -192,15 +236,16 @@ public interface ISeedService
 public interface IClosureValidationService
 {
     /// <summary>
-    /// Valida el cierre sobre datos sincronizados y crea alertas en BD.
+    /// Valida el cierre (de un tipo dado) sobre datos sincronizados y crea alertas en BD.
     /// Se ejecuta automáticamente al crear o recalcular un cierre.
+    /// Las validaciones de coste/contratos aplican a CierreCostes; las de facturación a CierreFacturacion.
     /// </summary>
-    Task<IReadOnlyList<ClosureAlertaDto>> ValidarYPersistirAsync(int closureId, int serviceId, int periodId, CancellationToken ct);
+    Task<IReadOnlyList<ClosureAlertaDto>> ValidarYPersistirAsync(SIG.Domain.Enums.TipoCierre tipo, int cierreId, int serviceId, int periodId, CancellationToken ct);
 
     /// <summary>
     /// Obtiene todas las alertas asociadas a un cierre.
     /// </summary>
-    Task<IReadOnlyList<ClosureAlertaDto>> GetAlertasAsync(int closureId, CancellationToken ct);
+    Task<IReadOnlyList<ClosureAlertaDto>> GetAlertasAsync(SIG.Domain.Enums.TipoCierre tipo, int cierreId, CancellationToken ct);
 
     /// <summary>
     /// Confirma una advertencia, permitiendo el cierre a pesar del riesgo.

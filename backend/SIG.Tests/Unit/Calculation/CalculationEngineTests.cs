@@ -18,9 +18,9 @@ public class CalculationEngineTests
         return (new CalculationEngine(parser, loader, resolver), loader);
     }
 
-    private static Closure CreateClosure(int projectId = 100, DateOnly? desde = null, DateOnly? hasta = null) => new()
+    // Ola 3b (#10): el motor ya no depende de Closure; recibe un CalculationTarget (servicio + período).
+    private static CalculationTarget CreateClosure(int projectId = 100, DateOnly? desde = null, DateOnly? hasta = null) => new()
     {
-        Id = 1,
         ServiceId = projectId,
         PeriodId = 1,
         Period = new Period
@@ -374,7 +374,7 @@ public class CalculationEngineTests
         public List<StagingIntratimeFichaje> Fichajes { get; } = new();
         public List<Variable> Variables { get; } = new();
 
-        public Task<CalculationContext> LoadAsync(Closure closure, CancellationToken ct)
+        public Task<CalculationContext> LoadAsync(CalculationTarget target, CancellationToken ct)
         {
             var ctx = new CalculationContext
             {

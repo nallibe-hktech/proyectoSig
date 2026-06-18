@@ -13,11 +13,13 @@ public class ServiceService : IServiceService
 {
     private readonly IServiceRepository _repo;
     private readonly IClientRepository _clientRepo;
+    private readonly IConceptRepository _conceptRepo;
 
-    public ServiceService(IServiceRepository repo, IClientRepository clientRepo)
+    public ServiceService(IServiceRepository repo, IClientRepository clientRepo, IConceptRepository conceptRepo)
     {
         _repo = repo;
         _clientRepo = clientRepo;
+        _conceptRepo = conceptRepo;
     }
 
     public async Task<PagedResult<ServiceListItemDto>> ListAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct)
@@ -84,11 +86,38 @@ public class ServiceService : IServiceService
     {
         var a = await _repo.GetByIdAndUsuarioIdAsync(id, usuarioId, ct)
                 ?? throw new EntityNotFoundException("Service", id);
-        if (await _repo.HasClosuresAsync(id, ct))
+        if (await _repo.HasCierresAsync(id, ct))
             throw new DependenciesExistException(1);
         a.IsDeleted = true;
         a.DeletedAt = DateTime.UtcNow;
         await _repo.SaveChangesAsync(ct);
+    }
+
+    public async Task<ServiceDetailDto> AddConceptAsync(int serviceId, int conceptId, int usuarioId, CancellationToken ct)
+    {
+        var a = await _repo.GetByIdAndUsuarioIdAsync(serviceId, usuarioId, ct)
+                ?? throw new EntityNotFoundException("Service", serviceId);
+        _ = await _conceptRepo.GetByIdAsync(conceptId, ct)
+            ?? throw new EntityNotFoundException("Concept", conceptId);
+        if (a.ServiceConcepts.All(sc => sc.ConceptId != conceptId))
+        {
+            a.ServiceConcepts.Add(new ServiceConcept { ServiceId = serviceId, ConceptId = conceptId });
+            await _repo.SaveChangesAsync(ct);
+        }
+        return Map(a);
+    }
+
+    public async Task<ServiceDetailDto> RemoveConceptAsync(int serviceId, int conceptId, int usuarioId, CancellationToken ct)
+    {
+        var a = await _repo.GetByIdAndUsuarioIdAsync(serviceId, usuarioId, ct)
+                ?? throw new EntityNotFoundException("Service", serviceId);
+        var existing = a.ServiceConcepts.FirstOrDefault(sc => sc.ConceptId == conceptId);
+        if (existing is not null)
+        {
+            a.ServiceConcepts.Remove(existing);
+            await _repo.SaveChangesAsync(ct);
+        }
+        return Map(a);
     }
 
     private static ServiceDetailDto Map(Service a) =>

@@ -15,6 +15,8 @@ namespace SIG.Infrastructure.Repositories;
 internal static class OwnershipHelper
 {
     public static readonly string[] PrivilegedRoles = new[] { "Administrator", "Direction", "Fico", "Backoffice", "Auditor", "Reader" };
+    // Ola 3a (#1): roles globales que (junto con la asignación al servicio) constituyen el "grupo" del servicio.
+    public static readonly string[] GrupoRoles = new[] { "Facilitador", "Interlocutor", "Gestor" };
 }
 
 public class UserRepository : IUserRepository
@@ -200,8 +202,9 @@ public class ServiceRepository : IServiceRepository
     public Task AddAsync(Service service, CancellationToken ct) { _db.Services.Add(service); return Task.CompletedTask; }
     public Task<bool> IsUserAssignedAsync(int serviceId, int usuarioId, CancellationToken ct) =>
         _db.ServiceUsers.AsNoTracking().AnyAsync(su => su.ServiceId == serviceId && su.UserId == usuarioId, ct);
-    public Task<bool> HasClosuresAsync(int serviceId, CancellationToken ct) =>
-        _db.Closures.AsNoTracking().AnyAsync(c => c.ServiceId == serviceId, ct);
+    public async Task<bool> HasCierresAsync(int serviceId, CancellationToken ct) =>
+        await _db.CierresCostes.AsNoTracking().AnyAsync(c => c.ServiceId == serviceId, ct)
+        || await _db.CierresFacturacion.AsNoTracking().AnyAsync(c => c.ServiceId == serviceId, ct);
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
@@ -264,11 +267,15 @@ public class PeriodRepository : IPeriodRepository
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
-public class ClosureRepository : IClosureRepository
+// Ola 3b (#10): base genérica para ambas raíces de cierre, parametrizada por el DbSet/Tipo.
+public abstract class CierreRepositoryBase<TCierre> : ICierreRepository<TCierre> where TCierre : class, ICierre
 {
-    private readonly AppDbContext _db;
+    protected readonly AppDbContext _db;
     private readonly IUserRepository _userRepo;
-    public ClosureRepository(AppDbContext db, IUserRepository userRepo) { _db = db; _userRepo = userRepo; }
+    protected CierreRepositoryBase(AppDbContext db, IUserRepository userRepo) { _db = db; _userRepo = userRepo; }
+
+    public abstract TipoCierre Tipo { get; }
+    protected DbSet<TCierre> Set => _db.Set<TCierre>();
 
     private async Task<bool> IsPrivilegedAsync(int usuarioId, CancellationToken ct)
     {
@@ -277,19 +284,19 @@ public class ClosureRepository : IClosureRepository
         return roles.Any(r => OwnershipHelper.PrivilegedRoles.Contains(r));
     }
 
-    public Task<Closure?> GetByIdAsync(int id, CancellationToken ct) =>
-        _db.Closures.Include(c => c.Service).ThenInclude(p => p.Client).Include(c => c.Period)
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
+    public Task<TCierre?> GetByIdAsync(int id, CancellationToken ct) =>
+        Set.Include(c => c.Service).ThenInclude(p => p.Client).Include(c => c.Period)
+            .FirstOrDefaultAsync(c => c.Id == id, ct)!;
 
-    public Task<Closure?> GetByIdWithLinesAsync(int id, CancellationToken ct) =>
-        _db.Closures.Include(c => c.Service).ThenInclude(p => p.Client).Include(c => c.Period)
+    public Task<TCierre?> GetByIdWithLinesAsync(int id, CancellationToken ct) =>
+        Set.Include(c => c.Service).ThenInclude(p => p.Client).Include(c => c.Period)
             .Include(c => c.Lines).ThenInclude(l => l.Concept)
             .Include(c => c.Lines).ThenInclude(l => l.User)
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
+            .FirstOrDefaultAsync(c => c.Id == id, ct)!;
 
-    public async Task<Closure?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct)
+    public async Task<TCierre?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct)
     {
-        var c = await _db.Closures.Include(c => c.Service).ThenInclude(p => p.Client).Include(c => c.Period)
+        var c = await Set.Include(c => c.Service).ThenInclude(p => p.Client).Include(c => c.Period)
             .Include(c => c.Lines).ThenInclude(l => l.Concept)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
         if (c is null) return null;
@@ -298,14 +305,16 @@ public class ClosureRepository : IClosureRepository
         return serviceIds.Contains(c.ServiceId) ? c : null;
     }
 
-    public Task<Closure?> GetByServiceAndPeriodAsync(int serviceId, int periodId, CancellationToken ct) =>
-        _db.Closures.AsNoTracking().FirstOrDefaultAsync(c => c.ServiceId == serviceId && c.PeriodId == periodId, ct);
+    public Task<TCierre?> GetByServiceAndPeriodAsync(int serviceId, int periodId, CancellationToken ct) =>
+        Set.AsNoTracking().FirstOrDefaultAsync(c => c.ServiceId == serviceId && c.PeriodId == periodId, ct)!;
 
-    public async Task<PagedResult<Closure>> ListPaginatedForUserAsync(int usuarioId, ApprovalFilterRequest filter, CancellationToken ct)
+    public async Task<PagedResult<TCierre>> ListPaginatedForUserAsync(int usuarioId, ApprovalFilterRequest filter, CancellationToken ct)
     {
-        var q = _db.Closures.AsNoTracking()
+        var q = Set.AsNoTracking()
             .Include(c => c.Service).ThenInclude(p => p.Client)
-            .Include(c => c.Period).AsQueryable();
+            .Include(c => c.Period)
+            .Include(c => c.Lines)
+            .AsQueryable();
         if (!await IsPrivilegedAsync(usuarioId, ct))
         {
             var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
@@ -316,62 +325,91 @@ public class ClosureRepository : IClosureRepository
         if (filter.Estado.HasValue) q = q.Where(c => c.Estado == filter.Estado.Value);
         var total = await q.CountAsync(ct);
         var items = await q.OrderByDescending(c => c.UpdatedAt).Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToListAsync(ct);
-        return new PagedResult<Closure>(items, total, filter.Page, filter.PageSize);
+        return new PagedResult<TCierre>(items, total, filter.Page, filter.PageSize);
     }
 
-    public async Task<PagedResult<Closure>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<TCierre>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct)
     {
         var roles = await _userRepo.ListRoleNamesForUserAsync(usuarioId, ct);
-        var q = _db.Closures.AsNoTracking()
+        var q = Set.AsNoTracking()
             .Include(c => c.Service).ThenInclude(p => p.Client)
             .Include(c => c.Period)
             .Where(c => c.Estado == EstadoClosure.EnAprobacion || c.Estado == EstadoClosure.Borrador);
-        // filtra por paso/rol
-        var step = roles.Contains("ProjectManager") ? ApprovalStep.ProjectManager :
-                   roles.Contains("Backoffice") ? ApprovalStep.Backoffice :
-                   roles.Contains("Fico") ? ApprovalStep.Fico :
-                   roles.Contains("Direction") ? ApprovalStep.Direction : (ApprovalStep?)null;
+        var esGrupo = roles.Any(r => OwnershipHelper.GrupoRoles.Contains(r));
+        var step = esGrupo ? ApprovalStep.Grupo :
+                   roles.Contains("Fico") ? ApprovalStep.Fico : (ApprovalStep?)null;
         if (step.HasValue) q = q.Where(c => c.PasoActual == step.Value);
-        if (roles.Contains("ProjectManager") && !roles.Intersect(OwnershipHelper.PrivilegedRoles).Any())
+        if (esGrupo && !roles.Intersect(OwnershipHelper.PrivilegedRoles).Any())
         {
             var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
             q = q.Where(c => serviceIds.Contains(c.ServiceId));
         }
         var total = await q.CountAsync(ct);
         var items = await q.OrderByDescending(c => c.UpdatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
-        return new PagedResult<Closure>(items, total, page, pageSize);
+        return new PagedResult<TCierre>(items, total, page, pageSize);
     }
 
-    public Task AddAsync(Closure closure, CancellationToken ct) { _db.Closures.Add(closure); return Task.CompletedTask; }
+    public async Task<IReadOnlyList<TCierre>> ListByPeriodForUserAsync(int usuarioId, int periodId, CancellationToken ct)
+    {
+        var q = Set.AsNoTracking()
+            .Include(c => c.Service).ThenInclude(p => p.Client)
+            .Include(c => c.Period)
+            .Include(c => c.Lines)
+            .Where(c => c.PeriodId == periodId);
+        if (!await IsPrivilegedAsync(usuarioId, ct))
+        {
+            var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
+            q = q.Where(c => serviceIds.Contains(c.ServiceId));
+        }
+        return await q.ToListAsync(ct);
+    }
+
+    public Task AddAsync(TCierre cierre, CancellationToken ct) { Set.Add(cierre); return Task.CompletedTask; }
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+public class CierreCostesRepository : CierreRepositoryBase<CierreCostes>, ICierreCostesRepository
+{
+    public CierreCostesRepository(AppDbContext db, IUserRepository userRepo) : base(db, userRepo) { }
+    public override TipoCierre Tipo => TipoCierre.Costes;
+}
+
+public class CierreFacturacionRepository : CierreRepositoryBase<CierreFacturacion>, ICierreFacturacionRepository
+{
+    public CierreFacturacionRepository(AppDbContext db, IUserRepository userRepo) : base(db, userRepo) { }
+    public override TipoCierre Tipo => TipoCierre.Facturacion;
 }
 
 public class ClosureLineRepository : IClosureLineRepository
 {
     private readonly AppDbContext _db;
-    private readonly IClosureRepository _closureRepo;
-    public ClosureLineRepository(AppDbContext db, IClosureRepository closureRepo) { _db = db; _closureRepo = closureRepo; }
+    public ClosureLineRepository(AppDbContext db) { _db = db; }
 
     public async Task<ClosureLine?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct)
     {
-        var line = await _db.ClosureLines
-            .Include(l => l.Closure)
-            .FirstOrDefaultAsync(l => l.Id == id, ct);
-        if (line is null) return null;
-        var closure = await _closureRepo.GetByIdAndUsuarioIdAsync(line.ClosureId, usuarioId, ct);
-        return closure is null ? null : line;
+        // Ownership se valida en la capa de servicio sobre el cierre dueño; aquí basta con devolver la línea.
+        return await _db.ClosureLines.FirstOrDefaultAsync(l => l.Id == id, ct);
     }
 
-    public async Task RemoveAllByClosureAsync(int closureId, CancellationToken ct)
+    // Ola 2 (#3a): el recálculo no borra líneas manuales/incentivos (EsManual == true).
+    public async Task RemoveAllByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct)
     {
-        await _db.ClosureLines.Where(l => l.ClosureId == closureId).ExecuteDeleteAsync(ct);
+        if (tipo == TipoCierre.Costes)
+            await _db.ClosureLines.Where(l => l.CierreCostesId == cierreId && !l.EsManual).ExecuteDeleteAsync(ct);
+        else
+            await _db.ClosureLines.Where(l => l.CierreFacturacionId == cierreId && !l.EsManual).ExecuteDeleteAsync(ct);
     }
 
-    public Task AddRangeAsync(IEnumerable<ClosureLine> lines, CancellationToken ct)
-    {
-        _db.ClosureLines.AddRange(lines);
-        return Task.CompletedTask;
-    }
+    public async Task<ClosureLine?> GetByIdAsync(int id, CancellationToken ct) =>
+        await _db.ClosureLines.FirstOrDefaultAsync(l => l.Id == id, ct);
+
+    public async Task<IReadOnlyList<ClosureLine>> ListByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct) =>
+        tipo == TipoCierre.Costes
+            ? await _db.ClosureLines.AsNoTracking().Where(l => l.CierreCostesId == cierreId).ToListAsync(ct)
+            : await _db.ClosureLines.AsNoTracking().Where(l => l.CierreFacturacionId == cierreId).ToListAsync(ct);
+
+    public Task AddAsync(ClosureLine line, CancellationToken ct) { _db.ClosureLines.Add(line); return Task.CompletedTask; }
+    public Task AddRangeAsync(IEnumerable<ClosureLine> lines, CancellationToken ct) { _db.ClosureLines.AddRange(lines); return Task.CompletedTask; }
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
@@ -380,17 +418,20 @@ public class ApprovalRepository : IApprovalRepository
     private readonly AppDbContext _db;
     public ApprovalRepository(AppDbContext db) { _db = db; }
 
-    public Task<Approval?> GetCurrentByClosureAsync(int closureId, CancellationToken ct) =>
-        _db.Approvals.Where(a => a.ClosureId == closureId && a.Estado == EstadoApproval.Pendiente)
+    public Task<Approval?> GetCurrentByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct) =>
+        _db.Approvals.Where(a => (tipo == TipoCierre.Costes ? a.CierreCostesId : a.CierreFacturacionId) == cierreId
+                                  && a.Estado == EstadoApproval.Pendiente)
             .OrderByDescending(a => a.Id).FirstOrDefaultAsync(ct);
 
-    public async Task<IReadOnlyList<Approval>> ListByClosureAsync(int closureId, CancellationToken ct) =>
+    public async Task<IReadOnlyList<Approval>> ListByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct) =>
         await _db.Approvals.AsNoTracking().Include(a => a.Role).Include(a => a.User)
-            .Where(a => a.ClosureId == closureId).OrderBy(a => a.Id).ToListAsync(ct);
+            .Where(a => (tipo == TipoCierre.Costes ? a.CierreCostesId : a.CierreFacturacionId) == cierreId)
+            .OrderBy(a => a.Id).ToListAsync(ct);
 
-    public async Task<IReadOnlyList<ApprovalHistory>> ListHistoryByClosureAsync(int closureId, CancellationToken ct) =>
+    public async Task<IReadOnlyList<ApprovalHistory>> ListHistoryByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct) =>
         await _db.ApprovalHistory.AsNoTracking().Include(a => a.User)
-            .Where(a => a.ClosureId == closureId).OrderBy(a => a.Timestamp).ToListAsync(ct);
+            .Where(a => (tipo == TipoCierre.Costes ? a.CierreCostesId : a.CierreFacturacionId) == cierreId)
+            .OrderBy(a => a.Timestamp).ToListAsync(ct);
 
     public Task AddAsync(Approval approval, CancellationToken ct) { _db.Approvals.Add(approval); return Task.CompletedTask; }
     public Task AddHistoryAsync(ApprovalHistory history, CancellationToken ct) { _db.ApprovalHistory.Add(history); return Task.CompletedTask; }
@@ -413,9 +454,11 @@ public class CalculationLogRepository : ICalculationLogRepository
 
     public Task AddAsync(CalculationLog log, CancellationToken ct) { _db.CalculationLogs.Add(log); return Task.CompletedTask; }
     public Task AddRangeAsync(IEnumerable<CalculationLog> logs, CancellationToken ct) { _db.CalculationLogs.AddRange(logs); return Task.CompletedTask; }
-    public async Task RemoveAllByClosureAsync(int closureId, CancellationToken ct)
+    public async Task RemoveAllByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct)
     {
-        var lineIds = await _db.ClosureLines.AsNoTracking().Where(l => l.ClosureId == closureId).Select(l => l.Id).ToListAsync(ct);
+        var lineIds = tipo == TipoCierre.Costes
+            ? await _db.ClosureLines.AsNoTracking().Where(l => l.CierreCostesId == cierreId).Select(l => l.Id).ToListAsync(ct)
+            : await _db.ClosureLines.AsNoTracking().Where(l => l.CierreFacturacionId == cierreId).Select(l => l.Id).ToListAsync(ct);
         await _db.CalculationLogs.Where(c => lineIds.Contains(c.ClosureLineId)).ExecuteDeleteAsync(ct);
     }
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
@@ -559,14 +602,74 @@ public class PresupuestoServicioRepository : IPresupuestoServicioRepository
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
+public class ClienteIncidenciaRepository : IClienteIncidenciaRepository
+{
+    private readonly AppDbContext _db;
+    public ClienteIncidenciaRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<ClienteIncidencia>> ListByClientAsync(int clientId, CancellationToken ct) =>
+        await _db.ClienteIncidencias.AsNoTracking()
+            .Where(i => i.ClientId == clientId && !i.IsDeleted)
+            .OrderByDescending(i => i.CreatedAt)
+            .ToListAsync(ct);
+
+    public Task<ClienteIncidencia?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.ClienteIncidencias.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted, ct);
+
+    public Task AddAsync(ClienteIncidencia entity, CancellationToken ct)
+    {
+        _db.ClienteIncidencias.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+public class ForecastRepository : IForecastRepository
+{
+    private readonly AppDbContext _db;
+    public ForecastRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<Forecast>> ListByServiceAndYearAsync(int serviceId, int anio, CancellationToken ct) =>
+        await _db.Forecasts.AsNoTracking()
+            .Where(f => f.ServiceId == serviceId && f.Anio == anio && !f.IsDeleted)
+            .OrderBy(f => f.Mes)
+            .ToListAsync(ct);
+
+    public Task<Forecast?> GetByServiceMonthAsync(int serviceId, int anio, int mes, CancellationToken ct) =>
+        _db.Forecasts.FirstOrDefaultAsync(f => f.ServiceId == serviceId && f.Anio == anio && f.Mes == mes && !f.IsDeleted, ct);
+
+    public async Task<IReadOnlyList<Forecast>> ListForResumenAsync(int anio, int? departmentId, int? clientId, int? serviceId, CancellationToken ct)
+    {
+        var q = _db.Forecasts.AsNoTracking()
+            .Include(f => f.Service).ThenInclude(s => s.Client)
+            .Include(f => f.Service).ThenInclude(s => s.Department)
+            .Where(f => f.Anio == anio && !f.IsDeleted);
+
+        if (departmentId.HasValue) q = q.Where(f => f.Service.DepartmentId == departmentId.Value);
+        if (clientId.HasValue) q = q.Where(f => f.Service.ClientId == clientId.Value);
+        if (serviceId.HasValue) q = q.Where(f => f.ServiceId == serviceId.Value);
+
+        return await q.ToListAsync(ct);
+    }
+
+    public Task AddAsync(Forecast entity, CancellationToken ct)
+    {
+        _db.Forecasts.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
 public class ClosureAlertaRepository : IClosureAlertaRepository
 {
     private readonly AppDbContext _db;
     public ClosureAlertaRepository(AppDbContext db) { _db = db; }
 
-    public async Task<IReadOnlyList<ClosureAlerta>> GetByClosureIdAsync(int closureId, CancellationToken ct) =>
+    public async Task<IReadOnlyList<ClosureAlerta>> GetByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct) =>
         await _db.ClosureAlertas.AsNoTracking()
-            .Where(a => a.ClosureId == closureId)
+            .Where(a => (tipo == TipoCierre.Costes ? a.CierreCostesId : a.CierreFacturacionId) == cierreId)
             .Include(a => a.ConfirmadaPor)
             .OrderBy(a => a.Tipo).ThenBy(a => a.Codigo)
             .ToListAsync(ct);
@@ -593,10 +696,12 @@ public class ClosureAlertaRepository : IClosureAlertaRepository
         return Task.CompletedTask;
     }
 
-    public async Task DeleteByClosureIdAsync(int closureId, CancellationToken ct)
+    public async Task DeleteByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct)
     {
-        await _db.ClosureAlertas.Where(a => a.ClosureId == closureId)
-            .ExecuteDeleteAsync(ct);
+        if (tipo == TipoCierre.Costes)
+            await _db.ClosureAlertas.Where(a => a.CierreCostesId == cierreId).ExecuteDeleteAsync(ct);
+        else
+            await _db.ClosureAlertas.Where(a => a.CierreFacturacionId == cierreId).ExecuteDeleteAsync(ct);
     }
 
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
@@ -613,8 +718,10 @@ public class StagingA3InnuvaContratoRepository : IStagingA3InnuvaContratoReposit
             .Include(c => c.User)
             .ToListAsync(ct);
 
+    // Excluye contratos marcados "a ignorar en cierre" (Ola 2 #2): no participan en las validaciones de cierre.
     public async Task<IReadOnlyList<StagingA3InnuvaContrato>> GetAllAsync(CancellationToken ct) =>
         await _db.StagingA3InnuvaContratos.AsNoTracking()
+            .Where(c => !c.IgnoradoEnCierre)
             .Include(c => c.User)
             .ToListAsync(ct);
 
@@ -623,10 +730,23 @@ public class StagingA3InnuvaContratoRepository : IStagingA3InnuvaContratoReposit
         var desdeUtc = DateTime.SpecifyKind(desde, DateTimeKind.Utc);
         var hastaUtc = DateTime.SpecifyKind(hasta, DateTimeKind.Utc);
         return await _db.StagingA3InnuvaContratos.AsNoTracking()
-            .Where(c => c.FechaInicio <= hastaUtc && c.FechaFin >= desdeUtc)
+            .Where(c => !c.IgnoradoEnCierre && c.FechaInicio <= hastaUtc && c.FechaFin >= desdeUtc)
             .Include(c => c.User)
             .ToListAsync(ct);
     }
+
+    // Contratos de un día (FechaInicio == FechaFin), señalados para revisión (Ola 2 #2). Incluye ignorados para poder desmarcarlos.
+    public async Task<IReadOnlyList<StagingA3InnuvaContrato>> ListContratosUnDiaAsync(CancellationToken ct) =>
+        await _db.StagingA3InnuvaContratos.AsNoTracking()
+            .Where(c => c.FechaInicio == c.FechaFin)
+            .Include(c => c.User)
+            .OrderBy(c => c.FechaInicio)
+            .ToListAsync(ct);
+
+    public async Task<StagingA3InnuvaContrato?> GetByIdAsync(int id, CancellationToken ct) =>
+        await _db.StagingA3InnuvaContratos
+            .Include(c => c.User)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public Task AddAsync(StagingA3InnuvaContrato contrato, CancellationToken ct)
     {

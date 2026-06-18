@@ -11,43 +11,95 @@ using SIG.Domain.Exceptions;
 
 namespace SIG.Application.Services;
 
+// Ola 3b (#10): el margen y los KPIs se calculan AL VUELO emparejando CierreCostes + CierreFacturacion
+// del mismo (ServiceId, PeriodId): margen = Total(facturacion) − Total(costes).
 public class DashboardService : IDashboardService
 {
-    private readonly IClosureRepository _closureRepo;
+    private readonly ICierreCostesRepository _costesRepo;
+    private readonly ICierreFacturacionRepository _facturacionRepo;
     private readonly IPeriodRepository _periodRepo;
     private readonly IUserRepository _userRepo;
     private readonly IServiceRepository _serviceRepo;
 
-    public DashboardService(IClosureRepository closureRepo, IPeriodRepository periodRepo, IUserRepository userRepo, IServiceRepository serviceRepo)
+    public DashboardService(ICierreCostesRepository costesRepo, ICierreFacturacionRepository facturacionRepo,
+        IPeriodRepository periodRepo, IUserRepository userRepo, IServiceRepository serviceRepo)
     {
-        _closureRepo = closureRepo;
+        _costesRepo = costesRepo;
+        _facturacionRepo = facturacionRepo;
         _periodRepo = periodRepo;
         _userRepo = userRepo;
         _serviceRepo = serviceRepo;
     }
 
-    public async Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct)
+    // Empareja costes + facturación por (ServiceId, PeriodId) en un período.
+    private sealed class Pair
+    {
+        public int ServiceId;
+        public Service? Service;
+        public CierreCostes? Costes;
+        public CierreFacturacion? Facturacion;
+        public decimal Coste => Costes?.Total ?? 0;
+        public decimal Factura => Facturacion?.Total ?? 0;
+        public decimal Margen => Factura - Coste;   // "Margen al vuelo"
+    }
+
+    private async Task<List<Pair>> BuildPairsAsync(int usuarioId, int periodId, CancellationToken ct)
+    {
+        var costes = await _costesRepo.ListByPeriodForUserAsync(usuarioId, periodId, ct);
+        var fact = await _facturacionRepo.ListByPeriodForUserAsync(usuarioId, periodId, ct);
+        var byService = new Dictionary<int, Pair>();
+        foreach (var c in costes)
+        {
+            var p = GetOrAdd(byService, c.ServiceId);
+            p.Costes = c; p.Service ??= c.Service;
+        }
+        foreach (var f in fact)
+        {
+            var p = GetOrAdd(byService, f.ServiceId);
+            p.Facturacion = f; p.Service ??= f.Service;
+        }
+        return byService.Values.ToList();
+    }
+
+    private static Pair GetOrAdd(Dictionary<int, Pair> map, int serviceId)
+    {
+        if (!map.TryGetValue(serviceId, out var p)) { p = new Pair { ServiceId = serviceId }; map[serviceId] = p; }
+        return p;
+    }
+
+    public async Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct, int? serviceId = null)
     {
         Period? period = periodId.HasValue ? await _periodRepo.GetByIdAsync(periodId.Value, ct)
                                             : await _periodRepo.GetActivoAsync(ct);
-        if (period is null) return new DashboardKpisDto(0, "", 0, 0, 0, 0, 0, 0, new List<KpiClienteDto>(), new List<EvolucionPeriodoDto>());
+        if (period is null) return new DashboardKpisDto(0, "", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, new List<KpiClienteDto>(), new List<EvolucionPeriodoDto>());
 
-        var filter = new ApprovalFilterRequest(period.Id, null, null, null, null, null, null, null, 1, int.MaxValue);
-        var closures = await _closureRepo.ListPaginatedForUserAsync(usuarioId, filter, ct);
-        int completados = closures.Items.Count(c => c.Estado == EstadoClosure.Aprobado || c.Estado == EstadoClosure.Exportado);
-        int pendientes = closures.Items.Count(c => c.Estado == EstadoClosure.EnAprobacion || c.Estado == EstadoClosure.Borrador || c.Estado == EstadoClosure.Rechazado);
-        decimal fact = closures.Items.Sum(c => c.FacturacionTotal);
-        decimal coste = closures.Items.Sum(c => c.CosteTotal);
+        var pairs = await BuildPairsAsync(usuarioId, period.Id, ct);
+        // PPT slide 3: el filtro de servicio aplica a los KPIs del período.
+        if (serviceId.HasValue) pairs = pairs.Where(p => p.ServiceId == serviceId.Value).ToList();
+
+        bool Completado(EstadoClosure? e) => e is EstadoClosure.Aprobado or EstadoClosure.Exportado;
+        bool Pendiente(EstadoClosure? e) => e is EstadoClosure.EnAprobacion or EstadoClosure.Borrador or EstadoClosure.Rechazado;
+
+        // Un par cuenta como completado si ambos cierres existentes lo están; pendiente si alguno lo está.
+        int completados = pairs.Count(p => (p.Costes == null || Completado(p.Costes.Estado)) && (p.Facturacion == null || Completado(p.Facturacion.Estado)) && (p.Costes != null || p.Facturacion != null));
+        int pendientes = pairs.Count(p => Pendiente(p.Costes?.Estado) || Pendiente(p.Facturacion?.Estado));
+
+        // PPT slide 3: contadores separados por tipo de cierre.
+        int costesCompletados = pairs.Count(p => p.Costes != null && Completado(p.Costes.Estado));
+        int costesPendientes = pairs.Count(p => p.Costes != null && Pendiente(p.Costes.Estado));
+        int facturacionCompletados = pairs.Count(p => p.Facturacion != null && Completado(p.Facturacion.Estado));
+        int facturacionPendientes = pairs.Count(p => p.Facturacion != null && Pendiente(p.Facturacion.Estado));
+        decimal fact = pairs.Sum(p => p.Factura);
+        decimal coste = pairs.Sum(p => p.Coste);
         decimal margen = fact - coste;
         decimal margenPct = fact > 0 ? Math.Round(margen / fact * 100, 1) : 0;
 
-        // Desglose por cliente (top 6)
-        var desglose = closures.Items
-            .Where(c => c.Service?.Client != null)
-            .GroupBy(c => new { c.Service!.ClientId, c.Service.Client!.Nombre })
+        var desglose = pairs
+            .Where(p => p.Service?.Client != null)
+            .GroupBy(p => new { p.Service!.ClientId, p.Service.Client!.Nombre })
             .Select(g => {
-                var f = g.Sum(c => c.FacturacionTotal);
-                var co = g.Sum(c => c.CosteTotal);
+                var f = g.Sum(p => p.Factura);
+                var co = g.Sum(p => p.Coste);
                 return new KpiClienteDto(g.Key.ClientId, g.Key.Nombre,
                     f, co, f - co, fact > 0 ? Math.Round(f / fact * 100, 1) : 0);
             })
@@ -55,7 +107,6 @@ public class DashboardService : IDashboardService
             .Take(6)
             .ToList();
 
-        // Evolución últimos 6 períodos
         var allPeriods = (await _periodRepo.ListAsync(ct))
             .Where(p => p.Estado != EstadoPeriodo.Abierto)
             .OrderByDescending(p => p.Id)
@@ -66,40 +117,40 @@ public class DashboardService : IDashboardService
         var evolucion = new List<EvolucionPeriodoDto>();
         foreach (var p in allPeriods)
         {
-            var pFilter = new ApprovalFilterRequest(p.Id, null, null, null, null, null, null, null, 1, int.MaxValue);
-            var pClosures = await _closureRepo.ListPaginatedForUserAsync(usuarioId, pFilter, ct);
-            var pFact = pClosures.Items.Sum(c => c.FacturacionTotal);
-            var pCoste = pClosures.Items.Sum(c => c.CosteTotal);
+            var pPairs = await BuildPairsAsync(usuarioId, p.Id, ct);
+            var pFact = pPairs.Sum(x => x.Factura);
+            var pCoste = pPairs.Sum(x => x.Coste);
             evolucion.Add(new EvolucionPeriodoDto(p.Nombre, pFact, pCoste, pFact - pCoste));
         }
 
-        return new DashboardKpisDto(period.Id, period.Nombre, completados, pendientes, fact, coste, margen, margenPct, desglose, evolucion);
+        return new DashboardKpisDto(period.Id, period.Nombre, completados, pendientes,
+            costesCompletados, costesPendientes, facturacionCompletados, facturacionPendientes,
+            fact, coste, margen, margenPct, desglose, evolucion);
     }
 
     public async Task<IReadOnlyList<DashboardAvisoDto>> GetAvisosAsync(int usuarioId, CancellationToken ct)
     {
         var avisos = new List<DashboardAvisoDto>();
-        var filter = new ApprovalFilterRequest(null, null, null, null, null, null, null, null, 1, int.MaxValue);
-        var closures = await _closureRepo.ListPaginatedForUserAsync(usuarioId, filter, ct);
+        var unbounded = new ApprovalFilterRequest(null, null, null, null, null, null, null, null, 1, int.MaxValue);
+        var costes = await _costesRepo.ListPaginatedForUserAsync(usuarioId, unbounded, ct);
+        var fact = await _facturacionRepo.ListPaginatedForUserAsync(usuarioId, unbounded, ct);
 
-        // Cierres pendientes
-        foreach (var c in closures.Items.Where(x => x.Estado == EstadoClosure.EnAprobacion || x.Estado == EstadoClosure.Borrador).Take(10))
-            avisos.Add(new DashboardAvisoDto("CierrePendiente", $"Cierre #{c.Id} {c.Service?.Nombre} pendiente en paso {c.PasoActual}", c.Id));
+        void AvisosFor<TC>(IEnumerable<TC> items, string etiqueta) where TC : ICierre
+        {
+            foreach (var c in items.Where(x => x.Estado == EstadoClosure.EnAprobacion || x.Estado == EstadoClosure.Borrador).Take(10))
+                avisos.Add(new DashboardAvisoDto("CierrePendiente", $"Cierre {etiqueta} #{c.Id} {c.Service?.Nombre} pendiente en paso {c.PasoActual}", c.Id));
+            foreach (var c in items.Where(x => x.Estado == EstadoClosure.Rechazado).Take(5))
+                avisos.Add(new DashboardAvisoDto("CierreRechazado", $"Cierre {etiqueta} #{c.Id} {c.Service?.Nombre} fue rechazado", c.Id));
+            foreach (var c in items.Where(x => x.Lines.Any(l => l.TieneIncidencia)).Take(5))
+                avisos.Add(new DashboardAvisoDto("IncidenciaCalculo", $"Cierre {etiqueta} #{c.Id} {c.Service?.Nombre} tiene líneas con incidencias", c.Id));
+        }
+        AvisosFor(costes.Items, "Costes");
+        AvisosFor(fact.Items, "Facturación");
 
-        // Cierres rechazados
-        foreach (var c in closures.Items.Where(x => x.Estado == EstadoClosure.Rechazado).Take(5))
-            avisos.Add(new DashboardAvisoDto("CierreRechazado", $"Cierre #{c.Id} {c.Service?.Nombre} fue rechazado", c.Id));
-
-        // Incidencias en líneas de cálculo
-        foreach (var c in closures.Items.Where(c => c.Lines.Any(l => l.TieneIncidencia)).Take(5))
-            avisos.Add(new DashboardAvisoDto("IncidenciaCalculo", $"Cierre #{c.Id} {c.Service?.Nombre} tiene líneas con incidencias", c.Id));
-
-        // Períodos bloqueados y próximos a vencer
         var periods = await _periodRepo.ListAsync(ct);
         foreach (var p in periods.Where(p => p.Estado == EstadoPeriodo.Bloqueado).Take(5))
             avisos.Add(new DashboardAvisoDto("PeriodoBloqueado", $"Período {p.Nombre} bloqueado", p.Id));
 
-        // Período próximo a vencer (FechaFin <= 7 días)
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
         foreach (var p in periods.Where(p => p.FechaFin <= hoy.AddDays(7) && p.Estado != EstadoPeriodo.Cerrado).Take(5))
             avisos.Add(new DashboardAvisoDto("PeriodoProximoVencer", $"Período {p.Nombre} vence en {(p.FechaFin.ToDateTime(TimeOnly.MinValue) - hoy.ToDateTime(TimeOnly.MinValue)).Days} días", p.Id));
@@ -107,25 +158,30 @@ public class DashboardService : IDashboardService
         return avisos;
     }
 
-    public async Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct)
+    public async Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct, int? serviceId = null)
     {
         var period = periodId.HasValue ? await _periodRepo.GetByIdAsync(periodId.Value, ct)
                                        : await _periodRepo.GetActivoAsync(ct);
         var services = await _serviceRepo.ListPaginatedForUserAsync(usuarioId, 1, int.MaxValue, null, null, ct);
 
-        // Cargar todos los cierres del período de una sola vez (fix N+1 query)
-        var allClosures = period is null
-            ? new Dictionary<int, Closure>()
-            : (await _closureRepo.ListPaginatedForUserAsync(usuarioId,
-                 new ApprovalFilterRequest(period.Id, null, null, null, null, null, null, null, 1, int.MaxValue), ct))
-               .Items.ToDictionary(c => c.ServiceId);
+        var pairsByService = period is null
+            ? new Dictionary<int, Pair>()
+            : (await BuildPairsAsync(usuarioId, period.Id, ct)).ToDictionary(p => p.ServiceId);
 
-        var items = services.Items.Select(p =>
+        var items = services.Items
+            .Where(p => !serviceId.HasValue || p.Id == serviceId.Value) // PPT slide 3: filtro de servicio
+            .Select(p =>
         {
-            allClosures.TryGetValue(p.Id, out var c);
+            pairsByService.TryGetValue(p.Id, out var pair);
+            // ClosureId del DTO -> id del cierre de costes (mensual) si existe, si no el de facturación.
+            int? cierreId = pair?.Costes?.Id ?? pair?.Facturacion?.Id;
+            EstadoClosure? estado = pair?.Costes?.Estado ?? pair?.Facturacion?.Estado;
+            ApprovalStep? paso = pair?.Costes?.PasoActual ?? pair?.Facturacion?.PasoActual;
+            decimal? coste = pair?.Costes != null ? pair.Coste : (decimal?)null;
+            decimal? factura = pair?.Facturacion != null ? pair.Factura : (decimal?)null;
+            decimal? margen = pair != null && (pair.Costes != null || pair.Facturacion != null) ? pair.Margen : (decimal?)null;
             return new MiServicioDto(p.Id, p.Nombre, p.ClientId, p.Client?.Nombre ?? "",
-                c?.Id, c?.Estado, c?.PasoActual,
-                c?.CosteTotal, c?.FacturacionTotal, c?.Margen);
+                cierreId, estado, paso, coste, factura, margen);
         }).ToList();
 
         return items;

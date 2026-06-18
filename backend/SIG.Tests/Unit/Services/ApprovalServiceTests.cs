@@ -1,90 +1,73 @@
 using SIG.Application.Common;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Repositories;
-using SIG.Application.Interfaces.Services;
 using SIG.Application.Services;
 using SIG.Domain.Entities;
 using SIG.Domain.Enums;
-using SIG.Domain.Exceptions;
 
 namespace SIG.Tests.Unit.Services;
 
+// Ola 3b (#10): el panel agrega AMBOS tipos de cierre. Cada item indica su TipoCierre.
 public class ApprovalServiceTests
 {
-    private readonly IClosureRepository _closureRepo = Substitute.For<IClosureRepository>();
-    private readonly IApprovalRepository _approvalRepo = Substitute.For<IApprovalRepository>();
-    private readonly IClosureService _closureService = Substitute.For<IClosureService>();
+    private readonly ICierreCostesRepository _costesRepo = Substitute.For<ICierreCostesRepository>();
+    private readonly ICierreFacturacionRepository _factRepo = Substitute.For<ICierreFacturacionRepository>();
     private readonly ApprovalService _sut;
 
     public ApprovalServiceTests()
     {
-        _sut = new ApprovalService(_closureRepo, _approvalRepo, _closureService);
+        _sut = new ApprovalService(_costesRepo, _factRepo);
     }
 
+    private static Service MakeService()
+    {
+        var client = new Client { Id = 1, Nombre = "Alpha", NIF = "X" };
+        return new Service { Id = 100, Nombre = "Proj1", ClientId = 1, Client = client };
+    }
+
+    private static Period MakePeriod() =>
+        new() { Id = 1, Nombre = "Marzo 2026", FechaInicio = new DateOnly(2026, 3, 1), FechaFin = new DateOnly(2026, 3, 31) };
+
     [Fact]
-    public async Task ListAsync_DevuelveProyeccionItemsConDatosDeNavegacion()
+    public async Task ListAsync_AgregaAmbosTiposIndicandoElTipo()
     {
         var filter = new ApprovalFilterRequest(null, null, null, null, null, null, null, null);
-        var client = new Client { Id = 1, Nombre = "Alpha", NIF = "X" };
-        var service = new Service { Id = 100, Nombre = "Proj1", ClientId = 1, Client = client };
-        var period = new Period { Id = 1, Nombre = "Marzo 2026", FechaInicio = new DateOnly(2026, 3, 1), FechaFin = new DateOnly(2026, 3, 31) };
-        var closure = new Closure
+        var costes = new CierreCostes
         {
-            Id = 555, ServiceId = 100, Service = service, PeriodId = 1, Period = period,
-            Estado = EstadoClosure.EnAprobacion, PasoActual = ApprovalStep.Backoffice,
-            Margen = 1000m, UpdatedAt = DateTime.UtcNow
+            Id = 555, ServiceId = 100, Service = MakeService(), PeriodId = 1, Period = MakePeriod(),
+            Estado = EstadoClosure.EnAprobacion, PasoActual = ApprovalStep.Fico, Total = 800m, UpdatedAt = DateTime.UtcNow
         };
-        _closureRepo.ListPaginatedForUserAsync(99, filter, Arg.Any<CancellationToken>())
-            .Returns(new PagedResult<Closure>(new[] { closure }, 1, 1, 25));
+        var fact = new CierreFacturacion
+        {
+            Id = 777, ServiceId = 100, Service = MakeService(), PeriodId = 1, Period = MakePeriod(),
+            Estado = EstadoClosure.EnAprobacion, PasoActual = ApprovalStep.Grupo, Total = 1000m, UpdatedAt = DateTime.UtcNow.AddMinutes(-1)
+        };
+        _costesRepo.ListPaginatedForUserAsync(99, Arg.Any<ApprovalFilterRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedResult<CierreCostes>(new[] { costes }, 1, 1, int.MaxValue));
+        _factRepo.ListPaginatedForUserAsync(99, Arg.Any<ApprovalFilterRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedResult<CierreFacturacion>(new[] { fact }, 1, 1, int.MaxValue));
 
         var result = await _sut.ListAsync(filter, 99, CancellationToken.None);
 
-        result.Total.Should().Be(1);
-        result.Items.Should().HaveCount(1);
-        result.Items[0].ClosureId.Should().Be(555);
+        result.Total.Should().Be(2);
+        result.Items.Should().Contain(i => i.CierreId == 555 && i.TipoCierre == TipoCierre.Costes && i.Total == 800m);
+        result.Items.Should().Contain(i => i.CierreId == 777 && i.TipoCierre == TipoCierre.Facturacion && i.Total == 1000m);
         result.Items[0].ServiceNombre.Should().Be("Proj1");
         result.Items[0].ClientNombre.Should().Be("Alpha");
-        result.Items[0].PasoActual.Should().Be(ApprovalStep.Backoffice);
-        result.Items[0].Margen.Should().Be(1000m);
     }
 
     [Fact]
-    public async Task ListPendingForUserAsync_DevuelveResultadoFiltradoPorRolUser()
+    public async Task ListPendingForUserAsync_AgregaPendientesDeAmbosTipos()
     {
-        _closureRepo.ListPendingForUserAsync(7, 1, 25, Arg.Any<CancellationToken>())
-            .Returns(new PagedResult<Closure>(Array.Empty<Closure>(), 0, 1, 25));
+        _costesRepo.ListPendingForUserAsync(7, 1, int.MaxValue, Arg.Any<CancellationToken>())
+            .Returns(new PagedResult<CierreCostes>(Array.Empty<CierreCostes>(), 0, 1, int.MaxValue));
+        _factRepo.ListPendingForUserAsync(7, 1, int.MaxValue, Arg.Any<CancellationToken>())
+            .Returns(new PagedResult<CierreFacturacion>(Array.Empty<CierreFacturacion>(), 0, 1, int.MaxValue));
 
         var result = await _sut.ListPendingForUserAsync(7, 1, 25, CancellationToken.None);
 
         result.Total.Should().Be(0);
-        await _closureRepo.Received(1).ListPendingForUserAsync(7, 1, 25, Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task GetHistoryAsync_ClosureNoEncontrado_LanzaEntityNotFoundException()
-    {
-        _closureRepo.GetByIdAndUsuarioIdAsync(123, 99, Arg.Any<CancellationToken>()).Returns((Closure?)null);
-
-        await FluentActions.Awaiting(() => _sut.GetHistoryAsync(123, 99, CancellationToken.None))
-            .Should().ThrowAsync<EntityNotFoundException>();
-    }
-
-    [Fact]
-    public async Task GetHistoryAsync_DevuelveHistorialOrdenadoConUsuarioNombre()
-    {
-        var closure = new Closure { Id = 1, ServiceId = 100, PeriodId = 1 };
-        _closureRepo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns(closure);
-
-        var historial = new List<ApprovalHistory>
-        {
-            new() { Id = 1, ClosureId = 1, UserId = 5, User = new User { Nombre = "Ana", Apellidos = "Gómez" }, PasoOrigen = ApprovalStep.ProjectManager, PasoDestino = ApprovalStep.Backoffice, Accion = "Aprobar", Timestamp = DateTime.UtcNow }
-        };
-        _approvalRepo.ListHistoryByClosureAsync(1, Arg.Any<CancellationToken>()).Returns(historial);
-
-        var result = await _sut.GetHistoryAsync(1, 99, CancellationToken.None);
-
-        result.Should().HaveCount(1);
-        result[0].UserNombre.Should().Be("Ana Gómez");
-        result[0].Accion.Should().Be("Aprobar");
+        await _costesRepo.Received(1).ListPendingForUserAsync(7, 1, int.MaxValue, Arg.Any<CancellationToken>());
+        await _factRepo.Received(1).ListPendingForUserAsync(7, 1, int.MaxValue, Arg.Any<CancellationToken>());
     }
 }

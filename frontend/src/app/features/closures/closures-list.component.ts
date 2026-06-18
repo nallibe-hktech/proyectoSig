@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { RouterLink, Router } from '@angular/router';
+import { RouterLink, Router, ActivatedRoute } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { MatCardModule } from '@angular/material/card';
@@ -11,10 +11,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { ClosureService } from '../../core/api/closures.service';
+import { CierresService } from '../../core/api/cierres.service';
 import { PeriodService } from '../../core/api/periods.service';
-import { ClosureListItemDto, PeriodDto } from '../../models/dtos';
-import { EstadoClosure, ApprovalStep } from '../../models/enums';
+import { CierreListItemDto, PeriodDto } from '../../models/dtos';
+import { EstadoClosure, ApprovalStep, TipoCierre } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
@@ -34,17 +34,17 @@ interface FlowStep { label: string; idx: number; done: boolean; current: boolean
   ],
   template: `
     <div class="sig-page">
-      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Closures' }]" />
+      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: titulo() }]" />
       <div class="sig-page__header">
-        <h1 class="sig-page__title">Cierres</h1>
-        <a mat-flat-button color="primary" routerLink="/closures/nuevo" data-testid="btn-nuevo-cierre"><mat-icon>add</mat-icon> Nuevo cierre</a>
+        <h1 class="sig-page__title">{{ titulo() }}</h1>
+        <a mat-flat-button color="primary" [routerLink]="[baseRoute(), 'nuevo']" data-testid="btn-nuevo-cierre"><mat-icon>add</mat-icon> Nuevo cierre</a>
       </div>
 
       <mat-card style="margin-bottom: 16px;">
         <mat-card-content>
           <div style="display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--mat-sys-on-surface-variant);">
-            <strong>Flujo de aprobaci&oacute;n (5 pasos):</strong>
-            <span>1 PM &rarr; 2 Backoffice &rarr; 3 Fico &rarr; 4 Direction &rarr; 5 Exportado</span>
+            <strong>Flujo de aprobaci&oacute;n (3 pasos):</strong>
+            <span>1 Grupo &rarr; 2 FICO &rarr; 3 Exportado</span>
           </div>
         </mat-card-content>
       </mat-card>
@@ -78,7 +78,7 @@ interface FlowStep { label: string; idx: number; done: boolean; current: boolean
         </div>
         @if (loading()) { <sig-skeleton [count]="5" /> }
         @else if (items().length === 0) {
-          <sig-empty-state icon="lock_clock" title="No hay cierres todavía" ctaLabel="Crear primer cierre" (ctaClick)="router.navigate(['/closures/nuevo'])" />
+          <sig-empty-state icon="lock_clock" title="No hay cierres todavía" ctaLabel="Crear primer cierre" (ctaClick)="router.navigate([baseRoute(), 'nuevo'])" />
         } @else {
           <table mat-table [dataSource]="items()" class="sig-table" data-testid="tabla-closures">
             <ng-container matColumnDef="servicio"><th mat-header-cell *matHeaderCellDef>Servicio</th><td mat-cell *matCellDef="let row">{{ row.serviceNombre }}</td></ng-container>
@@ -89,16 +89,16 @@ interface FlowStep { label: string; idx: number; done: boolean; current: boolean
                 <div class="sig-flow">
                   @for (s of stepsFor(row); track s.idx) {
                     <span class="sig-flow-dot" [class.sig-flow-dot--done]="s.done" [class.sig-flow-dot--current]="s.current" [class.sig-flow-dot--rejected]="s.rejected" [title]="s.label"></span>
-                    @if (s.idx < 5) { <span class="sig-flow-line" [class.sig-flow-line--done]="s.done"></span> }
+                    @if (s.idx < 3) { <span class="sig-flow-line" [class.sig-flow-line--done]="s.done"></span> }
                   }
                 </div>
                 <sig-state-badge [estado]="row.estado" [paso]="row.pasoActual" />
               </td>
             </ng-container>
-            <ng-container matColumnDef="margen"><th mat-header-cell *matHeaderCellDef>Margen</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.margen | number:'1.0-2' }} €</td></ng-container>
+            <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef>{{ totalLabel() }}</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.total | number:'1.0-2' }} €</td></ng-container>
             <ng-container matColumnDef="acciones"><th mat-header-cell *matHeaderCellDef style="text-align: right;"></th>
               <td mat-cell *matCellDef="let row">
-                <a mat-icon-button [routerLink]="['/closures', row.id]" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>arrow_forward</mat-icon></a>
+                <a mat-icon-button [routerLink]="[baseRoute(), row.id]" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>arrow_forward</mat-icon></a>
               </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="cols"></tr>
@@ -122,11 +122,18 @@ interface FlowStep { label: string; idx: number; done: boolean; current: boolean
   `],
 })
 export class ClosuresListComponent implements OnInit {
-  private readonly closureSvc = inject(ClosureService);
+  private readonly cierresSvc = inject(CierresService);
   private readonly periodSvc = inject(PeriodService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
 
-  protected readonly items = signal<ClosureListItemDto[]>([]);
+  // Ola 3b (#10): el tipo de cierre se inyecta por data de ruta.
+  protected readonly tipo = signal<TipoCierre>((this.route.snapshot.data['tipoCierre'] as TipoCierre) ?? 'Costes');
+  protected readonly titulo = () => this.tipo() === 'Costes' ? 'Cierres de Costes' : 'Cierres de Facturación';
+  protected readonly totalLabel = () => this.tipo() === 'Costes' ? 'Coste total' : 'Facturación total';
+  protected readonly baseRoute = () => this.tipo() === 'Costes' ? '/cierres-costes' : '/cierres-facturacion';
+
+  protected readonly items = signal<CierreListItemDto[]>([]);
   protected readonly periodos = signal<PeriodDto[]>([]);
   protected readonly total = signal(0);
   protected readonly page = signal(1);
@@ -135,7 +142,7 @@ export class ClosuresListComponent implements OnInit {
   protected readonly search = new FormControl<string>('', { nonNullable: true });
   protected readonly periodFilter = new FormControl<number | null>(null);
   protected readonly estadoFilter = new FormControl<EstadoClosure | null>(null);
-  protected readonly cols = ['servicio', 'periodo', 'flujo', 'margen', 'acciones'];
+  protected readonly cols = ['servicio', 'periodo', 'flujo', 'total', 'acciones'];
 
   ngOnInit(): void {
     this.periodSvc.list().subscribe({ next: (ps) => this.periodos.set(ps), error: () => this.periodos.set([]) });
@@ -145,10 +152,13 @@ export class ClosuresListComponent implements OnInit {
     this.load();
   }
   protected onPage(e: PageEvent): void { this.pageSize.set(e.pageSize); this.page.set(e.pageIndex + 1); this.load(); }
-  protected onExportCSV(): void { exportCSV('closures.csv', this.items().map((c) => ({ Id: c.id, Servicio: c.serviceNombre, Periodo: c.periodNombre, Coste: c.costeTotal, Facturacion: c.facturacionTotal, Margen: c.margen, Estado: c.estado }))); }
-  protected stepsFor(row: ClosureListItemDto): FlowStep[] {
-    const stepOrder: ApprovalStep[] = ['ProjectManager', 'Backoffice', 'Fico', 'Direction', 'SystemExports'];
-    const labels = ['PM', 'BO', 'Fico', 'Dir', 'Export'];
+  protected onExportCSV(): void {
+    const file = this.tipo() === 'Costes' ? 'cierres-costes.csv' : 'cierres-facturacion.csv';
+    exportCSV(file, this.items().map((c) => ({ Id: c.id, Tipo: c.tipoCierre, Servicio: c.serviceNombre, Periodo: c.periodNombre, Total: c.total, Estado: c.estado })));
+  }
+  protected stepsFor(row: CierreListItemDto): FlowStep[] {
+    const stepOrder: ApprovalStep[] = ['Grupo', 'Fico', 'SystemExports'];
+    const labels = ['Grupo', 'FICO', 'Export'];
     const currentIdx = stepOrder.indexOf(row.pasoActual);
     const rejected = row.estado === 'Rechazado';
     return stepOrder.map((s, i) => ({
@@ -160,7 +170,7 @@ export class ClosuresListComponent implements OnInit {
   }
   private load(): void {
     this.loading.set(true);
-    this.closureSvc.list({
+    this.cierresSvc.list(this.tipo(), {
       page: this.page(), pageSize: this.pageSize(),
       periodId: this.periodFilter.value, estado: this.estadoFilter.value,
     }).subscribe({

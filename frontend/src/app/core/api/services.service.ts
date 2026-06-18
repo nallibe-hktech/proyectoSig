@@ -21,4 +21,7 @@ export class ServiceService {
   create(req: ServiceCreateRequest) { return this.http.post<ServiceDetailDto>(this.base, req); }
   update(id: number, req: ServiceUpdateRequest) { return this.http.put<ServiceDetailDto>(`${this.base}/${id}`, req); }
   delete(id: number) { return this.http.delete<void>(`${this.base}/${id}`); }
+  // Ola 2 (#8): asociar/desasociar conceptos del catálogo a un servicio.
+  addConcept(serviceId: number, conceptId: number) { return this.http.post<ServiceDetailDto>(`${this.base}/${serviceId}/concepts/${conceptId}`, {}); }
+  removeConcept(serviceId: number, conceptId: number) { return this.http.delete<ServiceDetailDto>(`${this.base}/${serviceId}/concepts/${conceptId}`); }
 }

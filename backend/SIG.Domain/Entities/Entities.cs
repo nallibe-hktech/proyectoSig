@@ -71,6 +71,7 @@ public class Client : ISoftDeletable, IAuditable
     public int Id { get; set; }
     public string Nombre { get; set; } = null!;
     public string NIF { get; set; } = null!;
+    public EstadoCliente Estado { get; set; }
     public string? Direccion { get; set; }
     public string? Ciudad { get; set; }
     public string? Provincia { get; set; }
@@ -111,7 +112,9 @@ public class Service : ISoftDeletable, IAuditable
     public ICollection<ServiceConcept> ServiceConcepts { get; set; } = new List<ServiceConcept>();
     public ICollection<ServiceUser> ServiceUsers { get; set; } = new List<ServiceUser>();
     public ICollection<ServiceCostCenter> ServiceCostCenters { get; set; } = new List<ServiceCostCenter>();
-    public ICollection<Closure> Closures { get; set; } = new List<Closure>();
+    // Ola 3b (#10): el antiguo Closure se ha dividido en dos raíces independientes.
+    public ICollection<CierreCostes> CierresCostes { get; set; } = new List<CierreCostes>();
+    public ICollection<CierreFacturacion> CierresFacturacion { get; set; } = new List<CierreFacturacion>();
 }
 
 public class ServiceConcept
@@ -197,6 +200,41 @@ public class PresupuestoServicio : ISoftDeletable, IAuditable
     public DateTime UpdatedAt { get; set; }
 }
 
+// Incidencia del cliente (PPT slide 6): un cliente puede tener varias incidencias, editables y con
+// histórico (el histórico de cambios lo aporta el AuditInterceptor sobre IAuditable + AuditLog).
+public class ClienteIncidencia : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ClientId { get; set; }
+    public Client Client { get; set; } = null!;
+    public string Tipo { get; set; } = null!;       // texto libre (sin catálogo cerrado en el PPT)
+    public string Descripcion { get; set; } = null!; // explicación de la incidencia
+    public EstadoIncidencia Estado { get; set; }     // Abierta | EnProceso | Resuelta
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// Forecast (PPT slide 36): previsión mensual de ventas / margen / nº personas (GPP) por servicio.
+// Granularidad servicio+mes porque el resumen del PPT pide filas por dpto y filtro por servicio,
+// y el departamento vive en el Servicio (no en el Cliente). Un registro por (ServiceId, Anio, Mes).
+public class Forecast : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
+    public int Anio { get; set; }
+    public int Mes { get; set; }                     // 1..12
+    public decimal VentasPrevistas { get; set; }     // €
+    public decimal? MargenPrevisto { get; set; }     // € (slide 23: previsión de ventas y margen bruto)
+    public int? PersonasCampo { get; set; }          // GPP: nº de personas de campo previstas (slide 36)
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 public class Variable : ISoftDeletable, IAuditable
 {
     public int Id { get; set; }
@@ -215,22 +253,45 @@ public class Period : IAuditable
     public string Nombre { get; set; } = null!;
     public DateOnly FechaInicio { get; set; }
     public DateOnly FechaFin { get; set; }
+    public int DiaPago { get; set; }                  // día del mes de pago: 30, 15 o 9
     public EstadoPeriodo Estado { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public ICollection<Closure> Closures { get; set; } = new List<Closure>();
+    public ICollection<CierreCostes> CierresCostes { get; set; } = new List<CierreCostes>();
+    public ICollection<CierreFacturacion> CierresFacturacion { get; set; } = new List<CierreFacturacion>();
 }
 
-public class Closure : IAuditable
+// Ola 3b (#10): contrato común de ambas raíces de cierre para reutilizar la lógica de servicio
+// (Diseño A — raíces separadas, hijos por FK; "Margen al vuelo": el margen NO se almacena).
+public interface ICierre : IAuditable
+{
+    int Id { get; set; }
+    int ServiceId { get; set; }
+    int PeriodId { get; set; }
+    decimal Total { get; set; }            // Costes: antiguo CosteTotal; Facturacion: antiguo FacturacionTotal
+    EstadoClosure Estado { get; set; }
+    ApprovalStep PasoActual { get; set; }
+    string? Comentarios { get; set; }
+    DateTime FechaCreacion { get; set; }
+    uint RowVersion { get; set; }
+    TipoCierre TipoCierre { get; }
+    Service Service { get; set; }
+    Period Period { get; set; }
+    ICollection<ClosureLine> Lines { get; set; }
+    ICollection<Approval> Approvals { get; set; }
+    ICollection<ApprovalHistory> ApprovalHistory { get; set; }
+    ICollection<ClosureAlerta> Alertas { get; set; }
+}
+
+// Cierre MENSUAL de costes. Total = suma de líneas Pago.
+public class CierreCostes : ICierre, IAuditable
 {
     public int Id { get; set; }
     public int ServiceId { get; set; }
     public Service Service { get; set; } = null!;
     public int PeriodId { get; set; }
     public Period Period { get; set; } = null!;
-    public decimal CosteTotal { get; set; }
-    public decimal FacturacionTotal { get; set; }
-    public decimal Margen { get; set; }
+    public decimal Total { get; set; }
     public EstadoClosure Estado { get; set; }
     public ApprovalStep PasoActual { get; set; }
     public string? Comentarios { get; set; }
@@ -238,16 +299,44 @@ public class Closure : IAuditable
     public uint RowVersion { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public TipoCierre TipoCierre => TipoCierre.Costes;
     public ICollection<ClosureLine> Lines { get; set; } = new List<ClosureLine>();
     public ICollection<Approval> Approvals { get; set; } = new List<Approval>();
     public ICollection<ApprovalHistory> ApprovalHistory { get; set; } = new List<ApprovalHistory>();
+    public ICollection<ClosureAlerta> Alertas { get; set; } = new List<ClosureAlerta>();
 }
 
+// Cierre de FACTURACIÓN. Puede quedar pendiente varios meses; no es mensual. Total = suma de líneas Factura.
+public class CierreFacturacion : ICierre, IAuditable
+{
+    public int Id { get; set; }
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
+    public int PeriodId { get; set; }
+    public Period Period { get; set; } = null!;
+    public decimal Total { get; set; }
+    public EstadoClosure Estado { get; set; }
+    public ApprovalStep PasoActual { get; set; }
+    public string? Comentarios { get; set; }
+    public DateTime FechaCreacion { get; set; }
+    public uint RowVersion { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public TipoCierre TipoCierre => TipoCierre.Facturacion;
+    public ICollection<ClosureLine> Lines { get; set; } = new List<ClosureLine>();
+    public ICollection<Approval> Approvals { get; set; } = new List<Approval>();
+    public ICollection<ApprovalHistory> ApprovalHistory { get; set; } = new List<ApprovalHistory>();
+    public ICollection<ClosureAlerta> Alertas { get; set; } = new List<ClosureAlerta>();
+}
+
+// Hijo compartido: exactamente UNA de las dos FK (CierreCostesId / CierreFacturacionId) está poblada.
 public class ClosureLine : IAuditable
 {
     public int Id { get; set; }
-    public int ClosureId { get; set; }
-    public Closure Closure { get; set; } = null!;
+    public int? CierreCostesId { get; set; }
+    public CierreCostes? CierreCostes { get; set; }
+    public int? CierreFacturacionId { get; set; }
+    public CierreFacturacion? CierreFacturacion { get; set; }
     public int ConceptId { get; set; }
     public Concept Concept { get; set; } = null!;
     public int? UserId { get; set; }
@@ -256,6 +345,10 @@ public class ClosureLine : IAuditable
     public string DatosEntradaJson { get; set; } = null!;
     public TipoConcepto Tipo { get; set; }
     public bool TieneIncidencia { get; set; }
+    // Ola 2 (#3a): override manual de importe e incentivos manuales.
+    public bool EsManual { get; set; }                // línea introducida o ajustada a mano (no recalculable por fórmula)
+    public decimal? ImporteOriginal { get; set; }     // importe calculado original, si hubo override
+    public string? MotivoManual { get; set; }         // auditoría del ajuste/incentivo manual
     public uint RowVersion { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -265,10 +358,15 @@ public class ClosureLine : IAuditable
 public class Approval : IAuditable
 {
     public int Id { get; set; }
-    public int ClosureId { get; set; }
-    public Closure Closure { get; set; } = null!;
-    public int RoleId { get; set; }
-    public Role Role { get; set; } = null!;
+    // Ola 3b (#10): exactamente UNA de las dos FK está poblada (costes o facturación).
+    public int? CierreCostesId { get; set; }
+    public CierreCostes? CierreCostes { get; set; }
+    public int? CierreFacturacionId { get; set; }
+    public CierreFacturacion? CierreFacturacion { get; set; }
+    // Ola 3a (#1): el paso Grupo no corresponde a un rol único (rol global + asignación al servicio),
+    // por lo que RoleId es nullable. La fuente de verdad de qué exige cada paso es Approval.Paso.
+    public int? RoleId { get; set; }
+    public Role? Role { get; set; }
     public ApprovalStep Paso { get; set; }
     public int? UserId { get; set; }
     public User? User { get; set; }
@@ -282,8 +380,11 @@ public class Approval : IAuditable
 public class ApprovalHistory
 {
     public int Id { get; set; }
-    public int ClosureId { get; set; }
-    public Closure Closure { get; set; } = null!;
+    // Ola 3b (#10): exactamente UNA de las dos FK está poblada (costes o facturación).
+    public int? CierreCostesId { get; set; }
+    public CierreCostes? CierreCostes { get; set; }
+    public int? CierreFacturacionId { get; set; }
+    public CierreFacturacion? CierreFacturacion { get; set; }
     public int UserId { get; set; }
     public User User { get; set; } = null!;
     public ApprovalStep PasoOrigen { get; set; }
@@ -296,8 +397,11 @@ public class ApprovalHistory
 public class ClosureAlerta : IAuditable
 {
     public int Id { get; set; }
-    public int ClosureId { get; set; }
-    public Closure Closure { get; set; } = null!;
+    // Ola 3b (#10): exactamente UNA de las dos FK está poblada (costes o facturación).
+    public int? CierreCostesId { get; set; }
+    public CierreCostes? CierreCostes { get; set; }
+    public int? CierreFacturacionId { get; set; }
+    public CierreFacturacion? CierreFacturacion { get; set; }
     public TipoAlerta Tipo { get; set; }
     public string Codigo { get; set; } = null!;
     public string Descripcion { get; set; } = null!;

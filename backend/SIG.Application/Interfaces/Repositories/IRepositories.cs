@@ -49,7 +49,7 @@ public interface IServiceRepository
     Task<PagedResult<Service>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
     Task AddAsync(Service service, CancellationToken ct);
     Task<bool> IsUserAssignedAsync(int serviceId, int usuarioId, CancellationToken ct);
-    Task<bool> HasClosuresAsync(int serviceId, CancellationToken ct);
+    Task<bool> HasCierresAsync(int serviceId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
@@ -81,31 +81,40 @@ public interface IPeriodRepository
     Task SaveChangesAsync(CancellationToken ct);
 }
 
-public interface IClosureRepository
+// Ola 3b (#10): un repositorio genérico por raíz de cierre (CierreCostes / CierreFacturacion).
+public interface ICierreRepository<TCierre> where TCierre : class, ICierre
 {
-    Task<Closure?> GetByIdAsync(int id, CancellationToken ct);
-    Task<Closure?> GetByIdWithLinesAsync(int id, CancellationToken ct);
-    Task<Closure?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task<Closure?> GetByServiceAndPeriodAsync(int serviceId, int periodId, CancellationToken ct);
-    Task<PagedResult<Closure>> ListPaginatedForUserAsync(int usuarioId, ApprovalFilterRequest filter, CancellationToken ct);
-    Task<PagedResult<Closure>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct);
-    Task AddAsync(Closure closure, CancellationToken ct);
+    TipoCierre Tipo { get; }
+    Task<TCierre?> GetByIdAsync(int id, CancellationToken ct);
+    Task<TCierre?> GetByIdWithLinesAsync(int id, CancellationToken ct);
+    Task<TCierre?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
+    Task<TCierre?> GetByServiceAndPeriodAsync(int serviceId, int periodId, CancellationToken ct);
+    Task<PagedResult<TCierre>> ListPaginatedForUserAsync(int usuarioId, ApprovalFilterRequest filter, CancellationToken ct);
+    Task<PagedResult<TCierre>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct);
+    Task<IReadOnlyList<TCierre>> ListByPeriodForUserAsync(int usuarioId, int periodId, CancellationToken ct);
+    Task AddAsync(TCierre cierre, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
+
+public interface ICierreCostesRepository : ICierreRepository<CierreCostes> { }
+public interface ICierreFacturacionRepository : ICierreRepository<CierreFacturacion> { }
 
 public interface IClosureLineRepository
 {
     Task<ClosureLine?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
-    Task RemoveAllByClosureAsync(int closureId, CancellationToken ct);
+    Task<ClosureLine?> GetByIdAsync(int id, CancellationToken ct);
+    Task<IReadOnlyList<ClosureLine>> ListByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct);
+    Task RemoveAllByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct);
+    Task AddAsync(ClosureLine line, CancellationToken ct);
     Task AddRangeAsync(IEnumerable<ClosureLine> lines, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
 public interface IApprovalRepository
 {
-    Task<Approval?> GetCurrentByClosureAsync(int closureId, CancellationToken ct);
-    Task<IReadOnlyList<Approval>> ListByClosureAsync(int closureId, CancellationToken ct);
-    Task<IReadOnlyList<ApprovalHistory>> ListHistoryByClosureAsync(int closureId, CancellationToken ct);
+    Task<Approval?> GetCurrentByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct);
+    Task<IReadOnlyList<Approval>> ListByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct);
+    Task<IReadOnlyList<ApprovalHistory>> ListHistoryByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct);
     Task AddAsync(Approval approval, CancellationToken ct);
     Task AddHistoryAsync(ApprovalHistory history, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
@@ -116,7 +125,7 @@ public interface ICalculationLogRepository
     Task<CalculationLog?> GetByClosureLineAndUsuarioIdAsync(int closureLineId, int usuarioId, CancellationToken ct);
     Task AddAsync(CalculationLog log, CancellationToken ct);
     Task AddRangeAsync(IEnumerable<CalculationLog> logs, CancellationToken ct);
-    Task RemoveAllByClosureAsync(int closureId, CancellationToken ct);
+    Task RemoveAllByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
@@ -178,14 +187,32 @@ public interface IPresupuestoServicioRepository
     Task SaveChangesAsync(CancellationToken ct);
 }
 
+public interface IClienteIncidenciaRepository
+{
+    Task<IReadOnlyList<ClienteIncidencia>> ListByClientAsync(int clientId, CancellationToken ct);
+    Task<ClienteIncidencia?> GetByIdAsync(int id, CancellationToken ct);
+    Task AddAsync(ClienteIncidencia entity, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
+public interface IForecastRepository
+{
+    Task<IReadOnlyList<Forecast>> ListByServiceAndYearAsync(int serviceId, int anio, CancellationToken ct);
+    Task<Forecast?> GetByServiceMonthAsync(int serviceId, int anio, int mes, CancellationToken ct);
+    // Devuelve forecasts del año con Service+Client+Department incluidos para el resumen pivote.
+    Task<IReadOnlyList<Forecast>> ListForResumenAsync(int anio, int? departmentId, int? clientId, int? serviceId, CancellationToken ct);
+    Task AddAsync(Forecast entity, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
 public interface IClosureAlertaRepository
 {
-    Task<IReadOnlyList<ClosureAlerta>> GetByClosureIdAsync(int closureId, CancellationToken ct);
+    Task<IReadOnlyList<ClosureAlerta>> GetByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct);
     Task<ClosureAlerta?> GetByIdAsync(int id, CancellationToken ct);
     Task AddAsync(ClosureAlerta alerta, CancellationToken ct);
     Task AddRangeAsync(IEnumerable<ClosureAlerta> alertas, CancellationToken ct);
     Task UpdateAsync(ClosureAlerta alerta, CancellationToken ct);
-    Task DeleteByClosureIdAsync(int closureId, CancellationToken ct);
+    Task DeleteByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
@@ -194,6 +221,8 @@ public interface IStagingA3InnuvaContratoRepository
     Task<IReadOnlyList<StagingA3InnuvaContrato>> GetByNifAsync(string nif, CancellationToken ct);
     Task<IReadOnlyList<StagingA3InnuvaContrato>> GetAllAsync(CancellationToken ct);
     Task<IReadOnlyList<StagingA3InnuvaContrato>> GetActivosEnPeriodoAsync(DateTime desde, DateTime hasta, CancellationToken ct);
+    Task<IReadOnlyList<StagingA3InnuvaContrato>> ListContratosUnDiaAsync(CancellationToken ct);
+    Task<StagingA3InnuvaContrato?> GetByIdAsync(int id, CancellationToken ct);
     Task AddAsync(StagingA3InnuvaContrato contrato, CancellationToken ct);
     Task AddRangeAsync(IEnumerable<StagingA3InnuvaContrato> contratos, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);

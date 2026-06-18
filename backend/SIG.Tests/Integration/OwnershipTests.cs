@@ -72,18 +72,18 @@ public class OwnershipTests : IntegrationTestBase
     [Fact]
     public async Task PmAlpha_AccedeClosureDeBetaPorId_Devuelve404()
     {
-        // Admin enumera cierres; PM alpha intenta acceder a uno ajeno
+        // Admin enumera cierres de costes; PM alpha intenta acceder a uno ajeno (Ola 3b #10).
         var admin = await CreateAuthenticatedClientAsync("admin@sig.local");
-        var allClosures = await ReadJsonAsync<PagedResult<ClosureListItemDto>>(await admin.GetAsync("/api/closures?page=1&pageSize=100"));
+        var allClosures = await ReadJsonAsync<PagedResult<CierreListItemDto>>(await admin.GetAsync("/api/cierres-costes?page=1&pageSize=100"));
         if (allClosures == null || allClosures.Items.Count == 0)
-            return; // si no hay closures aún, este caso queda implícito en otros tests
+            return; // si no hay cierres aún, este caso queda implícito en otros tests
 
-        // Detectar un closure de Beta (no de Alpha)
+        // Detectar un cierre de Beta (no de Alpha)
         var betaClosure = allClosures.Items.FirstOrDefault(c => !c.ServiceNombre.StartsWith("Alpha"));
         if (betaClosure is null) return; // si todos son alpha, saltar
 
         var alphaPm = await CreateAuthenticatedClientAsync("pm.alpha@sig.local");
-        var resp = await alphaPm.GetAsync($"/api/closures/{betaClosure.Id}");
+        var resp = await alphaPm.GetAsync($"/api/cierres-costes/{betaClosure.Id}");
         resp.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.Forbidden);
     }
 
@@ -99,7 +99,7 @@ public class OwnershipTests : IntegrationTestBase
     public async Task Reader_NoPuedeCrearCliente_Devuelve403()
     {
         var reader = await CreateAuthenticatedClientAsync("reader@sig.local");
-        var req = new ClientCreateRequest("X", "X99999999", null, null, null, null, null, null, null, null);
+        var req = new ClientCreateRequest("X", "X99999999", null, null, null, null, null, null, null, null, null);
         var resp = await reader.PostAsJsonAsync("/api/clients", req);
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

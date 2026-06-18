@@ -35,7 +35,7 @@ public class ValidatorTests
     [InlineData("Alpha", "A12345678", true)]
     public void ClientCreateRequestValidator_NombreYNif(string nombre, string nif, bool valid)
     {
-        var req = new ClientCreateRequest(nombre, nif, null, null, null, null, null, null, null, null);
+        var req = new ClientCreateRequest(nombre, nif, null, null, null, null, null, null, null, null, null);
         new ClientCreateRequestValidator().Validate(req).IsValid.Should().Be(valid);
     }
 
@@ -45,7 +45,7 @@ public class ValidatorTests
     [InlineData(null, true)]
     public void ClientCreateRequestValidator_EmailOpcionalSiNoVacio(string? email, bool valid)
     {
-        var req = new ClientCreateRequest("Alpha", "A12345678", null, null, null, null, null, null, email, null);
+        var req = new ClientCreateRequest("Alpha", "A12345678", null, null, null, null, null, null, null, email, null);
         new ClientCreateRequestValidator().Validate(req).IsValid.Should().Be(valid);
     }
 
@@ -98,7 +98,7 @@ public class ValidatorTests
     [Fact]
     public void PeriodCreateRequestValidator_FechaInicioMayorQueFin_Invalido()
     {
-        var req = new PeriodCreateRequest("Abril 2026", new DateOnly(2026, 5, 1), new DateOnly(2026, 4, 1));
+        var req = new PeriodCreateRequest("Abril 2026", new DateOnly(2026, 5, 1), new DateOnly(2026, 4, 1), 30);
         new PeriodCreateRequestValidator().Validate(req).IsValid.Should().BeFalse();
     }
 

@@ -31,9 +31,13 @@ namespace SIG.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ClosureId")
+                    b.Property<int?>("CierreCostesId")
                         .HasColumnType("integer")
-                        .HasColumnName("closure_id");
+                        .HasColumnName("cierre_costes_id");
+
+                    b.Property<int?>("CierreFacturacionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cierre_facturacion_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -58,7 +62,7 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("paso");
 
-                    b.Property<int>("RoleId")
+                    b.Property<int?>("RoleId")
                         .HasColumnType("integer")
                         .HasColumnName("role_id");
 
@@ -73,8 +77,11 @@ namespace SIG.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_approvals");
 
-                    b.HasIndex("ClosureId")
-                        .HasDatabaseName("ix_approvals_closure_id");
+                    b.HasIndex("CierreCostesId")
+                        .HasDatabaseName("ix_approvals_cierre_costes_id");
+
+                    b.HasIndex("CierreFacturacionId")
+                        .HasDatabaseName("ix_approvals_cierre_facturacion_id");
 
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_approvals_role_id");
@@ -100,9 +107,13 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("accion");
 
-                    b.Property<int>("ClosureId")
+                    b.Property<int?>("CierreCostesId")
                         .HasColumnType("integer")
-                        .HasColumnName("closure_id");
+                        .HasColumnName("cierre_costes_id");
+
+                    b.Property<int?>("CierreFacturacionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cierre_facturacion_id");
 
                     b.Property<string>("Motivo")
                         .HasMaxLength(2000)
@@ -128,8 +139,11 @@ namespace SIG.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_approval_history");
 
-                    b.HasIndex("ClosureId")
-                        .HasDatabaseName("ix_approval_history_closure_id");
+                    b.HasIndex("CierreCostesId")
+                        .HasDatabaseName("ix_approval_history_cierre_costes_id");
+
+                    b.HasIndex("CierreFacturacionId")
+                        .HasDatabaseName("ix_approval_history_cierre_facturacion_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_approval_history_user_id");
@@ -253,6 +267,142 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("calculation_logs", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.CierreCostes", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comentarios")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("comentarios");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<int>("PasoActual")
+                        .HasColumnType("integer")
+                        .HasColumnName("paso_actual");
+
+                    b.Property<int>("PeriodId")
+                        .HasColumnType("integer")
+                        .HasColumnName("period_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_id");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("total");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_cierres_costes");
+
+                    b.HasIndex("PeriodId")
+                        .HasDatabaseName("ix_cierres_costes_period_id");
+
+                    b.HasIndex("ServiceId", "PeriodId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_cierres_costes_service_id_period_id");
+
+                    b.ToTable("cierres_costes", (string)null);
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.CierreFacturacion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comentarios")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("comentarios");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<int>("PasoActual")
+                        .HasColumnType("integer")
+                        .HasColumnName("paso_actual");
+
+                    b.Property<int>("PeriodId")
+                        .HasColumnType("integer")
+                        .HasColumnName("period_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_id");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("total");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_cierres_facturacion");
+
+                    b.HasIndex("PeriodId")
+                        .HasDatabaseName("ix_cierres_facturacion_period_id");
+
+                    b.HasIndex("ServiceId", "PeriodId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_cierres_facturacion_service_id_period_id");
+
+                    b.ToTable("cierres_facturacion", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.Client", b =>
                 {
                     b.Property<int>("Id")
@@ -298,6 +448,12 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("direccion");
 
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("estado");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -334,7 +490,7 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("clients", (string)null);
                 });
 
-            modelBuilder.Entity("SIG.Domain.Entities.Closure", b =>
+            modelBuilder.Entity("SIG.Domain.Entities.ClienteIncidencia", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -343,73 +499,51 @@ namespace SIG.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Comentarios")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("comentarios");
-
-                    b.Property<decimal>("CosteTotal")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("coste_total");
+                    b.Property<int>("ClientId")
+                        .HasColumnType("integer")
+                        .HasColumnName("client_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("descripcion");
+
                     b.Property<string>("Estado")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("estado");
 
-                    b.Property<decimal>("FacturacionTotal")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("facturacion_total");
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fecha_creacion");
-
-                    b.Property<decimal>("Margen")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("margen");
-
-                    b.Property<int>("PasoActual")
-                        .HasColumnType("integer")
-                        .HasColumnName("paso_actual");
-
-                    b.Property<int>("PeriodId")
-                        .HasColumnType("integer")
-                        .HasColumnName("period_id");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<int>("ServiceId")
-                        .HasColumnType("integer")
-                        .HasColumnName("service_id");
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tipo");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_closures");
+                        .HasName("pk_cliente_incidencias");
 
-                    b.HasIndex("PeriodId")
-                        .HasDatabaseName("ix_closures_period_id");
+                    b.HasIndex("ClientId")
+                        .HasDatabaseName("ix_cliente_incidencias_client_id");
 
-                    b.HasIndex("ServiceId", "PeriodId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_closures_service_id_period_id");
-
-                    b.ToTable("closures", (string)null);
+                    b.ToTable("cliente_incidencias", (string)null);
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.ClosureAlerta", b =>
@@ -421,9 +555,13 @@ namespace SIG.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ClosureId")
+                    b.Property<int?>("CierreCostesId")
                         .HasColumnType("integer")
-                        .HasColumnName("closure_id");
+                        .HasColumnName("cierre_costes_id");
+
+                    b.Property<int?>("CierreFacturacionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cierre_facturacion_id");
 
                     b.Property<string>("Codigo")
                         .IsRequired()
@@ -470,8 +608,11 @@ namespace SIG.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_closure_alertas");
 
-                    b.HasIndex("ClosureId")
-                        .HasDatabaseName("ix_closure_alertas_closure_id");
+                    b.HasIndex("CierreCostesId")
+                        .HasDatabaseName("ix_closure_alertas_cierre_costes_id");
+
+                    b.HasIndex("CierreFacturacionId")
+                        .HasDatabaseName("ix_closure_alertas_cierre_facturacion_id");
 
                     b.HasIndex("ConfirmadaPorUserId")
                         .HasDatabaseName("ix_closure_alertas_confirmada_por_user_id");
@@ -488,9 +629,13 @@ namespace SIG.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ClosureId")
+                    b.Property<int?>("CierreCostesId")
                         .HasColumnType("integer")
-                        .HasColumnName("closure_id");
+                        .HasColumnName("cierre_costes_id");
+
+                    b.Property<int?>("CierreFacturacionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cierre_facturacion_id");
 
                     b.Property<int>("ConceptId")
                         .HasColumnType("integer")
@@ -505,10 +650,26 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("datos_entrada_json");
 
+                    b.Property<bool>("EsManual")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("es_manual");
+
                     b.Property<decimal>("Importe")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)")
                         .HasColumnName("importe");
+
+                    b.Property<decimal?>("ImporteOriginal")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("importe_original");
+
+                    b.Property<string>("MotivoManual")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("motivo_manual");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -537,8 +698,11 @@ namespace SIG.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_closure_lines");
 
-                    b.HasIndex("ClosureId")
-                        .HasDatabaseName("ix_closure_lines_closure_id");
+                    b.HasIndex("CierreCostesId")
+                        .HasDatabaseName("ix_closure_lines_cierre_costes_id");
+
+                    b.HasIndex("CierreFacturacionId")
+                        .HasDatabaseName("ix_closure_lines_cierre_facturacion_id");
 
                     b.HasIndex("ConceptId")
                         .HasDatabaseName("ix_closure_lines_concept_id");
@@ -720,6 +884,67 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("departments", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.Forecast", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Anio")
+                        .HasColumnType("integer")
+                        .HasColumnName("anio");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal?>("MargenPrevisto")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("margen_previsto");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer")
+                        .HasColumnName("mes");
+
+                    b.Property<int?>("PersonasCampo")
+                        .HasColumnType("integer")
+                        .HasColumnName("personas_campo");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<decimal>("VentasPrevistas")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("ventas_previstas");
+
+                    b.HasKey("Id")
+                        .HasName("pk_forecasts");
+
+                    b.HasIndex("ServiceId", "Anio", "Mes")
+                        .IsUnique()
+                        .HasDatabaseName("ix_forecasts_service_id_anio_mes");
+
+                    b.ToTable("forecasts", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.Period", b =>
                 {
                     b.Property<int>("Id")
@@ -732,6 +957,12 @@ namespace SIG.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<int>("DiaPago")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(30)
+                        .HasColumnName("dia_pago");
 
                     b.Property<string>("Estado")
                         .IsRequired()
@@ -1222,10 +1453,21 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("hash");
 
+                    b.Property<bool>("IgnoradoEnCierre")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("ignorado_en_cierre");
+
                     b.Property<decimal>("ImporteBruto")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)")
                         .HasColumnName("importe_bruto");
+
+                    b.Property<string>("MotivoIgnorar")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_ignorar");
 
                     b.Property<string>("NIF")
                         .IsRequired()
@@ -2830,18 +3072,22 @@ namespace SIG.Infrastructure.Migrations
 
             modelBuilder.Entity("SIG.Domain.Entities.Approval", b =>
                 {
-                    b.HasOne("SIG.Domain.Entities.Closure", "Closure")
+                    b.HasOne("SIG.Domain.Entities.CierreCostes", "CierreCostes")
                         .WithMany("Approvals")
-                        .HasForeignKey("ClosureId")
+                        .HasForeignKey("CierreCostesId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_approvals_closures_closure_id");
+                        .HasConstraintName("fk_approvals_cierres_costes_cierre_costes_id");
+
+                    b.HasOne("SIG.Domain.Entities.CierreFacturacion", "CierreFacturacion")
+                        .WithMany("Approvals")
+                        .HasForeignKey("CierreFacturacionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_approvals_cierres_facturacion_cierre_facturacion_id");
 
                     b.HasOne("SIG.Domain.Entities.Role", "Role")
                         .WithMany("Approvals")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_approvals_roles_role_id");
 
                     b.HasOne("SIG.Domain.Entities.User", "User")
@@ -2850,7 +3096,9 @@ namespace SIG.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_approvals_users_user_id");
 
-                    b.Navigation("Closure");
+                    b.Navigation("CierreCostes");
+
+                    b.Navigation("CierreFacturacion");
 
                     b.Navigation("Role");
 
@@ -2859,12 +3107,17 @@ namespace SIG.Infrastructure.Migrations
 
             modelBuilder.Entity("SIG.Domain.Entities.ApprovalHistory", b =>
                 {
-                    b.HasOne("SIG.Domain.Entities.Closure", "Closure")
+                    b.HasOne("SIG.Domain.Entities.CierreCostes", "CierreCostes")
                         .WithMany("ApprovalHistory")
-                        .HasForeignKey("ClosureId")
+                        .HasForeignKey("CierreCostesId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_approval_history_closures_closure_id");
+                        .HasConstraintName("fk_approval_history_cierres_costes_cierre_costes_id");
+
+                    b.HasOne("SIG.Domain.Entities.CierreFacturacion", "CierreFacturacion")
+                        .WithMany("ApprovalHistory")
+                        .HasForeignKey("CierreFacturacionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_approval_history_cierres_facturacion_cierre_facturacion_id");
 
                     b.HasOne("SIG.Domain.Entities.User", "User")
                         .WithMany()
@@ -2873,7 +3126,9 @@ namespace SIG.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_approval_history_users_user_id");
 
-                    b.Navigation("Closure");
+                    b.Navigation("CierreCostes");
+
+                    b.Navigation("CierreFacturacion");
 
                     b.Navigation("User");
                 });
@@ -2910,35 +3165,73 @@ namespace SIG.Infrastructure.Migrations
                     b.Navigation("Concept");
                 });
 
-            modelBuilder.Entity("SIG.Domain.Entities.Closure", b =>
+            modelBuilder.Entity("SIG.Domain.Entities.CierreCostes", b =>
                 {
                     b.HasOne("SIG.Domain.Entities.Period", "Period")
-                        .WithMany("Closures")
+                        .WithMany("CierresCostes")
                         .HasForeignKey("PeriodId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_closures_periods_period_id");
+                        .HasConstraintName("fk_cierres_costes_periods_period_id");
 
                     b.HasOne("SIG.Domain.Entities.Service", "Service")
-                        .WithMany("Closures")
+                        .WithMany("CierresCostes")
                         .HasForeignKey("ServiceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_closures_services_service_id");
+                        .HasConstraintName("fk_cierres_costes_services_service_id");
 
                     b.Navigation("Period");
 
                     b.Navigation("Service");
                 });
 
-            modelBuilder.Entity("SIG.Domain.Entities.ClosureAlerta", b =>
+            modelBuilder.Entity("SIG.Domain.Entities.CierreFacturacion", b =>
                 {
-                    b.HasOne("SIG.Domain.Entities.Closure", "Closure")
+                    b.HasOne("SIG.Domain.Entities.Period", "Period")
+                        .WithMany("CierresFacturacion")
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_cierres_facturacion_periods_period_id");
+
+                    b.HasOne("SIG.Domain.Entities.Service", "Service")
+                        .WithMany("CierresFacturacion")
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_cierres_facturacion_services_service_id");
+
+                    b.Navigation("Period");
+
+                    b.Navigation("Service");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.ClienteIncidencia", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.Client", "Client")
                         .WithMany()
-                        .HasForeignKey("ClosureId")
+                        .HasForeignKey("ClientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_closure_alertas_closures_closure_id");
+                        .HasConstraintName("fk_cliente_incidencias_clients_client_id");
+
+                    b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.ClosureAlerta", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.CierreCostes", "CierreCostes")
+                        .WithMany("Alertas")
+                        .HasForeignKey("CierreCostesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_closure_alertas_cierres_costes_cierre_costes_id");
+
+                    b.HasOne("SIG.Domain.Entities.CierreFacturacion", "CierreFacturacion")
+                        .WithMany("Alertas")
+                        .HasForeignKey("CierreFacturacionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_closure_alertas_cierres_facturacion_cierre_facturacion_id");
 
                     b.HasOne("SIG.Domain.Entities.User", "ConfirmadaPor")
                         .WithMany()
@@ -2946,19 +3239,26 @@ namespace SIG.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_closure_alertas_users_confirmada_por_user_id");
 
-                    b.Navigation("Closure");
+                    b.Navigation("CierreCostes");
+
+                    b.Navigation("CierreFacturacion");
 
                     b.Navigation("ConfirmadaPor");
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.ClosureLine", b =>
                 {
-                    b.HasOne("SIG.Domain.Entities.Closure", "Closure")
+                    b.HasOne("SIG.Domain.Entities.CierreCostes", "CierreCostes")
                         .WithMany("Lines")
-                        .HasForeignKey("ClosureId")
+                        .HasForeignKey("CierreCostesId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_closure_lines_closures_closure_id");
+                        .HasConstraintName("fk_closure_lines_cierres_costes_cierre_costes_id");
+
+                    b.HasOne("SIG.Domain.Entities.CierreFacturacion", "CierreFacturacion")
+                        .WithMany("Lines")
+                        .HasForeignKey("CierreFacturacionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_closure_lines_cierres_facturacion_cierre_facturacion_id");
 
                     b.HasOne("SIG.Domain.Entities.Concept", "Concept")
                         .WithMany()
@@ -2973,7 +3273,9 @@ namespace SIG.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_closure_lines_users_user_id");
 
-                    b.Navigation("Closure");
+                    b.Navigation("CierreCostes");
+
+                    b.Navigation("CierreFacturacion");
 
                     b.Navigation("Concept");
 
@@ -3010,6 +3312,18 @@ namespace SIG.Infrastructure.Migrations
                     b.Navigation("Concept");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Forecast", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_forecasts_services_service_id");
+
+                    b.Navigation("Service");
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.PresupuestoServicio", b =>
@@ -3218,18 +3532,31 @@ namespace SIG.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("SIG.Domain.Entities.Client", b =>
+            modelBuilder.Entity("SIG.Domain.Entities.CierreCostes", b =>
                 {
-                    b.Navigation("Services");
-                });
+                    b.Navigation("Alertas");
 
-            modelBuilder.Entity("SIG.Domain.Entities.Closure", b =>
-                {
                     b.Navigation("ApprovalHistory");
 
                     b.Navigation("Approvals");
 
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.CierreFacturacion", b =>
+                {
+                    b.Navigation("Alertas");
+
+                    b.Navigation("ApprovalHistory");
+
+                    b.Navigation("Approvals");
+
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.Client", b =>
+                {
+                    b.Navigation("Services");
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.ClosureLine", b =>
@@ -3256,7 +3583,9 @@ namespace SIG.Infrastructure.Migrations
 
             modelBuilder.Entity("SIG.Domain.Entities.Period", b =>
                 {
-                    b.Navigation("Closures");
+                    b.Navigation("CierresCostes");
+
+                    b.Navigation("CierresFacturacion");
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.Role", b =>
@@ -3268,7 +3597,9 @@ namespace SIG.Infrastructure.Migrations
 
             modelBuilder.Entity("SIG.Domain.Entities.Service", b =>
                 {
-                    b.Navigation("Closures");
+                    b.Navigation("CierresCostes");
+
+                    b.Navigation("CierresFacturacion");
 
                     b.Navigation("ServiceConcepts");
 

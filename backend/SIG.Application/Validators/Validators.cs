@@ -148,6 +148,7 @@ public class PeriodCreateRequestValidator : AbstractValidator<PeriodCreateReques
     {
         RuleFor(x => x.Nombre).NotEmpty().Length(2, 100);
         RuleFor(x => x).Must(p => p.FechaInicio <= p.FechaFin).WithMessage("FechaInicio debe ser <= FechaFin");
+        RuleFor(x => x.DiaPago).Must(d => d == 30 || d == 15 || d == 9).WithMessage("DiaPago debe ser 30, 15 o 9");
     }
 }
 
@@ -157,6 +158,7 @@ public class PeriodUpdateRequestValidator : AbstractValidator<PeriodUpdateReques
     {
         RuleFor(x => x.Nombre).NotEmpty().Length(2, 100);
         RuleFor(x => x).Must(p => p.FechaInicio <= p.FechaFin).WithMessage("FechaInicio debe ser <= FechaFin");
+        RuleFor(x => x.DiaPago).Must(d => d == 30 || d == 15 || d == 9).WithMessage("DiaPago debe ser 30, 15 o 9");
     }
 }
 
@@ -172,4 +174,33 @@ public class ClosureCreateRequestValidator : AbstractValidator<ClosureCreateRequ
 public class ClosureRejectRequestValidator : AbstractValidator<ClosureRejectRequest>
 {
     public ClosureRejectRequestValidator() { RuleFor(x => x.Motivo).NotEmpty().MaximumLength(2000); }
+}
+
+// Ola 3b (#10): validadores para los DTOs de cierre separados.
+public class CierreCreateRequestValidator : AbstractValidator<CierreCreateRequest>
+{
+    public CierreCreateRequestValidator()
+    {
+        RuleFor(x => x.ServiceId).GreaterThan(0);
+        RuleFor(x => x.PeriodId).GreaterThan(0);
+    }
+}
+
+public class CierreRejectRequestValidator : AbstractValidator<CierreRejectRequest>
+{
+    public CierreRejectRequestValidator() { RuleFor(x => x.Motivo).NotEmpty().MaximumLength(2000); }
+}
+
+public class CierreLineOverrideRequestValidator : AbstractValidator<CierreLineOverrideRequest>
+{
+    public CierreLineOverrideRequestValidator() { RuleFor(x => x.Motivo).NotEmpty().MaximumLength(2000); }
+}
+
+public class CierreLineIncentivoRequestValidator : AbstractValidator<CierreLineIncentivoRequest>
+{
+    public CierreLineIncentivoRequestValidator()
+    {
+        RuleFor(x => x.ConceptId).GreaterThan(0);
+        RuleFor(x => x.Motivo).NotEmpty().MaximumLength(2000);
+    }
 }

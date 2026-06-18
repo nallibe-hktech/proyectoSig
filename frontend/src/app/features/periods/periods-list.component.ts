@@ -37,6 +37,7 @@ import { NotifyService } from '../../core/notify.service';
               <ng-container matColumnDef="nombre"><th mat-header-cell *matHeaderCellDef>Nombre</th><td mat-cell *matCellDef="let row">{{ row.nombre }}</td></ng-container>
               <ng-container matColumnDef="inicio"><th mat-header-cell *matHeaderCellDef>Desde</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.fechaInicio | date:'dd/MM/yyyy' }}</td></ng-container>
               <ng-container matColumnDef="fin"><th mat-header-cell *matHeaderCellDef>Hasta</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.fechaFin | date:'dd/MM/yyyy' }}</td></ng-container>
+              <ng-container matColumnDef="diaPago"><th mat-header-cell *matHeaderCellDef>Día pago</th><td mat-cell *matCellDef="let row" class="mono-num" data-testid="cell-dia-pago">{{ row.diaPago }}</td></ng-container>
               <ng-container matColumnDef="estado"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let row">
                 <span [class]="'sig-badge ' + estadoCls(row.estado)" data-testid="badge-estado">
                   <mat-icon style="font-size: 14px; width: 14px; height: 14px;" aria-hidden="true">{{ estadoIcon(row.estado) }}</mat-icon>
@@ -55,8 +56,8 @@ import { NotifyService } from '../../core/notify.service';
                   </div>
                 </td>
               </ng-container>
-              <tr mat-header-row *matHeaderRowDef="['nombre', 'inicio', 'fin', 'estado', 'acciones']"></tr>
-              <tr mat-row *matRowDef="let row; columns: ['nombre', 'inicio', 'fin', 'estado', 'acciones']" data-testid="row-period"></tr>
+              <tr mat-header-row *matHeaderRowDef="['nombre', 'inicio', 'fin', 'diaPago', 'estado', 'acciones']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['nombre', 'inicio', 'fin', 'diaPago', 'estado', 'acciones']" data-testid="row-period"></tr>
             </table>
             <mat-paginator [length]="total()" [pageSize]="pageSize()" [pageIndex]="page() - 1" [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons (page)="onPageChange($event)"></mat-paginator>
           </div>
