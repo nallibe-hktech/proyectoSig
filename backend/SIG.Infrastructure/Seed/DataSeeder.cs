@@ -314,6 +314,40 @@ public class DataSeeder : ISeedService
                 left = new { type = "Aggregate", op = "Sum", field = "Importe", source = new { type = "Source", entity = "GastosPayHawk", filters = new object[0] } },
                 right = new { type = "Number", value = 15 }
             }) },
+
+            // ── EJEMPLOS Excel (datos anónimos): demuestran las nuevas primitivas del motor ──
+
+            // FILTRO "cantidad mínima": dietas por días con actividad, con un suelo mensual.
+            new() { Nombre = "Ejemplo — Dietas con mínimo mensual (Modifier Min)", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "Modifier", kind = "Min", threshold = 100,
+                inner = new {
+                    type = "BinaryOp", op = "Mul",
+                    left = new { type = "Aggregate", op = "Count", distinct = "Fecha", source = new { type = "Source", entity = "VisitasCelero", filters = new object[0] } },
+                    right = new { type = "Number", value = 11 }
+                }
+            }) },
+
+            // FRANQUICIA de kilometraje: los primeros 300 km no se pagan, el resto a 0,23 €/km.
+            new() { Nombre = "Ejemplo — Kilometraje con franquicia (Modifier Franquicia)", Tipo = TipoConcepto.Pago, ColumnaA3 = "KM", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "Modifier", kind = "Franquicia", threshold = 300,
+                    inner = new { type = "Aggregate", op = "Sum", field = "Km", source = new { type = "Source", entity = "VisitasCelero", filters = new object[0] } } },
+                right = new { type = "Number", value = 0.23 }
+            }) },
+
+            // TARIFA POR TRAMOS: 1ª hora a 90 €, siguientes a 37 €.
+            new() { Nombre = "Ejemplo — Implantación por tramos (Tramos)", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "Tramos",
+                cantidad = new { type = "Aggregate", op = "Sum", field = "Horas", source = new { type = "Source", entity = "HorasBizneo", filters = new object[0] } },
+                tramos = new object[] { new { hasta = 1, precio = 90 }, new { hasta = (int?)null, precio = 37 } }
+            }) },
+
+            // FEE SOBRE CONCEPTOS: 6,5 % sobre la suma de todos los conceptos base del cierre de facturación.
+            new() { Nombre = "Ejemplo — Fee 6,5% sobre conceptos (ConceptRef)", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "ConceptRef", conceptIds = new int[0] },
+                right = new { type = "Number", value = 0.065 }
+            }) },
         };
         _db.Concepts.AddRange(concepts);
         await _db.SaveChangesAsync(ct);

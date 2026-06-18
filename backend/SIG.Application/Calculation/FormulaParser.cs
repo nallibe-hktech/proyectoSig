@@ -67,6 +67,18 @@ public class FormulaParser : IFormulaParser
                 Validate(b.Left);
                 Validate(b.Right);
                 return;
+            case ModifierNode m:
+                if (string.IsNullOrEmpty(m.Kind)) throw new FormulaInvalidException("Modifier.kind vacío.");
+                if (m.Inner is null) throw new FormulaInvalidException("Modifier.inner nulo.");
+                Validate(m.Inner);
+                return;
+            case TramosNode t:
+                if (t.Cantidad is null) throw new FormulaInvalidException("Tramos.cantidad nulo.");
+                if (t.Tramos is null || t.Tramos.Count == 0) throw new FormulaInvalidException("Tramos sin tramos definidos.");
+                Validate(t.Cantidad);
+                return;
+            case ConceptRefNode:
+                return;
             default:
                 throw new FormulaInvalidException($"Tipo de nodo desconocido: {node.GetType().Name}");
         }

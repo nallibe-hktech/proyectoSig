@@ -55,8 +55,6 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          cache: true
-          cache-dependency-path: 'backend/**/packages.lock.json'
 
       # Step 3: Restore dependencies
       - name: Restore NuGet packages
