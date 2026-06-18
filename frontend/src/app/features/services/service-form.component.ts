@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -92,7 +92,7 @@ import { ClientListItemDto, ConceptListItemDto, UserListItemDto, DepartmentDto, 
             <div class="sig-form-row">
               <mat-form-field class="sig-form-field"><mat-label>Centros de coste</mat-label>
                 <mat-select formControlName="costCenterIds" multiple data-testid="service-costcenters">
-                  @for (cc of ccs(); track cc.id) { <mat-option [value]="cc.id">{{ cc.codigo }} - {{ cc.nombre }}</mat-option> }
+                  @for (cc of ccs(); track cc.id) { <mat-option [value]="cc.id">{{ cc.nombre }}</mat-option> }
                 </mat-select>
               </mat-form-field>
               <mat-form-field class="sig-form-field"><mat-label>Usuarios</mat-label>
@@ -102,9 +102,16 @@ import { ClientListItemDto, ConceptListItemDto, UserListItemDto, DepartmentDto, 
               </mat-form-field>
             </div>
             <div class="sig-form-row">
-              <mat-form-field class="sig-form-field"><mat-label>Conceptos</mat-label>
+              <mat-form-field class="sig-form-field"><mat-label>Filtrar conceptos por tipo</mat-label>
+                <mat-select [value]="conceptTipoFiltro()" (selectionChange)="conceptTipoFiltro.set($event.value)" data-testid="service-conceptos-filtro-tipo">
+                  <mat-option [value]="null">Todos</mat-option>
+                  <mat-option value="Pago">Pago</mat-option>
+                  <mat-option value="Factura">Factura</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field class="sig-form-field"><mat-label>Conceptos del catálogo</mat-label>
                 <mat-select formControlName="conceptIds" multiple data-testid="service-conceptos">
-                  @for (c of concepts(); track c.id) { <mat-option [value]="c.id">{{ c.nombre }} ({{ c.tipo }})</mat-option> }
+                  @for (c of conceptosFiltrados(); track c.id) { <mat-option [value]="c.id">{{ c.nombre }} ({{ c.tipo }})</mat-option> }
                 </mat-select>
               </mat-form-field>
             </div>
@@ -146,6 +153,12 @@ export class ServiceFormComponent implements OnInit {
   protected readonly submitting = signal(false);
   protected readonly clients = signal<ClientListItemDto[]>([]);
   protected readonly concepts = signal<ConceptListItemDto[]>([]);
+  // Ola 2 (#8): filtro por tipo de concepto al elegir cuáles asignar al servicio.
+  protected readonly conceptTipoFiltro = signal<'Pago' | 'Factura' | null>(null);
+  protected readonly conceptosFiltrados = computed(() => {
+    const tipo = this.conceptTipoFiltro();
+    return tipo ? this.concepts().filter((c) => c.tipo === tipo) : this.concepts();
+  });
   protected readonly users = signal<UserListItemDto[]>([]);
   protected readonly depts = signal<DepartmentDto[]>([]);
   protected readonly ccs = signal<CostCenterDto[]>([]);

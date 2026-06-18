@@ -3,6 +3,7 @@ using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Repositories;
 using SIG.Application.Interfaces.Services;
 using SIG.Domain.Entities;
+using SIG.Domain.Enums;
 using SIG.Domain.Exceptions;
 
 namespace SIG.Application.Services;
@@ -16,7 +17,7 @@ public class ClientService : IClientService
     public async Task<PagedResult<ClientListItemDto>> ListAsync(int usuarioId, int page, int pageSize, string? search, CancellationToken ct)
     {
         var result = await _repo.ListPaginatedForUserAsync(usuarioId, page, pageSize, search, ct);
-        var items = result.Items.Select(c => new ClientListItemDto(c.Id, c.Nombre, c.NIF, c.Ciudad, c.Services?.Count ?? 0)).ToList();
+        var items = result.Items.Select(c => new ClientListItemDto(c.Id, c.Nombre, c.NIF, c.Ciudad, c.Estado, c.Services?.Count ?? 0)).ToList();
         return new PagedResult<ClientListItemDto>(items, result.Total, result.Page, result.PageSize);
     }
 
@@ -35,6 +36,7 @@ public class ClientService : IClientService
         {
             Nombre = req.Nombre,
             NIF = req.NIF,
+            Estado = req.Estado ?? EstadoCliente.Activo,
             Direccion = req.Direccion,
             Ciudad = req.Ciudad,
             Provincia = req.Provincia,
@@ -57,6 +59,7 @@ public class ClientService : IClientService
             throw new DuplicateException($"Ya existe otro cliente con NIF {req.NIF}.");
         c.Nombre = req.Nombre;
         c.NIF = req.NIF;
+        c.Estado = req.Estado;
         c.Direccion = req.Direccion;
         c.Ciudad = req.Ciudad;
         c.Provincia = req.Provincia;
@@ -81,5 +84,5 @@ public class ClientService : IClientService
     }
 
     private static ClientDetailDto Map(Client c) =>
-        new(c.Id, c.Nombre, c.NIF, c.Direccion, c.Ciudad, c.Provincia, c.Pais, c.CodigoPostal, c.ContactoNombre, c.ContactoEmail, c.ContactoTelefono);
+        new(c.Id, c.Nombre, c.NIF, c.Estado, c.Direccion, c.Ciudad, c.Provincia, c.Pais, c.CodigoPostal, c.ContactoNombre, c.ContactoEmail, c.ContactoTelefono);
 }

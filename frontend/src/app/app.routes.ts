@@ -68,13 +68,24 @@ export const routes: Routes = [
       { path: 'approvals', loadComponent: () => import('./features/approvals/approvals.component').then((m) => m.ApprovalsComponent), title: 'Panel de aprobaciones — SIG' },
       { path: 'approvals/pendientes', loadComponent: () => import('./features/approvals/approvals.component').then((m) => m.ApprovalsComponent), title: 'Mis pendientes — SIG', data: { onlyPendientes: true } },
 
-      // Closures
-      { path: 'closures', loadComponent: () => import('./features/closures/closures-list.component').then((m) => m.ClosuresListComponent), title: 'Cierres — SIG' },
-      { path: 'closures/nuevo', loadComponent: () => import('./features/closures/closure-form.component').then((m) => m.ClosureFormComponent), title: 'Nuevo Cierre — SIG' },
-      { path: 'closures/:id', loadComponent: () => import('./features/closures/closure-detail.component').then((m) => m.ClosureDetailComponent), title: 'Detalle Cierre — SIG' },
+      // Cierres de Costes (Ola 3b #10) — mensual, evalúa conceptos de Pago.
+      { path: 'cierres-costes', loadComponent: () => import('./features/closures/closures-list.component').then((m) => m.ClosuresListComponent), data: { tipoCierre: 'Costes' }, title: 'Cierres de Costes — SIG' },
+      { path: 'cierres-costes/nuevo', loadComponent: () => import('./features/closures/closure-form.component').then((m) => m.ClosureFormComponent), data: { tipoCierre: 'Costes' }, title: 'Nuevo Cierre de Costes — SIG' },
+      { path: 'cierres-costes/:id', loadComponent: () => import('./features/closures/closure-detail.component').then((m) => m.ClosureDetailComponent), data: { tipoCierre: 'Costes' }, title: 'Detalle Cierre de Costes — SIG' },
+
+      // Cierres de Facturación (Ola 3b #10) — plurianual, evalúa conceptos de Factura.
+      { path: 'cierres-facturacion', loadComponent: () => import('./features/closures/closures-list.component').then((m) => m.ClosuresListComponent), data: { tipoCierre: 'Facturacion' }, title: 'Cierres de Facturación — SIG' },
+      { path: 'cierres-facturacion/nuevo', loadComponent: () => import('./features/closures/closure-form.component').then((m) => m.ClosureFormComponent), data: { tipoCierre: 'Facturacion' }, title: 'Nuevo Cierre de Facturación — SIG' },
+      { path: 'cierres-facturacion/:id', loadComponent: () => import('./features/closures/closure-detail.component').then((m) => m.ClosureDetailComponent), data: { tipoCierre: 'Facturacion' }, title: 'Detalle Cierre de Facturación — SIG' },
+
+      // Compat: la antigua ruta /closures redirige a Cierres de Costes.
+      { path: 'closures', redirectTo: 'cierres-costes', pathMatch: 'full' },
 
       // Alertas de Cierre
       { path: 'alertas', loadComponent: () => import('./features/closures/alerts-list.component').then((m) => m.AlertsListComponent), title: 'Alertas de Cierre — SIG' },
+
+      // Contratos de un día (Ola 2 #2)
+      { path: 'contratos-un-dia', loadComponent: () => import('./features/contratos/contratos-un-dia.component').then((m) => m.ContratosUnDiaComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Backoffice'] }, title: 'Contratos de un día — SIG' },
 
       // Calculations
       { path: 'calculations/:closureLineId', loadComponent: () => import('./features/calculations/calculation-detail.component').then((m) => m.CalculationDetailComponent), title: 'Detalle de cálculo — SIG' },
@@ -106,6 +117,9 @@ export const routes: Routes = [
 
       // Reports
       { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then((m) => m.ReportsComponent), title: 'Reports — SIG' },
+
+      // Forecast (PPT slide 36)
+      { path: 'forecast', loadComponent: () => import('./features/forecast/forecast-resumen.component').then((m) => m.ForecastResumenComponent), title: 'Forecast — SIG' },
 
       // Administración — CostCenters
       { path: 'cost-centers', loadComponent: () => import('./features/cost-centers/cost-centers-list.component').then((m) => m.CostCentersListComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Centros de Coste — SIG' },

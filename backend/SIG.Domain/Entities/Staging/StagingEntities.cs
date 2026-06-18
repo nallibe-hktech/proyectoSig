@@ -386,6 +386,9 @@ public class StagingA3InnuvaContrato : IStagingRow
     public decimal ImporteBruto { get; set; }
     public int? UserId { get; set; }
     public User? User { get; set; }
+    // Ola 2 (#2): contratos de un día (FechaInicio == FechaFin) señalados; exclusión manual
+    public bool IgnoradoEnCierre { get; set; }
+    public string? MotivoIgnorar { get; set; }
     // IStagingRow
     public string PayloadJson { get; set; } = null!;
     public string Hash { get; set; } = null!;

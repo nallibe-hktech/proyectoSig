@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ClientService } from '../../core/api/clients.service';
 import { NotifyService } from '../../core/notify.service';
@@ -18,7 +19,7 @@ import { SkeletonComponent } from '../../shared/page-skeleton.component';
   standalone: true,
   imports: [
     CommonModule, RouterLink, ReactiveFormsModule,
-    MatCardModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule, MatProgressSpinnerModule,
+    MatCardModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule, MatSelectModule, MatProgressSpinnerModule,
     BreadcrumbsComponent, SkeletonComponent,
   ],
   template: `
@@ -70,6 +71,16 @@ import { SkeletonComponent } from '../../shared/page-skeleton.component';
                 <mat-form-field class="sig-form-field">
                   <mat-label>Teléfono</mat-label>
                   <input matInput formControlName="contactoTelefono" data-testid="input-telefono" />
+                </mat-form-field>
+              </div>
+
+              <div class="sig-form-row">
+                <mat-form-field class="sig-form-field">
+                  <mat-label>Estado *</mat-label>
+                  <mat-select formControlName="estado" data-testid="select-estado">
+                    <mat-option value="Activo">Activo</mat-option>
+                    <mat-option value="Inactivo">Inactivo</mat-option>
+                  </mat-select>
                 </mat-form-field>
               </div>
 
@@ -155,6 +166,7 @@ export class ClientFormComponent implements OnInit {
   protected readonly form = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
     nif: ['', [Validators.required, Validators.pattern(/^[XYZA-Z]?\d{7,8}[A-Z0-9]$/)]],
+    estado: ['Activo' as 'Activo' | 'Inactivo', [Validators.required]],
     direccion: [''],
     ciudad: [''],
     provincia: [''],
@@ -179,7 +191,7 @@ export class ClientFormComponent implements OnInit {
     this.clientSvc.getById(this.id()!).subscribe({
       next: (c) => {
         this.form.patchValue({
-          nombre: c.nombre, nif: c.nif,
+          nombre: c.nombre, nif: c.nif, estado: c.estado,
           direccion: c.direccion ?? '', ciudad: c.ciudad ?? '', provincia: c.provincia ?? '',
           pais: c.pais ?? '', codigoPostal: c.codigoPostal ?? '',
           contactoNombre: c.contactoNombre ?? '', contactoEmail: c.contactoEmail ?? '',

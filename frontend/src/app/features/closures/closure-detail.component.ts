@@ -9,16 +9,18 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ClosureService } from '../../core/api/closures.service';
+import { CierresService } from '../../core/api/cierres.service';
 import { ExportService } from '../../core/api/misc.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotifyService } from '../../core/notify.service';
-import { ClosureDetailDto, ClosureAlertaDto, ApprovalHistoryDto } from '../../models/dtos';
-import { ApprovalStep } from '../../models/enums';
+import { CierreDetailDto, ClosureAlertaDto, CierreHistoryDto, ClosureLineDto, CierreLineIncentivoRequest } from '../../models/dtos';
+import { ApprovalStep, TipoCierre } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { StateBadgeComponent } from '../../shared/state-badge.component';
 import { RejectDialogComponent } from './reject-dialog.component';
+import { OverrideExceptionDialog } from './override-exception.dialog';
+import { IncentivoDialog } from './incentivo.dialog';
 
 @Component({
   selector: 'app-closure-detail',
@@ -30,7 +32,7 @@ import { RejectDialogComponent } from './reject-dialog.component';
   ],
   template: `
     <div class="sig-page">
-      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Closures', route: '/closures' }, { label: closure() ? closure()!.serviceNombre + ' — ' + closure()!.periodNombre : 'Detalle' }]" />
+      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: tituloLista(), route: baseRoute() }, { label: closure() ? closure()!.serviceNombre + ' — ' + closure()!.periodNombre : 'Detalle' }]" />
 
       <div class="sig-page__header">
         <h1 class="sig-page__title">{{ closure() ? closure()!.serviceNombre + ' — ' + closure()!.periodNombre : 'Cargando...' }}</h1>
@@ -63,33 +65,31 @@ import { RejectDialogComponent } from './reject-dialog.component';
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
           <strong>Estado:</strong>
           <sig-state-badge [estado]="closure()!.estado" [paso]="closure()!.pasoActual" />
-          <span style="color: var(--mat-sys-on-surface-variant);">Paso {{ pasoNumero(closure()!.pasoActual) }} de 5</span>
+          <span style="color: var(--mat-sys-on-surface-variant);">Paso {{ pasoNumero(closure()!.pasoActual) }} de 3</span>
         </div>
       }
 
       @if (loading()) { <mat-card><mat-card-content><sig-skeleton [count]="6" /></mat-card-content></mat-card> }
       @else if (closure()) {
-        <!-- KPIs -->
+        <!-- KPIs: cada cierre expone un único total (Coste o Facturación según el tipo).
+             El margen es "al vuelo" y vive en el Dashboard, no aquí. -->
         <div class="sig-kpi-row">
-          <mat-card class="sig-kpi-card" data-testid="kpi-coste-total">
+          <mat-card class="sig-kpi-card" data-testid="kpi-total">
             <mat-card-content>
-              <div class="sig-kpi-label">Coste total</div>
-              <div class="sig-kpi-value mono-num">{{ closure()!.costeTotal | number:'1.0-2' }} €</div>
+              <div class="sig-kpi-label">{{ totalLabel() }}</div>
+              <div class="sig-kpi-value mono-num">{{ closure()!.total | number:'1.0-2' }} €</div>
             </mat-card-content>
           </mat-card>
-          <mat-card class="sig-kpi-card" data-testid="kpi-facturacion">
+          <mat-card class="sig-kpi-card" data-testid="kpi-tipo">
             <mat-card-content>
-              <div class="sig-kpi-label">Facturación</div>
-              <div class="sig-kpi-value mono-num">{{ closure()!.facturacionTotal | number:'1.0-2' }} €</div>
+              <div class="sig-kpi-label">Tipo de cierre</div>
+              <div class="sig-kpi-value">{{ closure()!.tipoCierre === 'Costes' ? 'Costes' : 'Facturación' }}</div>
             </mat-card-content>
           </mat-card>
-          <mat-card class="sig-kpi-card" data-testid="kpi-margen">
+          <mat-card class="sig-kpi-card" data-testid="kpi-lineas">
             <mat-card-content>
-              <div class="sig-kpi-label">Margen</div>
-              <div class="sig-kpi-value mono-num">{{ closure()!.margen | number:'1.0-2' }} €</div>
-              <div class="sig-kpi-trend" [class.sig-kpi-trend--up]="closure()!.margen >= 0" [class.sig-kpi-trend--down]="closure()!.margen < 0">
-                {{ closure()!.facturacionTotal > 0 ? ((closure()!.margen / closure()!.facturacionTotal) * 100 | number:'1.0-1') : '0' }}%
-              </div>
+              <div class="sig-kpi-label">Líneas</div>
+              <div class="sig-kpi-value mono-num">{{ closure()!.lines.length }}</div>
             </mat-card-content>
           </mat-card>
         </div>
@@ -137,9 +137,50 @@ import { RejectDialogComponent } from './reject-dialog.component';
           </mat-card>
         }
 
+        <!-- PPT slide 15: matriz empleados × conceptos -->
+        @if (closure()!.lines.length > 0) {
+          <mat-card style="margin-bottom: 16px;" data-testid="card-matriz">
+            <mat-card-header><mat-card-title>Matriz empleados × conceptos</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <div class="matriz-scroll">
+                <table class="matriz">
+                  <thead>
+                    <tr>
+                      <th class="sticky">Empleado</th>
+                      @for (c of matriz().conceptos; track c) { <th class="num">{{ c }}</th> }
+                      <th class="num total-col">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (f of matriz().filas; track f.userNombre) {
+                      <tr data-testid="matriz-fila">
+                        <td class="sticky">{{ f.userNombre }}</td>
+                        @for (v of f.celdas; track $index) {
+                          <td class="num">{{ v ? (v | number:'1.0-2') : '—' }}</td>
+                        }
+                        <td class="num total-col">{{ f.total | number:'1.0-2' }}</td>
+                      </tr>
+                    }
+                    <tr class="totales">
+                      <td class="sticky">Total</td>
+                      @for (t of matriz().totalesPorConcepto; track $index) { <td class="num">{{ t | number:'1.0-2' }}</td> }
+                      <td class="num total-col">{{ matriz().granTotal | number:'1.0-2' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
         <!-- Líneas -->
         <mat-card style="margin-bottom: 16px;">
-          <mat-card-header><mat-card-title>Líneas de cierre</mat-card-title></mat-card-header>
+          <mat-card-header style="display:flex;align-items:center;justify-content:space-between;">
+            <mat-card-title>Líneas de cierre</mat-card-title>
+            @if (canEditLines()) {
+              <button mat-stroked-button (click)="onAnadirIncentivo()" data-testid="btn-anadir-incentivo"><mat-icon>add_card</mat-icon> Añadir incentivo</button>
+            }
+          </mat-card-header>
           <mat-card-content>
             @if (closure()!.lines.length === 0) {
               <p style="color: var(--mat-sys-on-surface-variant);">Sin líneas calculadas.</p>
@@ -148,7 +189,14 @@ import { RejectDialogComponent } from './reject-dialog.component';
                 <ng-container matColumnDef="concepto"><th mat-header-cell *matHeaderCellDef>Concepto</th><td mat-cell *matCellDef="let l">{{ l.conceptNombre }}</td></ng-container>
                 <ng-container matColumnDef="tipo"><th mat-header-cell *matHeaderCellDef>Tipo</th><td mat-cell *matCellDef="let l"><mat-chip>{{ l.tipo }}</mat-chip></td></ng-container>
                 <ng-container matColumnDef="usuario"><th mat-header-cell *matHeaderCellDef>Usuario</th><td mat-cell *matCellDef="let l">{{ l.userNombre ?? '—' }}</td></ng-container>
-                <ng-container matColumnDef="importe"><th mat-header-cell *matHeaderCellDef>Importe</th><td mat-cell *matCellDef="let l" class="mono-num">{{ l.importe | number:'1.0-2' }} €</td></ng-container>
+                <ng-container matColumnDef="importe"><th mat-header-cell *matHeaderCellDef>Importe</th>
+                  <td mat-cell *matCellDef="let l" class="mono-num">
+                    {{ l.importe | number:'1.0-2' }} €
+                    @if (l.esManual) {
+                      <mat-icon style="font-size:16px;height:16px;width:16px;vertical-align:middle;color:var(--sig-warning);" [title]="l.motivoManual ?? 'Línea manual'">edit_note</mat-icon>
+                    }
+                  </td>
+                </ng-container>
                 <ng-container matColumnDef="incidencia"><th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let l">
                     @if (l.tieneIncidencia) {
@@ -158,6 +206,9 @@ import { RejectDialogComponent } from './reject-dialog.component';
                 </ng-container>
                 <ng-container matColumnDef="acciones"><th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let l">
+                    @if (canEditLines()) {
+                      <button mat-icon-button (click)="onOverrideLinea(l)" [attr.data-testid]="'btn-override-' + l.id" aria-label="Ajustar importe"><mat-icon>edit</mat-icon></button>
+                    }
                     <a mat-icon-button [routerLink]="['/calculations', l.id]" [attr.data-testid]="'btn-detalle-' + l.id" aria-label="Ver detalle"><mat-icon>visibility</mat-icon></a>
                   </td>
                 </ng-container>
@@ -198,18 +249,54 @@ import { RejectDialogComponent } from './reject-dialog.component';
   `,
   styles: [`
     .sig-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .matriz-scroll { overflow-x: auto; }
+    table.matriz { border-collapse: collapse; width: 100%; font-size: 13px; }
+    table.matriz th, table.matriz td { border: 1px solid var(--mat-sys-outline-variant); padding: 6px 10px; white-space: nowrap; }
+    table.matriz th { background: var(--mat-sys-surface-container); font-weight: 600; text-align: left; }
+    table.matriz .num { text-align: right; font-variant-numeric: tabular-nums; }
+    table.matriz .total-col { font-weight: 600; background: var(--mat-sys-surface-container-low); }
+    table.matriz tr.totales td { font-weight: 700; background: var(--mat-sys-surface-container); }
+    table.matriz .sticky { position: sticky; left: 0; background: var(--mat-sys-surface); }
   `],
 })
 export class ClosureDetailComponent implements OnInit {
-  private readonly closureSvc = inject(ClosureService);
+  private readonly cierresSvc = inject(CierresService);
   private readonly exportSvc = inject(ExportService);
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotifyService);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
 
-  protected readonly closure = signal<ClosureDetailDto | null>(null);
-  protected readonly historial = signal<ApprovalHistoryDto[]>([]);
+  // Ola 3b (#10): el tipo de cierre se inyecta por data de ruta.
+  protected readonly tipo = signal<TipoCierre>((this.route.snapshot.data['tipoCierre'] as TipoCierre) ?? 'Costes');
+  protected readonly tituloLista = () => this.tipo() === 'Costes' ? 'Cierres de Costes' : 'Cierres de Facturación';
+  protected readonly totalLabel = () => this.tipo() === 'Costes' ? 'Coste total' : 'Facturación total';
+  protected readonly baseRoute = () => this.tipo() === 'Costes' ? '/cierres-costes' : '/cierres-facturacion';
+
+  protected readonly closure = signal<CierreDetailDto | null>(null);
+  protected readonly historial = signal<CierreHistoryDto[]>([]);
+
+  // PPT slide 15: vista global en matriz — empleados en filas, conceptos en columnas.
+  protected readonly matriz = computed(() => {
+    const lines = this.closure()?.lines ?? [];
+    const conceptos: string[] = [];
+    const conceptoIndex = new Map<string, number>();
+    for (const l of lines) {
+      if (!conceptoIndex.has(l.conceptNombre)) { conceptoIndex.set(l.conceptNombre, conceptos.length); conceptos.push(l.conceptNombre); }
+    }
+    const filasMap = new Map<string, { userNombre: string; celdas: number[]; total: number }>();
+    for (const l of lines) {
+      const key = l.userNombre ?? 'Sin asignar';
+      let fila = filasMap.get(key);
+      if (!fila) { fila = { userNombre: key, celdas: conceptos.map(() => 0), total: 0 }; filasMap.set(key, fila); }
+      fila.celdas[conceptoIndex.get(l.conceptNombre)!] += l.importe;
+      fila.total += l.importe;
+    }
+    const filas = [...filasMap.values()].sort((a, b) => a.userNombre.localeCompare(b.userNombre));
+    const totalesPorConcepto = conceptos.map((_, i) => filas.reduce((acc, f) => acc + f.celdas[i], 0));
+    const granTotal = filas.reduce((acc, f) => acc + f.total, 0);
+    return { conceptos, filas, totalesPorConcepto, granTotal };
+  });
   protected readonly loading = signal(true);
   protected readonly lineCols = ['concepto', 'tipo', 'usuario', 'importe', 'incidencia', 'acciones'];
 
@@ -220,40 +307,48 @@ export class ClosureDetailComponent implements OnInit {
 
   protected readonly canRecalculate = computed(() => {
     const c = this.closure();
-    return !!c && (c.estado === 'Borrador' || c.estado === 'EnAprobacion' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager');
+    return !!c && (c.estado === 'Borrador' || c.estado === 'EnAprobacion' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager', 'Facilitador', 'Interlocutor', 'Gestor');
+  });
+
+  // Ola 2 (#3a): override de importe e incentivos solo en estados editables (Borrador/Rechazado).
+  protected readonly canEditLines = computed(() => {
+    const c = this.closure();
+    return !!c && (c.estado === 'Borrador' || c.estado === 'Rechazado') && this.auth.hasAnyRole('Administrator', 'Backoffice', 'ProjectManager', 'Facilitador', 'Interlocutor', 'Gestor');
   });
 
   protected readonly canApprove = computed(() => {
     const c = this.closure();
     if (!c) return false;
-    if (c.estado === 'Aprobado' || c.estado === 'Exportado' || c.estado === 'Rechazado') return false;
-    const rolePerStep: Record<ApprovalStep, string> = {
-      ProjectManager: 'ProjectManager',
-      Backoffice: 'Backoffice',
-      Fico: 'Fico',
-      Direction: 'Direction',
-      SystemExports: 'Administrator',
-    };
-    const needed = rolePerStep[c.pasoActual];
-    return this.auth.hasRole(needed as 'Administrator' | 'Direction' | 'Fico' | 'Backoffice' | 'ProjectManager') || this.auth.hasRole('Administrator');
+    if (c.estado === 'Aprobado' || c.estado === 'Exportado') return false;
+    if (this.auth.hasRole('Administrator')) return true;
+    // Ola 3a (#1): flujo Grupo → FICO. El paso Grupo lo aprueba un miembro del grupo
+    // (rol global Facilitador/Interlocutor/Gestor); el refuerzo de la asignación al
+    // servicio lo aplica el backend. El paso Fico lo aprueba el rol Fico.
+    if (c.pasoActual === 'Grupo') {
+      return this.auth.hasAnyRole('Facilitador', 'Interlocutor', 'Gestor');
+    }
+    if (c.pasoActual === 'Fico') {
+      return this.auth.hasRole('Fico');
+    }
+    return false;
   });
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.load(id);
-    this.closureSvc.historial(id).subscribe({
+    this.cierresSvc.historial(this.tipo(), id).subscribe({
       next: (h) => this.historial.set(h),
       error: () => this.historial.set([]),
     });
   }
 
   protected pasoNumero(p: ApprovalStep): number {
-    return { ProjectManager: 1, Backoffice: 2, Fico: 3, Direction: 4, SystemExports: 5 }[p];
+    return { Grupo: 1, Fico: 2, SystemExports: 3 }[p];
   }
 
   private load(id: number): void {
     this.loading.set(true);
-    this.closureSvc.getById(id).subscribe({
+    this.cierresSvc.getById(this.tipo(), id).subscribe({
       next: (c) => { this.closure.set(c); this.loading.set(false); },
       error: () => { this.loading.set(false); this.notify.error('No se pudo cargar el cierre'); },
     });
@@ -261,19 +356,43 @@ export class ClosureDetailComponent implements OnInit {
 
   protected onRecalcular(): void {
     const c = this.closure(); if (!c) return;
-    this.closureSvc.recalcular(c.id, c.rowVersion, { comentarios: null }).subscribe({
+    this.cierresSvc.recalcular(this.tipo(), c.id, c.rowVersion, { comentarios: null }).subscribe({
       next: (updated) => { this.closure.set(updated); this.notify.success('Cierre recalculado'); },
       error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo recalcular'),
     });
   }
 
+  protected onOverrideLinea(line: ClosureLineDto): void {
+    const c = this.closure(); if (!c) return;
+    this.dialog.open(OverrideExceptionDialog, {
+      data: { line, resultadoOriginal: line.importeOriginal ?? line.importe, razon: line.motivoManual ?? '' },
+    }).afterClosed().subscribe((res) => {
+      if (!res) return;
+      this.cierresSvc.overrideLinea(this.tipo(), c.id, line.id, c.rowVersion, { importe: res.nuevoImporte, motivo: res.razon }).subscribe({
+        next: (updated) => { this.closure.set(updated); this.notify.success('Importe ajustado'); },
+        error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo ajustar la línea'),
+      });
+    });
+  }
+
+  protected onAnadirIncentivo(): void {
+    const c = this.closure(); if (!c) return;
+    this.dialog.open(IncentivoDialog, {}).afterClosed().subscribe((req: CierreLineIncentivoRequest | undefined) => {
+      if (!req) return;
+      this.cierresSvc.agregarIncentivo(this.tipo(), c.id, c.rowVersion, req).subscribe({
+        next: (updated) => { this.closure.set(updated); this.notify.success('Incentivo añadido'); },
+        error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo añadir el incentivo'),
+      });
+    });
+  }
+
   protected onAprobar(): void {
     const c = this.closure(); if (!c) return;
-    this.closureSvc.aprobar(c.id, c.rowVersion, { comentarios: null }).subscribe({
+    this.cierresSvc.aprobar(this.tipo(), c.id, c.rowVersion, { comentarios: null }).subscribe({
       next: (updated) => {
         this.closure.set(updated);
         this.notify.success('Cierre aprobado');
-        this.closureSvc.historial(c.id).subscribe({ next: (h) => this.historial.set(h) });
+        this.cierresSvc.historial(this.tipo(), c.id).subscribe({ next: (h) => this.historial.set(h) });
       },
       error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo aprobar'),
     });
@@ -283,11 +402,11 @@ export class ClosureDetailComponent implements OnInit {
     const c = this.closure(); if (!c) return;
     this.dialog.open(RejectDialogComponent, { minWidth: 480 }).afterClosed().subscribe((motivo?: string | null) => {
       if (!motivo) return;
-      this.closureSvc.rechazar(c.id, c.rowVersion, { motivo }).subscribe({
+      this.cierresSvc.rechazar(this.tipo(), c.id, c.rowVersion, { motivo }).subscribe({
         next: (updated) => {
           this.closure.set(updated);
           this.notify.warning('Cierre rechazado');
-          this.closureSvc.historial(c.id).subscribe({ next: (h) => this.historial.set(h) });
+          this.cierresSvc.historial(this.tipo(), c.id).subscribe({ next: (h) => this.historial.set(h) });
         },
         error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo rechazar'),
       });
@@ -312,8 +431,8 @@ export class ClosureDetailComponent implements OnInit {
 
   protected onConfirmarAlerta(alertaId: number): void {
     const c = this.closure(); if (!c) return;
-    this.closureSvc.confirmarAlerta(c.id, alertaId).subscribe({
-      next: (updated: ClosureDetailDto) => {
+    this.cierresSvc.confirmarAlerta(this.tipo(), c.id, alertaId).subscribe({
+      next: (updated: CierreDetailDto) => {
         this.closure.set(updated);
         this.notify.success('Advertencia confirmada');
       },

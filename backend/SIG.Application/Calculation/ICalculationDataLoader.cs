@@ -4,7 +4,7 @@ namespace SIG.Application.Calculation;
 
 public interface ICalculationDataLoader
 {
-    Task<CalculationContext> LoadAsync(Closure closure, CancellationToken ct);
+    Task<CalculationContext> LoadAsync(CalculationTarget target, CancellationToken ct);
 }
 
 public interface IVariableResolver

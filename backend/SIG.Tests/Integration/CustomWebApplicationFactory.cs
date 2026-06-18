@@ -81,8 +81,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 calculation_logs,
                 approval_history,
                 approvals,
+                closure_alertas,
                 closure_lines,
-                closures,
+                cierres_costes,
+                cierres_facturacion,
                 refresh_tokens
             RESTART IDENTITY CASCADE;
         """);

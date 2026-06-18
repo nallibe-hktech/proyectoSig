@@ -56,8 +56,10 @@ public class DataSeeder : ISeedService
                 calculation_logs,
                 approval_history,
                 approvals,
+                closure_alertas,
                 closure_lines,
-                closures,
+                cierres_costes,
+                cierres_facturacion,
                 staging_pay_hawk_gastos,
                 staging_intratime_fichajes,
                 staging_bizneo_absences,
@@ -97,11 +99,11 @@ public class DataSeeder : ISeedService
 
         var (rMap, dMap, costCenters, passwordHash) = await SeedMasterDataAsync(ct);
         var (uByEmail, servicesList, concepts) = await SeedEntityDataAsync(passwordHash, dMap, rMap, costCenters, ct);
-        var (periodsList, closuresFull) = await SeedTransactionDataAsync(servicesList, ct);
+        var (periodsList, cierresFull) = await SeedTransactionDataAsync(servicesList, ct);
 
         await SeedStagingDataAsync(uByEmail.Values.ToList(), servicesList.ToList(), periodsList, uByEmail, ct);
-        await SeedLineasYLogsAsync(closuresFull, concepts, uByEmail.Values.ToList(), ct);
-        await SeedApprovalsAsync(closuresFull, rMap, uByEmail, ct);
+        await SeedLineasYLogsAsync(cierresFull, concepts, uByEmail.Values.ToList(), ct);
+        await SeedApprovalsAsync(cierresFull, rMap, uByEmail, ct);
         await SeedAuditExtraAsync(uByEmail, ct);
     }
 
@@ -127,12 +129,12 @@ public class DataSeeder : ISeedService
         return (uByEmail, services.ToList(), concepts);
     }
 
-    private async Task<(List<Period>, List<Closure>)> SeedTransactionDataAsync(List<Service> servicesList, CancellationToken ct)
+    private async Task<(List<Period>, List<CierrePair>)> SeedTransactionDataAsync(List<Service> servicesList, CancellationToken ct)
     {
         var periods = await SeedPeriodsAsync(ct);
         var periodsList = periods.ToList();
-        var closuresFull = await SeedClosuresAsync(servicesList, periodsList, ct);
-        return (periodsList, closuresFull);
+        var cierresFull = await SeedCierresAsync(servicesList, periodsList, ct);
+        return (periodsList, cierresFull);
     }
 
     private async Task<List<Role>> SeedRolesAsync(CancellationToken ct)
@@ -194,10 +196,12 @@ public class DataSeeder : ISeedService
             New("fico@sig.local",       "34567890C", "Javier",    "López",    dMap["Finanzas"], passwordHash, rMap["Fico"]),
             New("backoffice1@sig.local","45678901D", "Laura",     "Sánchez",  dMap["Backoffice"], passwordHash, rMap["Backoffice"]),
             New("backoffice2@sig.local","56789012E", "Pedro",     "Martín",   dMap["Backoffice"], passwordHash, rMap["Backoffice"]),
-            New("pm.alpha@sig.local",   "67890123F", "María",     "García",   dMap["Operaciones"], passwordHash, rMap["ProjectManager"]),
-            New("pm.beta@sig.local",    "78901234G", "David",     "Pérez",    dMap["Operaciones"], passwordHash, rMap["ProjectManager"]),
-            New("pm.gamma@sig.local",   "89012345H", "Sara",      "Gómez",    dMap["Operaciones"], passwordHash, rMap["ProjectManager"]),
-            New("pm.multi@sig.local",   "90123456J", "Alex",      "Torres",   dMap["Operaciones"], passwordHash, rMap["ProjectManager"]),
+            // Ola 3a (#1): los gestores de servicio son miembros del "grupo" — rol global Facilitador/Interlocutor/Gestor
+            // + asignación al servicio vía ServiceUser (ver SeedServicesAsync). Habilitan el primer paso del flujo.
+            New("pm.alpha@sig.local",   "67890123F", "María",     "García",   dMap["Operaciones"], passwordHash, rMap["Gestor"]),
+            New("pm.beta@sig.local",    "78901234G", "David",     "Pérez",    dMap["Operaciones"], passwordHash, rMap["Facilitador"]),
+            New("pm.gamma@sig.local",   "89012345H", "Sara",      "Gómez",    dMap["Operaciones"], passwordHash, rMap["Interlocutor"]),
+            New("pm.multi@sig.local",   "90123456J", "Alex",      "Torres",   dMap["Operaciones"], passwordHash, rMap["Gestor"]),
             New("auditor@sig.local",    "01234567K", "Inés",      "Romero",   dMap["Finanzas"], passwordHash, rMap["Auditor"]),
             New("reader@sig.local",     "11234567L", "Luis",      "Vega",     dMap["Operaciones"], passwordHash, rMap["Reader"]),
             NewRecurso("gpv1@sig.local","21234567M", "Carlos",    "Ramos",    dMap["Operaciones"], passwordHash),
@@ -214,9 +218,9 @@ public class DataSeeder : ISeedService
     {
         var clients = new List<Client>
         {
-            new() { Nombre = "Alpha Foods",     NIF = "A12345678", Direccion = "Calle Mayor 1",  Ciudad = "Madrid",   Provincia = "Madrid",   Pais = "España", CodigoPostal = "28001", ContactoNombre = "Ana Foods",    ContactoEmail = "ana@alpha.es",    ContactoTelefono = "910000001" },
-            new() { Nombre = "Beta Cosmetics",  NIF = "B23456789", Direccion = "Av. Diagonal 50",Ciudad = "Barcelona",Provincia = "Barcelona",Pais = "España", CodigoPostal = "08001", ContactoNombre = "Belén Cosmo",  ContactoEmail = "belen@beta.es",   ContactoTelefono = "930000002" },
-            new() { Nombre = "Gamma Retail",    NIF = "C34567890", Direccion = "Calle Larga 99", Ciudad = "Valencia", Provincia = "Valencia", Pais = "España", CodigoPostal = "46001", ContactoNombre = "Gabriel Reta", ContactoEmail = "gabriel@gamma.es",ContactoTelefono = "960000003" },
+            new() { Nombre = "Alpha Foods",     NIF = "A12345678", Estado = EstadoCliente.Activo, Direccion = "Calle Mayor 1",  Ciudad = "Madrid",   Provincia = "Madrid",   Pais = "España", CodigoPostal = "28001", ContactoNombre = "Ana Foods",    ContactoEmail = "ana@alpha.es",    ContactoTelefono = "910000001" },
+            new() { Nombre = "Beta Cosmetics",  NIF = "B23456789", Estado = EstadoCliente.Activo, Direccion = "Av. Diagonal 50",Ciudad = "Barcelona",Provincia = "Barcelona",Pais = "España", CodigoPostal = "08001", ContactoNombre = "Belén Cosmo",  ContactoEmail = "belen@beta.es",   ContactoTelefono = "930000002" },
+            new() { Nombre = "Gamma Retail",    NIF = "C34567890", Estado = EstadoCliente.Activo, Direccion = "Calle Larga 99", Ciudad = "Valencia", Provincia = "Valencia", Pais = "España", CodigoPostal = "46001", ContactoNombre = "Gabriel Reta", ContactoEmail = "gabriel@gamma.es",ContactoTelefono = "960000003" },
         };
         _db.Clients.AddRange(clients);
         await _db.SaveChangesAsync(ct);
@@ -320,11 +324,11 @@ public class DataSeeder : ISeedService
     {
         var periods = new List<Period>
         {
-            new() { Nombre = "Noviembre 2025", FechaInicio = new(2025,11,1), FechaFin = new(2025,11,30), Estado = EstadoPeriodo.Cerrado },
-            new() { Nombre = "Diciembre 2025", FechaInicio = new(2025,12,1), FechaFin = new(2025,12,31), Estado = EstadoPeriodo.Cerrado },
-            new() { Nombre = "Enero 2026",     FechaInicio = new(2026,1,1),  FechaFin = new(2026,1,31),  Estado = EstadoPeriodo.Cerrado },
-            new() { Nombre = "Febrero 2026",   FechaInicio = new(2026,2,1),  FechaFin = new(2026,2,28),  Estado = EstadoPeriodo.Abierto },
-            new() { Nombre = "Marzo 2026",     FechaInicio = new(2026,3,1),  FechaFin = new(2026,3,31),  Estado = EstadoPeriodo.Abierto },
+            new() { Nombre = "Noviembre 2025", FechaInicio = new(2025,11,1), FechaFin = new(2025,11,30), DiaPago = 30, Estado = EstadoPeriodo.Cerrado },
+            new() { Nombre = "Diciembre 2025", FechaInicio = new(2025,12,1), FechaFin = new(2025,12,31), DiaPago = 30, Estado = EstadoPeriodo.Cerrado },
+            new() { Nombre = "Enero 2026",     FechaInicio = new(2026,1,1),  FechaFin = new(2026,1,31),  DiaPago = 30, Estado = EstadoPeriodo.Cerrado },
+            new() { Nombre = "Febrero 2026",   FechaInicio = new(2026,2,1),  FechaFin = new(2026,2,28),  DiaPago = 30, Estado = EstadoPeriodo.Abierto },
+            new() { Nombre = "Marzo 2026",     FechaInicio = new(2026,3,1),  FechaFin = new(2026,3,31),  DiaPago = 30, Estado = EstadoPeriodo.Abierto },
         };
         _db.Periods.AddRange(periods);
         await _db.SaveChangesAsync(ct);
@@ -473,68 +477,89 @@ public class DataSeeder : ISeedService
         return list;
     }
 
-    private async Task<List<Closure>> SeedClosuresAsync(List<Service> services, List<Period> periods, CancellationToken ct)
+    // Ola 3b (#10): por cada (servicio, período) se siembra un CierreCostes + un CierreFacturacion
+    // con el MISMO estado/paso, para mantener coherencia con el flujo de aprobación de 3a.
+    private sealed record SeedSpec(int ServiceId, int PeriodId, EstadoClosure Estado, ApprovalStep Paso);
+
+    private async Task<List<CierrePair>> SeedCierresAsync(List<Service> services, List<Period> periods, CancellationToken ct)
     {
-        var closures = new List<Closure>();
+        var specs = new List<SeedSpec>();
         foreach (var period in periods.Take(3))
             foreach (var s in services)
-                closures.Add(NewClosureBare(s.Id, period.Id, EstadoClosure.Aprobado, ApprovalStep.SystemExports));
+                specs.Add(new SeedSpec(s.Id, period.Id, EstadoClosure.Aprobado, ApprovalStep.SystemExports));
 
         var febrero = periods[3];
         for (int idx = 0; idx < services.Count; idx++)
         {
-            var paso = idx < 6 ? ApprovalStep.Fico : ApprovalStep.Backoffice;
-            closures.Add(NewClosureBare(services[idx].Id, febrero.Id, EstadoClosure.EnAprobacion, paso));
+            var paso = idx < 6 ? ApprovalStep.Fico : ApprovalStep.Grupo;
+            specs.Add(new SeedSpec(services[idx].Id, febrero.Id, EstadoClosure.EnAprobacion, paso));
         }
 
         var marzo = periods[4];
         for (int i = 0; i < services.Count; i++)
-        {
-            var s = services[i];
-            closures.Add(i < 5
-                ? NewClosureBare(s.Id, marzo.Id, EstadoClosure.Borrador, ApprovalStep.ProjectManager)
-                : NewClosureBare(s.Id, marzo.Id, EstadoClosure.Rechazado, ApprovalStep.ProjectManager));
-        }
+            specs.Add(i < 5
+                ? new SeedSpec(services[i].Id, marzo.Id, EstadoClosure.Borrador, ApprovalStep.Grupo)
+                : new SeedSpec(services[i].Id, marzo.Id, EstadoClosure.Rechazado, ApprovalStep.Grupo));
 
-        _db.Closures.AddRange(closures);
+        var costes = specs.Select(sp => new CierreCostes
+        {
+            ServiceId = sp.ServiceId, PeriodId = sp.PeriodId, Estado = sp.Estado, PasoActual = sp.Paso,
+            Comentarios = $"Cierre costes seed - {sp.Estado}", FechaCreacion = DateTime.UtcNow
+        }).ToList();
+        var facturacion = specs.Select(sp => new CierreFacturacion
+        {
+            ServiceId = sp.ServiceId, PeriodId = sp.PeriodId, Estado = sp.Estado, PasoActual = sp.Paso,
+            Comentarios = $"Cierre facturación seed - {sp.Estado}", FechaCreacion = DateTime.UtcNow
+        }).ToList();
+
+        _db.CierresCostes.AddRange(costes);
+        _db.CierresFacturacion.AddRange(facturacion);
         await _db.SaveChangesAsync(ct);
 
-        return await _db.Closures.Include(c => c.Service).Include(c => c.Period).ToListAsync(ct);
+        var costesFull = await _db.CierresCostes.Include(c => c.Service).Include(c => c.Period).ToListAsync(ct);
+        var factFull = await _db.CierresFacturacion.Include(c => c.Service).Include(c => c.Period).ToListAsync(ct);
+        var factByKey = factFull.ToDictionary(f => (f.ServiceId, f.PeriodId));
+
+        return costesFull.Select(c => new CierrePair(c, factByKey[(c.ServiceId, c.PeriodId)])).ToList();
     }
 
-    private async Task SeedLineasYLogsAsync(List<Closure> closuresFull, List<Concept> concepts, List<User> users, CancellationToken ct)
+    private async Task SeedLineasYLogsAsync(List<CierrePair> cierresFull, List<Concept> concepts, List<User> users, CancellationToken ct)
     {
         var allLines = new List<ClosureLine>();
         var allLogs = new List<(ClosureLine line, CalculationResult result, int conceptId)>();
         var fieldUsers = users.Skip(11).Take(4).ToList();
 
-        foreach (var c in closuresFull)
+        foreach (var pair in cierresFull)
         {
-            decimal coste = 0, factura = 0;
-            var aplic = concepts.Where(cn => cn.FechaDesde <= c.Period.FechaFin &&
-                                              (cn.FechaHasta == null || cn.FechaHasta >= c.Period.FechaInicio)).ToList();
+            var costes = pair.Costes;
+            var fact = pair.Facturacion;
+            var period = costes.Period;
+            var target = new CalculationTarget { ServiceId = costes.ServiceId, PeriodId = costes.PeriodId, Period = period };
+
+            decimal totalCoste = 0, totalFactura = 0;
+            var aplic = concepts.Where(cn => cn.FechaDesde <= period.FechaFin &&
+                                              (cn.FechaHasta == null || cn.FechaHasta >= period.FechaInicio)).ToList();
             int userIdx = 0;
             foreach (var concept in aplic)
             {
-                var result = await _engine.EvaluateAsync(concept, c, null, ct);
-                var assignedUserId = concept.Tipo == TipoConcepto.Pago
-                    ? fieldUsers[userIdx % fieldUsers.Count].Id
-                    : (int?)null;
+                var result = await _engine.EvaluateAsync(concept, target, null, ct);
+                var esPago = concept.Tipo == TipoConcepto.Pago;
+                var assignedUserId = esPago ? fieldUsers[userIdx % fieldUsers.Count].Id : (int?)null;
                 var line = new ClosureLine
                 {
-                    ClosureId = c.Id, ConceptId = concept.Id, UserId = assignedUserId,
+                    CierreCostesId = esPago ? costes.Id : (int?)null,
+                    CierreFacturacionId = esPago ? (int?)null : fact.Id,
+                    ConceptId = concept.Id, UserId = assignedUserId,
                     Importe = result.Resultado, DatosEntradaJson = result.InputsJson,
                     Tipo = concept.Tipo, TieneIncidencia = result.Incidencias.Any()
                 };
                 allLines.Add(line);
                 allLogs.Add((line, result, concept.Id));
-                if (concept.Tipo == TipoConcepto.Pago) coste += result.Resultado;
-                else factura += result.Resultado;
+                if (esPago) totalCoste += result.Resultado; else totalFactura += result.Resultado;
                 userIdx++;
             }
-            c.CosteTotal = Math.Round(coste, 2);
-            c.FacturacionTotal = Math.Round(factura, 2);
-            c.Margen = Math.Round(factura - coste, 2);
+            costes.Total = Math.Round(totalCoste, 2);
+            fact.Total = Math.Round(totalFactura, 2);
         }
 
         _db.ClosureLines.AddRange(allLines);
@@ -552,57 +577,65 @@ public class DataSeeder : ISeedService
         await _db.SaveChangesAsync(ct);
     }
 
-    private async Task SeedApprovalsAsync(List<Closure> closuresFull, Dictionary<string, Role> rMap, Dictionary<string, User> uByEmail, CancellationToken ct)
+    private async Task SeedApprovalsAsync(List<CierrePair> cierresFull, Dictionary<string, Role> rMap, Dictionary<string, User> uByEmail, CancellationToken ct)
     {
-        var pmId = uByEmail["pm.alpha@sig.local"].Id;
-        var bofId = uByEmail["backoffice1@sig.local"].Id;
+        // Ola 3a (#1): flujo Grupo → Fico → Exportado. Cada cierre (costes y facturación) tiene su propio flujo.
+        var grupoId = uByEmail["pm.alpha@sig.local"].Id;
         var ficoId = uByEmail["fico@sig.local"].Id;
-        var dirId = uByEmail["direccion@sig.local"].Id;
+        var ficoRoleId = rMap["Fico"].Id;
 
         var approvals = new List<Approval>();
         var history = new List<ApprovalHistory>();
         var ts = DateTime.UtcNow.AddDays(-20);
-        foreach (var c in closuresFull)
+
+        // Construye el flujo para un cierre concreto, asignando la FK adecuada via setFk.
+        void Build(ICierre c, Action<Approval> setApFk, Action<ApprovalHistory> setHistFk)
         {
+            Approval Ap(int? roleId, ApprovalStep paso, int? userId, EstadoApproval estado, DateTime? fecha = null, string? motivo = null)
+            { var a = new Approval { RoleId = roleId, Paso = paso, UserId = userId, Estado = estado, FechaDecision = fecha, Motivo = motivo }; setApFk(a); approvals.Add(a); return a; }
+            void Hist(int userId, ApprovalStep o, ApprovalStep d, string accion, string? motivo = null)
+            { var h = new ApprovalHistory { UserId = userId, PasoOrigen = o, PasoDestino = d, Accion = accion, Motivo = motivo, Timestamp = ts }; setHistFk(h); history.Add(h); }
+
             if (c.Estado == EstadoClosure.Aprobado)
             {
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, UserId = pmId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id,     Paso = ApprovalStep.Backoffice,     UserId = bofId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(1) });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Fico"].Id,           Paso = ApprovalStep.Fico,           UserId = ficoId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(2) });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Direction"].Id,      Paso = ApprovalStep.Direction,      UserId = dirId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(3) });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = pmId, PasoOrigen = ApprovalStep.ProjectManager, PasoDestino = ApprovalStep.Backoffice, Accion = "Aprobar", Timestamp = ts });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = bofId, PasoOrigen = ApprovalStep.Backoffice, PasoDestino = ApprovalStep.Fico, Accion = "Aprobar", Timestamp = ts.AddHours(1) });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = ficoId, PasoOrigen = ApprovalStep.Fico, PasoDestino = ApprovalStep.Direction, Accion = "Aprobar", Timestamp = ts.AddHours(2) });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = dirId, PasoOrigen = ApprovalStep.Direction, PasoDestino = ApprovalStep.SystemExports, Accion = "Aprobar", Timestamp = ts.AddHours(3) });
+                Ap(null, ApprovalStep.Grupo, grupoId, EstadoApproval.Aprobado, ts);
+                Ap(ficoRoleId, ApprovalStep.Fico, ficoId, EstadoApproval.Aprobado, ts.AddHours(1));
+                Hist(grupoId, ApprovalStep.Grupo, ApprovalStep.Fico, "Aprobar");
+                Hist(ficoId, ApprovalStep.Fico, ApprovalStep.SystemExports, "Aprobar");
             }
             else if (c.Estado == EstadoClosure.EnAprobacion)
             {
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, UserId = pmId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = pmId, PasoOrigen = ApprovalStep.ProjectManager, PasoDestino = ApprovalStep.Backoffice, Accion = "Aprobar", Timestamp = ts });
                 if (c.PasoActual == ApprovalStep.Fico)
                 {
-                    approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id, Paso = ApprovalStep.Backoffice, UserId = bofId, Estado = EstadoApproval.Aprobado, FechaDecision = ts.AddHours(1) });
-                    history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = bofId, PasoOrigen = ApprovalStep.Backoffice, PasoDestino = ApprovalStep.Fico, Accion = "Aprobar", Timestamp = ts.AddHours(1) });
-                    approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Fico"].Id, Paso = ApprovalStep.Fico, Estado = EstadoApproval.Pendiente });
+                    Ap(null, ApprovalStep.Grupo, grupoId, EstadoApproval.Aprobado, ts);
+                    Hist(grupoId, ApprovalStep.Grupo, ApprovalStep.Fico, "Aprobar");
+                    Ap(ficoRoleId, ApprovalStep.Fico, null, EstadoApproval.Pendiente);
                 }
                 else
                 {
-                    approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id, Paso = ApprovalStep.Backoffice, Estado = EstadoApproval.Pendiente });
+                    Ap(null, ApprovalStep.Grupo, null, EstadoApproval.Pendiente);
                 }
             }
             else if (c.Estado == EstadoClosure.Borrador)
             {
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, Estado = EstadoApproval.Pendiente });
+                Ap(null, ApprovalStep.Grupo, null, EstadoApproval.Pendiente);
             }
             else if (c.Estado == EstadoClosure.Rechazado)
             {
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, UserId = pmId, Estado = EstadoApproval.Aprobado, FechaDecision = ts });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["Backoffice"].Id, Paso = ApprovalStep.Backoffice, UserId = bofId, Estado = EstadoApproval.Rechazado, FechaDecision = ts.AddHours(1), Motivo = "Datos inconsistentes" });
-                approvals.Add(new Approval { ClosureId = c.Id, RoleId = rMap["ProjectManager"].Id, Paso = ApprovalStep.ProjectManager, Estado = EstadoApproval.Pendiente });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = pmId, PasoOrigen = ApprovalStep.ProjectManager, PasoDestino = ApprovalStep.Backoffice, Accion = "Aprobar", Timestamp = ts });
-                history.Add(new ApprovalHistory { ClosureId = c.Id, UserId = bofId, PasoOrigen = ApprovalStep.Backoffice, PasoDestino = ApprovalStep.ProjectManager, Accion = "Rechazar", Motivo = "Datos inconsistentes", Timestamp = ts.AddHours(1) });
+                Ap(null, ApprovalStep.Grupo, grupoId, EstadoApproval.Aprobado, ts);
+                Ap(ficoRoleId, ApprovalStep.Fico, ficoId, EstadoApproval.Rechazado, ts.AddHours(1), "Datos inconsistentes");
+                Ap(null, ApprovalStep.Grupo, null, EstadoApproval.Pendiente);
+                Hist(grupoId, ApprovalStep.Grupo, ApprovalStep.Fico, "Aprobar");
+                Hist(ficoId, ApprovalStep.Fico, ApprovalStep.Grupo, "Rechazar", "Datos inconsistentes");
             }
         }
+
+        foreach (var pair in cierresFull)
+        {
+            Build(pair.Costes, a => a.CierreCostesId = pair.Costes.Id, h => h.CierreCostesId = pair.Costes.Id);
+            Build(pair.Facturacion, a => a.CierreFacturacionId = pair.Facturacion.Id, h => h.CierreFacturacionId = pair.Facturacion.Id);
+        }
+
         _db.Approvals.AddRange(approvals);
         _db.ApprovalHistory.AddRange(history);
         await _db.SaveChangesAsync(ct);
@@ -661,18 +694,8 @@ public class DataSeeder : ISeedService
         return s;
     }
 
-    private static Closure NewClosureBare(int serviceId, int periodId, EstadoClosure estado, ApprovalStep paso)
-    {
-        return new Closure
-        {
-            ServiceId = serviceId,
-            PeriodId = periodId,
-            Estado = estado,
-            PasoActual = paso,
-            Comentarios = $"Closure seed - estado {estado}",
-            FechaCreacion = DateTime.UtcNow
-        };
-    }
+    // Ola 3b (#10): par de cierres (costes + facturación) del mismo (servicio, período).
+    private sealed record CierrePair(CierreCostes Costes, CierreFacturacion Facturacion);
 
     private static string Sha256(string s)
     {

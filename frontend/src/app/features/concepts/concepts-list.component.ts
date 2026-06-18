@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ConceptService } from '../../core/api/concepts.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { ConceptListItemDto } from '../../models/dtos';
 import { TipoConcepto } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
@@ -37,7 +38,9 @@ import { exportCSV } from '../../core/api/api.helpers';
       <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Conceptos' }]" />
       <div class="sig-page__header">
         <h1 class="sig-page__title">Conceptos</h1>
-        <a mat-flat-button color="primary" routerLink="/concepts/nuevo" data-testid="btn-nuevo"><mat-icon>add</mat-icon> Nuevo Concepto</a>
+        @if (isAdmin()) {
+          <a mat-flat-button color="primary" routerLink="/concepts/nuevo" data-testid="btn-nuevo"><mat-icon>add</mat-icon> Nuevo Concepto</a>
+        }
       </div>
       <mat-card>
         <mat-card-content>
@@ -61,25 +64,62 @@ import { exportCSV } from '../../core/api/api.helpers';
           @else if (items().length === 0) {
             <sig-empty-state icon="calculate" title="No hay conceptos" ctaLabel="Crear primer concept" [hasFilter]="!!search.value || !!tipoFilter.value" (ctaClick)="onEmptyCta()" />
           } @else {
-            <table mat-table [dataSource]="items()" class="sig-table sig-table--dark-header" data-testid="tabla-concepts">
-              <ng-container matColumnDef="nombre"><th mat-header-cell *matHeaderCellDef>NOMBRE</th><td mat-cell *matCellDef="let row"><span class="sig-concept-name">{{ row.nombre }}</span></td></ng-container>
-              <ng-container matColumnDef="tipo"><th mat-header-cell *matHeaderCellDef>TIPO</th><td mat-cell *matCellDef="let row"><span class="sig-type-badge" [class.sig-type--pago]="row.tipo === 'Pago'" [class.sig-type--factura]="row.tipo === 'Factura'">{{ row.tipo === 'Pago' ? '💰 Pago' : '📄 Factura' }}</span></td></ng-container>
-              <ng-container matColumnDef="desde"><th mat-header-cell *matHeaderCellDef>DESDE</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.fechaDesde | date:'dd/MM/yyyy' }}</td></ng-container>
-              <ng-container matColumnDef="hasta"><th mat-header-cell *matHeaderCellDef>HASTA</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.fechaHasta ? (row.fechaHasta | date:'dd/MM/yyyy') : '—' }}</td></ng-container>
-              <ng-container matColumnDef="acciones">
-                <th mat-header-cell *matHeaderCellDef style="text-align: right;">ACCIONES</th>
-                <td mat-cell *matCellDef="let row">
-                  <div class="sig-table-actions">
-                    <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Editar fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
-                    <a mat-icon-button [routerLink]="['/concepts', row.id]" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>visibility</mat-icon></a>
-                    <a mat-icon-button [routerLink]="['/concepts', row.id, 'editar']" [attr.data-testid]="'btn-editar-' + row.id" aria-label="Editar"><mat-icon>edit</mat-icon></a>
-                    <button mat-icon-button (click)="onDelete(row)" [attr.data-testid]="'btn-eliminar-' + row.id" aria-label="Eliminar"><mat-icon>delete</mat-icon></button>
-                  </div>
-                </td>
-              </ng-container>
-              <tr mat-header-row *matHeaderRowDef="cols"></tr>
-              <tr mat-row *matRowDef="let row; columns: cols" data-testid="row-concept"></tr>
-            </table>
+            @if (showPagos()) {
+              <section class="sig-concept-group" data-testid="grupo-pagos">
+                <h2 class="sig-group-title sig-group-title--pago">💰 Pagos</h2>
+                @if (pagos().length === 0) {
+                  <p class="sig-group-empty">No hay conceptos de tipo Pago.</p>
+                } @else {
+                  <table mat-table [dataSource]="pagos()" class="sig-table sig-table--dark-header" data-testid="tabla-pagos">
+                    <ng-container matColumnDef="nombre"><th mat-header-cell *matHeaderCellDef>NOMBRE</th><td mat-cell *matCellDef="let row"><span class="sig-concept-name">{{ row.nombre }}</span></td></ng-container>
+                    <ng-container matColumnDef="tipo"><th mat-header-cell *matHeaderCellDef>TIPO</th><td mat-cell *matCellDef="let row"><span class="sig-type-badge" [class.sig-type--pago]="row.tipo === 'Pago'" [class.sig-type--factura]="row.tipo === 'Factura'">{{ row.tipo === 'Pago' ? '💰 Pago' : '📄 Factura' }}</span></td></ng-container>
+                    <ng-container matColumnDef="desde"><th mat-header-cell *matHeaderCellDef>DESDE</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.fechaDesde | date:'dd/MM/yyyy' }}</td></ng-container>
+                    <ng-container matColumnDef="hasta"><th mat-header-cell *matHeaderCellDef>HASTA</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.fechaHasta ? (row.fechaHasta | date:'dd/MM/yyyy') : '—' }}</td></ng-container>
+                    <ng-container matColumnDef="acciones">
+                      <th mat-header-cell *matHeaderCellDef style="text-align: right;">ACCIONES</th>
+                      <td mat-cell *matCellDef="let row">
+                        <div class="sig-table-actions">
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Editar fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id]" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>visibility</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'editar']" [attr.data-testid]="'btn-editar-' + row.id" aria-label="Editar"><mat-icon>edit</mat-icon></a>
+                          <button mat-icon-button (click)="onDelete(row)" [attr.data-testid]="'btn-eliminar-' + row.id" aria-label="Eliminar"><mat-icon>delete</mat-icon></button>
+                        </div>
+                      </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="cols"></tr>
+                    <tr mat-row *matRowDef="let row; columns: cols" data-testid="row-concept"></tr>
+                  </table>
+                }
+              </section>
+            }
+            @if (showFacturas()) {
+              <section class="sig-concept-group" data-testid="grupo-facturacion">
+                <h2 class="sig-group-title sig-group-title--factura">📄 Facturación</h2>
+                @if (facturas().length === 0) {
+                  <p class="sig-group-empty">No hay conceptos de tipo Factura.</p>
+                } @else {
+                  <table mat-table [dataSource]="facturas()" class="sig-table sig-table--dark-header" data-testid="tabla-facturacion">
+                    <ng-container matColumnDef="nombre"><th mat-header-cell *matHeaderCellDef>NOMBRE</th><td mat-cell *matCellDef="let row"><span class="sig-concept-name">{{ row.nombre }}</span></td></ng-container>
+                    <ng-container matColumnDef="tipo"><th mat-header-cell *matHeaderCellDef>TIPO</th><td mat-cell *matCellDef="let row"><span class="sig-type-badge" [class.sig-type--pago]="row.tipo === 'Pago'" [class.sig-type--factura]="row.tipo === 'Factura'">{{ row.tipo === 'Pago' ? '💰 Pago' : '📄 Factura' }}</span></td></ng-container>
+                    <ng-container matColumnDef="desde"><th mat-header-cell *matHeaderCellDef>DESDE</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.fechaDesde | date:'dd/MM/yyyy' }}</td></ng-container>
+                    <ng-container matColumnDef="hasta"><th mat-header-cell *matHeaderCellDef>HASTA</th><td mat-cell *matCellDef="let row" class="mono-num">{{ row.fechaHasta ? (row.fechaHasta | date:'dd/MM/yyyy') : '—' }}</td></ng-container>
+                    <ng-container matColumnDef="acciones">
+                      <th mat-header-cell *matHeaderCellDef style="text-align: right;">ACCIONES</th>
+                      <td mat-cell *matCellDef="let row">
+                        <div class="sig-table-actions">
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Editar fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id]" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>visibility</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'editar']" [attr.data-testid]="'btn-editar-' + row.id" aria-label="Editar"><mat-icon>edit</mat-icon></a>
+                          <button mat-icon-button (click)="onDelete(row)" [attr.data-testid]="'btn-eliminar-' + row.id" aria-label="Eliminar"><mat-icon>delete</mat-icon></button>
+                        </div>
+                      </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="cols"></tr>
+                    <tr mat-row *matRowDef="let row; columns: cols" data-testid="row-concept"></tr>
+                  </table>
+                }
+              </section>
+            }
           }
           <mat-paginator [length]="total()" [pageSize]="pageSize()" [pageIndex]="page() - 1" [pageSizeOptions]="[10, 25, 50]" showFirstLastButtons (page)="onPage($event)" data-testid="paginator-concepts" />
         </mat-card-content>
@@ -93,6 +133,11 @@ import { exportCSV } from '../../core/api/api.helpers';
     .sig-type-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
     .sig-type--pago { background: rgba(37,99,235,.15); color: #3b82f6; }
     .sig-type--factura { background: rgba(139,92,246,.15); color: #8b5cf6; }
+    .sig-concept-group { margin-bottom: 24px; }
+    .sig-group-title { font-size: 15px; font-weight: 700; margin: 8px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--mat-sys-outline-variant); }
+    .sig-group-title--pago { color: #3b82f6; }
+    .sig-group-title--factura { color: #8b5cf6; }
+    .sig-group-empty { color: var(--sig-text-muted, var(--mat-sys-on-surface-variant)); font-size: 13px; margin: 4px 0 0; }
     :host ::ng-deep .sig-table--dark-header th.mat-header-cell {
       background: var(--sig-bg-header) !important; color: var(--sig-text-muted) !important;
       font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
@@ -101,6 +146,7 @@ import { exportCSV } from '../../core/api/api.helpers';
 })
 export class ConceptsListComponent implements OnInit {
   private readonly conceptSvc = inject(ConceptService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
@@ -112,11 +158,20 @@ export class ConceptsListComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly search = new FormControl<string>('', { nonNullable: true });
   protected readonly tipoFilter = new FormControl<TipoConcepto | null>(null);
+  protected readonly tipoFilterValue = signal<TipoConcepto | null>(null);
   protected readonly cols = ['nombre', 'tipo', 'desde', 'hasta', 'acciones'];
+
+  // Alta de conceptos solo para Administrator (alineado con el backend ConceptsController).
+  protected readonly isAdmin = signal(this.auth.hasRole('Administrator'));
+
+  protected readonly pagos = computed(() => this.items().filter((c) => c.tipo === 'Pago'));
+  protected readonly facturas = computed(() => this.items().filter((c) => c.tipo === 'Factura'));
+  protected readonly showPagos = computed(() => this.tipoFilterValue() !== 'Factura');
+  protected readonly showFacturas = computed(() => this.tipoFilterValue() !== 'Pago');
 
   ngOnInit(): void {
     this.search.valueChanges.pipe(debounceTime(300), distinctUntilChanged()).subscribe(() => { this.page.set(1); this.load(); });
-    this.tipoFilter.valueChanges.subscribe(() => { this.page.set(1); this.load(); });
+    this.tipoFilter.valueChanges.subscribe((v) => { this.tipoFilterValue.set(v); this.page.set(1); this.load(); });
     this.load();
   }
   protected onPage(e: PageEvent): void { this.pageSize.set(e.pageSize); this.page.set(e.pageIndex + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); this.load(); }

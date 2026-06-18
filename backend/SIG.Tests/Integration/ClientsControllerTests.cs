@@ -57,7 +57,7 @@ public class ClientsControllerTests : IntegrationTestBase
     {
         // reader@sig.local tiene rol Reader — solo lectura
         var client = await CreateAuthenticatedClientAsync("reader@sig.local", "Demo#2026!");
-        var req = new ClientCreateRequest("NoDeberiaCrearse", "Z99999999", null, null, null, null, null, null, null, null);
+        var req = new ClientCreateRequest("NoDeberiaCrearse", "Z99999999", null, null, null, null, null, null, null, null, null);
         var resp = await client.PostAsJsonAsync("/api/clients", req);
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -68,7 +68,7 @@ public class ClientsControllerTests : IntegrationTestBase
         var client = await CreateAuthenticatedClientAsync(); // admin
         // crear
         var nif = $"X{DateTime.UtcNow.Ticks % 90000000:00000000}";
-        var req = new ClientCreateRequest("ClienteTest", nif, "Calle T", "Madrid", "Madrid", "ES", "28001", "Pepe", "p@ex.com", "600");
+        var req = new ClientCreateRequest("ClienteTest", nif, null, "Calle T", "Madrid", "Madrid", "ES", "28001", "Pepe", "p@ex.com", "600");
         var create = await client.PostAsJsonAsync("/api/clients", req);
         create.StatusCode.Should().Be(HttpStatusCode.Created);
         var created = await ReadJsonAsync<ClientDetailDto>(create);
@@ -93,7 +93,7 @@ public class ClientsControllerTests : IntegrationTestBase
         var client = await CreateAuthenticatedClientAsync();
         var list = await ReadJsonAsync<PagedResult<ClientListItemDto>>(await client.GetAsync("/api/clients"));
         var existingNif = list!.Items.First().NIF;
-        var req = new ClientCreateRequest("DupeTest", existingNif, null, null, null, null, null, null, null, null);
+        var req = new ClientCreateRequest("DupeTest", existingNif, null, null, null, null, null, null, null, null, null);
         var resp = await client.PostAsJsonAsync("/api/clients", req);
         resp.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -102,7 +102,7 @@ public class ClientsControllerTests : IntegrationTestBase
     public async Task PostClient_DatosInvalidos_Devuelve400()
     {
         var client = await CreateAuthenticatedClientAsync();
-        var req = new ClientCreateRequest("X", "1", null, null, null, null, null, null, null, null); // nombre y NIF muy cortos
+        var req = new ClientCreateRequest("X", "1", null, null, null, null, null, null, null, null, null); // nombre y NIF muy cortos
         var resp = await client.PostAsJsonAsync("/api/clients", req);
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

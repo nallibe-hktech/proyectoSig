@@ -13,7 +13,6 @@ namespace SIG.Infrastructure.Services;
 public class ClosureValidationService : IClosureValidationService
 {
     private readonly IClosureAlertaRepository _alertaRepo;
-    private readonly IClosureRepository _closureRepo;
     private readonly IUserRepository _userRepo;
     private readonly IStagingRepository<StagingCeleroVisita> _celeroRepo;
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo;
@@ -22,7 +21,6 @@ public class ClosureValidationService : IClosureValidationService
 
     public ClosureValidationService(
         IClosureAlertaRepository alertaRepo,
-        IClosureRepository closureRepo,
         IUserRepository userRepo,
         IStagingRepository<StagingCeleroVisita> celeroRepo,
         IStagingRepository<StagingPayHawkGasto> gastoRepo,
@@ -30,7 +28,6 @@ public class ClosureValidationService : IClosureValidationService
         AppDbContext db)
     {
         _alertaRepo = alertaRepo;
-        _closureRepo = closureRepo;
         _userRepo = userRepo;
         _celeroRepo = celeroRepo;
         _gastoRepo = gastoRepo;
@@ -38,41 +35,55 @@ public class ClosureValidationService : IClosureValidationService
         _db = db;
     }
 
-    public async Task<IReadOnlyList<ClosureAlertaDto>> ValidarYPersistirAsync(int closureId, int serviceId, int periodId, CancellationToken ct)
+    // Asigna la FK del dueño según el tipo de cierre.
+    private static ClosureAlerta Owned(ClosureAlerta a, TipoCierre tipo, int cierreId)
     {
-        var closure = await _closureRepo.GetByIdAsync(closureId, ct)
-                      ?? throw new InvalidOperationException($"Closure {closureId} not found");
-        var period = closure.Period;
+        if (tipo == TipoCierre.Costes) a.CierreCostesId = cierreId; else a.CierreFacturacionId = cierreId;
+        return a;
+    }
 
-        await _alertaRepo.DeleteByClosureIdAsync(closureId, ct);
+    public async Task<IReadOnlyList<ClosureAlertaDto>> ValidarYPersistirAsync(TipoCierre tipo, int cierreId, int serviceId, int periodId, CancellationToken ct)
+    {
+        var period = await _db.Periods.AsNoTracking().FirstOrDefaultAsync(p => p.Id == periodId, ct)
+                     ?? throw new InvalidOperationException($"Period {periodId} not found");
+
+        await _alertaRepo.DeleteByCierreAsync(tipo, cierreId, ct);
 
         var alertas = new List<ClosureAlerta>();
 
-        // BLOQUEANTES
-        alertas.AddRange(await CheckNifSinMapeoAsync(closureId, serviceId, period.FechaInicio.ToDateTime(TimeOnly.MinValue), period.FechaFin.ToDateTime(TimeOnly.MaxValue), ct));
-        alertas.AddRange(await CheckContratosDuplicadosAsync(closureId, ct));
-        alertas.AddRange(await CheckCamposClaveAsync(closureId, serviceId, period.FechaInicio.ToDateTime(TimeOnly.MinValue), period.FechaFin.ToDateTime(TimeOnly.MaxValue), ct));
-        alertas.AddRange(await CheckActividadSinContratoAsync(closureId, serviceId, period.FechaInicio.ToDateTime(TimeOnly.MinValue), period.FechaFin.ToDateTime(TimeOnly.MaxValue), ct));
-        alertas.AddRange(await CheckCecoNoMaestroAsync(closureId, serviceId, ct));
+        // Ola 3b (#10): las validaciones actuales son de COSTE/contratos -> sólo CierreCostes.
+        // CierreFacturacion no tiene validaciones específicas todavía.
+        if (tipo == TipoCierre.Costes)
+        {
+            var desde = period.FechaInicio.ToDateTime(TimeOnly.MinValue);
+            var hasta = period.FechaFin.ToDateTime(TimeOnly.MaxValue);
+            // BLOQUEANTES
+            alertas.AddRange(await CheckNifSinMapeoAsync(cierreId, serviceId, desde, hasta, ct));
+            alertas.AddRange(await CheckContratosDuplicadosAsync(cierreId, ct));
+            alertas.AddRange(await CheckCamposClaveAsync(cierreId, serviceId, desde, hasta, ct));
+            alertas.AddRange(await CheckActividadSinContratoAsync(cierreId, serviceId, desde, hasta, ct));
+            alertas.AddRange(await CheckCecoNoMaestroAsync(cierreId, serviceId, ct));
 
-        // ADVERTENCIAS
-        alertas.AddRange(await CheckContratoSinActividadAsync(closureId, serviceId, period.FechaInicio.ToDateTime(TimeOnly.MinValue), period.FechaFin.ToDateTime(TimeOnly.MaxValue), ct));
-        alertas.AddRange(await CheckPagoPorKmExcesivoAsync(closureId, serviceId, period.FechaInicio.ToDateTime(TimeOnly.MinValue), period.FechaFin.ToDateTime(TimeOnly.MaxValue), ct));
-        alertas.AddRange(await CheckGastoNegativoAsync(closureId, serviceId, period.FechaInicio.ToDateTime(TimeOnly.MinValue), period.FechaFin.ToDateTime(TimeOnly.MaxValue), ct));
-        alertas.AddRange(await CheckPagoInferiorContratoAsync(closureId, ct));
+            // ADVERTENCIAS
+            alertas.AddRange(await CheckContratoSinActividadAsync(cierreId, serviceId, desde, hasta, ct));
+            alertas.AddRange(await CheckPagoPorKmExcesivoAsync(cierreId, serviceId, desde, hasta, ct));
+            alertas.AddRange(await CheckGastoNegativoAsync(cierreId, serviceId, desde, hasta, ct));
+            alertas.AddRange(await CheckPagoInferiorContratoAsync(cierreId, ct));
+        }
 
         if (alertas.Count > 0)
         {
+            foreach (var a in alertas) Owned(a, tipo, cierreId);
             await _alertaRepo.AddRangeAsync(alertas, ct);
             await _alertaRepo.SaveChangesAsync(ct);
         }
 
-        return await GetAlertasAsync(closureId, ct);
+        return await GetAlertasAsync(tipo, cierreId, ct);
     }
 
-    public async Task<IReadOnlyList<ClosureAlertaDto>> GetAlertasAsync(int closureId, CancellationToken ct)
+    public async Task<IReadOnlyList<ClosureAlertaDto>> GetAlertasAsync(TipoCierre tipo, int cierreId, CancellationToken ct)
     {
-        var alertas = await _alertaRepo.GetByClosureIdAsync(closureId, ct);
+        var alertas = await _alertaRepo.GetByCierreAsync(tipo, cierreId, ct);
         var result = new List<ClosureAlertaDto>();
 
         foreach (var a in alertas)
@@ -129,7 +140,6 @@ public class ClosureValidationService : IClosureValidationService
         {
             alertas.Add(new ClosureAlerta
             {
-                ClosureId = closureId,
                 Tipo = TipoAlerta.Bloqueante,
                 Codigo = AlertaCodigos.NifSinMapeo,
                 Descripcion = $"NIF '{nif}' no coincide con ningún empleado de A3Innuva (origen: Celero)",
@@ -162,7 +172,6 @@ public class ClosureValidationService : IClosureValidationService
                 {
                     alertas.Add(new ClosureAlerta
                     {
-                        ClosureId = closureId,
                         Tipo = TipoAlerta.Bloqueante,
                         Codigo = AlertaCodigos.ContratosDuplicados,
                         Descripcion = $"Contratos solapados para NIF '{grupo.Key}': [{lista[i].FechaInicio:yyyy-MM-dd} → {lista[i].FechaFin:yyyy-MM-dd}] y [{lista[i + 1].FechaInicio:yyyy-MM-dd} → {lista[i + 1].FechaFin:yyyy-MM-dd}]",
@@ -189,7 +198,6 @@ public class ClosureValidationService : IClosureValidationService
         {
             alertas.Add(new ClosureAlerta
             {
-                ClosureId = closureId,
                 Tipo = TipoAlerta.Bloqueante,
                 Codigo = AlertaCodigos.CamposClave,
                 Descripcion = $"{sinCampos} visita(s) Celero con campos clave en blanco (NIF, fecha, identificador)",
@@ -230,7 +238,6 @@ public class ClosureValidationService : IClosureValidationService
         {
             alertas.Add(new ClosureAlerta
             {
-                ClosureId = closureId,
                 Tipo = TipoAlerta.Bloqueante,
                 Codigo = AlertaCodigos.ActividadSinContrato,
                 Descripcion = $"Actividad (visitas Celero) sin contrato vigente para NIF '{nif}'",
@@ -256,7 +263,6 @@ public class ClosureValidationService : IClosureValidationService
         {
             alertas.Add(new ClosureAlerta
             {
-                ClosureId = closureId,
                 Tipo = TipoAlerta.Bloqueante,
                 Codigo = AlertaCodigos.CecoNoMaestro,
                 Descripcion = "El servicio no tiene centros de coste (CECO) asignados",
@@ -272,7 +278,6 @@ public class ClosureValidationService : IClosureValidationService
                 var codigos = string.Join(", ", cecosEliminados.Select(sc => sc.CostCenter!.Codigo));
                 alertas.Add(new ClosureAlerta
                 {
-                    ClosureId = closureId,
                     Tipo = TipoAlerta.Bloqueante,
                     Codigo = AlertaCodigos.CecoNoMaestro,
                     Descripcion = $"CECO(s) eliminados: {codigos}",
@@ -316,7 +321,6 @@ public class ClosureValidationService : IClosureValidationService
             var nif = contrato.User != null ? contrato.User.NIF : (userDict.TryGetValue(contrato.UserId.Value, out var u) ? u.NIF : contrato.NIF);
             alertas.Add(new ClosureAlerta
             {
-                ClosureId = closureId,
                 Tipo = TipoAlerta.Advertencia,
                 Codigo = AlertaCodigos.ContratoSinActividad,
                 Descripcion = $"Contrato A3Innuva sin actividad para NIF '{nif}' ({contrato.ContratoIdExterno})",
@@ -343,7 +347,6 @@ public class ClosureValidationService : IClosureValidationService
         {
             alertas.Add(new ClosureAlerta
             {
-                ClosureId = closureId,
                 Tipo = TipoAlerta.Advertencia,
                 Codigo = AlertaCodigos.PagoPorKmExcesivo,
                 Descripcion = $"Pago por km excesivo: {gasto.Importe:C2} (categoría: '{gasto.Categoria}', fecha: {gasto.Fecha:yyyy-MM-dd})",
@@ -369,7 +372,6 @@ public class ClosureValidationService : IClosureValidationService
         {
             alertas.Add(new ClosureAlerta
             {
-                ClosureId = closureId,
                 Tipo = TipoAlerta.Advertencia,
                 Codigo = AlertaCodigos.GastoNegativo,
                 Descripcion = $"Gasto negativo en PayHawk: {gasto.Importe:C2} (categoría: '{gasto.Categoria}', fecha: {gasto.Fecha:yyyy-MM-dd})",
@@ -384,17 +386,16 @@ public class ClosureValidationService : IClosureValidationService
     private async Task<IEnumerable<ClosureAlerta>> CheckPagoInferiorContratoAsync(int closureId, CancellationToken ct)
     {
         var alertas = new List<ClosureAlerta>();
-        var closure = await _db.Closures.AsNoTracking()
-            .Include(c => c.Lines)
-            .FirstOrDefaultAsync(c => c.Id == closureId, ct);
-
-        if (closure == null) return alertas;
+        // closureId aquí es el id del cierre de COSTES; sus líneas Pago cuelgan por CierreCostesId.
+        var lines = await _db.ClosureLines.AsNoTracking()
+            .Where(l => l.CierreCostesId == closureId && l.Tipo == TipoConcepto.Pago && l.UserId.HasValue)
+            .ToListAsync(ct);
 
         var contratos = await _contratoRepo.GetAllAsync(ct);
         var users = await _userRepo.ListAsync(ct);
         var userDict = users.ToDictionary(u => u.Id);
 
-        var pagoLines = closure.Lines.Where(l => l.Tipo == TipoConcepto.Pago && l.UserId.HasValue).ToList();
+        var pagoLines = lines;
 
         foreach (var line in pagoLines)
         {
@@ -406,7 +407,6 @@ public class ClosureValidationService : IClosureValidationService
             {
                 alertas.Add(new ClosureAlerta
                 {
-                    ClosureId = closureId,
                     Tipo = TipoAlerta.Advertencia,
                     Codigo = AlertaCodigos.PagoInferiorContrato,
                     Descripcion = $"Pago ({line.Importe:C2}) inferior al importe del contrato ({contrato.ImporteBruto:C2}) para NIF '{user.NIF}'",

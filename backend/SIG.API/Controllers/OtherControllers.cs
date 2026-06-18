@@ -19,16 +19,35 @@ public class DashboardController : ControllerBase
     private int UserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new InvalidOperationException("NameIdentifier claim not found"));
 
     [HttpGet]
-    public async Task<IActionResult> Kpis([FromQuery] int? periodId = null, CancellationToken ct = default) =>
-        Ok(await _svc.GetKpisAsync(periodId, UserId, ct));
+    public async Task<IActionResult> Kpis([FromQuery] int? periodId = null, [FromQuery] int? serviceId = null, CancellationToken ct = default) =>
+        Ok(await _svc.GetKpisAsync(periodId, UserId, ct, serviceId));
 
     [HttpGet("avisos")]
     public async Task<IActionResult> Avisos(CancellationToken ct) =>
         Ok(await _svc.GetAvisosAsync(UserId, ct));
 
     [HttpGet("mis-servicios")]
-    public async Task<IActionResult> MisServicios([FromQuery] int? periodId = null, CancellationToken ct = default) =>
-        Ok(await _svc.GetMisServiciosAsync(periodId, UserId, ct));
+    public async Task<IActionResult> MisServicios([FromQuery] int? periodId = null, [FromQuery] int? serviceId = null, CancellationToken ct = default) =>
+        Ok(await _svc.GetMisServiciosAsync(periodId, UserId, ct, serviceId));
+}
+
+// Informes nativos (PPT slide 23) — reporting dentro de la app, sin Power BI.
+[ApiController]
+[Route("api/reports")]
+[Authorize]
+public class ReportsController : ControllerBase
+{
+    private readonly IReportsService _svc;
+    public ReportsController(IReportsService svc) { _svc = svc; }
+    private int UserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new InvalidOperationException("NameIdentifier claim not found"));
+
+    [HttpGet("resultado")]
+    public async Task<IActionResult> Resultado([FromQuery] int anio, [FromQuery] int? departmentId, [FromQuery] int? clientId, [FromQuery] int? serviceId, CancellationToken ct) =>
+        Ok(await _svc.GetResultadoAsync(anio, departmentId, clientId, serviceId, UserId, ct));
+
+    [HttpGet("prevision-vs-real")]
+    public async Task<IActionResult> PrevisionVsReal([FromQuery] int anio, [FromQuery] int? departmentId, [FromQuery] int? clientId, [FromQuery] int? serviceId, CancellationToken ct) =>
+        Ok(await _svc.GetPrevisionVsRealAsync(anio, departmentId, clientId, serviceId, UserId, ct));
 }
 
 [ApiController]
@@ -156,6 +175,24 @@ public class ExportsController : ControllerBase
 }
 
 [ApiController]
+[Route("api/contratos")]
+[Authorize(Roles = "Administrator,Backoffice")]
+public class ContratosController : ControllerBase
+{
+    private readonly IContratoService _svc;
+    public ContratosController(IContratoService svc) { _svc = svc; }
+
+    // Contratos de un día (FechaInicio == FechaFin): se señalan para revisión manual (Ola 2 #2).
+    [HttpGet("un-dia")]
+    public async Task<IActionResult> ListUnDia(CancellationToken ct) =>
+        Ok(await _svc.ListContratosUnDiaAsync(ct));
+
+    [HttpPost("{id:int}/ignorar")]
+    public async Task<IActionResult> MarcarIgnorar(int id, SIG.Application.DTOs.ContratoIgnorarRequest req, CancellationToken ct) =>
+        Ok(await _svc.MarcarIgnorarAsync(id, req, ct));
+}
+
+[ApiController]
 [Route("api/services/{serviceId:int}/tarifas")]
 [Authorize(Roles = "Administrator,Backoffice")]
 public class TarifasController : ControllerBase
@@ -227,6 +264,45 @@ public class PresupuestosController : ControllerBase
         await _svc.DeleteAsync(id, serviceId, ct);
         return NoContent();
     }
+}
+
+// Forecast por servicio (PPT slide 36). Lectura: autenticado; escritura: Administrator/Backoffice
+// (mismo criterio que Tarifas/Presupuestos). Upsert por mes; rechaza meses cerrados (409 period_closed).
+[ApiController]
+[Route("api/services/{serviceId:int}/forecast")]
+[Authorize(Roles = "Administrator,Backoffice")]
+public class ServiceForecastController : ControllerBase
+{
+    private readonly IForecastService _svc;
+    public ServiceForecastController(IForecastService svc) { _svc = svc; }
+
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> List(int serviceId, [FromQuery] int anio, CancellationToken ct) =>
+        Ok(await _svc.ListByServiceAsync(serviceId, anio, ct));
+
+    [HttpPut]
+    public async Task<IActionResult> Upsert(int serviceId, SIG.Application.DTOs.ForecastUpsertRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpsertAsync(serviceId, req, ct));
+}
+
+// Resumen pivote del forecast (PPT slide 36): filas dpto+cliente, columnas mes, totales. Solo lectura.
+[ApiController]
+[Route("api/forecast")]
+[Authorize]
+public class ForecastController : ControllerBase
+{
+    private readonly IForecastService _svc;
+    public ForecastController(IForecastService svc) { _svc = svc; }
+
+    [HttpGet("resumen")]
+    public async Task<IActionResult> Resumen(
+        [FromQuery] int anio,
+        [FromQuery] int? departmentId,
+        [FromQuery] int? clientId,
+        [FromQuery] int? serviceId,
+        CancellationToken ct) =>
+        Ok(await _svc.GetResumenAsync(anio, departmentId, clientId, serviceId, ct));
 }
 
 [ApiController]

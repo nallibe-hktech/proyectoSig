@@ -2,11 +2,12 @@
 // Nombres, casing y tipos respetan fidelidad nominal con el backend .NET.
 
 import type {
-  EstadoUsuario, EstadoServicio, TipoConcepto, EstadoPeriodo,
-  EstadoClosure, ApprovalStep, EstadoApproval, AuditAction
+  EstadoUsuario, EstadoCliente, EstadoServicio, TipoConcepto, EstadoPeriodo,
+  EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta,
+  EstadoIncidencia
 } from './enums';
 
-export type { EstadoClosure, ApprovalStep, EstadoApproval, AuditAction };
+export type { EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta };
 
 // ------------------ Paginación ------------------
 export interface PagedResult<T> {
@@ -40,12 +41,14 @@ export interface ClientListItemDto {
   nombre: string;
   nif: string;
   ciudad?: string | null;
+  estado: EstadoCliente;
   serviceCount: number;
 }
 export interface ClientDetailDto {
   id: number;
   nombre: string;
   nif: string;
+  estado: EstadoCliente;
   direccion?: string | null;
   ciudad?: string | null;
   provincia?: string | null;
@@ -57,6 +60,104 @@ export interface ClientDetailDto {
 }
 export type ClientCreateRequest = Omit<ClientDetailDto, 'id'>;
 export type ClientUpdateRequest = ClientCreateRequest;
+
+// Incidencias del cliente (PPT slide 6): tipo (texto libre), explicación y estado, editables y con histórico.
+export interface ClienteIncidenciaDto {
+  id: number;
+  clientId: number;
+  tipo: string;
+  descripcion: string;
+  estado: EstadoIncidencia;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface ClienteIncidenciaCreateRequest {
+  tipo: string;
+  descripcion: string;
+  estado?: EstadoIncidencia;
+}
+export interface ClienteIncidenciaUpdateRequest {
+  tipo: string;
+  descripcion: string;
+  estado: EstadoIncidencia;
+}
+
+// Forecast (PPT slide 36): previsión mensual de ventas/margen/GPP por servicio.
+export interface ForecastDto {
+  id: number;
+  serviceId: number;
+  anio: number;
+  mes: number;
+  ventasPrevistas: number;
+  margenPrevisto?: number | null;
+  personasCampo?: number | null;
+}
+export interface ForecastUpsertRequest {
+  anio: number;
+  mes: number;
+  ventasPrevistas: number;
+  margenPrevisto?: number | null;
+  personasCampo?: number | null;
+}
+export interface ForecastResumenCeldaDto {
+  mes: number;
+  ventas: number;
+  margen: number;
+  personas: number;
+}
+export interface ForecastResumenFilaDto {
+  departmentId?: number | null;
+  departmentNombre?: string | null;
+  clientId: number;
+  clientNombre: string;
+  meses: ForecastResumenCeldaDto[];
+  totalVentas: number;
+  totalMargen: number;
+  totalPersonas: number;
+}
+export interface ForecastResumenDto {
+  anio: number;
+  filas: ForecastResumenFilaDto[];
+}
+
+// Informes nativos (PPT slide 23)
+export interface ReporteResultadoFilaDto {
+  departmentId?: number | null;
+  departmentNombre?: string | null;
+  clientId: number;
+  clientNombre: string;
+  serviceId: number;
+  serviceNombre: string;
+  facturacion: number;
+  coste: number;
+  margen: number;
+}
+export interface ReporteResultadoDto {
+  anio: number;
+  filas: ReporteResultadoFilaDto[];
+}
+export interface PrevisionRealCeldaDto {
+  mes: number;
+  ventasPrevistas: number;
+  ventasReales: number;
+  margenPrevisto: number;
+  margenReal: number;
+}
+export interface PrevisionRealFilaDto {
+  departmentId?: number | null;
+  departmentNombre?: string | null;
+  clientId: number;
+  clientNombre: string;
+  meses: PrevisionRealCeldaDto[];
+  totalVentasPrevistas: number;
+  totalVentasReales: number;
+  totalMargenPrevisto: number;
+  totalMargenReal: number;
+}
+export interface PrevisionRealDto {
+  anio: number;
+  filas: PrevisionRealFilaDto[];
+}
 
 // ------------------ Service ------------------
 export interface ServiceListItemDto {
@@ -182,12 +283,14 @@ export interface PeriodDto {
   nombre: string;
   fechaInicio: string;
   fechaFin: string;
+  diaPago: number;
   estado: EstadoPeriodo;
 }
 export interface PeriodCreateRequest {
   nombre: string;
   fechaInicio: string;
   fechaFin: string;
+  diaPago: number;
 }
 export type PeriodUpdateRequest = PeriodCreateRequest;
 
@@ -217,7 +320,14 @@ export interface ClosureLineDto {
   tipo: TipoConcepto;
   tieneIncidencia: boolean;
   rowVersion: number;
+  esManual?: boolean;
+  importeOriginal?: number | null;
+  motivoManual?: string | null;
+  sourceDataSummary?: string | null;
+  inputMetadata?: string | null;
 }
+export interface ClosureLineOverrideRequest { importe: number; motivo: string; }
+export interface ClosureLineIncentivoRequest { conceptId: number; importe: number; motivo: string; userId?: number | null; }
 
 // Alias para compatibilidad (algunos componentes usan ClosureLine en lugar de ClosureLineDto)
 export type ClosureLine = ClosureLineDto;
@@ -234,7 +344,7 @@ export interface ApprovalDto {
 }
 export interface ClosureAlertaDto {
   id: number;
-  tipo: string;
+  tipo: TipoAlerta;
   codigo: string;
   descripcion: string;
   detalle?: string | null;
@@ -266,6 +376,87 @@ export interface ClosureCreateRequest { serviceId: number; periodId: number; com
 export interface ClosureRecalcRequest { comentarios?: string | null; }
 export interface ClosureApproveRequest { comentarios?: string | null; }
 export interface ClosureRejectRequest { motivo: string; }
+
+// ───────────── Ola 3b (#10): cierres separados (Costes mensual / Facturación plurianual) ─────────────
+// Cada cierre evalúa SOLO sus conceptos (Costes -> Pago, Facturación -> Factura) y expone un único Total.
+// El margen es "al vuelo" (facturación − costes) y se calcula en el Dashboard, no en el cierre.
+export interface CierreListItemDto {
+  id: number;
+  tipoCierre: TipoCierre;
+  serviceId: number;
+  serviceNombre: string;
+  periodId: number;
+  periodNombre: string;
+  total: number;
+  estado: EstadoClosure;
+  pasoActual: ApprovalStep;
+}
+export interface CierreDetailDto {
+  id: number;
+  tipoCierre: TipoCierre;
+  serviceId: number;
+  serviceNombre: string;
+  periodId: number;
+  periodNombre: string;
+  total: number;
+  estado: EstadoClosure;
+  pasoActual: ApprovalStep;
+  comentarios?: string | null;
+  rowVersion: number;
+  lines: ClosureLineDto[];
+  approvals: ApprovalDto[];
+  alertas: ClosureAlertaDto[];
+}
+export interface CierreCreateRequest { serviceId: number; periodId: number; comentarios?: string | null; }
+export interface CierreRecalcRequest { comentarios?: string | null; }
+export interface CierreLineOverrideRequest { importe: number; motivo: string; }
+export interface CierreLineIncentivoRequest { conceptId: number; importe: number; motivo: string; userId?: number | null; }
+export interface CierreApproveRequest { comentarios?: string | null; }
+export interface CierreRejectRequest { motivo: string; }
+
+// Panel de aprobaciones agregando AMBOS tipos de cierre (cada item indica su TipoCierre).
+export interface CierrePanelItemDto {
+  cierreId: number;
+  tipoCierre: TipoCierre;
+  serviceId: number;
+  serviceNombre: string;
+  clientId: number;
+  clientNombre: string;
+  periodId: number;
+  periodNombre: string;
+  estado: EstadoClosure;
+  pasoActual: ApprovalStep;
+  pasoActualRol: string;
+  total: number;
+  updatedAt: string;
+}
+export interface CierreHistoryDto {
+  id: number;
+  cierreId: number;
+  tipoCierre: TipoCierre;
+  userId: number;
+  userNombre: string;
+  pasoOrigen: ApprovalStep;
+  pasoDestino: ApprovalStep;
+  accion: string;
+  motivo?: string | null;
+  timestamp: string;
+}
+
+// ------------------ Contratos A3 Innuva (Ola 2 #2 — contratos de un día) ------------------
+export interface ContratoUnDiaDto {
+  id: number;
+  contratoIdExterno: string;
+  nif: string;
+  fechaInicio: string;
+  fechaFin: string;
+  importeBruto: number;
+  userId?: number | null;
+  userNombre?: string | null;
+  ignoradoEnCierre: boolean;
+  motivoIgnorar?: string | null;
+}
+export interface ContratoIgnorarRequest { ignorar: boolean; motivo?: string | null; }
 
 export interface ApprovalFilterRequest {
   periodId?: number | null;
@@ -325,6 +516,10 @@ export interface DashboardKpisDto {
   periodNombre: string;
   cierresCompletados: number;
   cierresPendientes: number;
+  cierresCostesCompletados: number;
+  cierresCostesPendientes: number;
+  cierresFacturacionCompletados: number;
+  cierresFacturacionPendientes: number;
   facturacionTotal: number;
   costeTotal: number;
   margen: number;

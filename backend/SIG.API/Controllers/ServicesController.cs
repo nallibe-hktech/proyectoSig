@@ -42,4 +42,15 @@ public class ServicesController : ControllerBase
         await _svc.DeleteAsync(id, UserId, ct);
         return NoContent();
     }
+
+    // Ola 2 (#8): asociar/desasociar conceptos del catálogo a un servicio (no crea conceptos nuevos).
+    [HttpPost("{id:int}/concepts/{conceptId:int}")]
+    [Authorize(Roles = "Administrator,Backoffice")]
+    public async Task<IActionResult> AddConcept(int id, int conceptId, CancellationToken ct) =>
+        Ok(await _svc.AddConceptAsync(id, conceptId, UserId, ct));
+
+    [HttpDelete("{id:int}/concepts/{conceptId:int}")]
+    [Authorize(Roles = "Administrator,Backoffice")]
+    public async Task<IActionResult> RemoveConcept(int id, int conceptId, CancellationToken ct) =>
+        Ok(await _svc.RemoveConceptAsync(id, conceptId, UserId, ct));
 }

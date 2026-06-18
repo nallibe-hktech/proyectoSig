@@ -50,7 +50,8 @@ public static class DependencyInjection
         services.AddScoped<IConceptRepository, ConceptRepository>();
         services.AddScoped<IVariableRepository, VariableRepository>();
         services.AddScoped<IPeriodRepository, PeriodRepository>();
-        services.AddScoped<IClosureRepository, ClosureRepository>();
+        services.AddScoped<ICierreCostesRepository, CierreCostesRepository>();
+        services.AddScoped<ICierreFacturacionRepository, CierreFacturacionRepository>();
         services.AddScoped<IClosureLineRepository, ClosureLineRepository>();
         services.AddScoped<IApprovalRepository, ApprovalRepository>();
         services.AddScoped<ICalculationLogRepository, CalculationLogRepository>();
@@ -61,6 +62,8 @@ public static class DependencyInjection
         services.AddScoped<ICeleroMappingRepository, CeleroMappingRepository>();
         services.AddScoped<ITarifaServicioRepository, TarifaServicioRepository>();
         services.AddScoped<IPresupuestoServicioRepository, PresupuestoServicioRepository>();
+        services.AddScoped<IClienteIncidenciaRepository, ClienteIncidenciaRepository>();
+        services.AddScoped<IForecastRepository, ForecastRepository>();
         services.AddScoped<IClosureAlertaRepository, ClosureAlertaRepository>();
         services.AddScoped<IStagingA3InnuvaContratoRepository, StagingA3InnuvaContratoRepository>();
         services.AddScoped(typeof(IStagingRepository<>), typeof(StagingRepository<>));
@@ -81,7 +84,12 @@ public static class DependencyInjection
         services.AddScoped<IPeriodService, PeriodService>();
         services.AddScoped<ITarifaServicioService, TarifaServicioService>();
         services.AddScoped<IPresupuestoServicioService, PresupuestoServicioService>();
-        services.AddScoped<IClosureService, ClosureService>();
+        services.AddScoped<IClienteIncidenciaService, ClienteIncidenciaService>();
+        services.AddScoped<IForecastService, ForecastService>();
+        services.AddScoped<IReportsService, ReportsService>();
+        services.AddScoped<IContratoService, ContratoService>();
+        services.AddScoped<ICierreCostesService, CierreCostesService>();
+        services.AddScoped<ICierreFacturacionService, CierreFacturacionService>();
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IClosureValidationService, ClosureValidationService>();
         services.AddScoped<IDashboardService, DashboardService>();

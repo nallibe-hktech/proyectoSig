@@ -17,7 +17,7 @@ public class CalculationContext
     public HashSet<string> SistemasUsados { get; } = new();
     public Dictionary<string, object> UsedInputs { get; } = new();
 
-    public List<RowAdapter> FilteredRows(SourceNode source, Closure closure, int? recursoId)
+    public List<RowAdapter> FilteredRows(SourceNode source, CalculationTarget target, int? recursoId)
     {
         SistemasUsados.Add(EntityToSistema(source.Entity));
 
@@ -33,13 +33,13 @@ public class CalculationContext
         };
 
         // Filtros implícitos: período + projectId (si campo existe) + userId opcional
-        var desde = closure.Period.FechaInicio;
-        var hasta = closure.Period.FechaFin;
+        var desde = target.Period.FechaInicio;
+        var hasta = target.Period.FechaFin;
 
         var rows = baseRows.Where(r =>
         {
             if (r.Fecha.HasValue && (r.Fecha.Value < desde || r.Fecha.Value > hasta)) return false;
-            if (r.ServiceId.HasValue && r.ServiceId.Value != closure.ServiceId) return false;
+            if (r.ServiceId.HasValue && r.ServiceId.Value != target.ServiceId) return false;
             if (recursoId.HasValue && r.UserId.HasValue && r.UserId.Value != recursoId.Value) return false;
             return true;
         });
