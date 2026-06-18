@@ -80,4 +80,55 @@ public class DashboardMargenTests
         s100.FacturacionTotal.Should().Be(1000m);
         s100.Margen.Should().Be(400m, "margen = facturación − coste por (servicio, período)");
     }
+
+    [Fact]
+    public async Task GetKpisAsync_DesdoblaContadoresPorTipoDeCierre()
+    {
+        // PPT slide 3: distinguir cierre de costes vs cierre de facturación.
+        var period = new Period { Id = 7, Nombre = "Marzo 2026", FechaInicio = new DateOnly(2026, 3, 1), FechaFin = new DateOnly(2026, 3, 31), Estado = EstadoPeriodo.Cerrado };
+        _periodRepo.GetByIdAsync(7, Arg.Any<CancellationToken>()).Returns(period);
+        _periodRepo.ListAsync(Arg.Any<CancellationToken>()).Returns(new List<Period> { period });
+
+        _costesRepo.ListByPeriodForUserAsync(99, 7, Arg.Any<CancellationToken>()).Returns(new List<CierreCostes>
+        {
+            new() { Id = 1, ServiceId = 100, Service = Svc(100), PeriodId = 7, Period = period, Total = 600m, Estado = EstadoClosure.Aprobado, Lines = new List<ClosureLine>() },     // costes completado
+            new() { Id = 2, ServiceId = 200, Service = Svc(200), PeriodId = 7, Period = period, Total = 300m, Estado = EstadoClosure.EnAprobacion, Lines = new List<ClosureLine>() }, // costes pendiente
+        });
+        _factRepo.ListByPeriodForUserAsync(99, 7, Arg.Any<CancellationToken>()).Returns(new List<CierreFacturacion>
+        {
+            new() { Id = 1, ServiceId = 100, Service = Svc(100), PeriodId = 7, Period = period, Total = 1000m, Estado = EstadoClosure.Borrador, Lines = new List<ClosureLine>() },   // facturación pendiente
+        });
+
+        var kpis = await _sut.GetKpisAsync(7, 99, CancellationToken.None);
+
+        kpis.CierresCostesCompletados.Should().Be(1);
+        kpis.CierresCostesPendientes.Should().Be(1);
+        kpis.CierresFacturacionCompletados.Should().Be(0);
+        kpis.CierresFacturacionPendientes.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetKpisAsync_FiltroServicio_SoloComputaEseServicio()
+    {
+        // PPT slide 3: el filtro de servicio aplica a los KPIs.
+        var period = new Period { Id = 7, Nombre = "Marzo 2026", FechaInicio = new DateOnly(2026, 3, 1), FechaFin = new DateOnly(2026, 3, 31), Estado = EstadoPeriodo.Cerrado };
+        _periodRepo.GetByIdAsync(7, Arg.Any<CancellationToken>()).Returns(period);
+        _periodRepo.ListAsync(Arg.Any<CancellationToken>()).Returns(new List<Period> { period });
+
+        _costesRepo.ListByPeriodForUserAsync(99, 7, Arg.Any<CancellationToken>()).Returns(new List<CierreCostes>
+        {
+            new() { Id = 1, ServiceId = 100, Service = Svc(100), PeriodId = 7, Period = period, Total = 600m, Estado = EstadoClosure.Aprobado, Lines = new List<ClosureLine>() },
+            new() { Id = 2, ServiceId = 200, Service = Svc(200), PeriodId = 7, Period = period, Total = 999m, Estado = EstadoClosure.Aprobado, Lines = new List<ClosureLine>() },
+        });
+        _factRepo.ListByPeriodForUserAsync(99, 7, Arg.Any<CancellationToken>()).Returns(new List<CierreFacturacion>
+        {
+            new() { Id = 1, ServiceId = 100, Service = Svc(100), PeriodId = 7, Period = period, Total = 1000m, Estado = EstadoClosure.Aprobado, Lines = new List<ClosureLine>() },
+        });
+
+        var kpis = await _sut.GetKpisAsync(7, 99, CancellationToken.None, serviceId: 100);
+
+        kpis.CosteTotal.Should().Be(600m, "solo el servicio 100");
+        kpis.FacturacionTotal.Should().Be(1000m);
+        kpis.DesglosePorCliente.Sum(d => d.Coste).Should().Be(600m);
+    }
 }

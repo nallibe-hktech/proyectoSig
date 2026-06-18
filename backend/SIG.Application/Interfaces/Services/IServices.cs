@@ -31,6 +31,16 @@ public interface IClientService
     Task DeleteAsync(int id, int usuarioId, CancellationToken ct);
 }
 
+// Incidencias del cliente (PPT slide 6). Anidado bajo el cliente, patrón Tarifas/Presupuestos por servicio.
+public interface IClienteIncidenciaService
+{
+    Task<IReadOnlyList<ClienteIncidenciaDto>> ListByClientAsync(int clientId, int usuarioId, CancellationToken ct);
+    Task<ClienteIncidenciaDto> GetByIdAsync(int id, int clientId, int usuarioId, CancellationToken ct);
+    Task<ClienteIncidenciaDto> CreateAsync(int clientId, ClienteIncidenciaCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<ClienteIncidenciaDto> UpdateAsync(int id, int clientId, ClienteIncidenciaUpdateRequest req, int usuarioId, CancellationToken ct);
+    Task DeleteAsync(int id, int clientId, int usuarioId, CancellationToken ct);
+}
+
 public interface IServiceService
 {
     Task<PagedResult<ServiceListItemDto>> ListAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
@@ -127,6 +137,14 @@ public interface IPresupuestoServicioService
     Task DeleteAsync(int id, int serviceId, CancellationToken ct);
 }
 
+// Forecast (PPT slide 36): previsión mensual por servicio + resumen pivote con filtros.
+public interface IForecastService
+{
+    Task<IReadOnlyList<ForecastDto>> ListByServiceAsync(int serviceId, int anio, CancellationToken ct);
+    Task<ForecastDto> UpsertAsync(int serviceId, ForecastUpsertRequest req, CancellationToken ct);
+    Task<ForecastResumenDto> GetResumenAsync(int anio, int? departmentId, int? clientId, int? serviceId, CancellationToken ct);
+}
+
 public interface IContratoService
 {
     Task<IReadOnlyList<ContratoUnDiaDto>> ListContratosUnDiaAsync(CancellationToken ct);
@@ -163,9 +181,16 @@ public interface IApprovalService
 
 public interface IDashboardService
 {
-    Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct);
+    Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct, int? serviceId = null);
     Task<IReadOnlyList<DashboardAvisoDto>> GetAvisosAsync(int usuarioId, CancellationToken ct);
-    Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct, int? serviceId = null);
+}
+
+// Informes nativos (PPT slide 23). Reutiliza el emparejado coste+facturación y el Forecast.
+public interface IReportsService
+{
+    Task<ReporteResultadoDto> GetResultadoAsync(int anio, int? departmentId, int? clientId, int? serviceId, int usuarioId, CancellationToken ct);
+    Task<PrevisionRealDto> GetPrevisionVsRealAsync(int anio, int? departmentId, int? clientId, int? serviceId, int usuarioId, CancellationToken ct);
 }
 
 public interface ICalculationService

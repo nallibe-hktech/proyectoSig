@@ -93,3 +93,10 @@ logs/
 # ============================================================
 /Galán/
 /Mediapost/
+
+# Backups de BD (datos reales/PII) — nunca al repo
+backups/
+*.dump
+
+# PPT de mockups del cliente (binario pesado)
+*.pptx

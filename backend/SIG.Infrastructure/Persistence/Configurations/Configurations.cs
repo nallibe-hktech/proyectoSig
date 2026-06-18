@@ -186,6 +186,38 @@ public class PresupuestoServicioConfiguration : IEntityTypeConfiguration<Presupu
     }
 }
 
+public class ClienteIncidenciaConfiguration : IEntityTypeConfiguration<ClienteIncidencia>
+{
+    public void Configure(EntityTypeBuilder<ClienteIncidencia> b)
+    {
+        b.Property(i => i.Tipo).HasMaxLength(100).IsRequired();
+        b.Property(i => i.Descripcion).HasMaxLength(2000).IsRequired();
+        b.Property(i => i.Estado).HasConversion<string>().HasMaxLength(20);
+        b.HasOne(i => i.Client)
+            .WithMany()
+            .HasForeignKey(i => i.ClientId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(i => i.ClientId);
+        b.HasQueryFilter(i => !i.IsDeleted);
+    }
+}
+
+public class ForecastConfiguration : IEntityTypeConfiguration<Forecast>
+{
+    public void Configure(EntityTypeBuilder<Forecast> b)
+    {
+        b.Property(f => f.VentasPrevistas).HasPrecision(18, 4);
+        b.Property(f => f.MargenPrevisto).HasPrecision(18, 4);
+        b.HasOne(f => f.Service)
+            .WithMany()
+            .HasForeignKey(f => f.ServiceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        // Un único forecast por servicio y mes (filtrado por soft-delete).
+        b.HasIndex(f => new { f.ServiceId, f.Anio, f.Mes }).IsUnique();
+        b.HasQueryFilter(f => !f.IsDeleted);
+    }
+}
+
 public class VariableConfiguration : IEntityTypeConfiguration<Variable>
 {
     public void Configure(EntityTypeBuilder<Variable> b)

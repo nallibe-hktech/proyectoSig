@@ -8,6 +8,11 @@ public record ClientDetailDto(int Id, string Nombre, string NIF, EstadoCliente E
 public record ClientCreateRequest(string Nombre, string NIF, EstadoCliente? Estado, string? Direccion, string? Ciudad, string? Provincia, string? Pais, string? CodigoPostal, string? ContactoNombre, string? ContactoEmail, string? ContactoTelefono);
 public record ClientUpdateRequest(string Nombre, string NIF, EstadoCliente Estado, string? Direccion, string? Ciudad, string? Provincia, string? Pais, string? CodigoPostal, string? ContactoNombre, string? ContactoEmail, string? ContactoTelefono);
 
+// Incidencias del cliente (PPT slide 6): tipo (texto libre), explicación y estado; editables y con histórico.
+public record ClienteIncidenciaDto(int Id, int ClientId, string Tipo, string Descripcion, EstadoIncidencia Estado, DateTime CreatedAt, DateTime UpdatedAt);
+public record ClienteIncidenciaCreateRequest(string Tipo, string Descripcion, EstadoIncidencia? Estado);
+public record ClienteIncidenciaUpdateRequest(string Tipo, string Descripcion, EstadoIncidencia Estado);
+
 // Service (antes Action; absorbe el vínculo directo a Client y los metadatos de Project)
 public record ServiceListItemDto(int Id, string Nombre, int ClientId, string ClientNombre, int? DepartmentId, EstadoServicio Estado);
 public record ServiceDetailDto(int Id, string Nombre, int ClientId, string ClientNombre, int? DepartmentId, EstadoServicio Estado, string? InterlocutorNombre, string? InterlocutorEmail, string? InterlocutorTelefono, DateOnly FechaAlta, int[] CostCenterIds, int[] UserIds, int[] ConceptIds);
@@ -57,3 +62,16 @@ public record TarifaServicioUpdateRequest(string Nombre, decimal Valor, string? 
 public record PresupuestoServicioDto(int Id, int ServiceId, int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
 public record PresupuestoServicioCreateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
 public record PresupuestoServicioUpdateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
+
+// Forecast (PPT slide 36): previsión mensual de ventas/margen/GPP por servicio.
+public record ForecastDto(int Id, int ServiceId, int Anio, int Mes, decimal VentasPrevistas, decimal? MargenPrevisto, int? PersonasCampo);
+// Upsert por mes: si existe (servicio, año, mes) actualiza; si no, crea.
+public record ForecastUpsertRequest(int Anio, int Mes, decimal VentasPrevistas, decimal? MargenPrevisto, int? PersonasCampo);
+
+// Resumen tipo pivote (slide 36): filas por dpto+cliente, columnas por mes, totales.
+public record ForecastResumenCeldaDto(int Mes, decimal Ventas, decimal Margen, int Personas);
+public record ForecastResumenFilaDto(
+    int? DepartmentId, string? DepartmentNombre, int ClientId, string ClientNombre,
+    IReadOnlyList<ForecastResumenCeldaDto> Meses,
+    decimal TotalVentas, decimal TotalMargen, int TotalPersonas);
+public record ForecastResumenDto(int Anio, IReadOnlyList<ForecastResumenFilaDto> Filas);

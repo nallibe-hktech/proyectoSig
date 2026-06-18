@@ -67,13 +67,15 @@ public class DashboardService : IDashboardService
         return p;
     }
 
-    public async Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct)
+    public async Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct, int? serviceId = null)
     {
         Period? period = periodId.HasValue ? await _periodRepo.GetByIdAsync(periodId.Value, ct)
                                             : await _periodRepo.GetActivoAsync(ct);
-        if (period is null) return new DashboardKpisDto(0, "", 0, 0, 0, 0, 0, 0, new List<KpiClienteDto>(), new List<EvolucionPeriodoDto>());
+        if (period is null) return new DashboardKpisDto(0, "", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, new List<KpiClienteDto>(), new List<EvolucionPeriodoDto>());
 
         var pairs = await BuildPairsAsync(usuarioId, period.Id, ct);
+        // PPT slide 3: el filtro de servicio aplica a los KPIs del período.
+        if (serviceId.HasValue) pairs = pairs.Where(p => p.ServiceId == serviceId.Value).ToList();
 
         bool Completado(EstadoClosure? e) => e is EstadoClosure.Aprobado or EstadoClosure.Exportado;
         bool Pendiente(EstadoClosure? e) => e is EstadoClosure.EnAprobacion or EstadoClosure.Borrador or EstadoClosure.Rechazado;
@@ -81,6 +83,12 @@ public class DashboardService : IDashboardService
         // Un par cuenta como completado si ambos cierres existentes lo están; pendiente si alguno lo está.
         int completados = pairs.Count(p => (p.Costes == null || Completado(p.Costes.Estado)) && (p.Facturacion == null || Completado(p.Facturacion.Estado)) && (p.Costes != null || p.Facturacion != null));
         int pendientes = pairs.Count(p => Pendiente(p.Costes?.Estado) || Pendiente(p.Facturacion?.Estado));
+
+        // PPT slide 3: contadores separados por tipo de cierre.
+        int costesCompletados = pairs.Count(p => p.Costes != null && Completado(p.Costes.Estado));
+        int costesPendientes = pairs.Count(p => p.Costes != null && Pendiente(p.Costes.Estado));
+        int facturacionCompletados = pairs.Count(p => p.Facturacion != null && Completado(p.Facturacion.Estado));
+        int facturacionPendientes = pairs.Count(p => p.Facturacion != null && Pendiente(p.Facturacion.Estado));
         decimal fact = pairs.Sum(p => p.Factura);
         decimal coste = pairs.Sum(p => p.Coste);
         decimal margen = fact - coste;
@@ -115,7 +123,9 @@ public class DashboardService : IDashboardService
             evolucion.Add(new EvolucionPeriodoDto(p.Nombre, pFact, pCoste, pFact - pCoste));
         }
 
-        return new DashboardKpisDto(period.Id, period.Nombre, completados, pendientes, fact, coste, margen, margenPct, desglose, evolucion);
+        return new DashboardKpisDto(period.Id, period.Nombre, completados, pendientes,
+            costesCompletados, costesPendientes, facturacionCompletados, facturacionPendientes,
+            fact, coste, margen, margenPct, desglose, evolucion);
     }
 
     public async Task<IReadOnlyList<DashboardAvisoDto>> GetAvisosAsync(int usuarioId, CancellationToken ct)
@@ -148,7 +158,7 @@ public class DashboardService : IDashboardService
         return avisos;
     }
 
-    public async Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct)
+    public async Task<IReadOnlyList<MiServicioDto>> GetMisServiciosAsync(int? periodId, int usuarioId, CancellationToken ct, int? serviceId = null)
     {
         var period = periodId.HasValue ? await _periodRepo.GetByIdAsync(periodId.Value, ct)
                                        : await _periodRepo.GetActivoAsync(ct);
@@ -158,7 +168,9 @@ public class DashboardService : IDashboardService
             ? new Dictionary<int, Pair>()
             : (await BuildPairsAsync(usuarioId, period.Id, ct)).ToDictionary(p => p.ServiceId);
 
-        var items = services.Items.Select(p =>
+        var items = services.Items
+            .Where(p => !serviceId.HasValue || p.Id == serviceId.Value) // PPT slide 3: filtro de servicio
+            .Select(p =>
         {
             pairsByService.TryGetValue(p.Id, out var pair);
             // ClosureId del DTO -> id del cierre de costes (mensual) si existe, si no el de facturación.

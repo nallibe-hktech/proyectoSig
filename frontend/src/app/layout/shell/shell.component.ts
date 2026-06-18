@@ -84,7 +84,8 @@ export class ShellComponent implements OnInit {
     { label: 'Approvals', route: '/approvals', icon: 'approval', testId: 'nav-approvals' },
     { label: 'Cierres de Costes', route: '/cierres-costes', icon: 'payments', testId: 'nav-cierres-costes' },
     { label: 'Cierres de Facturación', route: '/cierres-facturacion', icon: 'receipt_long', testId: 'nav-cierres-facturacion' },
-    { label: 'Reports', route: '/reports', icon: 'bar_chart', testId: 'nav-reports' },
+    { label: 'Informes', route: '/reports', icon: 'bar_chart', testId: 'nav-reports' },
+    { label: 'Forecast', route: '/forecast', icon: 'trending_up', testId: 'nav-forecast' },
   ];
 
   private readonly allAdminNav: NavItem[] = [

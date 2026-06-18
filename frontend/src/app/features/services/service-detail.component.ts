@@ -15,6 +15,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { NotifyService } from '../../core/notify.service';
 import { TarifasListComponent } from './tarifas/tarifas-list.component';
 import { PresupuestosListComponent } from './presupuestos/presupuestos-list.component';
+import { ForecastListComponent } from './forecast/forecast-list.component';
 
 @Component({
   selector: 'app-service-detail',
@@ -22,7 +23,7 @@ import { PresupuestosListComponent } from './presupuestos/presupuestos-list.comp
   imports: [
     CommonModule, DatePipe, RouterLink,
     MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatDialogModule, MatTabsModule,
-    BreadcrumbsComponent, SkeletonComponent,
+    BreadcrumbsComponent, SkeletonComponent, ForecastListComponent,
     TarifasListComponent, PresupuestosListComponent,
   ],
   template: `
@@ -75,6 +76,16 @@ import { PresupuestosListComponent } from './presupuestos/presupuestos-list.comp
             </ng-template>
             <div style="padding: 16px;">
               <app-presupuestos-list [serviceId]="service()!.id"></app-presupuestos-list>
+            </div>
+          </mat-tab>
+
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon>trending_up</mat-icon>
+              <span style="margin-left: 8px;">Forecast</span>
+            </ng-template>
+            <div style="padding: 16px;">
+              <app-forecast-list [serviceId]="service()!.id"></app-forecast-list>
             </div>
           </mat-tab>
         </mat-tab-group>

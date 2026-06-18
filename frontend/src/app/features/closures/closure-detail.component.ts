@@ -137,6 +137,42 @@ import { IncentivoDialog } from './incentivo.dialog';
           </mat-card>
         }
 
+        <!-- PPT slide 15: matriz empleados × conceptos -->
+        @if (closure()!.lines.length > 0) {
+          <mat-card style="margin-bottom: 16px;" data-testid="card-matriz">
+            <mat-card-header><mat-card-title>Matriz empleados × conceptos</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <div class="matriz-scroll">
+                <table class="matriz">
+                  <thead>
+                    <tr>
+                      <th class="sticky">Empleado</th>
+                      @for (c of matriz().conceptos; track c) { <th class="num">{{ c }}</th> }
+                      <th class="num total-col">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (f of matriz().filas; track f.userNombre) {
+                      <tr data-testid="matriz-fila">
+                        <td class="sticky">{{ f.userNombre }}</td>
+                        @for (v of f.celdas; track $index) {
+                          <td class="num">{{ v ? (v | number:'1.0-2') : '—' }}</td>
+                        }
+                        <td class="num total-col">{{ f.total | number:'1.0-2' }}</td>
+                      </tr>
+                    }
+                    <tr class="totales">
+                      <td class="sticky">Total</td>
+                      @for (t of matriz().totalesPorConcepto; track $index) { <td class="num">{{ t | number:'1.0-2' }}</td> }
+                      <td class="num total-col">{{ matriz().granTotal | number:'1.0-2' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
         <!-- Líneas -->
         <mat-card style="margin-bottom: 16px;">
           <mat-card-header style="display:flex;align-items:center;justify-content:space-between;">
@@ -213,6 +249,14 @@ import { IncentivoDialog } from './incentivo.dialog';
   `,
   styles: [`
     .sig-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .matriz-scroll { overflow-x: auto; }
+    table.matriz { border-collapse: collapse; width: 100%; font-size: 13px; }
+    table.matriz th, table.matriz td { border: 1px solid var(--mat-sys-outline-variant); padding: 6px 10px; white-space: nowrap; }
+    table.matriz th { background: var(--mat-sys-surface-container); font-weight: 600; text-align: left; }
+    table.matriz .num { text-align: right; font-variant-numeric: tabular-nums; }
+    table.matriz .total-col { font-weight: 600; background: var(--mat-sys-surface-container-low); }
+    table.matriz tr.totales td { font-weight: 700; background: var(--mat-sys-surface-container); }
+    table.matriz .sticky { position: sticky; left: 0; background: var(--mat-sys-surface); }
   `],
 })
 export class ClosureDetailComponent implements OnInit {
@@ -231,6 +275,28 @@ export class ClosureDetailComponent implements OnInit {
 
   protected readonly closure = signal<CierreDetailDto | null>(null);
   protected readonly historial = signal<CierreHistoryDto[]>([]);
+
+  // PPT slide 15: vista global en matriz — empleados en filas, conceptos en columnas.
+  protected readonly matriz = computed(() => {
+    const lines = this.closure()?.lines ?? [];
+    const conceptos: string[] = [];
+    const conceptoIndex = new Map<string, number>();
+    for (const l of lines) {
+      if (!conceptoIndex.has(l.conceptNombre)) { conceptoIndex.set(l.conceptNombre, conceptos.length); conceptos.push(l.conceptNombre); }
+    }
+    const filasMap = new Map<string, { userNombre: string; celdas: number[]; total: number }>();
+    for (const l of lines) {
+      const key = l.userNombre ?? 'Sin asignar';
+      let fila = filasMap.get(key);
+      if (!fila) { fila = { userNombre: key, celdas: conceptos.map(() => 0), total: 0 }; filasMap.set(key, fila); }
+      fila.celdas[conceptoIndex.get(l.conceptNombre)!] += l.importe;
+      fila.total += l.importe;
+    }
+    const filas = [...filasMap.values()].sort((a, b) => a.userNombre.localeCompare(b.userNombre));
+    const totalesPorConcepto = conceptos.map((_, i) => filas.reduce((acc, f) => acc + f.celdas[i], 0));
+    const granTotal = filas.reduce((acc, f) => acc + f.total, 0);
+    return { conceptos, filas, totalesPorConcepto, granTotal };
+  });
   protected readonly loading = signal(true);
   protected readonly lineCols = ['concepto', 'tipo', 'usuario', 'importe', 'incidencia', 'acciones'];
 

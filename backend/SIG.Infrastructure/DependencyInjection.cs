@@ -62,6 +62,8 @@ public static class DependencyInjection
         services.AddScoped<ICeleroMappingRepository, CeleroMappingRepository>();
         services.AddScoped<ITarifaServicioRepository, TarifaServicioRepository>();
         services.AddScoped<IPresupuestoServicioRepository, PresupuestoServicioRepository>();
+        services.AddScoped<IClienteIncidenciaRepository, ClienteIncidenciaRepository>();
+        services.AddScoped<IForecastRepository, ForecastRepository>();
         services.AddScoped<IClosureAlertaRepository, ClosureAlertaRepository>();
         services.AddScoped<IStagingA3InnuvaContratoRepository, StagingA3InnuvaContratoRepository>();
         services.AddScoped(typeof(IStagingRepository<>), typeof(StagingRepository<>));
@@ -82,6 +84,9 @@ public static class DependencyInjection
         services.AddScoped<IPeriodService, PeriodService>();
         services.AddScoped<ITarifaServicioService, TarifaServicioService>();
         services.AddScoped<IPresupuestoServicioService, PresupuestoServicioService>();
+        services.AddScoped<IClienteIncidenciaService, ClienteIncidenciaService>();
+        services.AddScoped<IForecastService, ForecastService>();
+        services.AddScoped<IReportsService, ReportsService>();
         services.AddScoped<IContratoService, ContratoService>();
         services.AddScoped<ICierreCostesService, CierreCostesService>();
         services.AddScoped<ICierreFacturacionService, CierreFacturacionService>();

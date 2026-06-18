@@ -118,6 +118,9 @@ export const routes: Routes = [
       // Reports
       { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then((m) => m.ReportsComponent), title: 'Reports — SIG' },
 
+      // Forecast (PPT slide 36)
+      { path: 'forecast', loadComponent: () => import('./features/forecast/forecast-resumen.component').then((m) => m.ForecastResumenComponent), title: 'Forecast — SIG' },
+
       // Administración — CostCenters
       { path: 'cost-centers', loadComponent: () => import('./features/cost-centers/cost-centers-list.component').then((m) => m.CostCentersListComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Centros de Coste — SIG' },
       { path: 'cost-centers/nuevo', loadComponent: () => import('./features/cost-centers/cost-center-form.component').then((m) => m.CostCenterFormComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Nuevo CECO — SIG' },

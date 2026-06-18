@@ -3,7 +3,8 @@
 
 import type {
   EstadoUsuario, EstadoCliente, EstadoServicio, TipoConcepto, EstadoPeriodo,
-  EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta
+  EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta,
+  EstadoIncidencia
 } from './enums';
 
 export type { EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta };
@@ -59,6 +60,104 @@ export interface ClientDetailDto {
 }
 export type ClientCreateRequest = Omit<ClientDetailDto, 'id'>;
 export type ClientUpdateRequest = ClientCreateRequest;
+
+// Incidencias del cliente (PPT slide 6): tipo (texto libre), explicación y estado, editables y con histórico.
+export interface ClienteIncidenciaDto {
+  id: number;
+  clientId: number;
+  tipo: string;
+  descripcion: string;
+  estado: EstadoIncidencia;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface ClienteIncidenciaCreateRequest {
+  tipo: string;
+  descripcion: string;
+  estado?: EstadoIncidencia;
+}
+export interface ClienteIncidenciaUpdateRequest {
+  tipo: string;
+  descripcion: string;
+  estado: EstadoIncidencia;
+}
+
+// Forecast (PPT slide 36): previsión mensual de ventas/margen/GPP por servicio.
+export interface ForecastDto {
+  id: number;
+  serviceId: number;
+  anio: number;
+  mes: number;
+  ventasPrevistas: number;
+  margenPrevisto?: number | null;
+  personasCampo?: number | null;
+}
+export interface ForecastUpsertRequest {
+  anio: number;
+  mes: number;
+  ventasPrevistas: number;
+  margenPrevisto?: number | null;
+  personasCampo?: number | null;
+}
+export interface ForecastResumenCeldaDto {
+  mes: number;
+  ventas: number;
+  margen: number;
+  personas: number;
+}
+export interface ForecastResumenFilaDto {
+  departmentId?: number | null;
+  departmentNombre?: string | null;
+  clientId: number;
+  clientNombre: string;
+  meses: ForecastResumenCeldaDto[];
+  totalVentas: number;
+  totalMargen: number;
+  totalPersonas: number;
+}
+export interface ForecastResumenDto {
+  anio: number;
+  filas: ForecastResumenFilaDto[];
+}
+
+// Informes nativos (PPT slide 23)
+export interface ReporteResultadoFilaDto {
+  departmentId?: number | null;
+  departmentNombre?: string | null;
+  clientId: number;
+  clientNombre: string;
+  serviceId: number;
+  serviceNombre: string;
+  facturacion: number;
+  coste: number;
+  margen: number;
+}
+export interface ReporteResultadoDto {
+  anio: number;
+  filas: ReporteResultadoFilaDto[];
+}
+export interface PrevisionRealCeldaDto {
+  mes: number;
+  ventasPrevistas: number;
+  ventasReales: number;
+  margenPrevisto: number;
+  margenReal: number;
+}
+export interface PrevisionRealFilaDto {
+  departmentId?: number | null;
+  departmentNombre?: string | null;
+  clientId: number;
+  clientNombre: string;
+  meses: PrevisionRealCeldaDto[];
+  totalVentasPrevistas: number;
+  totalVentasReales: number;
+  totalMargenPrevisto: number;
+  totalMargenReal: number;
+}
+export interface PrevisionRealDto {
+  anio: number;
+  filas: PrevisionRealFilaDto[];
+}
 
 // ------------------ Service ------------------
 export interface ServiceListItemDto {
@@ -417,6 +516,10 @@ export interface DashboardKpisDto {
   periodNombre: string;
   cierresCompletados: number;
   cierresPendientes: number;
+  cierresCostesCompletados: number;
+  cierresCostesPendientes: number;
+  cierresFacturacionCompletados: number;
+  cierresFacturacionPendientes: number;
   facturacionTotal: number;
   costeTotal: number;
   margen: number;

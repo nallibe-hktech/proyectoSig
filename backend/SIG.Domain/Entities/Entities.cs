@@ -200,6 +200,41 @@ public class PresupuestoServicio : ISoftDeletable, IAuditable
     public DateTime UpdatedAt { get; set; }
 }
 
+// Incidencia del cliente (PPT slide 6): un cliente puede tener varias incidencias, editables y con
+// histórico (el histórico de cambios lo aporta el AuditInterceptor sobre IAuditable + AuditLog).
+public class ClienteIncidencia : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ClientId { get; set; }
+    public Client Client { get; set; } = null!;
+    public string Tipo { get; set; } = null!;       // texto libre (sin catálogo cerrado en el PPT)
+    public string Descripcion { get; set; } = null!; // explicación de la incidencia
+    public EstadoIncidencia Estado { get; set; }     // Abierta | EnProceso | Resuelta
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// Forecast (PPT slide 36): previsión mensual de ventas / margen / nº personas (GPP) por servicio.
+// Granularidad servicio+mes porque el resumen del PPT pide filas por dpto y filtro por servicio,
+// y el departamento vive en el Servicio (no en el Cliente). Un registro por (ServiceId, Anio, Mes).
+public class Forecast : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
+    public int Anio { get; set; }
+    public int Mes { get; set; }                     // 1..12
+    public decimal VentasPrevistas { get; set; }     // €
+    public decimal? MargenPrevisto { get; set; }     // € (slide 23: previsión de ventas y margen bruto)
+    public int? PersonasCampo { get; set; }          // GPP: nº de personas de campo previstas (slide 36)
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 public class Variable : ISoftDeletable, IAuditable
 {
     public int Id { get; set; }

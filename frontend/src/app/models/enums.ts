@@ -7,6 +7,9 @@ export type EstadoCliente = 'Activo' | 'Inactivo';
 
 export type EstadoServicio = 'Activo' | 'Inactivo';
 
+// Incidencias del cliente (PPT slide 6).
+export type EstadoIncidencia = 'Abierta' | 'EnProceso' | 'Resuelta';
+
 export type TipoConcepto = 'Pago' | 'Factura';
 
 export type EstadoPeriodo = 'Abierto' | 'Cerrado' | 'Bloqueado';

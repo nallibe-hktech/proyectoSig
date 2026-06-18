@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SIG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SIG.Infrastructure.Persistence;
 namespace SIG.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618064313_AddClienteIncidencia")]
+    partial class AddClienteIncidencia
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -882,67 +885,6 @@ namespace SIG.Infrastructure.Migrations
                         .HasName("pk_departments");
 
                     b.ToTable("departments", (string)null);
-                });
-
-            modelBuilder.Entity("SIG.Domain.Entities.Forecast", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Anio")
-                        .HasColumnType("integer")
-                        .HasColumnName("anio");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<decimal?>("MargenPrevisto")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("margen_previsto");
-
-                    b.Property<int>("Mes")
-                        .HasColumnType("integer")
-                        .HasColumnName("mes");
-
-                    b.Property<int?>("PersonasCampo")
-                        .HasColumnType("integer")
-                        .HasColumnName("personas_campo");
-
-                    b.Property<int>("ServiceId")
-                        .HasColumnType("integer")
-                        .HasColumnName("service_id");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<decimal>("VentasPrevistas")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("ventas_previstas");
-
-                    b.HasKey("Id")
-                        .HasName("pk_forecasts");
-
-                    b.HasIndex("ServiceId", "Anio", "Mes")
-                        .IsUnique()
-                        .HasDatabaseName("ix_forecasts_service_id_anio_mes");
-
-                    b.ToTable("forecasts", (string)null);
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.Period", b =>
@@ -3312,18 +3254,6 @@ namespace SIG.Infrastructure.Migrations
                     b.Navigation("Concept");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("SIG.Domain.Entities.Forecast", b =>
-                {
-                    b.HasOne("SIG.Domain.Entities.Service", "Service")
-                        .WithMany()
-                        .HasForeignKey("ServiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_forecasts_services_service_id");
-
-                    b.Navigation("Service");
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.PresupuestoServicio", b =>

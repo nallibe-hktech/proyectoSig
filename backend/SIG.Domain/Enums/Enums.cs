@@ -3,6 +3,8 @@ namespace SIG.Domain.Enums;
 public enum EstadoUsuario { Activo, Inactivo }
 public enum EstadoCliente { Activo, Inactivo }
 public enum EstadoServicio { Activo, Inactivo }
+// Incidencias del cliente (PPT slide 6): ciclo de vida de una incidencia registrada manualmente.
+public enum EstadoIncidencia { Abierta, EnProceso, Resuelta }
 public enum TipoConcepto { Pago, Factura }
 public enum EstadoPeriodo { Abierto, Cerrado, Bloqueado }
 public enum EstadoClosure { Borrador, EnAprobacion, Aprobado, Rechazado, Exportado }

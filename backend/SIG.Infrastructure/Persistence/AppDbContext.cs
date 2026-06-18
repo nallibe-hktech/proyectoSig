@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<CostCenter> CostCenters => Set<CostCenter>();
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<ClienteIncidencia> ClienteIncidencias => Set<ClienteIncidencia>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<ServiceConcept> ServiceConcepts => Set<ServiceConcept>();
     public DbSet<ServiceUser> ServiceUsers => Set<ServiceUser>();
@@ -22,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<ConceptUser> ConceptUsers => Set<ConceptUser>();
     public DbSet<TarifaServicio> TarifasServicio => Set<TarifaServicio>();
     public DbSet<PresupuestoServicio> PresupuestosServicio => Set<PresupuestoServicio>();
+    public DbSet<Forecast> Forecasts => Set<Forecast>();
     public DbSet<Variable> Variables => Set<Variable>();
     public DbSet<Period> Periods => Set<Period>();
     public DbSet<CierreCostes> CierresCostes => Set<CierreCostes>();

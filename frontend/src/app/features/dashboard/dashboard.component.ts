@@ -11,9 +11,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DashboardService } from '../../core/api/dashboard.service';
 import { PeriodService } from '../../core/api/periods.service';
 import { CierresService } from '../../core/api/cierres.service';
+import { ServiceService } from '../../core/api/services.service';
 import { AlertReadStateService } from '../../core/services/alert-read-state.service';
 import { NotifyService } from '../../core/notify.service';
-import { DashboardKpisDto, DashboardAvisoDto, MiServicioDto, PeriodDto, ClosureAlertaDto } from '../../models/dtos';
+import { DashboardKpisDto, DashboardAvisoDto, MiServicioDto, PeriodDto, ClosureAlertaDto, ServiceListItemDto } from '../../models/dtos';
 import { EstadoClosure, ApprovalStep } from '../../models/enums';
 import { StateBadgeComponent } from '../../shared/state-badge.component';
 import { environment } from '../../../environments/environment';
@@ -47,6 +48,24 @@ import { environment } from '../../../environments/environment';
                 @if (period.id === activePeriodId()) {
                   <mat-icon style="margin-left: auto; margin-right: -8px;">check</mat-icon>
                 }
+              </button>
+            }
+          </mat-menu>
+          <!-- PPT slide 3: filtro de servicio (antes "acción") -->
+          <button [matMenuTriggerFor]="serviceMenu" class="sig-period-chip" data-testid="service-selector" mat-button>
+            <mat-icon style="font-size:16px;width:16px;height:16px;">task_alt</mat-icon>
+            <span>{{ selectedServiceNombre() }}</span>
+            <mat-icon style="font-size:14px;width:14px;height:14px;">expand_more</mat-icon>
+          </button>
+          <mat-menu #serviceMenu="matMenu">
+            <button mat-menu-item (click)="selectService(null)" [class.active]="selectedServiceId() === null">
+              Todos los servicios
+              @if (selectedServiceId() === null) { <mat-icon style="margin-left: auto; margin-right: -8px;">check</mat-icon> }
+            </button>
+            @for (s of services(); track s.id) {
+              <button mat-menu-item (click)="selectService(s.id)" [class.active]="s.id === selectedServiceId()">
+                {{ s.nombre }}
+                @if (s.id === selectedServiceId()) { <mat-icon style="margin-left: auto; margin-right: -8px;">check</mat-icon> }
               </button>
             }
           </mat-menu>
@@ -113,10 +132,8 @@ import { environment } from '../../../environments/environment';
               <div class="sig-kpi-icon sig-kpi-icon--blue"><mat-icon>attach_money</mat-icon></div>
             </div>
             <div class="sig-kpi-value">&euro; {{ facturacionK() }}K</div>
-            <div class="sig-kpi-trend sig-trend--up">
-              <mat-icon>trending_up</mat-icon>
-              +12% vs objetivo
-            </div>
+            <!-- PPT slide 4: objetivo integrado en el recuadro (se elimina el gráfico "Objetivos del período") -->
+            <div class="sig-kpi-sub" data-testid="kpi-facturacion-objetivo">Objetivo: &euro; {{ objetivoFacturacionK }}K</div>
           </div>
           <svg class="sig-sparkline" viewBox="0 0 120 32" preserveAspectRatio="none">
             <defs>
@@ -137,9 +154,9 @@ import { environment } from '../../../environments/environment';
               <div class="sig-kpi-icon sig-kpi-icon--teal"><mat-icon>percent</mat-icon></div>
             </div>
             <div class="sig-kpi-value">{{ margenPct() }}%</div>
-            <div class="sig-kpi-trend sig-trend--up">
-              <mat-icon>trending_up</mat-icon>
-              +3 pts vs objetivo
+            <!-- PPT slide 3: mostrar el coste real junto al margen. Slide 4: objetivo integrado (se elimina el gauge). -->
+            <div class="sig-kpi-sub" data-testid="kpi-margen-detalle">
+              Coste real: &euro; {{ costeK() }}K &middot; Margen: &euro; {{ margenK() }}K &middot; Obj. {{ objetivoMargenPct }}%
             </div>
           </div>
           <svg class="sig-sparkline" viewBox="0 0 120 32" preserveAspectRatio="none">
@@ -160,10 +177,16 @@ import { environment } from '../../../environments/environment';
               <span class="sig-kpi-label">CIERRES COMPLETADOS</span>
               <div class="sig-kpi-icon sig-kpi-icon--green"><mat-icon>description</mat-icon></div>
             </div>
-            <div class="sig-kpi-value">{{ kpis()?.cierresCompletados ?? '...' }}</div>
-            <div class="sig-kpi-trend sig-trend--up">
-              <mat-icon>trending_up</mat-icon>
-              +2 vs mes ant.
+            <!-- PPT slide 3: distinguir cierre de costes vs cierre de facturación -->
+            <div class="sig-kpi-split" data-testid="kpi-cierres-completados">
+              <div class="sig-kpi-split-item">
+                <span class="sig-kpi-split-val">{{ kpis()?.cierresCostesCompletados ?? '—' }}</span>
+                <span class="sig-kpi-split-lbl">Costes</span>
+              </div>
+              <div class="sig-kpi-split-item">
+                <span class="sig-kpi-split-val">{{ kpis()?.cierresFacturacionCompletados ?? '—' }}</span>
+                <span class="sig-kpi-split-lbl">Facturaci&oacute;n</span>
+              </div>
             </div>
           </div>
           <svg class="sig-sparkline" viewBox="0 0 120 32" preserveAspectRatio="none">
@@ -184,10 +207,16 @@ import { environment } from '../../../environments/environment';
               <span class="sig-kpi-label">PEND. APROBACI&Oacute;N</span>
               <div class="sig-kpi-icon sig-kpi-icon--orange"><mat-icon>schedule</mat-icon></div>
             </div>
-            <div class="sig-kpi-value">{{ kpis()?.cierresPendientes ?? '...' }}</div>
-            <div class="sig-kpi-trend sig-trend--warn">
-              <mat-icon>warning</mat-icon>
-              Requieren atenci&oacute;n
+            <!-- PPT slide 3: distinguir pendientes de costes vs facturación -->
+            <div class="sig-kpi-split" data-testid="kpi-cierres-pendientes">
+              <div class="sig-kpi-split-item">
+                <span class="sig-kpi-split-val">{{ kpis()?.cierresCostesPendientes ?? '—' }}</span>
+                <span class="sig-kpi-split-lbl">Costes</span>
+              </div>
+              <div class="sig-kpi-split-item">
+                <span class="sig-kpi-split-val">{{ kpis()?.cierresFacturacionPendientes ?? '—' }}</span>
+                <span class="sig-kpi-split-lbl">Facturaci&oacute;n</span>
+              </div>
             </div>
           </div>
           <svg class="sig-sparkline" viewBox="0 0 120 32" preserveAspectRatio="none">
@@ -278,6 +307,9 @@ import { environment } from '../../../environments/environment';
                 <div class="sig-donut-item">
                   <span class="sig-donut-dot" [style.background]="seg.color"></span>
                   <span class="sig-donut-label">{{ seg.nombre }}</span>
+                  <!-- PPT slide 3: ordenar como en la visión global → primero importe (€), luego margen -->
+                  <span class="sig-donut-num">&euro; {{ kFmt(seg.facturacion) }}K</span>
+                  <span class="sig-donut-num">{{ kFmt(seg.margen) }}K</span>
                   <span class="sig-donut-pct">{{ seg.pctTotal | number:'1.1-1' }}%</span>
                 </div>
               }
@@ -355,61 +387,10 @@ import { environment } from '../../../environments/environment';
         }
       </div>
 
-      <!-- Bottom row: Gauge + Objectives + Alerts -->
+      <!-- Bottom row: Alerts -->
+      <!-- PPT slide 4: se eliminan los gráficos "Margen vs Objetivo" (duplicaba el margen promedio) y
+           "Objetivos del Período"; el objetivo de facturación y margen se muestra en los KPIs superiores. -->
       <div class="sig-bottom-row">
-
-        <!-- Gauge: Margen vs Objetivo -->
-        <div class="sig-bottom-card" data-testid="panel-margen">
-          <div class="sig-chart-icon"><mat-icon>donut_large</mat-icon></div>
-          <span class="sig-chart-title">Margen vs Objetivo</span>
-          <svg class="sig-gauge" viewBox="0 0 200 130">
-            <!-- Background arc -->
-            <path d="M20 110 A80 80 0 0 1 180 110" fill="none" stroke="var(--sig-border)" stroke-width="18" stroke-linecap="round"/>
-            <!-- Gauge fill (dynamic) -->
-            <path [attr.d]="gaugePath()" fill="none" stroke="#3b82f6" stroke-width="18" stroke-linecap="round"/>
-            <!-- Target marker at 25% -->
-            <line x1="51" y1="61" x2="35" y2="45" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
-            <!-- Center text -->
-            <text x="100" y="98" text-anchor="middle" fill="var(--sig-text-heading)" font-size="28" font-weight="700">{{ margenPct() | number:'1.1-1' }}%</text>
-            <text x="100" y="116" text-anchor="middle" fill="var(--sig-text-muted)" font-size="12">Objetivo 25%</text>
-          </svg>
-        </div>
-
-        <!-- Objectives -->
-        <div class="sig-bottom-card" data-testid="panel-objetivos">
-          <div class="sig-chart-icon"><mat-icon>track_changes</mat-icon></div>
-          <span class="sig-chart-title">Objetivos del Per&iacute;odo</span>
-          <div class="sig-obj-list">
-            <div class="sig-obj-item">
-              <div class="sig-obj-icon sig-obj-icon--blue"><mat-icon>attach_money</mat-icon></div>
-              <div class="sig-obj-body">
-                @if (kpis()) {
-                  <div class="sig-obj-vals"><span class="sig-obj-current">&euro; {{ facturacionK() }}K / 400K</span></div>
-                  <div class="sig-obj-track"><div class="sig-obj-fill" [style.width]="Math.min(100, (kpis()!.facturacionTotal / 400000) * 100) + '%'" style="background:#3b82f6;"></div></div>
-                }
-                <div class="sig-obj-sub">Facturaci&oacute;n objetivo</div>
-              </div>
-            </div>
-            <div class="sig-obj-item">
-              <div class="sig-obj-icon sig-obj-icon--teal"><mat-icon>task_alt</mat-icon></div>
-              <div class="sig-obj-body">
-                @if (kpis()) {
-                  <div class="sig-obj-vals"><span class="sig-obj-current">{{ kpis()!.cierresCompletados }} / {{ kpis()!.cierresCompletados + kpis()!.cierresPendientes }}</span></div>
-                  <div class="sig-obj-track"><div class="sig-obj-fill" [style.width]="(kpis()!.cierresCompletados / (kpis()!.cierresCompletados + kpis()!.cierresPendientes || 1)) * 100 + '%'" style="background:#00d4c4;"></div></div>
-                }
-                <div class="sig-obj-sub">Cierres completados</div>
-              </div>
-            </div>
-            <div class="sig-obj-item">
-              <div class="sig-obj-icon sig-obj-icon--green"><mat-icon>percent</mat-icon></div>
-              <div class="sig-obj-body">
-                <div class="sig-obj-vals"><span class="sig-obj-current">{{ margenPct() | number:'1.1-1' }}% / 25%</span></div>
-                <div class="sig-obj-track"><div class="sig-obj-fill" [style.width]="Math.min(100, margenPct()) + '%'" style="background:#22c55e;"></div></div>
-                <div class="sig-obj-sub">Margen objetivo</div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- Alertas de Cierre -->
         <div class="sig-bottom-card" data-testid="dashboard-alertas-cierre">
@@ -801,12 +782,32 @@ import { environment } from '../../../environments/environment';
       color: var(--sig-text-muted);
       font-size: 12px;
     }
+    .sig-kpi-sub {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--sig-text-muted);
+    }
+    .sig-kpi-split {
+      display: flex;
+      gap: 20px;
+      margin-top: 2px;
+    }
+    .sig-kpi-split-item { display: flex; flex-direction: column; }
+    .sig-kpi-split-val { font-size: 26px; font-weight: 700; line-height: 1.1; color: var(--sig-text-heading); }
+    .sig-kpi-split-lbl { font-size: 11px; color: var(--sig-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+    .sig-donut-num {
+      margin-left: 8px;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: var(--sig-text-muted);
+    }
 `],
 })
 export class DashboardComponent implements OnInit {
   private readonly dashboardSvc = inject(DashboardService);
   private readonly cierresSvc   = inject(CierresService);
   private readonly periodSvc    = inject(PeriodService);
+  private readonly serviceSvc   = inject(ServiceService);
   protected readonly alertReadSvc = inject(AlertReadStateService);
   private readonly notify       = inject(NotifyService);
   private readonly router       = inject(Router);
@@ -826,6 +827,23 @@ export class DashboardComponent implements OnInit {
   protected readonly displayedColumns = ['nombre', 'cliente', 'costeBruto', 'facturacion', 'margen', 'estado', 'accion'];
 
   protected readonly Math = Math; // expose Math to template
+
+  // PPT slide 3: filtro de servicio
+  protected readonly services = signal<ServiceListItemDto[]>([]);
+  protected readonly selectedServiceId = signal<number | null>(null);
+  protected readonly selectedServiceNombre = computed(() => {
+    const id = this.selectedServiceId();
+    if (id === null) return 'Todos los servicios';
+    return this.services().find(s => s.id === id)?.nombre ?? 'Servicio';
+  });
+
+  // PPT slide 4: objetivo mostrado en los KPIs. Origen placeholder hasta definir (ver SUP-07).
+  protected readonly objetivoFacturacionK = 400;
+  protected readonly objetivoMargenPct = 25;
+
+  protected readonly costeK = computed(() => { const k = this.kpis(); return k ? Math.round(k.costeTotal / 1000) : 0; });
+  protected readonly margenK = computed(() => { const k = this.kpis(); return k ? Math.round(k.margen / 1000) : 0; });
+  protected kFmt(v: number | null | undefined): number { return Math.round((v ?? 0) / 1000); }
 
   protected readonly alertasPendientesCierre = computed(() =>
     this.alertasCierre().filter(a => !a.confirmada && !this.alertReadSvc.isRead(a.id))
@@ -920,6 +938,11 @@ export class DashboardComponent implements OnInit {
       next: (periods) => this.periodos.set(periods),
       error: () => this.periodos.set([]),
     });
+    // PPT slide 3: opciones del filtro de servicio
+    this.serviceSvc.list(1, 1000).subscribe({
+      next: (r) => this.services.set(r.items),
+      error: () => this.services.set([]),
+    });
   }
 
   private loadAll(periodId?: number): void {
@@ -927,7 +950,8 @@ export class DashboardComponent implements OnInit {
     this.loadingAvisos.set(true);
     this.loadingMis.set(true);
     this.loadingAlertasCierre.set(true);
-    this.dashboardSvc.getKpis(periodId).subscribe({
+    const serviceId = this.selectedServiceId();
+    this.dashboardSvc.getKpis(periodId, serviceId).subscribe({
       next:  (d) => { this.kpis.set(d);  this.loadingKpis.set(false); },
       error: ()  => { this.kpis.set(null); this.loadingKpis.set(false); },
     });
@@ -935,7 +959,7 @@ export class DashboardComponent implements OnInit {
       next:  (d) => { this.avisos.set(d);   this.loadingAvisos.set(false); },
       error: ()  => { this.avisos.set([]);   this.loadingAvisos.set(false); },
     });
-    this.dashboardSvc.getMisServicios(periodId).subscribe({
+    this.dashboardSvc.getMisServicios(periodId, serviceId).subscribe({
       next:  (d) => { this.misServicios.set(d);   this.loadingMis.set(false); },
       error: ()  => { this.misServicios.set([]);   this.loadingMis.set(false); },
     });
@@ -986,6 +1010,12 @@ export class DashboardComponent implements OnInit {
   protected selectPeriod(periodId: number): void {
     this.periodSvc.setActive(periodId);
     // El effect en el constructor reaccionará automáticamente al cambio de activePeriod
+  }
+
+  // PPT slide 3: aplica el filtro de servicio a KPIs y "Mis Servicios".
+  protected selectService(serviceId: number | null): void {
+    this.selectedServiceId.set(serviceId);
+    this.loadAll(this.activePeriod() ?? undefined);
   }
 
   protected marcarTodasLeidas() {

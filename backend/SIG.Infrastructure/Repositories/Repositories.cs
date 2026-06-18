@@ -602,6 +602,66 @@ public class PresupuestoServicioRepository : IPresupuestoServicioRepository
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
+public class ClienteIncidenciaRepository : IClienteIncidenciaRepository
+{
+    private readonly AppDbContext _db;
+    public ClienteIncidenciaRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<ClienteIncidencia>> ListByClientAsync(int clientId, CancellationToken ct) =>
+        await _db.ClienteIncidencias.AsNoTracking()
+            .Where(i => i.ClientId == clientId && !i.IsDeleted)
+            .OrderByDescending(i => i.CreatedAt)
+            .ToListAsync(ct);
+
+    public Task<ClienteIncidencia?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.ClienteIncidencias.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted, ct);
+
+    public Task AddAsync(ClienteIncidencia entity, CancellationToken ct)
+    {
+        _db.ClienteIncidencias.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+public class ForecastRepository : IForecastRepository
+{
+    private readonly AppDbContext _db;
+    public ForecastRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<Forecast>> ListByServiceAndYearAsync(int serviceId, int anio, CancellationToken ct) =>
+        await _db.Forecasts.AsNoTracking()
+            .Where(f => f.ServiceId == serviceId && f.Anio == anio && !f.IsDeleted)
+            .OrderBy(f => f.Mes)
+            .ToListAsync(ct);
+
+    public Task<Forecast?> GetByServiceMonthAsync(int serviceId, int anio, int mes, CancellationToken ct) =>
+        _db.Forecasts.FirstOrDefaultAsync(f => f.ServiceId == serviceId && f.Anio == anio && f.Mes == mes && !f.IsDeleted, ct);
+
+    public async Task<IReadOnlyList<Forecast>> ListForResumenAsync(int anio, int? departmentId, int? clientId, int? serviceId, CancellationToken ct)
+    {
+        var q = _db.Forecasts.AsNoTracking()
+            .Include(f => f.Service).ThenInclude(s => s.Client)
+            .Include(f => f.Service).ThenInclude(s => s.Department)
+            .Where(f => f.Anio == anio && !f.IsDeleted);
+
+        if (departmentId.HasValue) q = q.Where(f => f.Service.DepartmentId == departmentId.Value);
+        if (clientId.HasValue) q = q.Where(f => f.Service.ClientId == clientId.Value);
+        if (serviceId.HasValue) q = q.Where(f => f.ServiceId == serviceId.Value);
+
+        return await q.ToListAsync(ct);
+    }
+
+    public Task AddAsync(Forecast entity, CancellationToken ct)
+    {
+        _db.Forecasts.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
 public class ClosureAlertaRepository : IClosureAlertaRepository
 {
     private readonly AppDbContext _db;

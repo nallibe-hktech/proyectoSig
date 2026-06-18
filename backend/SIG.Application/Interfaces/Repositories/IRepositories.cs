@@ -187,6 +187,24 @@ public interface IPresupuestoServicioRepository
     Task SaveChangesAsync(CancellationToken ct);
 }
 
+public interface IClienteIncidenciaRepository
+{
+    Task<IReadOnlyList<ClienteIncidencia>> ListByClientAsync(int clientId, CancellationToken ct);
+    Task<ClienteIncidencia?> GetByIdAsync(int id, CancellationToken ct);
+    Task AddAsync(ClienteIncidencia entity, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
+public interface IForecastRepository
+{
+    Task<IReadOnlyList<Forecast>> ListByServiceAndYearAsync(int serviceId, int anio, CancellationToken ct);
+    Task<Forecast?> GetByServiceMonthAsync(int serviceId, int anio, int mes, CancellationToken ct);
+    // Devuelve forecasts del año con Service+Client+Department incluidos para el resumen pivote.
+    Task<IReadOnlyList<Forecast>> ListForResumenAsync(int anio, int? departmentId, int? clientId, int? serviceId, CancellationToken ct);
+    Task AddAsync(Forecast entity, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
 public interface IClosureAlertaRepository
 {
     Task<IReadOnlyList<ClosureAlerta>> GetByCierreAsync(TipoCierre tipo, int cierreId, CancellationToken ct);
