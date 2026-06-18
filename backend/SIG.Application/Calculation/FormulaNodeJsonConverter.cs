@@ -28,6 +28,9 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
                 "Source" => DeserializeSourceNode(root),
                 "Aggregate" => DeserializeAggregateNode(root),
                 "BinaryOp" => DeserializeBinaryOpNode(root),
+                "Modifier" => DeserializeModifierNode(root),
+                "Tramos" => DeserializeTramosNode(root),
+                "ConceptRef" => DeserializeConceptRefNode(root),
                 _ => throw new JsonException($"Unknown FormulaNode type: {typeValue}")
             };
         }
@@ -47,6 +50,9 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
             "SourceNode" => "Source",
             "AggregateNode" => "Aggregate",
             "BinaryOpNode" => "BinaryOp",
+            "ModifierNode" => "Modifier",
+            "TramosNode" => "Tramos",
+            "ConceptRefNode" => "ConceptRef",
             _ => throw new JsonException($"Unknown FormulaNode type: {value.GetType().Name}")
         });
 
@@ -81,6 +87,34 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
             JsonSerializer.Serialize(writer, binary.Left, typeof(FormulaNode), options);
             writer.WritePropertyName("right");
             JsonSerializer.Serialize(writer, binary.Right, typeof(FormulaNode), options);
+        }
+        else if (value is ModifierNode modifier)
+        {
+            writer.WriteString("kind", modifier.Kind);
+            writer.WriteNumber("threshold", modifier.Threshold);
+            writer.WritePropertyName("inner");
+            JsonSerializer.Serialize(writer, modifier.Inner, typeof(FormulaNode), options);
+        }
+        else if (value is TramosNode tramos)
+        {
+            writer.WritePropertyName("cantidad");
+            JsonSerializer.Serialize(writer, tramos.Cantidad, typeof(FormulaNode), options);
+            writer.WritePropertyName("tramos");
+            writer.WriteStartArray();
+            foreach (var t in tramos.Tramos)
+            {
+                writer.WriteStartObject();
+                if (t.Hasta.HasValue) writer.WriteNumber("hasta", t.Hasta.Value);
+                else writer.WriteNull("hasta");
+                writer.WriteNumber("precio", t.Precio);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+        else if (value is ConceptRefNode conceptRef)
+        {
+            writer.WritePropertyName("conceptIds");
+            JsonSerializer.Serialize(writer, conceptRef.ConceptIds, options);
         }
 
         writer.WriteEndObject();
@@ -147,7 +181,54 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
         if (root.TryGetProperty("field", out var aggregateFieldProperty) && aggregateFieldProperty.ValueKind != JsonValueKind.Null)
             aggregateNode.Field = aggregateFieldProperty.GetString();
 
+        if (root.TryGetProperty("distinct", out var distinctProperty) && distinctProperty.ValueKind != JsonValueKind.Null)
+            aggregateNode.Distinct = distinctProperty.GetString();
+
         return aggregateNode;
+    }
+
+    private static ModifierNode DeserializeModifierNode(JsonElement root)
+    {
+        if (!root.TryGetProperty("kind", out var kindProperty))
+            throw new JsonException("ModifierNode requires 'kind' property");
+        if (!root.TryGetProperty("inner", out var innerProperty))
+            throw new JsonException("ModifierNode requires 'inner' property");
+        return new ModifierNode
+        {
+            Kind = kindProperty.GetString() ?? "",
+            Threshold = root.TryGetProperty("threshold", out var th) && th.ValueKind == JsonValueKind.Number ? th.GetDecimal() : 0m,
+            Inner = InferAndDeserializeNode(innerProperty)
+        };
+    }
+
+    private static TramosNode DeserializeTramosNode(JsonElement root)
+    {
+        if (!root.TryGetProperty("cantidad", out var cantidadProperty))
+            throw new JsonException("TramosNode requires 'cantidad' property");
+        var node = new TramosNode { Cantidad = InferAndDeserializeNode(cantidadProperty) };
+        if (root.TryGetProperty("tramos", out var tramosProperty) && tramosProperty.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var t in tramosProperty.EnumerateArray())
+            {
+                node.Tramos.Add(new Tramo
+                {
+                    Hasta = t.TryGetProperty("hasta", out var h) && h.ValueKind == JsonValueKind.Number ? h.GetDecimal() : (decimal?)null,
+                    Precio = t.TryGetProperty("precio", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDecimal() : 0m
+                });
+            }
+        }
+        return node;
+    }
+
+    private static ConceptRefNode DeserializeConceptRefNode(JsonElement root)
+    {
+        var node = new ConceptRefNode();
+        if (root.TryGetProperty("conceptIds", out var idsProperty) && idsProperty.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var id in idsProperty.EnumerateArray())
+                if (id.ValueKind == JsonValueKind.Number) node.ConceptIds.Add(id.GetInt32());
+        }
+        return node;
     }
 
     private static BinaryOpNode DeserializeBinaryOpNode(JsonElement root)
@@ -169,6 +250,23 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
 
     private static FormulaNode InferAndDeserializeNode(JsonElement root)
     {
+        // Prefer the explicit "type" discriminator when present (handles nested nodes of any type).
+        if (root.TryGetProperty("type", out var typeProperty) && typeProperty.ValueKind == JsonValueKind.String)
+        {
+            return typeProperty.GetString() switch
+            {
+                "Number" => DeserializeNumberNode(root),
+                "Variable" => DeserializeVariableNode(root),
+                "Source" => DeserializeSourceNode(root),
+                "Aggregate" => DeserializeAggregateNode(root),
+                "BinaryOp" => DeserializeBinaryOpNode(root),
+                "Modifier" => DeserializeModifierNode(root),
+                "Tramos" => DeserializeTramosNode(root),
+                "ConceptRef" => DeserializeConceptRefNode(root),
+                _ => throw new JsonException($"Unknown FormulaNode type: {typeProperty.GetString()}")
+            };
+        }
+
         // Check for NumberNode: has "value" property (and not other properties)
         if (root.TryGetProperty("value", out var valueProperty) &&
             !root.TryGetProperty("entity", out _) &&

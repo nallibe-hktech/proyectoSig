@@ -9,6 +9,9 @@ public class CalculationTarget
     public int ServiceId { get; set; }
     public int PeriodId { get; set; }
     public Period Period { get; set; } = null!;
+    // Ola 4 (Excel): importes de conceptos base ya calculados (conceptId -> importe), para resolver
+    // ConceptRefNode ("fee sobre conceptos") en la 2ª pasada del cierre. Vacío en evaluaciones aisladas.
+    public Dictionary<int, decimal> ImportesPrevios { get; set; } = new();
 }
 
 public interface ICalculationEngine

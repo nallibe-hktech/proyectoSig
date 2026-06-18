@@ -366,6 +366,137 @@ public class CalculationEngineTests
         doc.RootElement.GetProperty("periodo").GetString().Should().Be("Marzo 2026");
     }
 
+    // === EXCEL: MODIFICADORES (FILTROS) ===
+
+    [Fact]
+    public async Task Evaluate_ModifierMin_AplicaSuelo()
+    {
+        // Cantidad mínima: si el resultado < 250 -> 250
+        var (sut, _) = CreateSut();
+        var concept = CreateConcept("""{"type":"Modifier","kind":"Min","threshold":250,"inner":{"type":"Number","value":100}}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(250m);
+    }
+
+    [Fact]
+    public async Task Evaluate_ModifierMax_AplicaTecho()
+    {
+        // Cantidad máxima: si el resultado > 250 -> 250
+        var (sut, _) = CreateSut();
+        var concept = CreateConcept("""{"type":"Modifier","kind":"Max","threshold":250,"inner":{"type":"Number","value":400}}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(250m);
+    }
+
+    [Fact]
+    public async Task Evaluate_ModifierFloorZero_PorDebajoDelUmbralDevuelveCero()
+    {
+        var (sut, _) = CreateSut();
+        var concept = CreateConcept("""{"type":"Modifier","kind":"FloorZero","threshold":300,"inner":{"type":"Number","value":275}}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task Evaluate_ModifierFranquicia_RestaPrimerosX()
+    {
+        // Franquicia: los primeros 300 km no contabilizan; 315 -> 15
+        var (sut, _) = CreateSut();
+        var concept = CreateConcept("""{"type":"Modifier","kind":"Franquicia","threshold":300,"inner":{"type":"Number","value":315}}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(15m);
+    }
+
+    // === EXCEL: TRAMOS INCREMENTALES ===
+
+    [Fact]
+    public async Task Evaluate_Tramos_PrimeraHoraYSiguientes()
+    {
+        // 1ª unidad a 90, siguientes a 37; cantidad = 3 -> 90 + 37 + 37 = 164
+        var (sut, _) = CreateSut();
+        var concept = CreateConcept("""
+        {"type":"Tramos","cantidad":{"type":"Number","value":3},
+         "tramos":[{"hasta":1,"precio":90},{"hasta":null,"precio":37}]}
+        """);
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(164m);
+    }
+
+    // === EXCEL: CONTEO DE DÍAS CON ACTIVIDAD ===
+
+    [Fact]
+    public async Task Evaluate_CountDistinctFecha_CuentaDiasUnicos()
+    {
+        var (sut, loader) = CreateSut();
+        loader.Visitas.AddRange(new[]
+        {
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v2", Hash = "h" }, // mismo día
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = "{}", VisitaIdExterno = "v3", Hash = "h" },
+        });
+        var concept = CreateConcept("""{"type":"Aggregate","op":"Count","distinct":"Fecha","source":{"type":"Source","entity":"VisitasCelero","filters":[]}}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(2m); // 2 días distintos con actividad
+    }
+
+    // === EXCEL: SEGMENTACIÓN DE VISITA POR TIPO (desde PayloadJson) ===
+
+    [Fact]
+    public async Task Evaluate_FiltroTipoVisitaDesdePayload_SegmentaVisitas()
+    {
+        var (sut, loader) = CreateSut();
+        loader.Visitas.AddRange(new[]
+        {
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = """{"tipoVisita":2}""", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = """{"tipoVisita":2}""", VisitaIdExterno = "v2", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ServiceId = 100, PayloadJson = """{"tipoVisita":1}""", VisitaIdExterno = "v3", Hash = "h" },
+        });
+        var concept = CreateConcept("""{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"TipoVisita","op":"Eq","value":2}]}}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(2m);
+    }
+
+    // === EXCEL: FEE SOBRE CONCEPTOS ===
+
+    [Fact]
+    public async Task Evaluate_ConceptRef_SumaImportesPreviosYAplicaFee()
+    {
+        // Fee 10% sobre la suma de los conceptos 10 y 11 (importes previos 200 y 300) -> 500 * 0.10 = 50
+        var (sut, _) = CreateSut();
+        var target = CreateClosure();
+        target.ImportesPrevios[10] = 200m;
+        target.ImportesPrevios[11] = 300m;
+        var concept = CreateConcept("""
+        {"type":"BinaryOp","op":"Mul",
+         "left":{"type":"ConceptRef","conceptIds":[10,11]},
+         "right":{"type":"Number","value":0.10}}
+        """);
+        var r = await sut.EvaluateAsync(concept, target, null, CancellationToken.None);
+        r.Resultado.Should().Be(50m);
+    }
+
+    [Fact]
+    public async Task Evaluate_ConceptRefVacio_SumaTodosLosPreviosExcluyendoSeMismo()
+    {
+        var (sut, _) = CreateSut();
+        var target = CreateClosure();
+        target.ImportesPrevios[10] = 100m;
+        target.ImportesPrevios[11] = 250m;
+        var concept = CreateConcept("""{"type":"ConceptRef","conceptIds":[]}""");
+        var r = await sut.EvaluateAsync(concept, target, null, CancellationToken.None);
+        r.Resultado.Should().Be(350m);
+    }
+
+    [Fact]
+    public async Task Evaluate_ConceptRefSinPrevios_RegistraIncidencia()
+    {
+        var (sut, _) = CreateSut();
+        var concept = CreateConcept("""{"type":"ConceptRef","conceptIds":[]}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(0m);
+        r.Incidencias.Should().ContainSingle(i => i.Tipo == "SinConceptosPrevios");
+    }
+
     private sealed class FakeDataLoader : ICalculationDataLoader
     {
         public List<StagingPayHawkGasto> Gastos { get; } = new();
