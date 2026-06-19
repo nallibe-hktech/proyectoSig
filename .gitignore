@@ -93,6 +93,11 @@ logs/
 # ============================================================
 /Galán/
 /Mediapost/
+Logística/
+# Ficheros de datos del cliente sueltos (Excel de cierres, exports, etc.) — NUNCA versionar
+*.xlsx
+*.xls
+CierresIntegralesSIG*
 
 # Backups de BD (datos reales/PII) — nunca al repo
 backups/
