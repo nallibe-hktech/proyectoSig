@@ -79,13 +79,26 @@ public class CalculationContext
         if (a is null || b is null) return a == b;
         if (a is System.Text.Json.JsonElement ae) a = JsonElementToObject(ae);
         if (b is System.Text.Json.JsonElement be) b = JsonElementToObject(be);
+        // Flags de excepción: si un lado es booleano, comparamos de forma tolerante (true/1/"sí"/"true").
+        if (a is bool || b is bool) return CoerceBool(a) == CoerceBool(b);
         if (a.GetType() != b.GetType())
         {
             try { return Convert.ToDecimal(a) == Convert.ToDecimal(b); }
-            catch { return a.ToString() == b.ToString(); }
+            catch { return string.Equals(a.ToString(), b.ToString(), StringComparison.OrdinalIgnoreCase); }
         }
+        if (a is string sa && b is string sb) return string.Equals(sa, sb, StringComparison.OrdinalIgnoreCase);
         return a.Equals(b);
     }
+
+    private static bool CoerceBool(object o) => o switch
+    {
+        bool b => b,
+        string s => s.Equals("true", StringComparison.OrdinalIgnoreCase)
+                 || s.Equals("sí", StringComparison.OrdinalIgnoreCase)
+                 || s.Equals("si", StringComparison.OrdinalIgnoreCase)
+                 || s == "1",
+        _ => TryDecimal(o) != 0m
+    };
 
     private static decimal TryDecimal(object o)
     {
@@ -135,6 +148,12 @@ public class RowAdapter
     public string? Zona { get; set; }
     public string? Categoria { get; set; }
     public string? Nombre { get; set; }
+    // Flags de excepción del Excel (columna "Excepciones_Modelo"): estado de la visita,
+    // nº de visita (1ª/2ª/3ª), nocturnidad y pernocta. Se extraen del PayloadJson de Celero.
+    public string? Estado { get; set; }      // "ok" | "fallida" | "cancelada" | "anulada" ...
+    public int? NumeroVisita { get; set; }   // 1 = primera, 2 = segunda, 3 = tercera ...
+    public bool Nocturnidad { get; set; }
+    public bool Pernocta { get; set; }
     public DateTime? Entrada { get; set; }
     public DateTime? Salida { get; set; }
     // Atributos arbitrarios extraídos del PayloadJson (respuestas Celero/idQuestion, etc.) para filtrar/segmentar.
@@ -147,6 +166,9 @@ public class RowAdapter
         "Km" => Km ?? 0,
         "TipoVisita" => TipoVisita ?? 0,
         "PuntoMontado" => PuntoMontado ?? 0,
+        "NumeroVisita" => NumeroVisita ?? 0,
+        "Nocturnidad" => Nocturnidad ? 1 : 0,
+        "Pernocta" => Pernocta ? 1 : 0,
         _ => Extra.TryGetValue(field, out var v) ? ToDecimal(v) : 0
     };
 
@@ -167,6 +189,10 @@ public class RowAdapter
         "Categoria" => Categoria,
         "Nombre" => Nombre,
         "Entrada" => Entrada,
+        "Estado" => Estado,
+        "NumeroVisita" => NumeroVisita,
+        "Nocturnidad" => Nocturnidad,
+        "Pernocta" => Pernocta,
         _ => Extra.TryGetValue(field, out var v) ? v : null
     };
 
@@ -175,6 +201,17 @@ public class RowAdapter
         if (o is null) return 0m;
         try { return Convert.ToDecimal(o); } catch { return 0m; }
     }
+
+    private static bool ToBool(object? o) => o switch
+    {
+        null => false,
+        bool b => b,
+        string s => s.Equals("true", StringComparison.OrdinalIgnoreCase)
+                 || s.Equals("sí", StringComparison.OrdinalIgnoreCase)
+                 || s.Equals("si", StringComparison.OrdinalIgnoreCase)
+                 || s == "1",
+        _ => ToDecimal(o) != 0m
+    };
 
     // Vuelca las propiedades escalares de un PayloadJson en Extra y mapea las claves conocidas (case-insensitive).
     private void PopulateFromPayload(string? payloadJson)
@@ -205,6 +242,13 @@ public class RowAdapter
                     case "kilometros": Km = ToDecimal(val); break;
                     case "importe": Importe = ToDecimal(val); break;
                     case "categoria": Categoria = val?.ToString(); break;
+                    case "estado": Estado = val?.ToString(); break;
+                    case "numerovisita":
+                    case "numvisita":
+                    case "nvisita": NumeroVisita = (int)ToDecimal(val); break;
+                    case "nocturnidad":
+                    case "nocturna": Nocturnidad = ToBool(val); break;
+                    case "pernocta": Pernocta = ToBool(val); break;
                 }
             }
         }

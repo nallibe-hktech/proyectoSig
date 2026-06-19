@@ -88,6 +88,22 @@ El Excel entregado por el cliente es la **especificación funcional del motor de
 **Avisos** (no parte del motor): `API Innuva.docx` contiene un Client Secret OAuth real en texto plano y los ficheros del Excel traen PII/tarifas reales — no commitear.
 **Reversible:** sí (todos los nodos nuevos son aditivos; las fórmulas antiguas siguen evaluando igual).
 
+### SUP-11 · Motor — idQuestion Celero→variable (real) + flags de excepción (verificación vs Excel `(9)`)
+Tras revisar el Excel `CierresIntegralesSIG (9)` punto por punto, se cierran dos huecos para alinear el motor con la spec:
+
+1. **idQuestion de Celero → variable (gap #1).** Antes `VariableResolver` devolvía siempre el primer valor de `MapeoValoresJson` (ignoraba `QuestionIdExterno`). Ahora resuelve el valor desde la **respuesta real** de las visitas Celero del contexto: la clave del `PayloadJson` = `QuestionIdExterno`, y su contenido (`"A"`/`"Premium"`/`"Sí"`) se mapea a número vía `MapeoValoresJson`.
+   - **Decisión autónoma (colapso a escalar):** un `VariableNode` produce un único número, pero una pregunta Celero tiene una respuesta por visita. Se colapsa a la **respuesta más frecuente** (mode; desempate alfabético). Si no hay respuesta en el período → fallback al valor `"Default"`, y si no existe, al primero (compatibilidad con `TarifaHora` y las fórmulas y tests previos).
+   - **Límite (no implementado, YAGNI):** un factor variable **por fila** (p.ej. multiplicar cada visita por su propio ZonaBonus dentro de un `Sum`) no existe; requeriría mapear la variable dentro del `Aggregate`. Registrado como posible ampliación.
+
+2. **Flags de excepción de la visita (gap #4).** Los flags del Excel (columna *Excepciones_Modelo*: `fallida`, `cancelacion`, `2ª/3ª visita`, `nocturnidad`, `pernocta`) ya eran filtrables vía `Extra`, pero ahora son **campos de primera clase y tipados** en `RowAdapter`: `Estado` (string), `NumeroVisita` (int), `Nocturnidad` y `Pernocta` (bool). Se extraen del `PayloadJson` (claves `estado`, `numeroVisita`/`numVisita`/`nVisita`, `nocturnidad`/`nocturna`, `pernocta`).
+   - Las reglas de negocio (fallida → mismo coste; 2ª visita → 50 %; nocturnidad → +50 %) se expresan **componiendo** filtros + `BinaryOp` (`Mul`/`Pct`), no con nodos nuevos. Hay conceptos de ejemplo en el seeder y tests que lo demuestran.
+   - **Bug colateral corregido:** `FormulaNodeJsonConverter` no deserializaba valores de filtro **booleanos ni arrays**, dejándolos en `null` (rompía flags booleanos y el operador `In`). Ahora soporta string/número/booleano/array. `Equal` compara booleanos y strings de forma tolerante (case-insensitive, `true/1/"sí"`).
+
+3. **Cobertura de las primitivas "Entidad-A × Entidad-B" (tipos 5 y 6 del Excel).** El motor ya las soportaba por composición (`Mul(Aggregate, Aggregate)`); se añaden conceptos de ejemplo en el seeder y tests que las blindan (Conteo×Conteo y Suma×Suma). No es un cambio de lógica.
+
+**No es código:** la política de horas extra de Optimising (prorrateo vs redondeo a hora completa) sigue marcada **"PTE"** por el cliente en el propio Excel — decisión de negocio abierta, no un gap del motor (ambas reglas son expresables: prorrateo con `Sum(Horas)`, redondeo redondeando las horas). Logística coste+margen, "% de entidad" (`Mul`) y tarifas por zona (un concepto por zona) ya cumplían el Excel y NO eran gaps.
+**Tests:** suite completa 340/340 (motor de cálculo 59/59). **Reversible:** sí (cambios aditivos y compatibles con fórmulas almacenadas).
+
 ## Aparcados (sin decisión, requieren input del cliente)
 
 ### PARK-01 · Panel de facturas pagadas/pendientes por cliente (#5)

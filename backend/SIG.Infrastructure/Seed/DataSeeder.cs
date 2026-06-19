@@ -124,7 +124,8 @@ public class DataSeeder : ISeedService
         var clients = await SeedClientsAsync(ct);
         var variables = await SeedVariablesAsync(ct);
         var tarifaHoraId = variables.First(v => v.Nombre == "TarifaHora").Id;
-        var concepts = await SeedConceptsAsync(tarifaHoraId, ct);
+        var zonaBonusId = variables.First(v => v.Nombre == "ZonaBonus").Id;
+        var concepts = await SeedConceptsAsync(tarifaHoraId, zonaBonusId, ct);
         var services = await SeedServicesAsync(clients, costCenters, concepts, dMap, uByEmail, ct);
         return (uByEmail, services.ToList(), concepts);
     }
@@ -271,7 +272,7 @@ public class DataSeeder : ISeedService
         return variables;
     }
 
-    private async Task<List<Concept>> SeedConceptsAsync(int tarifaHoraId, CancellationToken ct)
+    private async Task<List<Concept>> SeedConceptsAsync(int tarifaHoraId, int zonaBonusId, CancellationToken ct)
     {
         var fechaDesde = new DateOnly(2025, 1, 1);
         var concepts = new List<Concept>
@@ -347,6 +348,48 @@ public class DataSeeder : ISeedService
                 type = "BinaryOp", op = "Mul",
                 left = new { type = "ConceptRef", conceptIds = new int[0] },
                 right = new { type = "Number", value = 0.065 }
+            }) },
+
+            // #1 idQuestion Celero -> variable: nº de visitas × bonus de zona, donde el bonus sale de la
+            // respuesta Celero (Q21) mapeada por la variable ZonaBonus (A=1.5 / B=1.2 / C=1.0).
+            new() { Nombre = "Ejemplo — Visitas con bonus de zona (Variable desde idQuestion Celero)", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero", filters = new object[0] } },
+                right = new { type = "Variable", variableId = zonaBonusId }
+            }) },
+
+            // #4 flag de excepción "fallida": las visitas fallidas se facturan al mismo coste (cuota fija).
+            new() { Nombre = "Ejemplo — Visitas fallidas a mismo coste (flag Estado)", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
+                    filters = new[] { new { field = "Estado", op = "Eq", value = (object)"fallida" } } } },
+                right = new { type = "Number", value = 18 }
+            }) },
+
+            // #4 flag de excepción "nocturnidad": visitas nocturnas con incremento del 50 % (operador Pct).
+            new() { Nombre = "Ejemplo — Recargo nocturnidad +50% (flag Nocturnidad)", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Pct",
+                left = new { type = "BinaryOp", op = "Mul",
+                    left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
+                        filters = new[] { new { field = "Nocturnidad", op = "Eq", value = (object)true } } } },
+                    right = new { type = "Number", value = 18 } },
+                right = new { type = "Number", value = 50 }
+            }) },
+
+            // TIPO 5 (Conteo de Entidad-A × Entidad-B): producto de dos conteos de la misma entidad segmentados.
+            new() { Nombre = "Ejemplo — Conteo Entidad-A × Entidad-B (tipo 5)", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
+                    filters = new[] { new { field = "TipoVisita", op = "Eq", value = (object)1 } } } },
+                right = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
+                    filters = new[] { new { field = "TipoVisita", op = "Eq", value = (object)2 } } } }
+            }) },
+
+            // TIPO 6 (Suma de Entidad-A × Entidad-B): producto de dos sumas de entidades distintas.
+            new() { Nombre = "Ejemplo — Suma Entidad-A × Entidad-B (tipo 6)", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "Aggregate", op = "Sum", field = "Horas", source = new { type = "Source", entity = "HorasBizneo", filters = new object[0] } },
+                right = new { type = "Aggregate", op = "Sum", field = "Importe", source = new { type = "Source", entity = "GastosPayHawk", filters = new object[0] } }
             }) },
         };
         _db.Concepts.AddRange(concepts);
