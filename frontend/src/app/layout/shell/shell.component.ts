@@ -77,6 +77,7 @@ export class ShellComponent implements OnInit {
   private readonly allOperativoNav: NavItem[] = [
     { label: 'Dashboard', route: '/dashboard', icon: 'dashboard', testId: 'nav-dashboard' },
     { label: 'Clients', route: '/clients', icon: 'groups', testId: 'nav-clients' },
+    { label: 'Incidencias', route: '/incidencias', icon: 'report_problem', testId: 'nav-incidencias' },
     { label: 'Servicios', route: '/services', icon: 'task_alt', testId: 'nav-services' },
     { label: 'Concepts', route: '/concepts', icon: 'calculate', testId: 'nav-concepts' },
     { label: 'Variables', route: '/variables', icon: 'data_object', testId: 'nav-variables' },
@@ -89,6 +90,8 @@ export class ShellComponent implements OnInit {
   ];
 
   private readonly allAdminNav: NavItem[] = [
+    { label: 'Config. Presupuesto', route: '/config-presupuesto', icon: 'savings', testId: 'nav-config-presupuesto', roles: ['Administrator', 'Fico'] },
+    { label: 'Config. Factura', route: '/config-factura', icon: 'request_quote', testId: 'nav-config-factura', roles: ['Administrator', 'Fico'] },
     { label: 'Contratos un día', route: '/contratos-un-dia', icon: 'description', testId: 'nav-contratos-un-dia', roles: ['Administrator', 'Backoffice'] },
     { label: 'Cost Centers', route: '/cost-centers', icon: 'account_balance', testId: 'nav-cost-centers', roles: ['Administrator'] },
     { label: 'Departments', route: '/departments', icon: 'corporate_fare', testId: 'nav-departments', roles: ['Administrator'] },

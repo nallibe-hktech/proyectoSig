@@ -605,16 +605,51 @@ public class PresupuestoServicioRepository : IPresupuestoServicioRepository
 public class ClienteIncidenciaRepository : IClienteIncidenciaRepository
 {
     private readonly AppDbContext _db;
-    public ClienteIncidenciaRepository(AppDbContext db) { _db = db; }
+    private readonly IUserRepository _userRepo;
+    public ClienteIncidenciaRepository(AppDbContext db, IUserRepository userRepo) { _db = db; _userRepo = userRepo; }
+
+    private async Task<bool> IsPrivilegedAsync(int usuarioId, CancellationToken ct)
+    {
+        if (usuarioId == 0) return true;
+        var roles = await _userRepo.ListRoleNamesForUserAsync(usuarioId, ct);
+        return roles.Any(r => OwnershipHelper.PrivilegedRoles.Contains(r));
+    }
 
     public async Task<IReadOnlyList<ClienteIncidencia>> ListByClientAsync(int clientId, CancellationToken ct) =>
         await _db.ClienteIncidencias.AsNoTracking()
-            .Where(i => i.ClientId == clientId && !i.IsDeleted)
-            .OrderByDescending(i => i.CreatedAt)
+            .Where(i => i.ClientId == clientId)
+            .OrderByDescending(i => i.FechaApertura)
             .ToListAsync(ct);
 
+    public async Task<PagedResult<ClienteIncidencia>> ListAllForUserAsync(int usuarioId, int page, int pageSize, string? search, int? clientId, string? tipo, EstadoIncidencia? estado, CancellationToken ct)
+    {
+        var q = _db.ClienteIncidencias.AsNoTracking().Include(i => i.Client).AsQueryable();
+        if (!await IsPrivilegedAsync(usuarioId, ct))
+        {
+            var serviceIds = await _userRepo.ListServiceIdsForUserAsync(usuarioId, ct);
+            var allowedClientIds = await _db.Services.AsNoTracking().Where(s => serviceIds.Contains(s.Id)).Select(s => s.ClientId).Distinct().ToListAsync(ct);
+            q = q.Where(i => allowedClientIds.Contains(i.ClientId));
+        }
+        if (clientId.HasValue) q = q.Where(i => i.ClientId == clientId.Value);
+        if (estado.HasValue) q = q.Where(i => i.Estado == estado.Value);
+        if (!string.IsNullOrWhiteSpace(tipo)) q = q.Where(i => i.Tipo == tipo);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = $"%{search.Trim()}%";
+            q = q.Where(i => EF.Functions.ILike(i.Tipo, term) || EF.Functions.ILike(i.Descripcion, term) || EF.Functions.ILike(i.Client.Nombre, term));
+        }
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderByDescending(i => i.FechaApertura).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PagedResult<ClienteIncidencia>(items, total, page, pageSize);
+    }
+
     public Task<ClienteIncidencia?> GetByIdAsync(int id, CancellationToken ct) =>
-        _db.ClienteIncidencias.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted, ct);
+        _db.ClienteIncidencias.FirstOrDefaultAsync(i => i.Id == id, ct);
+
+    public Task<ClienteIncidencia?> GetByIdWithDetailAsync(int id, CancellationToken ct) =>
+        _db.ClienteIncidencias.AsNoTracking()
+            .Include(i => i.Historial)
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
 
     public Task AddAsync(ClienteIncidencia entity, CancellationToken ct)
     {
@@ -622,6 +657,83 @@ public class ClienteIncidenciaRepository : IClienteIncidenciaRepository
         return Task.CompletedTask;
     }
 
+    public Task AddHistorialAsync(IncidenciaHistorial entry, CancellationToken ct)
+    {
+        _db.Set<IncidenciaHistorial>().Add(entry);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+public class PartidaPresupuestoRepository : IPartidaPresupuestoRepository
+{
+    private readonly AppDbContext _db;
+    public PartidaPresupuestoRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<PartidaPresupuesto>> ListByServiceAsync(int serviceId, CancellationToken ct) =>
+        await _db.PartidasPresupuesto.AsNoTracking()
+            .Where(p => p.ServiceId == serviceId)
+            .OrderBy(p => p.Nombre)
+            .ToListAsync(ct);
+
+    public Task<PartidaPresupuesto?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.PartidasPresupuesto.FirstOrDefaultAsync(p => p.Id == id, ct);
+
+    public Task AddAsync(PartidaPresupuesto entity, CancellationToken ct) { _db.PartidasPresupuesto.Add(entity); return Task.CompletedTask; }
+
+    public async Task<decimal?> GetMargenRealPctAsync(int serviceId, CancellationToken ct)
+    {
+        var factura = await _db.CierresFacturacion.AsNoTracking().Where(c => c.ServiceId == serviceId).SumAsync(c => (decimal?)c.Total, ct) ?? 0m;
+        if (factura == 0m) return null;
+        var coste = await _db.CierresCostes.AsNoTracking().Where(c => c.ServiceId == serviceId).SumAsync(c => (decimal?)c.Total, ct) ?? 0m;
+        return Math.Round((factura - coste) / factura * 100m, 1);
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+public class CategoriaFacturaRepository : ICategoriaFacturaRepository
+{
+    private readonly AppDbContext _db;
+    public CategoriaFacturaRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<CategoriaFactura>> ListByClientAsync(int clientId, CancellationToken ct) =>
+        await _db.CategoriasFactura.AsNoTracking()
+            .Include(c => c.Conceptos).ThenInclude(cc => cc.Concept)
+            .Where(c => c.ClientId == clientId)
+            .OrderBy(c => c.Nombre)
+            .ToListAsync(ct);
+
+    public Task<CategoriaFactura?> GetByIdWithConceptosAsync(int id, CancellationToken ct) =>
+        _db.CategoriasFactura
+            .Include(c => c.Conceptos).ThenInclude(cc => cc.Concept)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+    public async Task<IReadOnlyList<Concept>> ListConceptosFacturacionDelClienteAsync(int clientId, CancellationToken ct)
+    {
+        var serviceIds = await _db.Services.AsNoTracking()
+            .Where(s => s.ClientId == clientId).Select(s => s.Id).ToListAsync(ct);
+        return await _db.Concepts.AsNoTracking()
+            .Where(c => c.Tipo == TipoConcepto.Factura &&
+                        (c.ServiceId == null
+                         || serviceIds.Contains(c.ServiceId.Value)
+                         || c.ServiceConcepts.Any(sc => serviceIds.Contains(sc.ServiceId))))
+            .OrderBy(c => c.Nombre)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<int, CategoriaFactura>> GetAsignacionesAsync(int clientId, IReadOnlyCollection<int> conceptIds, CancellationToken ct)
+    {
+        var rows = await _db.CategoriaFacturaConceptos.AsNoTracking()
+            .Include(x => x.CategoriaFactura)
+            .Where(x => x.CategoriaFactura.ClientId == clientId && conceptIds.Contains(x.ConceptId))
+            .ToListAsync(ct);
+        return rows.ToDictionary(x => x.ConceptId, x => x.CategoriaFactura);
+    }
+
+    public Task AddAsync(CategoriaFactura entity, CancellationToken ct) { _db.CategoriasFactura.Add(entity); return Task.CompletedTask; }
+    public void Remove(CategoriaFactura entity) => _db.CategoriasFactura.Remove(entity);
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 

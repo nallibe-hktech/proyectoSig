@@ -105,3 +105,6 @@ backups/
 
 # PPT de mockups del cliente (binario pesado)
 *.pptx
+
+# Capturas/prototipos de trabajo local (no versionar)
+.tmp_proto/

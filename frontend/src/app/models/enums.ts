@@ -14,6 +14,9 @@ export type TipoConcepto = 'Pago' | 'Factura';
 
 export type EstadoPeriodo = 'Abierto' | 'Cerrado' | 'Bloqueado';
 
+// Config. Presupuesto (prototipo 24/28): cada partida es Anual o Total acción.
+export type TipoPartidaPresupuesto = 'Anual' | 'TotalAccion';
+
 export type EstadoClosure =
   | 'Borrador'
   | 'EnAprobacion'

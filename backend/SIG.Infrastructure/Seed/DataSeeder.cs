@@ -69,7 +69,10 @@ public class DataSeeder : ISeedService
                 service_users,
                 service_concepts,
                 service_cost_centers,
+                partidas_presupuesto,
                 services,
+                categoria_factura_conceptos,
+                categorias_factura,
                 concept_users,
                 concepts,
                 clients,
@@ -99,6 +102,8 @@ public class DataSeeder : ISeedService
 
         var (rMap, dMap, costCenters, passwordHash) = await SeedMasterDataAsync(ct);
         var (uByEmail, servicesList, concepts) = await SeedEntityDataAsync(passwordHash, dMap, rMap, costCenters, ct);
+        await SeedCategoriasFacturaAsync(concepts, ct);
+        await SeedPartidasPresupuestoAsync(servicesList, ct);
         var (periodsList, cierresFull) = await SeedTransactionDataAsync(servicesList, ct);
 
         await SeedStagingDataAsync(uByEmail.Values.ToList(), servicesList.ToList(), periodsList, uByEmail, ct);
@@ -395,6 +400,49 @@ public class DataSeeder : ISeedService
         _db.Concepts.AddRange(concepts);
         await _db.SaveChangesAsync(ct);
         return concepts;
+    }
+
+    // Configuración de Factura (prototipo 25/28): categorías ILUSTRATIVAS por cliente que agrupan conceptos
+    // de facturación. El mapeo real lo valida SIG; aquí solo demostramos la pantalla con datos anónimos y
+    // dejamos algún concepto sin asignar (como en el prototipo, que muestra "sin asignar" en el panel).
+    private async Task SeedCategoriasFacturaAsync(List<Concept> concepts, CancellationToken ct)
+    {
+        var clients = await _db.Clients.ToListAsync(ct);
+        Concept? Find(string nombre) => concepts.FirstOrDefault(c => c.Nombre == nombre);
+        var porVisita = Find("Facturación por visita");
+        var mensualidad = Find("Mensualidad fija servicio");
+        // "Refacturación gastos" se deja deliberadamente SIN asignar para que el KPI lo refleje.
+
+        var categorias = new List<CategoriaFactura>();
+        foreach (var cli in clients)
+        {
+            if (porVisita != null)
+                categorias.Add(new CategoriaFactura { ClientId = cli.Id, Nombre = "Servicio de campo",
+                    Conceptos = new List<CategoriaFacturaConcepto> { new() { ConceptId = porVisita.Id } } });
+            if (mensualidad != null)
+                categorias.Add(new CategoriaFactura { ClientId = cli.Id, Nombre = "Cuota mensual",
+                    Conceptos = new List<CategoriaFacturaConcepto> { new() { ConceptId = mensualidad.Id } } });
+        }
+        _db.CategoriasFactura.AddRange(categorias);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    // Configuración de Presupuesto (prototipo 24/28): partidas ILUSTRATIVAS por servicio (entrada manual, sin
+    // origen de datos — lo dice el propio prototipo) + un margen operativo objetivo de ejemplo. Datos anónimos.
+    private async Task SeedPartidasPresupuestoAsync(List<Service> services, CancellationToken ct)
+    {
+        var partidas = new List<PartidaPresupuesto>();
+        foreach (var s in services)
+        {
+            s.MargenObjetivoPct = 28m; // objetivo ilustrativo
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Personal de campo", Tipo = TipoPartidaPresupuesto.Anual, Anio = 2026, Presupuesto = 52000m, Consumido = 38900m, Descripcion = "Salario bruto + incentivos" });
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Gastos de personal", Tipo = TipoPartidaPresupuesto.Anual, Anio = 2026, Presupuesto = 18000m, Consumido = 14220m, Descripcion = "Payhawk + dietas" });
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Kilometraje", Tipo = TipoPartidaPresupuesto.TotalAccion, Presupuesto = 9000m, Consumido = 5300m, Descripcion = "Importe km" });
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Formaciones", Tipo = TipoPartidaPresupuesto.TotalAccion, Presupuesto = 11000m, Consumido = 3000m, Descripcion = "Facturación formaciones" });
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Logística", Tipo = TipoPartidaPresupuesto.TotalAccion, Presupuesto = 5000m, Consumido = 0m, Descripcion = "Galán / Mediapost" });
+        }
+        _db.PartidasPresupuesto.AddRange(partidas);
+        await _db.SaveChangesAsync(ct); // persiste partidas + el MargenObjetivoPct de los servicios ya trackeados
     }
 
     private async Task<List<Period>> SeedPeriodsAsync(CancellationToken ct)

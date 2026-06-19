@@ -39,6 +39,15 @@ export const routes: Routes = [
       { path: 'clients/:id', loadComponent: () => import('./features/clients/client-detail.component').then((m) => m.ClientDetailComponent), title: 'Detalle Client — SIG' },
       { path: 'clients/:id/editar', loadComponent: () => import('./features/clients/client-form.component').then((m) => m.ClientFormComponent), title: 'Editar Client — SIG' },
 
+      // Incidencias (prototipo: pantalla de 1er nivel — listado global + alta + histórico)
+      { path: 'incidencias', loadComponent: () => import('./features/incidencias/incidencias-list.component').then((m) => m.IncidenciasListComponent), title: 'Incidencias — SIG' },
+
+      // Configuración de Factura (prototipo 25/28: categorías que agrupan conceptos de facturación por cliente)
+      { path: 'config-factura', loadComponent: () => import('./features/config-factura/config-factura.component').then((m) => m.ConfigFacturaComponent), title: 'Configuración de Factura — SIG' },
+
+      // Configuración de Presupuesto (prototipo 24/28: partidas manuales por acción + márgenes)
+      { path: 'config-presupuesto', loadComponent: () => import('./features/config-presupuesto/config-presupuesto.component').then((m) => m.ConfigPresupuestoComponent), title: 'Configuración de Presupuesto — SIG' },
+
       // Services
       { path: 'services', loadComponent: () => import('./features/services/services-list.component').then((m) => m.ServicesListComponent), title: 'Servicios — SIG' },
       { path: 'services/nuevo', loadComponent: () => import('./features/services/service-form.component').then((m) => m.ServiceFormComponent), title: 'Nuevo Servicio — SIG' },

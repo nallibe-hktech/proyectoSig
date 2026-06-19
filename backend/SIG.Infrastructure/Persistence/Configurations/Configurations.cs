@@ -85,6 +85,7 @@ public class ServiceConfiguration : IEntityTypeConfiguration<Service>
     {
         b.Property(a => a.Nombre).HasMaxLength(200).IsRequired();
         b.Property(a => a.Estado).HasConversion<string>().HasMaxLength(20);
+        b.Property(a => a.MargenObjetivoPct).HasPrecision(5, 2);   // % margen operativo objetivo (Config. Presupuesto)
         b.HasOne(a => a.Client).WithMany(c => c.Services).HasForeignKey(a => a.ClientId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(a => a.Department).WithMany().HasForeignKey(a => a.DepartmentId).OnDelete(DeleteBehavior.SetNull);
         b.HasIndex(a => a.ClientId);
@@ -193,12 +194,74 @@ public class ClienteIncidenciaConfiguration : IEntityTypeConfiguration<ClienteIn
         b.Property(i => i.Tipo).HasMaxLength(100).IsRequired();
         b.Property(i => i.Descripcion).HasMaxLength(2000).IsRequired();
         b.Property(i => i.Estado).HasConversion<string>().HasMaxLength(20);
+        b.Property(i => i.Origen).HasMaxLength(120);
         b.HasOne(i => i.Client)
             .WithMany()
             .HasForeignKey(i => i.ClientId)
             .OnDelete(DeleteBehavior.Cascade);
         b.HasIndex(i => i.ClientId);
         b.HasQueryFilter(i => !i.IsDeleted);
+    }
+}
+
+public class IncidenciaHistorialConfiguration : IEntityTypeConfiguration<IncidenciaHistorial>
+{
+    public void Configure(EntityTypeBuilder<IncidenciaHistorial> b)
+    {
+        b.Property(h => h.Estado).HasConversion<string>().HasMaxLength(20);
+        b.Property(h => h.Nota).HasMaxLength(500).IsRequired();
+        b.Property(h => h.Responsable).HasMaxLength(120);
+        b.HasOne(h => h.Incidencia)
+            .WithMany(i => i.Historial)
+            .HasForeignKey(h => h.IncidenciaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(h => h.IncidenciaId);
+    }
+}
+
+public class PartidaPresupuestoConfiguration : IEntityTypeConfiguration<PartidaPresupuesto>
+{
+    public void Configure(EntityTypeBuilder<PartidaPresupuesto> b)
+    {
+        b.Property(p => p.Nombre).HasMaxLength(120).IsRequired();
+        b.Property(p => p.Tipo).HasConversion<string>().HasMaxLength(20);
+        b.Property(p => p.Presupuesto).HasPrecision(18, 2);
+        b.Property(p => p.Consumido).HasPrecision(18, 2);
+        b.Property(p => p.Descripcion).HasMaxLength(300);
+        b.HasOne(p => p.Service)
+            .WithMany()
+            .HasForeignKey(p => p.ServiceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(p => p.ServiceId);
+        b.HasQueryFilter(p => !p.IsDeleted);
+    }
+}
+
+public class CategoriaFacturaConfiguration : IEntityTypeConfiguration<CategoriaFactura>
+{
+    public void Configure(EntityTypeBuilder<CategoriaFactura> b)
+    {
+        b.Property(c => c.Nombre).HasMaxLength(120).IsRequired();
+        b.HasOne(c => c.Client)
+            .WithMany()
+            .HasForeignKey(c => c.ClientId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(c => c.ClientId);
+        b.HasQueryFilter(c => !c.IsDeleted);
+    }
+}
+
+public class CategoriaFacturaConceptoConfiguration : IEntityTypeConfiguration<CategoriaFacturaConcepto>
+{
+    public void Configure(EntityTypeBuilder<CategoriaFacturaConcepto> b)
+    {
+        b.HasKey(x => new { x.CategoriaFacturaId, x.ConceptId });
+        b.HasOne(x => x.CategoriaFactura).WithMany(c => c.Conceptos).HasForeignKey(x => x.CategoriaFacturaId);
+        b.HasOne(x => x.Concept).WithMany().HasForeignKey(x => x.ConceptId);
+        // Un concepto sólo puede estar en una categoría por cliente; al pertenecer la categoría a un único
+        // cliente, basta con impedir que el mismo concepto aparezca en dos categorías (se valida además en
+        // el servicio para devolver 409 con mensaje claro).
+        b.HasIndex(x => x.ConceptId);
     }
 }
 

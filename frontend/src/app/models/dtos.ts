@@ -4,7 +4,7 @@
 import type {
   EstadoUsuario, EstadoCliente, EstadoServicio, TipoConcepto, EstadoPeriodo,
   EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta,
-  EstadoIncidencia
+  EstadoIncidencia, TipoPartidaPresupuesto
 } from './enums';
 
 export type { EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta };
@@ -61,25 +61,125 @@ export interface ClientDetailDto {
 export type ClientCreateRequest = Omit<ClientDetailDto, 'id'>;
 export type ClientUpdateRequest = ClientCreateRequest;
 
-// Incidencias del cliente (PPT slide 6): tipo (texto libre), explicación y estado, editables y con histórico.
+// Incidencias del cliente (PPT slide 6 + prototipo): tipo (texto libre), explicación, estado, origen/responsable,
+// fecha de apertura y un histórico de cambios. Alta manual (no provienen de un sistema origen).
+export interface IncidenciaHistorialDto {
+  id: number;
+  estado: EstadoIncidencia;
+  nota: string;
+  responsable?: string | null;
+  fecha: string;
+}
 export interface ClienteIncidenciaDto {
   id: number;
   clientId: number;
   tipo: string;
   descripcion: string;
   estado: EstadoIncidencia;
+  origen?: string | null;
+  fechaApertura: string;
   createdAt: string;
   updatedAt: string;
+  historial: IncidenciaHistorialDto[];
+}
+// Listado global (pantalla de 1er nivel): incluye el nombre del cliente para la tabla.
+export interface IncidenciaListItemDto {
+  id: number;
+  clientId: number;
+  clientNombre: string;
+  tipo: string;
+  descripcion: string;
+  estado: EstadoIncidencia;
+  origen?: string | null;
+  fechaApertura: string;
 }
 export interface ClienteIncidenciaCreateRequest {
   tipo: string;
   descripcion: string;
   estado?: EstadoIncidencia;
+  origen?: string | null;
+  fechaApertura?: string | null;
 }
 export interface ClienteIncidenciaUpdateRequest {
   tipo: string;
   descripcion: string;
   estado: EstadoIncidencia;
+  origen?: string | null;
+}
+export interface IncidenciaCambioEstadoRequest {
+  estado: EstadoIncidencia;
+  nota: string;
+  responsable?: string | null;
+}
+
+// Configuración de Presupuesto (prototipo 24/28): partidas manuales por acción/servicio + márgenes.
+export interface PartidaPresupuestoDto {
+  id: number;
+  serviceId: number;
+  nombre: string;
+  tipo: TipoPartidaPresupuesto;
+  anio?: number | null;
+  presupuesto: number;
+  consumido: number;
+  restante: number;
+  avancePct: number;
+  descripcion?: string | null;
+}
+export interface PartidaPresupuestoCreateRequest {
+  nombre: string;
+  tipo: TipoPartidaPresupuesto;
+  anio?: number | null;
+  presupuesto: number;
+  consumido: number;
+  descripcion?: string | null;
+}
+export type PartidaPresupuestoUpdateRequest = PartidaPresupuestoCreateRequest;
+export interface ConfigPresupuestoDto {
+  serviceId: number;
+  serviceNombre: string;
+  clientNombre: string;
+  totalPresupuesto: number;
+  totalConsumido: number;
+  totalRestante: number;
+  avancePct: number;
+  margenObjetivoPct?: number | null;
+  margenRealPct?: number | null;
+  desviacionPp?: number | null;
+  partidasAnuales: number;
+  partidasTotalAccion: number;
+  partidas: PartidaPresupuestoDto[];
+}
+export interface MargenObjetivoRequest {
+  margenObjetivoPct?: number | null;
+}
+
+// Configuración de Factura (prototipo 25/28): categorías que agrupan conceptos de facturación por cliente.
+export interface CategoriaFacturaConceptoDto {
+  conceptId: number;
+  nombre: string;
+}
+export interface CategoriaFacturaDto {
+  id: number;
+  clientId: number;
+  nombre: string;
+  conceptos: CategoriaFacturaConceptoDto[];
+}
+export interface CategoriaFacturaCreateRequest {
+  nombre: string;
+  conceptIds: number[];
+}
+export type CategoriaFacturaUpdateRequest = CategoriaFacturaCreateRequest;
+export interface ConceptoDisponibleDto {
+  conceptId: number;
+  nombre: string;
+  asignado: boolean;
+  categoriaFacturaId?: number | null;
+  categoriaNombre?: string | null;
+}
+export interface ConfigFacturaResumenDto {
+  numCategorias: number;
+  conceptosMapeados: number;
+  conceptosSinAsignar: number;
 }
 
 // Forecast (PPT slide 36): previsión mensual de ventas/margen/GPP por servicio.

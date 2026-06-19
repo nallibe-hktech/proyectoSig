@@ -104,6 +104,29 @@ Tras revisar el Excel `CierresIntegralesSIG (9)` punto por punto, se cierran dos
 **No es código:** la política de horas extra de Optimising (prorrateo vs redondeo a hora completa) sigue marcada **"PTE"** por el cliente en el propio Excel — decisión de negocio abierta, no un gap del motor (ambas reglas son expresables: prorrateo con `Sum(Horas)`, redondeo redondeando las horas). Logística coste+margen, "% de entidad" (`Mul`) y tarifas por zona (un concepto por zona) ya cumplían el Excel y NO eran gaps.
 **Tests:** suite completa 340/340 (motor de cálculo 59/59). **Reversible:** sí (cambios aditivos y compatibles con fórmulas almacenadas).
 
+### SUP-12 · Configuración de Factura (pantalla nueva #3, prototipo 25/28)
+Pantalla nueva que agrupa conceptos de facturación en **categorías por cliente** (entidad `CategoriaFactura` + join `CategoriaFacturaConcepto`, migración `AddCategoriaFactura`; API anidada `api/clients/{id}/categorias-factura`; UI `/config-factura`). Decisiones tomadas (todas confirmadas por el mockup del prototipo, no inventadas):
+
+1. **Ámbito = por cliente** (no por servicio). El prototipo lo dice literalmente ("Se definen por cliente"). Queda **resuelta** la contradicción con el PPT slide 37 ("de un mismo servicio"): prevalece el prototipo (más reciente). 
+2. **Cardinalidad:** una categoría suma 1..N conceptos; un concepto pertenece a **≤1 categoría por cliente** (el panel del prototipo muestra "asignado / sin asignar", binario). Se valida en el servicio → **409** si se intenta reutilizar un concepto ya asignado.
+3. **"Conceptos disponibles del cliente"** (el bloque que el PPT marcaba *"a definir"*) = conceptos `Tipo=Factura` del cliente: globales (`ServiceId null`) o vinculados a un servicio del cliente (`Concept.ServiceId` o `ServiceConcept`).
+4. **Categoría = nombre texto libre.** Los contenidos concretos quedan **pendientes de validar con SIG** (el propio banner del prototipo lo dice). La pantalla es la herramienta de configuración; el seed es **ilustrativo y anónimo** ("Servicio de campo", "Cuota mensual" por cliente, dejando algún concepto sin asignar).
+5. **Filtros dpto/acción/rango-fechas** del mockup: NO afectan a la definición de categorías (son por cliente); se implementa **selector de cliente** (los otros se omiten por ahora — cosméticos). Registrado.
+
+Escritura sólo **Administrator** (mismo criterio que Incidencias). **Tests:** 362/362 (10 unit + 9 integración nuevos). **Reversible:** sí (entidad/migración aditivas).
+
+### SUP-13 · Configuración de Presupuesto (pantalla nueva #5, prototipo 24/28)
+Pantalla nueva: **partidas de presupuesto por acción/servicio** (entidad `PartidaPresupuesto`, migración `AddPartidaPresupuesto`; API anidada `api/services/{id}/config-presupuesto`; UI `/config-presupuesto`). Decisiones (ancladas al mockup, que es explícito):
+
+1. **Entrada manual.** El propio prototipo dice textualmente que el presupuesto por partida **no procede de ningún origen de datos** → se carga a mano. Por eso `Presupuesto` y `Consumido` son **manuales**; `Restante`/`Avance` se calculan. El **cálculo automático del consumido desde cierres** queda **diferido** (es "pendiente de SIG" el mapeo partida↔conceptos) — igual criterio que #3.
+2. **Tipo de partida:** `Anual` (con ejercicio) o `TotalAccion` (vida de la acción), como el mockup.
+3. **NO se añade "nº personas de campo".** El mockup 24/28 **no lo muestra** → se mantiene el forecast GPP aparte. Esto **cierra la contradicción SUP-06 a favor del prototipo** (slide 35 lo planteaba como sustituto del GPP; el prototipo, más reciente, lo descartó de esta pantalla).
+4. **Margen objetivo:** campo manual `MargenObjetivoPct` en `Service` (%); el **margen real se calcula de los cierres** (Σfacturación − Σcoste)/Σfacturación; desviación = real − objetivo. Se conservan los paneles "Márgenes objetivo" y "Vigencia y ámbito" del prototipo (el PPT pedía eliminarlos por duplicar; **prevalece el prototipo** por ser más reciente — registrado).
+5. **Ámbito = por acción/servicio** (la pantalla tiene selector de servicio). El antiguo sub-tab `PresupuestoServicio` (`/services/:id/presupuestos`) queda **superado** por esta pantalla; se deja en su sitio (limpieza posterior, no se borra ahora para no romper nada).
+6. Las partidas **alimentan** la desviación de la (futura) pantalla Errores Facturación (relación unidireccional; #5 no depende de ella).
+
+Escritura sólo **Administrator**. **Tests:** 376/376 (8 unit + 6 integración nuevos). **Reversible:** sí (entidad/columna/migración aditivas).
+
 ## Aparcados (sin decisión, requieren input del cliente)
 
 ### PARK-01 · Panel de facturas pagadas/pendientes por cliente (#5)

@@ -266,6 +266,49 @@ public class PresupuestosController : ControllerBase
     }
 }
 
+// Configuración de Presupuesto (prototipo 24/28): partidas por acción/servicio + márgenes. Lectura para
+// autenticados (restringida a servicios accesibles en el servicio); escritura solo Administrator.
+[ApiController]
+[Route("api/services/{serviceId:int}/config-presupuesto")]
+[Authorize]
+public class ConfigPresupuestoController : ControllerBase
+{
+    private readonly IConfigPresupuestoService _svc;
+    public ConfigPresupuestoController(IConfigPresupuestoService svc) { _svc = svc; }
+
+    private int UserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new InvalidOperationException("NameIdentifier claim not found"));
+
+    [HttpGet]
+    public async Task<IActionResult> Get(int serviceId, CancellationToken ct) =>
+        Ok(await _svc.GetConfigAsync(serviceId, UserId, ct));
+
+    [HttpPost("partidas")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> CreatePartida(int serviceId, SIG.Application.DTOs.PartidaPresupuestoCreateRequest req, CancellationToken ct)
+    {
+        var r = await _svc.CreatePartidaAsync(serviceId, req, UserId, ct);
+        return CreatedAtAction(nameof(Get), new { serviceId }, r);
+    }
+
+    [HttpPut("partidas/{id:int}")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> UpdatePartida(int serviceId, int id, SIG.Application.DTOs.PartidaPresupuestoUpdateRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpdatePartidaAsync(id, serviceId, req, UserId, ct));
+
+    [HttpDelete("partidas/{id:int}")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> DeletePartida(int serviceId, int id, CancellationToken ct)
+    {
+        await _svc.DeletePartidaAsync(id, serviceId, UserId, ct);
+        return NoContent();
+    }
+
+    [HttpPut("margen-objetivo")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> SetMargenObjetivo(int serviceId, SIG.Application.DTOs.MargenObjetivoRequest req, CancellationToken ct) =>
+        Ok(await _svc.SetMargenObjetivoAsync(serviceId, req, UserId, ct));
+}
+
 // Forecast por servicio (PPT slide 36). Lectura: autenticado; escritura: Administrator/Backoffice
 // (mismo criterio que Tarifas/Presupuestos). Upsert por mes; rechaza meses cerrados (409 period_closed).
 [ApiController]

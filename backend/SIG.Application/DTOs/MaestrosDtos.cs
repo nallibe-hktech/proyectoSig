@@ -8,10 +8,52 @@ public record ClientDetailDto(int Id, string Nombre, string NIF, EstadoCliente E
 public record ClientCreateRequest(string Nombre, string NIF, EstadoCliente? Estado, string? Direccion, string? Ciudad, string? Provincia, string? Pais, string? CodigoPostal, string? ContactoNombre, string? ContactoEmail, string? ContactoTelefono);
 public record ClientUpdateRequest(string Nombre, string NIF, EstadoCliente Estado, string? Direccion, string? Ciudad, string? Provincia, string? Pais, string? CodigoPostal, string? ContactoNombre, string? ContactoEmail, string? ContactoTelefono);
 
-// Incidencias del cliente (PPT slide 6): tipo (texto libre), explicación y estado; editables y con histórico.
-public record ClienteIncidenciaDto(int Id, int ClientId, string Tipo, string Descripcion, EstadoIncidencia Estado, DateTime CreatedAt, DateTime UpdatedAt);
-public record ClienteIncidenciaCreateRequest(string Tipo, string Descripcion, EstadoIncidencia? Estado);
-public record ClienteIncidenciaUpdateRequest(string Tipo, string Descripcion, EstadoIncidencia Estado);
+// Incidencias del cliente (PPT slide 6 + prototipo): tipo (texto libre), explicación, estado, origen/responsable,
+// fecha de apertura y un histórico de cambios. Editables; alta manual (no provienen de un sistema origen).
+public record ClienteIncidenciaDto(
+    int Id, int ClientId, string Tipo, string Descripcion, EstadoIncidencia Estado,
+    string? Origen, DateTime FechaApertura, DateTime CreatedAt, DateTime UpdatedAt,
+    IReadOnlyList<IncidenciaHistorialDto> Historial);
+public record IncidenciaHistorialDto(int Id, EstadoIncidencia Estado, string Nota, string? Responsable, DateTime Fecha);
+// Listado global (pantalla de 1er nivel): añade el nombre del cliente para la tabla.
+public record IncidenciaListItemDto(
+    int Id, int ClientId, string ClientNombre, string Tipo, string Descripcion,
+    EstadoIncidencia Estado, string? Origen, DateTime FechaApertura);
+public record ClienteIncidenciaCreateRequest(string Tipo, string Descripcion, EstadoIncidencia? Estado, string? Origen, DateTime? FechaApertura);
+public record ClienteIncidenciaUpdateRequest(string Tipo, string Descripcion, EstadoIncidencia Estado, string? Origen);
+// Cambio de estado desde el panel de detalle (registra una entrada en el histórico).
+public record IncidenciaCambioEstadoRequest(EstadoIncidencia Estado, string Nota, string? Responsable);
+
+// Configuración de Presupuesto (prototipo 24/28): partidas manuales por acción/servicio (Anual/Total acción)
+// con presupuesto/consumido; Restante y Avance se calculan. La pantalla añade KPIs y márgenes objetivo/real.
+public record PartidaPresupuestoDto(
+    int Id, int ServiceId, string Nombre, TipoPartidaPresupuesto Tipo, int? Anio,
+    decimal Presupuesto, decimal Consumido, decimal Restante, decimal AvancePct, string? Descripcion);
+public record PartidaPresupuestoCreateRequest(
+    string Nombre, TipoPartidaPresupuesto Tipo, int? Anio, decimal Presupuesto, decimal Consumido, string? Descripcion);
+public record PartidaPresupuestoUpdateRequest(
+    string Nombre, TipoPartidaPresupuesto Tipo, int? Anio, decimal Presupuesto, decimal Consumido, string? Descripcion);
+// Cabecera de la pantalla: totales + márgenes (objetivo manual, real calculado de los cierres) + partidas.
+public record ConfigPresupuestoDto(
+    int ServiceId, string ServiceNombre, string ClientNombre,
+    decimal TotalPresupuesto, decimal TotalConsumido, decimal TotalRestante, decimal AvancePct,
+    decimal? MargenObjetivoPct, decimal? MargenRealPct, decimal? DesviacionPp,
+    int PartidasAnuales, int PartidasTotalAccion,
+    IReadOnlyList<PartidaPresupuestoDto> Partidas);
+// Fija el margen operativo objetivo (%) de la acción.
+public record MargenObjetivoRequest(decimal? MargenObjetivoPct);
+
+// Configuración de Factura (prototipo 25/28): categorías que agrupan conceptos de facturación por cliente.
+public record CategoriaFacturaDto(int Id, int ClientId, string Nombre, IReadOnlyList<CategoriaFacturaConceptoDto> Conceptos);
+public record CategoriaFacturaConceptoDto(int ConceptId, string Nombre);
+// Alta/edición: nombre + lista de conceptos que suma. El servicio valida que sean del cliente y que no
+// estén ya en otra categoría (devuelve 409 si lo están).
+public record CategoriaFacturaCreateRequest(string Nombre, int[] ConceptIds);
+public record CategoriaFacturaUpdateRequest(string Nombre, int[] ConceptIds);
+// Panel derecho "conceptos disponibles del cliente": conceptos de facturación del cliente con su estado.
+public record ConceptoDisponibleDto(int ConceptId, string Nombre, bool Asignado, int? CategoriaFacturaId, string? CategoriaNombre);
+// KPIs de cabecera de la pantalla.
+public record ConfigFacturaResumenDto(int NumCategorias, int ConceptosMapeados, int ConceptosSinAsignar);
 
 // Service (antes Action; absorbe el vínculo directo a Client y los metadatos de Project)
 public record ServiceListItemDto(int Id, string Nombre, int ClientId, string ClientNombre, int? DepartmentId, EstadoServicio Estado);

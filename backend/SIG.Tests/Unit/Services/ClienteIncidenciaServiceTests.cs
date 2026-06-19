@@ -46,7 +46,7 @@ public class ClienteIncidenciaServiceTests
     public async Task CreateAsync_SinEstado_PorDefectoAbierta_YPersiste()
     {
         _clientRepo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns(MakeClient());
-        var req = new ClienteIncidenciaCreateRequest("Logística", "Pedido no entregado", null);
+        var req = new ClienteIncidenciaCreateRequest("Logística", "Pedido no entregado", null, null, null);
 
         var result = await _sut.CreateAsync(1, req, 99, CancellationToken.None);
 
@@ -74,7 +74,7 @@ public class ClienteIncidenciaServiceTests
         var inc = MakeIncidencia();
         _clientRepo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns(MakeClient());
         _repo.GetByIdAsync(5, Arg.Any<CancellationToken>()).Returns(inc);
-        var req = new ClienteIncidenciaUpdateRequest("Facturación", "Resuelta con abono", EstadoIncidencia.Resuelta);
+        var req = new ClienteIncidenciaUpdateRequest("Facturación", "Resuelta con abono", EstadoIncidencia.Resuelta, null);
 
         var result = await _sut.UpdateAsync(5, 1, req, 99, CancellationToken.None);
 
