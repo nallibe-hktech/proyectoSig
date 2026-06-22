@@ -70,6 +70,24 @@ Decisiones autónomas tomadas ante ambigüedad no bloqueante. Cada una se puede 
 **Matriz de aprobaciones (slide 15):** se añade al **detalle del cierre** una **matriz empleados × conceptos** (filas usuarios, columnas conceptos, celdas importe, totales) construida en el front desde `CierreDetailDto.Lines` — sin backend nuevo. El "campo de pago/facturación adicional + comentario justificativo" por línea ya existe (override/incentivo). El **detalle por día** y las vistas "trabajo por persona/visitas por persona" quedan como ampliación posterior (requieren datos por día que hoy no están en la línea de cierre).
 **Reversible:** sí.
 
+### SUP-10 · Motor de cálculo — lógica de Pagos-Facturación del Excel "CierresIntegralesSIG"
+El Excel entregado por el cliente es la **especificación funcional del motor de cálculo** ya existente (cada "TIPO CONCEPTO" = una fórmula `Concept.FormulaJson`; "Pagos" → `CierreCostes`, "Facturación" → `CierreFacturacion`). Se amplía el motor con las primitivas que faltaban, **de forma aditiva y compatible** con las fórmulas ya almacenadas:
+
+- **`ModifierNode`** (`Min`/`Max`/`FloorZero`/`Franquicia`): cubre los FILTROS del Excel (cantidad mínima/suelo, máxima/techo, rendimiento-umbral mínimo → 0, y franquicia "los primeros X no contabilizan").
+- **`TramosNode`**: tarifa incremental por tramos acumulativos (1ª hora/módulo a un precio, siguientes a otro).
+- **`AggregateNode.Distinct`**: con `Count`, cuenta valores únicos de un campo → "conteo de días con actividad".
+- **`ConceptRefNode`**: "fee sobre conceptos" / "% fijo de cantidad variable" = referencia a la suma de importes de otros conceptos del mismo cierre. Se resuelve en una **2ª pasada** del cierre (`CierreServiceBase.ComputeLinesAsync`), con los importes base en `CalculationTarget.ImportesPrevios`.
+
+**Decisiones autónomas y límites asumidos:**
+1. **Logística (Galán/MDP) NO se modela como fuente de datos nueva**: los staging de Galán/Mediapost no traen coste ni m³ (la logística va "según tarifas/PWBI"). Se modela como `Tarifa`/gasto + margen con `BinaryOp` (`Mul`/`Pct`). Si en el futuro llega el coste estructurado, se añadirá como `Source`.
+2. **Segmentación de visitas por tipo/zona/mueble/km**: como `StagingCeleroVisita` no tiene esas columnas, `RowAdapter.FromVisita` las extrae del **`PayloadJson`** (claves conocidas `tipoVisita`, `puntoMontado`, `zona`, `km`, `horas`, `importe`, `categoria`) y vuelca el resto en un diccionario `Extra` filtrable. Es el mecanismo del "idQuestion de Celero → variable".
+3. **Fee sobre conceptos = solo sobre conceptos base** (2 pasadas). Un fee sobre otro fee NO está soportado (no aparece en el Excel); documentado como límite.
+4. **Datos de cliente**: se crean **conceptos de EJEMPLO con datos anónimos** en el seeder (uno por primitiva nueva). Las tarifas/fees/horas reales del Excel las introduce el cliente por la UI — **cero PII/valores reales en el repo**.
+5. **Eficiencia**: `ComputeLinesAsync` pasa a evaluar **cada concepto una sola vez** (antes lo hacía dos: línea + log); el log se construye del mismo resultado.
+
+**Avisos** (no parte del motor): `API Innuva.docx` contiene un Client Secret OAuth real en texto plano y los ficheros del Excel traen PII/tarifas reales — no commitear.
+**Reversible:** sí (todos los nodos nuevos son aditivos; las fórmulas antiguas siguen evaluando igual).
+
 ## Aparcados (sin decisión, requieren input del cliente)
 
 ### PARK-01 · Panel de facturas pagadas/pendientes por cliente (#5)
