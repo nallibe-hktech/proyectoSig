@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SIG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SIG.Infrastructure.Persistence;
 namespace SIG.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618125814_AddA3InnuvaNominasTestTables")]
+    partial class AddA3InnuvaNominasTestTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,61 +24,6 @@ namespace SIG.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("SIG.Domain.Entities.A3InnuvaOAuthToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AccessToken")
-                        .HasColumnType("text")
-                        .HasColumnName("access_token");
-
-                    b.Property<DateTime?>("AccessTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("access_token_expires_at");
-
-                    b.Property<string>("AuthorizationCode")
-                        .HasColumnType("text")
-                        .HasColumnName("authorization_code");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<bool>("IsValid")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_valid");
-
-                    b.Property<DateTime?>("LastSyncAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_sync_at");
-
-                    b.Property<string>("RefreshToken")
-                        .HasColumnType("text")
-                        .HasColumnName("refresh_token");
-
-                    b.Property<DateTime?>("RefreshTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("refresh_token_expires_at");
-
-                    b.Property<string>("TokenType")
-                        .HasColumnType("text")
-                        .HasColumnName("token_type");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_a3innuva_o_auth_tokens");
-
-                    b.ToTable("a3innuva_o_auth_tokens", (string)null);
-                });
 
             modelBuilder.Entity("SIG.Domain.Entities.Approval", b =>
                 {

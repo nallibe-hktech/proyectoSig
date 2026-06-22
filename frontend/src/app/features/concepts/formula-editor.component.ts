@@ -70,6 +70,9 @@ import {
               <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createBinaryOp())" data-testid="prim-binaryop"><mat-icon>functions</mat-icon> Operación</button>
               <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createAggregate())" data-testid="prim-aggregate"><mat-icon>calculate</mat-icon> Agregado</button>
               <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createSource())" data-testid="prim-source"><mat-icon>storage</mat-icon> Entidad</button>
+              <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createModifier())" data-testid="prim-modifier"><mat-icon>tune</mat-icon> Modificador</button>
+              <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createTramos())" data-testid="prim-tramos"><mat-icon>stairs</mat-icon> Tramos</button>
+              <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createConceptRef())" data-testid="prim-conceptref"><mat-icon>percent</mat-icon> Fee s/conceptos</button>
             </mat-card-content>
           </mat-card>
 
@@ -184,8 +187,19 @@ import {
                     <mat-option [value]="null">— Sin campo —</mat-option>
                     <mat-option value="Importe">Importe</mat-option>
                     <mat-option value="Horas">Horas</mat-option>
+                    <mat-option value="Km">Km</mat-option>
                   </mat-select>
                 </mat-form-field>
+                @if (node.op === 'Count') {
+                  <mat-form-field appearance="outline" class="sig-op-field">
+                    <mat-label>Distinto por (días con actividad)</mat-label>
+                    <mat-select [(ngModel)]="node.distinct" data-testid="select-distinct">
+                      <mat-option [value]="null">— Contar todas —</mat-option>
+                      <mat-option value="Fecha">Fecha (días únicos)</mat-option>
+                      <mat-option value="UserId">Recurso (recursos únicos)</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                }
                 <div class="sig-slot">
                   <div class="sig-slot-label">Entidad origen</div>
                   @if (node.source && node.source.type === 'Source') {
@@ -206,6 +220,8 @@ import {
                     <mat-option value="GastosPayHawk">GastosPayHawk</mat-option>
                     <mat-option value="HorasBizneo">HorasBizneo</mat-option>
                     <mat-option value="HorasIntratime">HorasIntratime</mat-option>
+                    <mat-option value="VisitasSgpv">VisitasSgpv</mat-option>
+                    <mat-option value="TarifasServicio">TarifasServicio</mat-option>
                   </mat-select>
                 </mat-form-field>
                 <div class="sig-filters-section">
@@ -225,6 +241,7 @@ import {
                           <mat-option value="Gte">≥</mat-option>
                           <mat-option value="Lt">&lt;</mat-option>
                           <mat-option value="Lte">≤</mat-option>
+                          <mat-option value="In">∈ (en lista)</mat-option>
                         </mat-select>
                       </mat-form-field>
                       <mat-form-field appearance="outline" class="sig-filter-small">
@@ -236,6 +253,81 @@ import {
                   }
                   <button mat-stroked-button (click)="addFilter(node)" data-testid="btn-add-filter"><mat-icon>add</mat-icon> Añadir filtro</button>
                 </div>
+              </div>
+            }
+            <!-- Modifier -->
+            @if (node.type === 'Modifier') {
+              <div class="sig-binop">
+                <mat-form-field appearance="outline" class="sig-op-field">
+                  <mat-label>Tipo</mat-label>
+                  <mat-select [(ngModel)]="node.kind" data-testid="select-modifier-kind">
+                    <mat-option value="Min">Mínimo (suelo: si &lt; X → X)</mat-option>
+                    <mat-option value="Max">Máximo (techo: si &gt; X → X)</mat-option>
+                    <mat-option value="FloorZero">Umbral (si &lt; X → 0)</mat-option>
+                    <mat-option value="Franquicia">Franquicia (resta X, mín. 0)</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="sig-inline-field">
+                  <mat-label>Valor X</mat-label>
+                  <input matInput type="number" [(ngModel)]="node.threshold" data-testid="input-modifier-threshold" />
+                </mat-form-field>
+                <div class="sig-slot">
+                  <div class="sig-slot-label">Expresión interior</div>
+                  @if (node.inner) {
+                    <ng-container [ngTemplateOutlet]="nodeTpl" [ngTemplateOutletContext]="{ node: node.inner, parent: node, key: 'inner' }"></ng-container>
+                  } @else {
+                    <div class="sig-empty-slot">
+                      <button mat-stroked-button (click)="setSlot(node, 'inner', createAggregate())">+ Agregado</button>
+                      <button mat-stroked-button (click)="setSlot(node, 'inner', createBinaryOp())">+ Operación</button>
+                      <button mat-stroked-button (click)="setSlot(node, 'inner', createNumber())">+ Número</button>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+            <!-- Tramos -->
+            @if (node.type === 'Tramos') {
+              <div class="sig-aggregate">
+                <div class="sig-slot">
+                  <div class="sig-slot-label">Cantidad (horas / unidades)</div>
+                  @if (node.cantidad) {
+                    <ng-container [ngTemplateOutlet]="nodeTpl" [ngTemplateOutletContext]="{ node: node.cantidad, parent: node, key: 'cantidad' }"></ng-container>
+                  } @else {
+                    <div class="sig-empty-slot">
+                      <button mat-stroked-button (click)="setSlot(node, 'cantidad', createAggregate())">+ Agregado</button>
+                      <button mat-stroked-button (click)="setSlot(node, 'cantidad', createNumber())">+ Número</button>
+                    </div>
+                  }
+                </div>
+                <div class="sig-filters-section">
+                  <strong style="font-size: 13px;">Tramos (precio por unidad acumulado)</strong>
+                  @for (t of node.tramos; track $index; let i = $index) {
+                    <div class="sig-filter-row">
+                      <mat-form-field appearance="outline" class="sig-filter-small">
+                        <mat-label>Hasta (vacío = resto)</mat-label>
+                        <input matInput type="number" [(ngModel)]="t.hasta" />
+                      </mat-form-field>
+                      <mat-form-field appearance="outline" class="sig-filter-small">
+                        <mat-label>Precio/unidad</mat-label>
+                        <input matInput type="number" [(ngModel)]="t.precio" />
+                      </mat-form-field>
+                      <button mat-icon-button (click)="removeTramo(node, i)" aria-label="Quitar tramo"><mat-icon>close</mat-icon></button>
+                    </div>
+                  }
+                  <button mat-stroked-button (click)="addTramo(node)" data-testid="btn-add-tramo"><mat-icon>add</mat-icon> Añadir tramo</button>
+                </div>
+              </div>
+            }
+            <!-- ConceptRef -->
+            @if (node.type === 'ConceptRef') {
+              <div class="sig-source">
+                <p style="margin: 0; font-size: 13px; color: var(--mat-sys-on-surface-variant);">
+                  Suma de los importes de otros conceptos del mismo cierre. Déjalo vacío para sumar <strong>todos</strong> los conceptos base.
+                </p>
+                <mat-form-field appearance="outline" style="width: 100%;">
+                  <mat-label>IDs de concepto (separados por comas, opcional)</mat-label>
+                  <input matInput [ngModel]="conceptIdsText(node)" (ngModelChange)="setConceptIds(node, $event)" placeholder="p.ej. 3, 5, 7" data-testid="input-conceptref-ids" />
+                </mat-form-field>
               </div>
             }
           </div>
@@ -330,14 +422,35 @@ export class FormulaEditorComponent implements OnInit {
   protected createNumber(): FormulaNode { return { type: 'Number', value: 0 }; }
   protected createVariable(): FormulaNode { return { type: 'Variable', variableId: this.variables()[0]?.id ?? 0 }; }
   protected createBinaryOp(): FormulaNode { return { type: 'BinaryOp', op: 'Mul', left: this.createAggregate(), right: this.createNumber() }; }
-  protected createAggregate(): FormulaNode { return { type: 'Aggregate', op: 'Sum', source: this.createSource(), field: null }; }
+  protected createAggregate(): FormulaNode { return { type: 'Aggregate', op: 'Sum', source: this.createSource(), field: null, distinct: null }; }
   protected createSource(): FormulaNode { return { type: 'Source', entity: 'VisitasCelero', field: null, filters: [] }; }
+  protected createModifier(): FormulaNode { return { type: 'Modifier', kind: 'Min', threshold: 0, inner: this.createAggregate() }; }
+  protected createTramos(): FormulaNode { return { type: 'Tramos', cantidad: this.createAggregate(), tramos: [{ hasta: 1, precio: 0 }, { hasta: null, precio: 0 }] }; }
+  protected createConceptRef(): FormulaNode { return { type: 'ConceptRef', conceptIds: [] }; }
 
   // ---------- Mutations ----------
   protected setRoot(node: FormulaNode): void { this.root.set(node); this.bump(); }
-  protected setSlot(parent: FormulaNode, key: 'left' | 'right' | 'source', node: FormulaNode): void {
+  protected setSlot(parent: FormulaNode, key: 'left' | 'right' | 'source' | 'inner' | 'cantidad', node: FormulaNode): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (parent as any)[key] = node;
+    this.bump();
+  }
+  protected addTramo(node: FormulaNode): void {
+    if (node.type !== 'Tramos') return;
+    node.tramos.push({ hasta: null, precio: 0 });
+    this.bump();
+  }
+  protected removeTramo(node: FormulaNode, idx: number): void {
+    if (node.type !== 'Tramos') return;
+    node.tramos.splice(idx, 1);
+    this.bump();
+  }
+  protected conceptIdsText(node: FormulaNode): string {
+    return node.type === 'ConceptRef' ? node.conceptIds.join(', ') : '';
+  }
+  protected setConceptIds(node: FormulaNode, text: string): void {
+    if (node.type !== 'ConceptRef') return;
+    node.conceptIds = text.split(',').map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n > 0);
     this.bump();
   }
   protected removeNode(parent: FormulaNode | null, key: string): void {
@@ -360,10 +473,10 @@ export class FormulaEditorComponent implements OnInit {
 
   // ---------- Visual helpers ----------
   protected iconFor(type: string): string {
-    return { Number: 'numbers', Variable: 'data_object', BinaryOp: 'functions', Aggregate: 'calculate', Source: 'storage' }[type] ?? 'help';
+    return { Number: 'numbers', Variable: 'data_object', BinaryOp: 'functions', Aggregate: 'calculate', Source: 'storage', Modifier: 'tune', Tramos: 'stairs', ConceptRef: 'percent' }[type] ?? 'help';
   }
   protected labelFor(type: string): string {
-    return { Number: 'Número', Variable: 'Variable', BinaryOp: 'Operación', Aggregate: 'Agregado', Source: 'Entidad' }[type] ?? type;
+    return { Number: 'Número', Variable: 'Variable', BinaryOp: 'Operación', Aggregate: 'Agregado', Source: 'Entidad', Modifier: 'Modificador', Tramos: 'Tramos', ConceptRef: 'Fee s/conceptos' }[type] ?? type;
   }
 
   private serializeExpression(node: FormulaNode): string {
@@ -381,7 +494,8 @@ export class FormulaEditorComponent implements OnInit {
         const opLabel = { Sum: 'Suma', Count: 'Cuenta', Min: 'Mínimo', Max: 'Máximo' }[node.op];
         const inner = node.source ? this.serializeExpression(node.source) : '(?)';
         const field = node.field ? '.' + node.field : '';
-        return `${opLabel}(${inner})${field}`;
+        const distinct = node.distinct ? ` distinto por ${node.distinct}` : '';
+        return `${opLabel}(${inner})${field}${distinct}`;
       }
       case 'BinaryOp': {
         const opSym = { Add: '+', Sub: '−', Mul: '×', Div: '÷', Pct: '%' }[node.op];
@@ -389,6 +503,18 @@ export class FormulaEditorComponent implements OnInit {
         const r = node.right ? this.serializeExpression(node.right) : '(?)';
         return `(${l} ${opSym} ${r})`;
       }
+      case 'Modifier': {
+        const kindLabel = { Min: 'mín', Max: 'máx', FloorZero: 'umbral', Franquicia: 'franquicia' }[node.kind];
+        const inner = node.inner ? this.serializeExpression(node.inner) : '(?)';
+        return `${kindLabel}[${node.threshold}](${inner})`;
+      }
+      case 'Tramos': {
+        const cant = node.cantidad ? this.serializeExpression(node.cantidad) : '(?)';
+        const tramos = node.tramos.map((t) => `${t.hasta ?? '∞'}:${t.precio}`).join(', ');
+        return `Tramos(${cant}; ${tramos})`;
+      }
+      case 'ConceptRef':
+        return node.conceptIds.length > 0 ? `Conceptos(${node.conceptIds.join(', ')})` : 'Conceptos(todos)';
     }
   }
   private opStr(op: FilterOp): string {
@@ -412,6 +538,18 @@ export class FormulaEditorComponent implements OnInit {
         if (!r.ok) return r;
         return { ok: true, reason: '' };
       }
+      case 'Modifier': {
+        if (!node.kind) return { ok: false, reason: 'Tipo de modificador sin seleccionar' };
+        if (!Number.isFinite(node.threshold)) return { ok: false, reason: 'Valor X inválido' };
+        return this.validateNode(node.inner);
+      }
+      case 'Tramos': {
+        if (!node.tramos || node.tramos.length === 0) return { ok: false, reason: 'Define al menos un tramo' };
+        if (node.tramos.some((t) => !Number.isFinite(t.precio))) return { ok: false, reason: 'Precio de tramo inválido' };
+        return this.validateNode(node.cantidad);
+      }
+      case 'ConceptRef':
+        return { ok: true, reason: '' };
     }
   }
 

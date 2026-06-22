@@ -48,9 +48,52 @@ public class CalculationEngine : ICalculationEngine
                 EvaluateNode(b.Left, ctx, target, concept, recursoId, inc),
                 EvaluateNode(b.Right, ctx, target, concept, recursoId, inc),
                 inc),
+            ModifierNode m => ApplyModifier(m.Kind, EvaluateNode(m.Inner, ctx, target, concept, recursoId, inc), m.Threshold),
+            TramosNode t => ApplyTramos(t, EvaluateNode(t.Cantidad, ctx, target, concept, recursoId, inc)),
+            ConceptRefNode cr => ResolveConceptRef(cr, target, concept, inc),
             SourceNode => throw new FormulaInvalidException("SourceNode no puede evaluarse directamente. Debe envolverse en Aggregate."),
             _ => throw new FormulaInvalidException($"Tipo de nodo desconocido: {node.GetType().Name}")
         };
+
+    private static decimal ApplyModifier(string kind, decimal v, decimal threshold) => kind switch
+    {
+        "Min" => Math.Max(v, threshold),          // suelo: si v < X -> X
+        "Max" => Math.Min(v, threshold),          // techo: si v > X -> X
+        "FloorZero" => v < threshold ? 0m : v,    // rendimiento/umbral mínimo: si v < X -> 0
+        "Franquicia" => Math.Max(0m, v - threshold), // los primeros X no contabilizan
+        _ => throw new FormulaInvalidException($"Modificador desconocido: {kind}")
+    };
+
+    private static decimal ApplyTramos(TramosNode t, decimal cantidad)
+    {
+        decimal restante = cantidad, prevLimite = 0m, total = 0m;
+        foreach (var tramo in t.Tramos)
+        {
+            if (restante <= 0m) break;
+            var limiteSup = tramo.Hasta ?? decimal.MaxValue;
+            var ancho = limiteSup - prevLimite;
+            if (ancho <= 0m) { prevLimite = limiteSup; continue; }
+            var unidades = Math.Min(restante, ancho);
+            total += unidades * tramo.Precio;
+            restante -= unidades;
+            prevLimite = limiteSup;
+        }
+        return total;
+    }
+
+    private static decimal ResolveConceptRef(ConceptRefNode cr, CalculationTarget target, Concept self, List<CalculationIncidencia> inc)
+    {
+        var previos = target.ImportesPrevios;
+        if (previos.Count == 0)
+        {
+            inc.Add(new CalculationIncidencia("SinConceptosPrevios", "Fee sobre conceptos sin conceptos base calculados."));
+            return 0m;
+        }
+        var ids = cr.ConceptIds.Where(id => id != self.Id).ToList();
+        if (ids.Count == 0)
+            return previos.Where(kv => kv.Key != self.Id).Sum(kv => kv.Value);
+        return ids.Where(previos.ContainsKey).Sum(id => previos[id]);
+    }
 
     private decimal Aggregate(AggregateNode a, CalculationContext ctx, CalculationTarget target, int? recursoId, List<CalculationIncidencia> inc)
     {
@@ -63,7 +106,10 @@ public class CalculationEngine : ICalculationEngine
         return a.Op switch
         {
             "Sum" => a.Field is null ? rows.Count : rows.Sum(r => r.GetDecimal(a.Field)),
-            "Count" => rows.Count,
+            // Excel "conteo de días con actividad": Count con distinct cuenta valores únicos del campo.
+            "Count" => string.IsNullOrEmpty(a.Distinct)
+                ? rows.Count
+                : rows.Select(r => r.GetField(a.Distinct)?.ToString()).Where(x => x != null).Distinct().Count(),
             "Min" => rows.Min(r => r.GetDecimal(a.Field ?? "Importe")),
             "Max" => rows.Max(r => r.GetDecimal(a.Field ?? "Importe")),
             _ => throw new FormulaInvalidException($"Operación de agregación desconocida: {a.Op}")

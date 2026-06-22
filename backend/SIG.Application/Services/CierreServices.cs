@@ -360,11 +360,28 @@ public abstract class CierreServiceBase<TCierre> : ICierreService where TCierre 
             (c.ServiceId == null || c.ServiceId == cierre.ServiceId)).ToList();
 
         var target = Target(cierre);
-        var lines = new List<ClosureLine>();
 
-        foreach (var concept in aplicables)
+        // Dos pasadas: 1) conceptos base; 2) conceptos "fee sobre conceptos" (ConceptRef), que necesitan
+        // los importes base ya calculados. Cada concepto se evalúa UNA sola vez (línea + log del mismo resultado).
+        var baseConcepts = aplicables.Where(c => !EsFeeSobreConceptos(c)).ToList();
+        var feeConcepts = aplicables.Where(EsFeeSobreConceptos).ToList();
+
+        var resultados = new Dictionary<int, CalculationResult>();
+        foreach (var concept in baseConcepts)
         {
             var result = await _engine.EvaluateAsync(concept, target, null, ct);
+            resultados[concept.Id] = result;
+            target.ImportesPrevios[concept.Id] = result.Resultado;
+        }
+        foreach (var concept in feeConcepts)
+        {
+            resultados[concept.Id] = await _engine.EvaluateAsync(concept, target, null, ct);
+        }
+
+        var lines = new List<ClosureLine>();
+        foreach (var concept in aplicables)
+        {
+            var result = resultados[concept.Id];
             var line = new ClosureLine
             {
                 ConceptId = concept.Id,
@@ -383,12 +400,11 @@ public abstract class CierreServiceBase<TCierre> : ICierreService where TCierre 
         var logs = new List<CalculationLog>();
         foreach (var line in lines)
         {
-            var concept = aplicables.First(c => c.Id == line.ConceptId);
-            var result = await _engine.EvaluateAsync(concept, target, null, ct);
+            var result = resultados[line.ConceptId];
             logs.Add(new CalculationLog
             {
                 ClosureLineId = line.Id,
-                ConceptId = concept.Id,
+                ConceptId = line.ConceptId,
                 FormulaSnapshotJson = result.FormulaSnapshotJson,
                 InputsJson = result.InputsJson,
                 Resultado = result.Resultado,
@@ -403,6 +419,10 @@ public abstract class CierreServiceBase<TCierre> : ICierreService where TCierre 
 
         await RecomputeTotalAsync(cierre, ct);
     }
+
+    // Un concepto es "fee sobre conceptos" si su fórmula contiene un ConceptRefNode (depende de otras líneas).
+    private static bool EsFeeSobreConceptos(Concept c) =>
+        c.FormulaJson?.Contains("\"ConceptRef\"", StringComparison.Ordinal) == true;
 
     // Ola 3a (#1): autorización por paso reforzada a nivel de servicio.
     private async Task EnsureCanActOnStepAsync(TCierre cierre, ApprovalStep paso, int usuarioId, CancellationToken ct)

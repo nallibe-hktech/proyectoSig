@@ -650,12 +650,20 @@ export type FormulaNode =
   | { type: 'Number'; value: number }
   | { type: 'Variable'; variableId: number }
   | { type: 'Source'; entity: SourceEntity; field?: string | null; filters: FormulaFilter[] }
-  | { type: 'Aggregate'; op: AggregateOp; source: FormulaNode; field?: string | null }
-  | { type: 'BinaryOp'; op: BinaryOpKind; left: FormulaNode; right: FormulaNode };
+  | { type: 'Aggregate'; op: AggregateOp; source: FormulaNode; field?: string | null; distinct?: string | null }
+  | { type: 'BinaryOp'; op: BinaryOpKind; left: FormulaNode; right: FormulaNode }
+  | { type: 'Modifier'; kind: ModifierKind; threshold: number; inner: FormulaNode }
+  | { type: 'Tramos'; cantidad: FormulaNode; tramos: Tramo[] }
+  | { type: 'ConceptRef'; conceptIds: number[] };
 
-export type SourceEntity = 'GastosPayHawk' | 'VisitasCelero' | 'HorasBizneo' | 'HorasIntratime';
+export type SourceEntity = 'GastosPayHawk' | 'VisitasCelero' | 'HorasBizneo' | 'HorasIntratime' | 'VisitasSgpv' | 'TarifasServicio';
 export type AggregateOp = 'Sum' | 'Count' | 'Min' | 'Max';
 export type BinaryOpKind = 'Add' | 'Sub' | 'Mul' | 'Div' | 'Pct';
+export type ModifierKind = 'Min' | 'Max' | 'FloorZero' | 'Franquicia';
+export interface Tramo {
+  hasta: number | null;
+  precio: number;
+}
 export type FilterOp = 'Eq' | 'Neq' | 'Gt' | 'Gte' | 'Lt' | 'Lte' | 'In';
 export interface FormulaFilter {
   field: string;

@@ -1,0 +1,165 @@
+<div class="container" style="padding: 20px;">
+  <h1>🧪 A3 INNUVA Nóminas - Testing</h1>
+
+  <mat-card style="margin-bottom: 20px;">
+    <mat-card-content>
+      <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px;">
+        <label style="display: flex; gap: 10px; align-items: center;">
+          <strong>Modo:</strong>
+          <mat-slide-toggle [ngModel]="isTestMode()" (ngModelChange)="isTestMode.set($event); onModeChange()">
+          </mat-slide-toggle>
+          <span>{{ isTestMode() ? '🧪 TEST (tabla segura)' : '⚠️ PRODUCCIÓN (datos reales)' }}</span>
+        </label>
+      </div>
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button mat-raised-button color="primary" (click)="syncCompanies()" [disabled]="loading()">
+          {{ loading() ? 'Sincronizando...' : '📥 Sincronizar Empresas' }}
+        </button>
+        <button mat-raised-button color="accent" (click)="syncPayrolls()" [disabled]="loading() || !selectedCompany">
+          {{ loading() ? 'Sincronizando...' : '📥 Sincronizar Nóminas' }}
+        </button>
+      </div>
+
+      <div style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;" *ngIf="lastSyncMessage">
+        <small>{{ lastSyncMessage }}</small>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-tab-group>
+    <!-- Tab: Empresas -->
+    <mat-tab label="📊 Empresas">
+      <div style="padding: 20px;">
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+          <mat-form-field style="width: 300px;">
+            <mat-label>Buscar empresa</mat-label>
+            <input matInput [(ngModel)]="searchCompanies" placeholder="Código, nombre, NIF...">
+          </mat-form-field>
+          <button mat-icon-button (click)="loadCompanies()" matTooltip="Buscar">
+            🔍
+          </button>
+        </div>
+
+        <div *ngIf="companiesLoading()" style="text-align: center; padding: 40px;">
+          <mat-spinner diameter="40"></mat-spinner>
+        </div>
+
+        <table mat-table [dataSource]="companies()" *ngIf="!companiesLoading() && companies().length > 0" style="width: 100%;">
+          <ng-container matColumnDef="code">
+            <th mat-header-cell>Código</th>
+            <td mat-cell *matCellDef="let company">{{ company.code }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="name">
+            <th mat-header-cell>Nombre</th>
+            <td mat-cell *matCellDef="let company">{{ company.name }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="taxId">
+            <th mat-header-cell>NIF</th>
+            <td mat-cell *matCellDef="let company">{{ company.taxId }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="city">
+            <th mat-header-cell>Ciudad</th>
+            <td mat-cell *matCellDef="let company">{{ company.city || '-' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell>Acciones</th>
+            <td mat-cell *matCellDef="let company">
+              <button mat-icon-button color="primary" (click)="selectCompany(company.code)" matTooltip="Usar para nóminas">
+                ✓
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['code', 'name', 'taxId', 'city', 'actions']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['code', 'name', 'taxId', 'city', 'actions'];"></tr>
+        </table>
+
+        <div *ngIf="!companiesLoading() && companies().length === 0" style="padding: 40px; text-align: center; color: #999;">
+          No hay empresas. Haz clic en "Sincronizar Empresas" primero.
+        </div>
+
+        <mat-paginator
+          [length]="companiesTotal()"
+          [pageSize]="pageSize()"
+          [pageIndex]="page() - 1"
+          [pageSizeOptions]="[10, 25, 50]"
+          showFirstLastButtons
+          (page)="onPageChange($event, 'companies')">
+        </mat-paginator>
+      </div>
+    </mat-tab>
+
+    <!-- Tab: Nóminas -->
+    <mat-tab label="💰 Nóminas">
+      <div style="padding: 20px;">
+        <div style="margin-bottom: 20px; padding: 10px; background: #fff3e0; border-radius: 4px;">
+          <strong>Empresa seleccionada:</strong>
+          {{ selectedCompany || '(ninguna - selecciona una en la tab de Empresas)' }}
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+          <mat-form-field style="width: 300px;">
+            <mat-label>Buscar nómina</mat-label>
+            <input matInput [(ngModel)]="searchPayrolls" placeholder="Empleado, período...">
+          </mat-form-field>
+          <button mat-icon-button (click)="loadPayrolls()" matTooltip="Buscar" [disabled]="!selectedCompany">
+            🔍
+          </button>
+        </div>
+
+        <div *ngIf="payrollsLoading()" style="text-align: center; padding: 40px;">
+          <mat-spinner diameter="40"></mat-spinner>
+        </div>
+
+        <table mat-table [dataSource]="payrolls()" *ngIf="!payrollsLoading() && payrolls().length > 0" style="width: 100%;">
+          <ng-container matColumnDef="employeeName">
+            <th mat-header-cell>Empleado</th>
+            <td mat-cell *matCellDef="let payroll">{{ payroll.employeeName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="periodCode">
+            <th mat-header-cell>Período</th>
+            <td mat-cell *matCellDef="let payroll">{{ payroll.periodCode }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="baseSalary">
+            <th mat-header-cell>Salario Base</th>
+            <td mat-cell *matCellDef="let payroll">{{ payroll.baseSalary | currency }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="netSalary">
+            <th mat-header-cell>Salario Neto</th>
+            <td mat-cell *matCellDef="let payroll">{{ payroll.netSalary | currency }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="processDate">
+            <th mat-header-cell>Fecha Proceso</th>
+            <td mat-cell *matCellDef="let payroll">{{ payroll.processDate | date: 'short' }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['employeeName', 'periodCode', 'baseSalary', 'netSalary', 'processDate']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['employeeName', 'periodCode', 'baseSalary', 'netSalary', 'processDate'];"></tr>
+        </table>
+
+        <div *ngIf="!payrollsLoading() && payrolls().length === 0" style="padding: 40px; text-align: center; color: #999;">
+          {{ selectedCompany ? 'No hay nóminas. Haz clic en "Sincronizar Nóminas" primero.' : 'Selecciona una empresa primero.' }}
+        </div>
+
+        <mat-paginator
+          [length]="payrollsTotal()"
+          [pageSize]="pageSize()"
+          [pageIndex]="page() - 1"
+          [pageSizeOptions]="[10, 25, 50]"
+          showFirstLastButtons
+          (page)="onPageChange($event, 'payrolls')"
+          *ngIf="selectedCompany">
+        </mat-paginator>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

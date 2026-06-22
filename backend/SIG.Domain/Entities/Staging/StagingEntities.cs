@@ -396,3 +396,93 @@ public class StagingA3InnuvaContrato : IStagingRow
     public bool FlagProcesado { get; set; }
     public string? ErrorProcesamiento { get; set; }
 }
+
+// A3 INNUVA NÓMINAS - Empresas y Nóminas (OAuth Wolters Kluwer)
+public class StagingA3InnuvaCompany : IAuditable, ISoftDeletable
+{
+    public int Id { get; set; }
+    public string IdExterno { get; set; } = null!;
+    public string Codigo { get; set; } = null!;
+    public string Nombre { get; set; } = null!;
+    public string Nif { get; set; } = null!;
+    public string? Direccion { get; set; }
+    public string? Ciudad { get; set; }
+    public string? Pais { get; set; }
+    public string? EmailContacto { get; set; }
+    public string? TelefonoContacto { get; set; }
+    public DateTime FechaUltimaActualizacion { get; set; }
+
+    // Auditoría
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Soft-Delete
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+}
+
+public class StagingA3InnuvaPayroll : IAuditable, ISoftDeletable
+{
+    public int Id { get; set; }
+    public string IdExterno { get; set; } = null!;
+    public string IdEmpleado { get; set; } = null!;
+    public string NombreEmpleado { get; set; } = null!;
+    public string CodigoPeriodo { get; set; } = null!;
+    public decimal SalarioBase { get; set; }
+    public decimal Deducciones { get; set; }
+    public decimal SalarioNeto { get; set; }
+    public DateTime FechaProcesamiento { get; set; }
+
+    // Auditoría
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Soft-Delete
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+}
+
+// TEST TABLES - A3 INNUVA NÓMINAS (para pruebas sin riesgo)
+public class StagingA3InnuvaCompanyTest : IAuditable, ISoftDeletable
+{
+    public int Id { get; set; }
+    public string IdExterno { get; set; } = null!;
+    public string Codigo { get; set; } = null!;
+    public string Nombre { get; set; } = null!;
+    public string Nif { get; set; } = null!;
+    public string? Direccion { get; set; }
+    public string? Ciudad { get; set; }
+    public string? Pais { get; set; }
+    public string? EmailContacto { get; set; }
+    public string? TelefonoContacto { get; set; }
+    public DateTime FechaUltimaActualizacion { get; set; }
+
+    // Auditoría
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Soft-Delete
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+}
+
+public class StagingA3InnuvaPayrollTest : IAuditable, ISoftDeletable
+{
+    public int Id { get; set; }
+    public string IdExterno { get; set; } = null!;
+    public string IdEmpleado { get; set; } = null!;
+    public string NombreEmpleado { get; set; } = null!;
+    public string CodigoPeriodo { get; set; } = null!;
+    public decimal SalarioBase { get; set; }
+    public decimal Deducciones { get; set; }
+    public decimal SalarioNeto { get; set; }
+    public DateTime FechaProcesamiento { get; set; }
+
+    // Auditoría
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Soft-Delete
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+}

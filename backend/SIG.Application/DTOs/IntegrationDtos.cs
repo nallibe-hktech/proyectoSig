@@ -124,3 +124,27 @@ public record MediapostRecepcionDto(
     string? Almacen,
     string? Observaciones
 );
+
+// A3 INNUVA NÓMINAS - Nóminas y Gestión de Personas
+public record A3InnuvaNominasCompanyDto(
+    string Id,
+    string Code,
+    string Name,
+    string TaxId,
+    string? Address,
+    string? City,
+    string? Country,
+    string? ContactEmail,
+    string? ContactPhone
+);
+
+public record A3InnuvaNominasPayrollDto(
+    string Id,
+    string EmployeeId,
+    string EmployeeName,
+    string PeriodCode,
+    decimal BaseSalary,
+    decimal Deductions,
+    decimal NetSalary,
+    DateTime ProcessDate
+);

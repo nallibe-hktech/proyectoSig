@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SIG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SIG.Infrastructure.Persistence;
 namespace SIG.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618124223_AddA3InnuvaNominasStaging")]
+    partial class AddA3InnuvaNominasStaging
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,61 +24,6 @@ namespace SIG.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("SIG.Domain.Entities.A3InnuvaOAuthToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AccessToken")
-                        .HasColumnType("text")
-                        .HasColumnName("access_token");
-
-                    b.Property<DateTime?>("AccessTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("access_token_expires_at");
-
-                    b.Property<string>("AuthorizationCode")
-                        .HasColumnType("text")
-                        .HasColumnName("authorization_code");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<bool>("IsValid")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_valid");
-
-                    b.Property<DateTime?>("LastSyncAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_sync_at");
-
-                    b.Property<string>("RefreshToken")
-                        .HasColumnType("text")
-                        .HasColumnName("refresh_token");
-
-                    b.Property<DateTime?>("RefreshTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("refresh_token_expires_at");
-
-                    b.Property<string>("TokenType")
-                        .HasColumnType("text")
-                        .HasColumnName("token_type");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_a3innuva_o_auth_tokens");
-
-                    b.ToTable("a3innuva_o_auth_tokens", (string)null);
-                });
 
             modelBuilder.Entity("SIG.Domain.Entities.Approval", b =>
                 {
@@ -1541,81 +1489,6 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("staging_a3innuva_companies", (string)null);
                 });
 
-            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingA3InnuvaCompanyTest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Ciudad")
-                        .HasColumnType("text")
-                        .HasColumnName("ciudad");
-
-                    b.Property<string>("Codigo")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("codigo");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<string>("Direccion")
-                        .HasColumnType("text")
-                        .HasColumnName("direccion");
-
-                    b.Property<string>("EmailContacto")
-                        .HasColumnType("text")
-                        .HasColumnName("email_contacto");
-
-                    b.Property<DateTime>("FechaUltimaActualizacion")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fecha_ultima_actualizacion");
-
-                    b.Property<string>("IdExterno")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("id_externo");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<string>("Nif")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("nif");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("nombre");
-
-                    b.Property<string>("Pais")
-                        .HasColumnType("text")
-                        .HasColumnName("pais");
-
-                    b.Property<string>("TelefonoContacto")
-                        .HasColumnType("text")
-                        .HasColumnName("telefono_contacto");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_staging_a3innuva_companies_test");
-
-                    b.ToTable("staging_a3innuva_companies_test", (string)null);
-                });
-
             modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingA3InnuvaContrato", b =>
                 {
                     b.Property<int>("Id")
@@ -1837,73 +1710,6 @@ namespace SIG.Infrastructure.Migrations
                         .HasName("pk_staging_a3innuva_payrolls");
 
                     b.ToTable("staging_a3innuva_payrolls", (string)null);
-                });
-
-            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingA3InnuvaPayrollTest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CodigoPeriodo")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("codigo_periodo");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<decimal>("Deducciones")
-                        .HasColumnType("numeric")
-                        .HasColumnName("deducciones");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<DateTime>("FechaProcesamiento")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fecha_procesamiento");
-
-                    b.Property<string>("IdEmpleado")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("id_empleado");
-
-                    b.Property<string>("IdExterno")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("id_externo");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<string>("NombreEmpleado")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("nombre_empleado");
-
-                    b.Property<decimal>("SalarioBase")
-                        .HasColumnType("numeric")
-                        .HasColumnName("salario_base");
-
-                    b.Property<decimal>("SalarioNeto")
-                        .HasColumnType("numeric")
-                        .HasColumnName("salario_neto");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_staging_a3innuva_payrolls_test");
-
-                    b.ToTable("staging_a3innuva_payrolls_test", (string)null);
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingBizneoAbsence", b =>

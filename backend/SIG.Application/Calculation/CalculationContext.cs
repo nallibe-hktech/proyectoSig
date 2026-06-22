@@ -129,20 +129,25 @@ public class RowAdapter
     public int? ServiceId { get; set; }
     public decimal? Importe { get; set; }
     public decimal? Horas { get; set; }
+    public decimal? Km { get; set; }
     public int? TipoVisita { get; set; }
     public int? PuntoMontado { get; set; }
+    public string? Zona { get; set; }
     public string? Categoria { get; set; }
     public string? Nombre { get; set; }
     public DateTime? Entrada { get; set; }
     public DateTime? Salida { get; set; }
+    // Atributos arbitrarios extraídos del PayloadJson (respuestas Celero/idQuestion, etc.) para filtrar/segmentar.
+    public Dictionary<string, object?> Extra { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public decimal GetDecimal(string field) => field switch
     {
         "Importe" => Importe ?? 0,
         "Horas" => Horas ?? 0,
+        "Km" => Km ?? 0,
         "TipoVisita" => TipoVisita ?? 0,
         "PuntoMontado" => PuntoMontado ?? 0,
-        _ => 0
+        _ => Extra.TryGetValue(field, out var v) ? ToDecimal(v) : 0
     };
 
     public object? GetField(string field) => field switch
@@ -155,22 +160,67 @@ public class RowAdapter
         "ActionId" => ServiceId,
         "Importe" => Importe,
         "Horas" => Horas,
+        "Km" => Km,
         "TipoVisita" => TipoVisita,
         "PuntoMontado" => PuntoMontado,
+        "Zona" => Zona,
         "Categoria" => Categoria,
         "Nombre" => Nombre,
         "Entrada" => Entrada,
-        _ => null
+        _ => Extra.TryGetValue(field, out var v) ? v : null
     };
+
+    private static decimal ToDecimal(object? o)
+    {
+        if (o is null) return 0m;
+        try { return Convert.ToDecimal(o); } catch { return 0m; }
+    }
+
+    // Vuelca las propiedades escalares de un PayloadJson en Extra y mapea las claves conocidas (case-insensitive).
+    private void PopulateFromPayload(string? payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson)) return;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
+            if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object) return;
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                object? val = prop.Value.ValueKind switch
+                {
+                    System.Text.Json.JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
+                    System.Text.Json.JsonValueKind.String => prop.Value.GetString(),
+                    System.Text.Json.JsonValueKind.True => true,
+                    System.Text.Json.JsonValueKind.False => false,
+                    _ => null
+                };
+                Extra[prop.Name] = val;
+                switch (prop.Name.ToLowerInvariant())
+                {
+                    case "tipovisita": TipoVisita = (int)ToDecimal(val); break;
+                    case "puntomontado": PuntoMontado = (int)ToDecimal(val); break;
+                    case "zona": Zona = val?.ToString(); break;
+                    case "horas": Horas = ToDecimal(val); break;
+                    case "km":
+                    case "kilometros": Km = ToDecimal(val); break;
+                    case "importe": Importe = ToDecimal(val); break;
+                    case "categoria": Categoria = val?.ToString(); break;
+                }
+            }
+        }
+        catch { /* payload no parseable: se ignora, los campos quedan en null */ }
+    }
 
     public static RowAdapter FromGasto(StagingPayHawkGasto g) => new()
     {
         Fecha = g.Fecha, UserId = g.UserId, ServiceId = g.ServiceId, Importe = g.Importe, Categoria = g.Categoria
     };
-    public static RowAdapter FromVisita(StagingCeleroVisita v) => new()
+    public static RowAdapter FromVisita(StagingCeleroVisita v)
     {
-        Fecha = v.Fecha, UserId = v.UserId, ServiceId = v.ServiceId, TipoVisita = null, PuntoMontado = null
-    };
+        var r = new RowAdapter { Fecha = v.Fecha, UserId = v.UserId, ServiceId = v.ServiceId };
+        r.PopulateFromPayload(v.PayloadJson);
+        return r;
+    }
     public static RowAdapter FromHora(StagingBizneoAbsence h) => new()
     {
         Fecha = h.Fecha, UserId = h.UserId, ServiceId = h.ServiceId, Horas = h.Horas
@@ -185,6 +235,6 @@ public class RowAdapter
     };
     public static RowAdapter FromSgpvVisita(StagingSgpvVisita s) => new()
     {
-        Fecha = s.Fecha, UserId = s.UserId, ServiceId = s.ServiceId
+        Fecha = s.Fecha, UserId = s.UserId, ServiceId = s.ServiceId, Horas = s.HorasDuracion
     };
 }

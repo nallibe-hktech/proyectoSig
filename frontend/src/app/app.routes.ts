@@ -121,6 +121,9 @@ export const routes: Routes = [
       // Forecast (PPT slide 36)
       { path: 'forecast', loadComponent: () => import('./features/forecast/forecast-resumen.component').then((m) => m.ForecastResumenComponent), title: 'Forecast — SIG' },
 
+      // A3 INNUVA Nóminas (Testing & Integration)
+      { path: 'a3-innuva', loadComponent: () => import('./features/a3-innuva/a3-innuva.component').then((m) => m.A3InnuvaComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'A3 INNUVA Nóminas — SIG' },
+
       // Administración — CostCenters
       { path: 'cost-centers', loadComponent: () => import('./features/cost-centers/cost-centers-list.component').then((m) => m.CostCentersListComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Centros de Coste — SIG' },
       { path: 'cost-centers/nuevo', loadComponent: () => import('./features/cost-centers/cost-center-form.component').then((m) => m.CostCenterFormComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Nuevo CECO — SIG' },
