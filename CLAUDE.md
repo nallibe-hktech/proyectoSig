@@ -159,6 +159,54 @@ ed2aa8f — fix: Add missing *matCellDef bindings to Bizneo and Intratime table 
 
 ## 🛠️ Development Workflow
 
+### ⚡ Local Setup (First Time or After Merge)
+
+**Problema resuelto:** Las BD de cada dev tienen nombres diferentes → conflictos en appsettings al mergear.
+
+**Solución:** Archivos `.example` versioned + script automático post-merge.
+
+**Setup inicial (una sola vez):**
+```bash
+cd backend
+pwsh -NoProfile -File "setup-appsettings.ps1"
+# Esto copia appsettings.Development.json.example → appsettings.Development.json (local)
+```
+
+**Después de cada `git pull` o merge:**
+- El git hook `post-merge` ejecuta automáticamente `setup-appsettings.ps1`
+- Si algo falla, ejecuta manualmente el script arriba
+
+**Verificar que Docker está corriendo:**
+```bash
+docker ps | grep sig-es-db
+# Debe mostrar: sig-es-db corriendo en puerto 5433
+```
+
+**Aplicar migraciones:**
+```bash
+cd backend/SIG.API
+ASPNETCORE_ENVIRONMENT=Development dotnet ef database update
+```
+
+**Ejecutar tests:**
+```bash
+cd backend
+dotnet test --configuration Release
+# Esperado: 195+ tests pasando
+```
+
+### 🚫 IMPORTANTE: Nunca commitear appsettings personalizados
+
+- ✅ **Sí commitear**: `appsettings.json` (base), `appsettings.*.example` (templates)
+- ❌ **Nunca commitear**: `appsettings.Development.json`, `appsettings.Testing.json` (ya en .gitignore)
+
+Si accidentalmente los aggegaste a git:
+```bash
+git rm --cached backend/SIG.API/appsettings.Development.json
+git rm --cached backend/SIG.API/appsettings.Testing.json
+git commit -m "Remover appsettings locales del tracking"
+```
+
 ### Running the Project
 
 **Backend:**

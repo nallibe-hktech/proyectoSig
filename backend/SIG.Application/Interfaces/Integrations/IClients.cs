@@ -43,6 +43,23 @@ public interface ITravelPerkClient
     Task<IReadOnlyList<TravelPerkViajeDto>> GetViajesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
 }
 
+public interface IA3InnuvaNominasClient
+{
+    Task<IReadOnlyList<A3InnuvaNominasCompanyDto>> GetCompaniesAsync(
+        int pageNumber = 1,
+        int pageSize = 25,
+        DateTime? lastUpdate = null,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<A3InnuvaNominasPayrollDto>> GetPayrollsAsync(
+        string companyCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default);
+}
+
 public interface IGalanClient
 {
     Task<IReadOnlyList<GalanEntradaDto>> GetEntradasAsync(DateTime desde, DateTime hasta, CancellationToken ct);

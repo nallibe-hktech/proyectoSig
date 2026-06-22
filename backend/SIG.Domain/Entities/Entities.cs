@@ -523,3 +523,39 @@ public class RefreshToken
     public DateTime CreatedAt { get; set; }
     public string? Ip { get; set; }
 }
+
+/// <summary>
+/// Stores OAuth tokens for Wolters Kluwer A3 INNUVA Nóminas integration.
+/// Used for Authorization Code Flow token management.
+/// </summary>
+public class A3InnuvaOAuthToken
+{
+    public int Id { get; set; }
+
+    /// <summary>Authorization code from OAuth provider (temporary, exchanged for tokens).</summary>
+    public string? AuthorizationCode { get; set; }
+
+    /// <summary>Access token for API calls.</summary>
+    public string? AccessToken { get; set; }
+
+    /// <summary>Refresh token for obtaining new access tokens (sliding window).</summary>
+    public string? RefreshToken { get; set; }
+
+    /// <summary>Token type (typically "Bearer").</summary>
+    public string? TokenType { get; set; }
+
+    /// <summary>Access token expiration time (UTC).</summary>
+    public DateTime? AccessTokenExpiresAt { get; set; }
+
+    /// <summary>Refresh token expiration time (UTC).</summary>
+    public DateTime? RefreshTokenExpiresAt { get; set; }
+
+    /// <summary>When the token was last synchronized from Wolters Kluwer.</summary>
+    public DateTime? LastSyncAt { get; set; }
+
+    /// <summary>Whether the token is still valid (not revoked or expired).</summary>
+    public bool IsValid { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}

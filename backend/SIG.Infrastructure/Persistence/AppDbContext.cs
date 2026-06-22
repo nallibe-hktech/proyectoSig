@@ -39,6 +39,7 @@ public class AppDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CalculationLog> CalculationLogs => Set<CalculationLog>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<A3InnuvaOAuthToken> A3InnuvaOAuthTokens => Set<A3InnuvaOAuthToken>();
     public DbSet<StagingCeleroVisita> StagingCeleroVisitas => Set<StagingCeleroVisita>();
     public DbSet<StagingBizneoEmpleado> StagingBizneoEmpleados => Set<StagingBizneoEmpleado>();
     public DbSet<StagingBizneoAbsence> StagingBizneoAbsences => Set<StagingBizneoAbsence>();
@@ -54,6 +55,10 @@ public class AppDbContext : DbContext
     public DbSet<StagingSgpvProducto> StagingSgpvProductos => Set<StagingSgpvProducto>();
     public DbSet<StagingA3InnuvaEmpleado> StagingA3InnuvaEmpleados => Set<StagingA3InnuvaEmpleado>();
     public DbSet<StagingA3InnuvaContrato> StagingA3InnuvaContratos => Set<StagingA3InnuvaContrato>();
+    public DbSet<StagingA3InnuvaCompany> StagingA3InnuvaCompanies => Set<StagingA3InnuvaCompany>();
+    public DbSet<StagingA3InnuvaPayroll> StagingA3InnuvaPayrolls => Set<StagingA3InnuvaPayroll>();
+    public DbSet<StagingA3InnuvaCompanyTest> StagingA3InnuvaCompaniesTest => Set<StagingA3InnuvaCompanyTest>();
+    public DbSet<StagingA3InnuvaPayrollTest> StagingA3InnuvaPayrollsTest => Set<StagingA3InnuvaPayrollTest>();
     public DbSet<StagingTravelPerkViaje> StagingTravelPerkViajes => Set<StagingTravelPerkViaje>();
 
     // GALÁN - Logística
