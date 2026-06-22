@@ -1,0 +1,19 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore": "Information"
+    }
+  },
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Port=5433;Database=sig_plataforma_tests;Username=postgres;Password=SigEs@2026;SslMode=Disable",
+    "Celero": "Host=localhost;Port=5433;Database=sig_plataforma_tests;Username=postgres;Password=SigEs@2026;SslMode=Disable"
+  },
+  "JwtSettings": {
+    "SigningKey": "test-secret-key-for-testing-only-change-in-production-test-secret-key"
+  },
+  "Integrations": {
+    "UseFake": true
+  }
+}

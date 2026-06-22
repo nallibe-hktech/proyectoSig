@@ -1,0 +1,25 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft.AspNetCore": "Debug",
+      "Microsoft.EntityFrameworkCore": "Information"
+    }
+  },
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Port=5433;Database=sig_plataforma_dev;Username=postgres;Password=SigEs@2026;SslMode=Disable",
+    "Celero": "Host=localhost;Port=5433;Database=sig_plataforma_dev;Username=postgres;Password=SigEs@2026;SslMode=Disable"
+  },
+  "JwtSettings": {
+    "SigningKey": "dev-secret-key-for-testing-only-change-in-production-dev-secret-key-for-testing-only"
+  },
+  "Integrations": {
+    "UseFake": false,
+    "PayHawk": {
+      "ApiKey": "fake-dev-key"
+    },
+    "A3Innuva": {
+      "ApiKey": "fake-dev-key"
+    }
+  }
+}
