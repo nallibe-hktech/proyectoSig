@@ -1,6 +1,39 @@
 <div class="container" style="padding: 20px;">
   <h1>🧪 A3 INNUVA Nóminas - Testing</h1>
 
+  <!-- Authorization Status Card -->
+  <mat-card style="margin-bottom: 20px; border: 2px solid #2196F3;">
+    <mat-card-header style="padding: 15px; background: #E3F2FD;">
+      <mat-card-title style="margin: 0;">🔐 Estado de Autorización</mat-card-title>
+    </mat-card-header>
+    <mat-card-content style="padding: 15px;">
+      <div *ngIf="isTestMode()" style="display: flex; gap: 15px; align-items: center;">
+        <div style="flex: 1;">
+          <p style="margin: 0; color: #FFA500;">
+            <strong>🧪 Modo TEST Activo</strong><br>
+            <small>Usando tabla de prueba. No requiere autorización con Wolters Kluwer.</small>
+          </p>
+        </div>
+      </div>
+
+      <div *ngIf="!isTestMode()" style="display: flex; gap: 15px; align-items: center;">
+        <div style="flex: 1;">
+          <p *ngIf="isAuthorized()" style="margin: 0; color: #4CAF50;">
+            <strong>✅ Conectado a Wolters Kluwer</strong><br>
+            <small>Token OAuth activo. Usando datos reales.</small>
+          </p>
+          <p *ngIf="!isAuthorized()" style="margin: 0; color: #F44336;">
+            <strong>❌ No autorizado</strong><br>
+            <small>Requiere autorización con Wolters Kluwer para sincronizar datos reales.</small>
+          </p>
+        </div>
+        <button *ngIf="!isAuthorized()" mat-raised-button color="warn" (click)="initiateOAuth()" [disabled]="oauthLoading()">
+          {{ oauthLoading() ? '⏳ Conectando...' : '🔑 Autorizar con WK' }}
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
   <mat-card style="margin-bottom: 20px;">
     <mat-card-content>
       <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px;">
