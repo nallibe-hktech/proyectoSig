@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SIG.Application.Calculation;
 using SIG.Application.Interfaces.Integrations;
@@ -233,22 +234,21 @@ public static class DependencyInjection
                 var logger = sp.GetRequiredService<ILogger<WoltersKluwerOAuthService>>();
                 var cache = sp.GetRequiredService<IMemoryCache>();
                 var dbContext = sp.GetRequiredService<AppDbContext>();
-                return new WoltersKluwerOAuthService(httpClient, wkClientId, wkClientSecret, cache, dbContext, logger);
+                var env = sp.GetRequiredService<IHostEnvironment>();
+                return new WoltersKluwerOAuthService(httpClient, wkClientId, wkClientSecret, cache, dbContext, logger, env);
             });
 
-            // Registrar A3InnuvaNominasClient
-            services.AddHttpClient<IA3InnuvaNominasClient>(client =>
+            // Registrar A3InnuvaNominasClient con HttpClientFactory
+            var a3NominasHttpClientName = "A3InnuvaNominas";
+            services.AddHttpClient(a3NominasHttpClientName, client =>
             {
                 client.BaseAddress = new Uri(a3NominasUrl);
-            }).ConfigureHttpClient((sp, client) =>
-            {
-                // HttpClient adicional, nada que hacer aquí, OAuth headers se agregan en el cliente
             });
 
             services.AddScoped<IA3InnuvaNominasClient>(sp =>
             {
                 var factory = sp.GetRequiredService<IHttpClientFactory>();
-                var httpClient = factory.CreateClient(typeof(IA3InnuvaNominasClient).FullName!);
+                var httpClient = factory.CreateClient(a3NominasHttpClientName);
                 var oauthService = sp.GetRequiredService<IWoltersKluwerOAuthService>();
                 var logger = sp.GetRequiredService<ILogger<A3InnuvaNominasClient>>();
                 return new A3InnuvaNominasClient(httpClient, oauthService, wkSubscriptionKey, logger);

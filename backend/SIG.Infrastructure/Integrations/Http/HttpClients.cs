@@ -865,30 +865,44 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
     {
         try
         {
+            _logger.LogInformation("[A3InnuvaNominas] GetCompaniesAsync iniciado - página {Page}, tamaño {Size}", pageNumber, pageSize);
             var token = await _oauthService.GetAccessTokenAsync(ct);
+            _logger.LogInformation("[A3InnuvaNominas] Token obtenido: {TokenLength} caracteres", token?.Length ?? 0);
 
             // Construir URL con parámetros de paginación y filtro opcional
-            var queryParams = $"?pageNumber={pageNumber}&pageSize={pageSize}";
+            var queryParams = $"?pageNumber={pageNumber}&pageSize={pageSize}&orderBy=companyCode asc";
             if (lastUpdate.HasValue)
             {
                 var filterDate = lastUpdate.Value.ToString("yyyy-MM-dd");
-                queryParams += $"&filter=lastUpdate gt {filterDate}";
+                queryParams += $"&filter=companyCode eq 1 and (dropDate eq null or dropDate ge {filterDate})";
             }
 
-            var url = $"companies{queryParams}&OrderBy=companyCode";
+            var url = $"companies{queryParams}";
 
-            _logger.LogInformation($"[A3InnuvaNominas] GET /Laboral/api{url}");
+            _logger.LogInformation($"[A3InnuvaNominas] GET /Laboral/api/{url}");
+            _logger.LogInformation($"[A3InnuvaNominas] BaseAddress: {_httpClient.BaseAddress}");
 
             // Preparar request con OAuth token
-            var request = new HttpRequestMessage(HttpMethod.Get, $"Laboral/api{url}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/Laboral/api/{url}");
             request.Headers.Add("Authorization", $"Bearer {token}");
             request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
+            request.Headers.Add("api-version", "2");
             request.Headers.Add("Accept", "application/json");
 
+            _logger.LogInformation($"[A3InnuvaNominas] Request headers:");
+            _logger.LogInformation($"  - Authorization: Bearer {token.Substring(0, Math.Min(50, token.Length))}...");
+            _logger.LogInformation($"  - Ocp-Apim-Subscription-Key: {_subscriptionKey}");
+            _logger.LogInformation($"  - api-version: 2");
+            _logger.LogInformation($"  - Accept: application/json");
+
             var response = await _httpClient.SendAsync(request, ct);
+            _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
+
             if (!response.IsSuccessStatusCode)
             {
+                var responseContent = await response.Content.ReadAsStringAsync(ct);
                 _logger.LogError($"[A3InnuvaNominas] Error: {response.StatusCode} - {response.ReasonPhrase}");
+                _logger.LogError($"[A3InnuvaNominas] Response body: {responseContent}");
                 return Array.Empty<A3InnuvaNominasCompanyDto>();
             }
 
@@ -910,9 +924,14 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
                 c.ContactPhone ?? ""
             )).ToList();
         }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] HttpRequestException en GetCompanies: {Message}", ex.Message);
+            return Array.Empty<A3InnuvaNominasCompanyDto>();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[A3InnuvaNominas] Error GetCompanies");
+            _logger.LogError(ex, "[A3InnuvaNominas] Error GetCompanies: {ExceptionType} - {Message}", ex.GetType().Name, ex.Message);
             return Array.Empty<A3InnuvaNominasCompanyDto>();
         }
     }
@@ -927,10 +946,13 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
     {
         try
         {
+            _logger.LogInformation("[A3InnuvaNominas] GetPayrollsAsync iniciado - empresa {Company}, página {Page}, tamaño {Size}", companyCode, pageNumber, pageSize);
+
             if (string.IsNullOrWhiteSpace(companyCode))
                 throw new ArgumentNullException(nameof(companyCode));
 
             var token = await _oauthService.GetAccessTokenAsync(ct);
+            _logger.LogInformation("[A3InnuvaNominas] Token obtenido: {TokenLength} caracteres", token?.Length ?? 0);
 
             var queryParams = $"?pageNumber={pageNumber}&pageSize={pageSize}";
             if (fromDate.HasValue)
@@ -940,17 +962,27 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
 
             var url = $"companies/{Uri.EscapeDataString(companyCode)}/payrolls{queryParams}";
 
-            _logger.LogInformation($"[A3InnuvaNominas] GET /Laboral/api{url}");
+            _logger.LogInformation($"[A3InnuvaNominas] GET /Laboral/api/{url}");
+            _logger.LogInformation($"[A3InnuvaNominas] BaseAddress: {_httpClient.BaseAddress}");
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"Laboral/api{url}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/Laboral/api/{url}");
             request.Headers.Add("Authorization", $"Bearer {token}");
             request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
             request.Headers.Add("Accept", "application/json");
 
+            _logger.LogInformation($"[A3InnuvaNominas] Request headers:");
+            _logger.LogInformation($"  - Authorization: Bearer {token.Substring(0, Math.Min(50, token.Length))}...");
+            _logger.LogInformation($"  - Ocp-Apim-Subscription-Key: {_subscriptionKey}");
+            _logger.LogInformation($"  - Accept: application/json");
+
             var response = await _httpClient.SendAsync(request, ct);
+            _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
+
             if (!response.IsSuccessStatusCode)
             {
+                var responseContent = await response.Content.ReadAsStringAsync(ct);
                 _logger.LogError($"[A3InnuvaNominas] Error: {response.StatusCode} - {response.ReasonPhrase}");
+                _logger.LogError($"[A3InnuvaNominas] Response body: {responseContent}");
                 return Array.Empty<A3InnuvaNominasPayrollDto>();
             }
 
@@ -958,7 +990,11 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             var count = data?.Payrolls?.Count ?? 0;
             _logger.LogInformation($"[A3InnuvaNominas] ✅ {count} nóminas obtenidas");
 
-            if (data?.Payrolls == null) return Array.Empty<A3InnuvaNominasPayrollDto>();
+            if (data?.Payrolls == null)
+            {
+                _logger.LogWarning("[A3InnuvaNominas] Respuesta de payrolls es null");
+                return Array.Empty<A3InnuvaNominasPayrollDto>();
+            }
 
             return data.Payrolls.Select(p => new A3InnuvaNominasPayrollDto(
                 p.Id ?? "",
@@ -971,9 +1007,14 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
                 p.ProcessDate ?? DateTime.UtcNow
             )).ToList();
         }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] HttpRequestException en GetPayrolls: {Message}", ex.Message);
+            return Array.Empty<A3InnuvaNominasPayrollDto>();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[A3InnuvaNominas] Error GetPayrolls");
+            _logger.LogError(ex, "[A3InnuvaNominas] Error GetPayrolls: {ExceptionType} - {Message}", ex.GetType().Name, ex.Message);
             return Array.Empty<A3InnuvaNominasPayrollDto>();
         }
     }
