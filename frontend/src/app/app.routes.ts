@@ -23,6 +23,14 @@ export const routes: Routes = [
     title: 'Smoke Test — SIG',
   },
 
+  // A3 INNUVA OAuth Callback (public, from Wolters Kluwer redirect)
+  {
+    path: 'a3-innuva/oauth-callback',
+    loadComponent: () =>
+      import('./features/a3-innuva/a3-innuva-oauth-callback.component').then((m) => m.A3InnuvaOAuthCallbackComponent),
+    title: 'OAuth Callback — SIG',
+  },
+
   // Shell autenticado (AppBar + Sidenav)
   {
     path: '',

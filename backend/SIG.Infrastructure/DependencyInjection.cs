@@ -110,12 +110,7 @@ public static class DependencyInjection
         services.AddScoped<IMediapostService, MediapostService>();
         services.AddScoped<GalanSyncService>();
         services.AddScoped<MediapostSyncService>();
-        // TODO(A3 Innuva): reactivar cuando la compañera suba el servicio que falta.
-        // El push de A3 Innuva Nóminas no incluyó IA3InnuvaNominasService/A3InnuvaNominasService
-        // ni el A3InnuvaNominasController (rutas api/a3-innuva-nominas: companies/payrolls/sync/test).
-        // Sin esas 2 piezas la pantalla se ve pero sus endpoints dan 404. El OAuthService y el
-        // cliente HTTP sí están integrados. Ver docs/INNUVA_PENDIENTE.md.
-        // services.AddScoped<IA3InnuvaNominasService, A3InnuvaNominasService>();
+        services.AddScoped<IA3InnuvaNominasService, A3InnuvaNominasService>();
 
         // Calculation
         services.AddScoped<IFormulaParser, FormulaParser>();
@@ -247,19 +242,17 @@ public static class DependencyInjection
                 return new WoltersKluwerOAuthService(httpClient, wkClientId, wkClientSecret, cache, dbContext, logger, env);
             });
 
-            // Registrar A3InnuvaNominasClient
-            services.AddHttpClient<IA3InnuvaNominasClient>(client =>
+            // Registrar A3InnuvaNominasClient con HttpClientFactory
+            var a3NominasHttpClientName = "A3InnuvaNominas";
+            services.AddHttpClient(a3NominasHttpClientName, client =>
             {
                 client.BaseAddress = new Uri(a3NominasUrl);
-            }).ConfigureHttpClient((sp, client) =>
-            {
-                // HttpClient adicional, nada que hacer aquí, OAuth headers se agregan en el cliente
             });
 
             services.AddScoped<IA3InnuvaNominasClient>(sp =>
             {
                 var factory = sp.GetRequiredService<IHttpClientFactory>();
-                var httpClient = factory.CreateClient(typeof(IA3InnuvaNominasClient).FullName!);
+                var httpClient = factory.CreateClient(a3NominasHttpClientName);
                 var oauthService = sp.GetRequiredService<IWoltersKluwerOAuthService>();
                 var logger = sp.GetRequiredService<ILogger<A3InnuvaNominasClient>>();
                 return new A3InnuvaNominasClient(httpClient, oauthService, wkSubscriptionKey, logger);

@@ -93,4 +93,20 @@ export class A3InnuvaService {
     if (search) params = params.set('search', search);
     return this.http.get<PagedResult<A3InnuvaPayrollDto>>(`${this.apiUrl}/test/payrolls`, { params });
   }
+
+  // === OAUTH ENDPOINTS ===
+  /**
+   * Get OAuth authorize URL for Wolters Kluwer login
+   * User must open this URL in browser and authorize the application
+   */
+  getAuthorizeUrl(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/oauth/authorize-url`);
+  }
+
+  /**
+   * Refresh access token manually (automatic refresh happens on expiry)
+   */
+  refreshToken(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/oauth/refresh`, {});
+  }
 }

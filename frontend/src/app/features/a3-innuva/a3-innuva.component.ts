@@ -1,5 +1,8 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -33,14 +36,16 @@ import { NotifyService } from '../../core/notify.service';
     MatFormFieldModule,
     MatSlideToggleModule,
     MatTooltipModule,
-    MatSnackBarModule
+    MatSnackBarModule,
   ]
 })
-export class A3InnuvaComponent implements OnInit {
+export class A3InnuvaComponent implements OnInit, OnDestroy {
   isTestMode = signal(true);
   loading = signal(false);
   companiesLoading = signal(false);
   payrollsLoading = signal(false);
+  oauthLoading = signal(false);
+  isAuthorized = signal(false);
 
   companies = signal<A3InnuvaCompanyDto[]>([]);
   payrolls = signal<A3InnuvaPayrollDto[]>([]);
@@ -56,18 +61,94 @@ export class A3InnuvaComponent implements OnInit {
   searchCompanies = '';
   searchPayrolls = '';
 
+  private readonly TEST_MODE_KEY = 'a3innuva_isTestMode';
+  private readonly AUTHORIZED_KEY = 'a3innuva_isAuthorized';
+  private destroy$ = new Subject<void>();
+
   constructor(
     private a3Service: A3InnuvaService,
-    private notify: NotifyService
+    private notify: NotifyService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
-    this.loadCompanies();
+    // Leer estado guardado en localStorage
+    const savedTestMode = localStorage.getItem(this.TEST_MODE_KEY);
+    const savedAuthorized = localStorage.getItem(this.AUTHORIZED_KEY);
+
+    // Detectar si volvemos del OAuth callback
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        const authorized = params['authorized'] === 'true';
+
+        if (authorized) {
+          // Volvemos del OAuth callback: mantener PRODUCCIÓN y marcar como autorizado
+          this.isTestMode.set(false);
+          this.isAuthorized.set(true);
+          localStorage.setItem(this.TEST_MODE_KEY, 'false');
+          localStorage.setItem(this.AUTHORIZED_KEY, 'true');
+          this.notify.success('✅ Autorización completada. Conectado a Wolters Kluwer.');
+        } else if (savedTestMode !== null) {
+          // Restaurar estado guardado
+          const isTest = savedTestMode === 'true';
+          this.isTestMode.set(isTest);
+          this.isAuthorized.set(savedAuthorized === 'true' && !isTest);
+        } else {
+          // Primer acceso: TEST mode por defecto, autorizado localmente
+          this.isTestMode.set(true);
+          this.isAuthorized.set(true);
+        }
+
+        this.loadCompanies();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   onModeChange(): void {
     this.notify.success(this.isTestMode() ? '🧪 Modo TEST activado (datos seguros)' : '⚠️ Modo PRODUCCIÓN (datos reales)');
+    // Guardar modo en localStorage
+    localStorage.setItem(this.TEST_MODE_KEY, this.isTestMode().toString());
+
+    // En TEST mode, asumir autorizado; en PROD, requiere OAuth real
+    if (this.isTestMode()) {
+      this.isAuthorized.set(true);
+      localStorage.setItem(this.AUTHORIZED_KEY, 'true');
+    } else {
+      // En PRODUCCIÓN, resetear autorización (debe hacer OAuth)
+      this.isAuthorized.set(false);
+      localStorage.setItem(this.AUTHORIZED_KEY, 'false');
+      this.notify.info('ℹ️ Modo PRODUCCIÓN: necesitas autorizar con tus credenciales de Wolters Kluwer');
+    }
+
     this.loadCompanies();
+  }
+
+  initiateOAuth(): void {
+    this.oauthLoading.set(true);
+    // ⚠️ IMPORTANTE: El backend devuelve la URL de WK con el redirect_uri correcto
+    // que está registrado en WK (https://localhost:43971/Login)
+    // NO pasamos un redirect_uri del frontend, dejamos que el backend maneje todo
+    this.a3Service.getAuthorizeUrl().subscribe({
+      next: (response: any) => {
+        this.oauthLoading.set(false);
+        if (response.authorizeUrl) {
+          // Redirigir al usuario a Wolters Kluwer para que se autentique
+          // WK redirigirá al backend (https://localhost:43971/Login) después de autenticación
+          window.location.href = response.authorizeUrl;
+        } else {
+          this.notify.error('No se pudo obtener URL de autorización');
+        }
+      },
+      error: (error) => {
+        this.oauthLoading.set(false);
+        this.notify.error('Error al iniciar autorización: ' + (error.error?.error || error.message));
+      }
+    });
   }
 
   syncCompanies(): void {

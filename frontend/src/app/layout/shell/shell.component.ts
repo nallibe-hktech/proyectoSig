@@ -106,6 +106,7 @@ export class ShellComponent implements OnInit {
     { label: 'Intratime', route: '/intratime', icon: 'schedule', testId: 'nav-intratime', roles: ['Administrator'] },
     { label: 'PayHawk', route: '/payhawk', icon: 'receipt_long', testId: 'nav-payhawk', roles: ['Administrator', 'Fico'] },
     { label: 'A3 ERP', route: '/a3-erp', icon: 'account_balance', testId: 'nav-a3-erp', roles: ['Administrator', 'Fico'] },
+    { label: 'A3 INNUVA Nóminas', route: '/a3-innuva', icon: 'person_add_alt', testId: 'nav-a3-innuva', roles: ['Administrator'] },
   ];
 
   protected readonly operativoNav = computed(() => this.filterByRole(this.allOperativoNav));
