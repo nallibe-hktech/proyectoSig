@@ -673,6 +673,12 @@ export interface ProcessingResultDto {
   totalErrors: number;
   error?: string | null;
 }
+// A3 ERP (Contabilidad) — estado del hub de traspaso de facturas a A3 ERP.
+export interface A3ErpStatusDto {
+  connected: boolean;
+  modo: string;
+  mensaje: string;
+}
 export interface AuditLogFilterRequest {
   userId?: number | null;
   entityType?: string | null;

@@ -124,6 +124,9 @@ export const routes: Routes = [
       // PayHawk — Gestión de Gastos
       { path: 'payhawk', loadComponent: () => import('./features/payhawk/components/payhawk-dashboard.component').then((m) => m.PayHawkDashboardComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Fico'] }, title: 'PayHawk Gastos — SIG' },
 
+      // A3 ERP — Contabilidad (hub de traspaso de facturas del cierre a A3 ERP)
+      { path: 'a3-erp', loadComponent: () => import('./features/a3-erp/a3-erp.component').then((m) => m.A3ErpComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Fico'] }, title: 'A3 ERP — SIG' },
+
       // Reports
       { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then((m) => m.ReportsComponent), title: 'Reports — SIG' },
 
