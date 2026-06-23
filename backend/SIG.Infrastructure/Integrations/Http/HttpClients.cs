@@ -875,15 +875,15 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             _logger.LogInformation($"[A3InnuvaNominas] ✅ Retornando empresa por defecto (código 1)");
 
             var company = new A3InnuvaNominasCompanyDto(
-                id: "1",
-                code: "1",
-                name: "SERVICE INNOVATIVO GROUP ESPAÑA",
-                taxId: "2Q4YX",
-                address: "Madrid",
-                city: "Madrid",
-                country: "España",
-                contactEmail: "plataforma.sig@sigespana.es",
-                contactPhone: ""
+                Id: "1",
+                Code: "1",
+                Name: "SERVICE INNOVATIVO GROUP ESPAÑA",
+                TaxId: "2Q4YX",
+                Address: "Madrid",
+                City: "Madrid",
+                Country: "España",
+                ContactEmail: "plataforma.sig@sigespana.es",
+                ContactPhone: ""
             );
 
             return new[] { company };
