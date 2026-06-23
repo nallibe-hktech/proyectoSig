@@ -14,6 +14,7 @@ public class CalculationContext
     public List<TarifaServicio> Tarifas { get; set; } = new();
     public List<Variable> Variables { get; set; } = new();
     public List<StagingSgpvVisita> VisitasSgpv { get; set; } = new();
+    public List<StagingTravelPerkLinea> ViajesTravelPerk { get; set; } = new();
     public HashSet<string> SistemasUsados { get; } = new();
     public Dictionary<string, object> UsedInputs { get; } = new();
 
@@ -29,6 +30,7 @@ public class CalculationContext
             "HorasIntratime" => Fichajes.Select(f => RowAdapter.FromFichaje(f)),
             "TarifasServicio" or "TarifasProyecto" => Tarifas.Select(t => RowAdapter.FromTarifa(t)),
             "VisitasSgpv" => VisitasSgpv.Select(s => RowAdapter.FromSgpvVisita(s)),
+            "ViajesTravelPerk" => ViajesTravelPerk.Select(t => RowAdapter.FromTravelPerkLinea(t)),
             _ => throw new FormulaInvalidException($"Entidad desconocida: {source.Entity}")
         };
 
@@ -124,6 +126,7 @@ public class CalculationContext
         "TarifasServicio" => "Tarifas",
         "TarifasProyecto" => "Tarifas",
         "VisitasSgpv" => "SGPV",
+        "ViajesTravelPerk" => "TravelPerk",
         _ => "Desconocido"
     };
 
@@ -281,4 +284,14 @@ public class RowAdapter
     {
         Fecha = s.Fecha, UserId = s.UserId, ServiceId = s.ServiceId, Horas = s.HorasDuracion
     };
+    public static RowAdapter FromTravelPerkLinea(StagingTravelPerkLinea t)
+    {
+        // Importe = coste sin IVA (los "Refund for train" vienen en negativo → netean al sumar).
+        // Categoria = Service (Hotels/Flights/…); CECO accesible para filtros/segmentación vía Extra.
+        var r = new RowAdapter { Fecha = t.FechaGasto, ServiceId = t.ServiceId, Importe = t.CosteSinIVA, Categoria = t.Service };
+        r.Extra["Service"] = t.Service;
+        r.Extra["Ceco"] = t.Ceco;
+        r.Extra["CostObject"] = t.CostObject;
+        return r;
+    }
 }

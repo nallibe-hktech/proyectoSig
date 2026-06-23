@@ -253,6 +253,12 @@ public interface ICeleroVisitaService
     Task<CeleroVisitaDetailDto> UpdateAsync(int id, CeleroVisitaUpdateRequest req, int usuarioId, CancellationToken ct);
 }
 
+public interface ITravelPerkService
+{
+    Task<PagedResult<TravelPerkLineaListDto>> ListAsync(int page, int pageSize, string? search = null, bool soloNoMaestro = false, CancellationToken ct = default);
+    Task<TravelPerkKpisDto> GetKpisAsync(CancellationToken ct = default);
+}
+
 public interface ISeedService
 {
     Task RunIfEmptyAsync(CancellationToken ct);

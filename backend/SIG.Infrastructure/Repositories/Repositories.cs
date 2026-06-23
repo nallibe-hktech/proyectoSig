@@ -529,6 +529,10 @@ public class CostCenterRepository : ICostCenterRepository
     public CostCenterRepository(AppDbContext db) { _db = db; }
     public async Task<IReadOnlyList<CostCenter>> ListAsync(CancellationToken ct) =>
         await _db.CostCenters.AsNoTracking().OrderBy(c => c.Codigo).ToListAsync(ct);
+    public async Task<IReadOnlyList<CecoServicio>> GetCecoToServiceMapAsync(CancellationToken ct) =>
+        await _db.ServiceCostCenters.AsNoTracking()
+            .Select(sc => new CecoServicio(sc.CostCenter.Codigo, sc.ServiceId))
+            .ToListAsync(ct);
     public Task<CostCenter?> GetByIdAsync(int id, CancellationToken ct) =>
         _db.CostCenters.FirstOrDefaultAsync(c => c.Id == id, ct);
     public Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId, CancellationToken ct) =>

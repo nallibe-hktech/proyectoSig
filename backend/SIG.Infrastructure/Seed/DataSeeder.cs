@@ -286,6 +286,13 @@ public class DataSeeder : ISeedService
                 type = "Aggregate", op = "Sum", field = "Importe",
                 source = new { type = "Source", entity = "GastosPayHawk", filters = new object[0] }
             }) },
+            // Viajes Travel Perk: coste sin IVA de los viajes imputados al Servicio/CECO del cliente (los
+            // "Refund for train" vienen en negativo → netean al sumar). Se asigna a los servicios cuyos viajes
+            // se refacturan/imputan; NO se hardcodea por cliente, se cuelga del Servicio vía ServiceConcept.
+            new() { Nombre = "Viajes Travel Perk", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "Aggregate", op = "Sum", field = "Importe",
+                source = new { type = "Source", entity = "ViajesTravelPerk", filters = new object[0] }
+            }) },
             new() { Nombre = "Bonus por visita estándar", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "BinaryOp", op = "Mul",
                 left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",

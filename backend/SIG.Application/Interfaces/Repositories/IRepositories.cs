@@ -161,9 +161,14 @@ public interface IDepartmentRepository
     Task SaveChangesAsync(CancellationToken ct);
 }
 
+// Par CECO→Servicio del join ServiceCostCenter (usado para imputar costes por CECO, p.ej. TravelPerk).
+public record CecoServicio(string Codigo, int ServiceId);
+
 public interface ICostCenterRepository
 {
     Task<IReadOnlyList<CostCenter>> ListAsync(CancellationToken ct);
+    // Mapa de imputación CECO→Servicio (join ServiceCostCenter): cada par (Codigo de CECO, ServiceId).
+    Task<IReadOnlyList<CecoServicio>> GetCecoToServiceMapAsync(CancellationToken ct);
     Task<CostCenter?> GetByIdAsync(int id, CancellationToken ct);
     Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId, CancellationToken ct);
     Task<bool> HasServicesAsync(int id, CancellationToken ct);

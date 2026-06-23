@@ -103,6 +103,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<ISyncService, SyncService>();
         services.AddScoped<ICeleroVisitaService, CeleroVisitaService>();
+        services.AddScoped<ITravelPerkService, TravelPerkService>();
         services.AddScoped<IExportService, ExportService>();
         services.AddScoped<ISeedService, DataSeeder>();
         services.AddScoped<IDataProcessorService, DataProcessorService>();
@@ -275,6 +276,10 @@ public static class DependencyInjection
             // Mediapost (Excel client for local file reading)
             services.AddSingleton<IMediapostClient, MediapostExcelClient>();
         }
+
+        // TravelPerk: descarga Excel por SharePoint (la API se descartó por presupuesto). Cliente de fichero
+        // a nivel línea, registrado en todos los modos igual que Galán/Mediapost.
+        services.AddSingleton<ITravelPerkExcelClient, TravelPerkExcelClient>();
 
         return services;
     }

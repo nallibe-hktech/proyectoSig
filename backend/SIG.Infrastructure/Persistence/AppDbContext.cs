@@ -60,6 +60,7 @@ public class AppDbContext : DbContext
     public DbSet<StagingA3InnuvaCompanyTest> StagingA3InnuvaCompaniesTest => Set<StagingA3InnuvaCompanyTest>();
     public DbSet<StagingA3InnuvaPayrollTest> StagingA3InnuvaPayrollsTest => Set<StagingA3InnuvaPayrollTest>();
     public DbSet<StagingTravelPerkViaje> StagingTravelPerkViajes => Set<StagingTravelPerkViaje>();
+    public DbSet<StagingTravelPerkLinea> StagingTravelPerkLineas => Set<StagingTravelPerkLinea>();
 
     // GALÁN - Logística
     public DbSet<StagingGalanEntrada> StagingGalanEntradas => Set<StagingGalanEntrada>();

@@ -43,6 +43,13 @@ public interface ITravelPerkClient
     Task<IReadOnlyList<TravelPerkViajeDto>> GetViajesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
 }
 
+// Canal real de TravelPerk: descarga Excel compartida por SharePoint (la API se descartó por presupuesto),
+// igual que la logística (Galán/Mediapost). Lee la hoja "report" a nivel línea.
+public interface ITravelPerkExcelClient
+{
+    Task<IReadOnlyList<TravelPerkLineaDto>> GetLineasAsync(CancellationToken ct = default);
+}
+
 public interface IA3InnuvaNominasClient
 {
     Task<IReadOnlyList<A3InnuvaNominasCompanyDto>> GetCompaniesAsync(
