@@ -181,12 +181,19 @@ public class DataSeeder : ISeedService
 
     private async Task<List<CostCenter>> SeedCostCentersAsync(CancellationToken ct)
     {
+        // CECOs de EJEMPLO (datos ficticios). Formato real confirmado con la doc del cliente:
+        //   CECO maestro (6 díg) = 0 + proyecto(3 díg) + subcuenta(2 díg).
+        //   El "Cost object" de TravelPerk (4 díg) son los 4 PRIMEROS dígitos del CECO de 6.
+        // Por eso TravelPerkCecoResolver casa por "el CECO maestro empieza por el prefijo de 4 díg".
+        // Aquí cada CECO usa un proyecto distinto (sin prefijos compartidos) para no introducir ambigüedad.
+        // Los CECOs y clientes REALES (010301 GRANINI, etc.) NO se versionan: se cargan en dev con el
+        // script local backend/seed-cecos-reales.local.sql (gitignored, gobierno del dato del cliente).
         var costCenters = new List<CostCenter>
         {
-            new() { Codigo = "025888", Nombre = "Operaciones campo" },
-            new() { Codigo = "035501", Nombre = "GPV España" },
-            new() { Codigo = "035502", Nombre = "GPV Portugal" },
-            new() { Codigo = "041200", Nombre = "Formación" }
+            new() { Codigo = "010101", Nombre = "Operaciones campo" },
+            new() { Codigo = "020201", Nombre = "GPV España" },
+            new() { Codigo = "030301", Nombre = "GPV Portugal" },
+            new() { Codigo = "040401", Nombre = "Formación" }
         };
         _db.CostCenters.AddRange(costCenters);
         await _db.SaveChangesAsync(ct);

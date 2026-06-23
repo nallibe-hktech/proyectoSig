@@ -108,3 +108,6 @@ backups/
 
 # Capturas/prototipos de trabajo local (no versionar)
 .tmp_proto/
+
+# Datos REALES del cliente para dev local (CECOs, clientes...). Nunca versionar (gobierno del dato).
+*.local.sql
