@@ -105,6 +105,9 @@ public class Service : ISoftDeletable, IAuditable
     public string? InterlocutorEmail { get; set; }
     public string? InterlocutorTelefono { get; set; }
     public DateOnly FechaAlta { get; set; }
+    // Config. Presupuesto (prototipo 24/28): margen operativo objetivo de la acción (%). Manual; el real se
+    // calcula de los cierres (factura − coste). Null = sin objetivo definido.
+    public decimal? MargenObjetivoPct { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -200,6 +203,27 @@ public class PresupuestoServicio : ISoftDeletable, IAuditable
     public DateTime UpdatedAt { get; set; }
 }
 
+// Configuración de Presupuesto (prototipo 24/28, PPT slide 35): partida de presupuesto de una acción/servicio.
+// ENTRADA MANUAL: el importe no procede de ningún origen de datos (el propio prototipo lo indica). Cada
+// partida es Anual o Total acción. "Consumido" también es manual por ahora (ilustrativo hasta validar con
+// SIG el mapeo partida↔conceptos); Restante y Avance se calculan. Alimenta la desviación de Errores Facturación.
+public class PartidaPresupuesto : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ServiceId { get; set; }
+    public Service Service { get; set; } = null!;
+    public string Nombre { get; set; } = null!;                 // "Personal de campo", "Logística", … (texto libre)
+    public TipoPartidaPresupuesto Tipo { get; set; }            // Anual | TotalAccion
+    public int? Anio { get; set; }                              // ejercicio (para partidas Anuales); null en Total acción
+    public decimal Presupuesto { get; set; }                    // € presupuestado (manual)
+    public decimal Consumido { get; set; }                      // € consumido (manual por ahora)
+    public string? Descripcion { get; set; }                    // "Salario bruto + incentivos", "Galán / Mediapost"…
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 // Incidencia del cliente (PPT slide 6): un cliente puede tener varias incidencias, editables y con
 // histórico (el histórico de cambios lo aporta el AuditInterceptor sobre IAuditable + AuditLog).
 public class ClienteIncidencia : ISoftDeletable, IAuditable
@@ -210,10 +234,55 @@ public class ClienteIncidencia : ISoftDeletable, IAuditable
     public string Tipo { get; set; } = null!;       // texto libre (sin catálogo cerrado en el PPT)
     public string Descripcion { get; set; } = null!; // explicación de la incidencia
     public EstadoIncidencia Estado { get; set; }     // Abierta | EnProceso | Resuelta
+    public string? Origen { get; set; }              // origen/responsable (prototipo): "Comercial", "Contabilidad"…
+    public DateTime FechaApertura { get; set; }      // fecha de apertura editable (por defecto = alta)
+    public ICollection<IncidenciaHistorial> Historial { get; set; } = new List<IncidenciaHistorial>();
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+// Histórico de la incidencia (prototipo Incidencias, panel de detalle): cada cambio de estado o nota
+// queda registrado con fecha y responsable (entrada manual de comercial/contabilidad).
+public class IncidenciaHistorial : IAuditable
+{
+    public int Id { get; set; }
+    public int IncidenciaId { get; set; }
+    public ClienteIncidencia Incidencia { get; set; } = null!;
+    public EstadoIncidencia Estado { get; set; }     // estado resultante tras el evento
+    public string Nota { get; set; } = null!;        // descripción del evento ("Reclamación enviada al cliente")
+    public string? Responsable { get; set; }         // "María (Contabilidad)", "Comercial"
+    public DateTime Fecha { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// Configuración de Factura (prototipo pantalla 25/28, PPT slide 37-38): una categoría de factura agrupa
+// (suma) uno o varios conceptos de facturación del cliente para mostrarlos como UNA sola línea en su
+// factura (ej.: "Gastos de personal" = Gastos Payhawk + Dietas). Se definen POR CLIENTE (cada cliente
+// factura distinto). El mapeo concreto categoría↔conceptos lo valida SIG; el seed es ilustrativo.
+public class CategoriaFactura : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ClientId { get; set; }
+    public Client Client { get; set; } = null!;
+    public string Nombre { get; set; } = null!;       // texto libre ("Gastos de personal")
+    public ICollection<CategoriaFacturaConcepto> Conceptos { get; set; } = new List<CategoriaFacturaConcepto>();
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// Join categoría↔concepto. Un concepto del cliente pertenece como mucho a UNA categoría (validado en el
+// servicio); el panel "conceptos disponibles" del prototipo muestra los que aún están sin asignar.
+public class CategoriaFacturaConcepto
+{
+    public int CategoriaFacturaId { get; set; }
+    public CategoriaFactura CategoriaFactura { get; set; } = null!;
+    public int ConceptId { get; set; }
+    public Concept Concept { get; set; } = null!;
 }
 
 // Forecast (PPT slide 36): previsión mensual de ventas / margen / nº personas (GPP) por servicio.

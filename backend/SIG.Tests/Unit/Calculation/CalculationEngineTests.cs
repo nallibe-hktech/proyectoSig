@@ -497,6 +497,182 @@ public class CalculationEngineTests
         r.Incidencias.Should().ContainSingle(i => i.Tipo == "SinConceptosPrevios");
     }
 
+    // === EXCEL #1: idQuestion de Celero -> variable (valor resuelto desde la respuesta real) ===
+
+    [Fact]
+    public async Task Evaluate_VariableConIdQuestion_ResuelveDesdeRespuestaCelero()
+    {
+        var (sut, loader) = CreateSut();
+        // Variable "ZonaBonus" ligada al idQuestion Q21; A=1.5, B=1.2, C=1.0.
+        loader.Variables.Add(new Variable { Id = 7, Nombre = "ZonaBonus", QuestionIdExterno = "Q21",
+            MapeoValoresJson = """[{"respuesta":"A","valor":1.5},{"respuesta":"B","valor":1.2},{"respuesta":"C","valor":1.0}]""" });
+        loader.Visitas.AddRange(new[]
+        {
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = """{"Q21":"A"}""", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = """{"Q21":"A"}""", VisitaIdExterno = "v2", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ServiceId = 100, PayloadJson = """{"Q21":"B"}""", VisitaIdExterno = "v3", Hash = "h" },
+        });
+        // Respuesta dominante = "A" -> 1.5
+        var concept = CreateConcept("""{"type":"Variable","variableId":7}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(1.5m);
+    }
+
+    [Fact]
+    public async Task Evaluate_VariableConIdQuestion_SinRespuesta_UsaDefault()
+    {
+        var (sut, loader) = CreateSut();
+        loader.Variables.Add(new Variable { Id = 8, Nombre = "TarifaHora", QuestionIdExterno = "T01",
+            MapeoValoresJson = """[{"respuesta":"A","valor":30},{"respuesta":"Default","valor":25}]""" });
+        // Sin visitas con respuesta a T01 -> cae al valor "Default".
+        var concept = CreateConcept("""{"type":"Variable","variableId":8}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(25m);
+    }
+
+    [Fact]
+    public async Task Evaluate_VisitasPorBonusDeZona_MultiplicaPorVariableIdQuestion()
+    {
+        var (sut, loader) = CreateSut();
+        loader.Variables.Add(new Variable { Id = 9, Nombre = "ZonaBonus", QuestionIdExterno = "Q21",
+            MapeoValoresJson = """[{"respuesta":"A","valor":1.5},{"respuesta":"B","valor":1.2}]""" });
+        loader.Visitas.AddRange(new[]
+        {
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = """{"Q21":"A"}""", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = """{"Q21":"A"}""", VisitaIdExterno = "v2", Hash = "h" },
+        });
+        // 2 visitas * bonus zona A (1.5) = 3
+        var concept = CreateConcept("""
+        {"type":"BinaryOp","op":"Mul",
+         "left":{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[]}},
+         "right":{"type":"Variable","variableId":9}}
+        """);
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(3m);
+    }
+
+    // === EXCEL #4: flags de excepción de la visita (estado/nocturnidad/nº visita) ===
+
+    [Fact]
+    public async Task Evaluate_FiltroEstadoFallida_SeparaVisitasFallidas()
+    {
+        var (sut, loader) = CreateSut();
+        loader.Visitas.AddRange(new[]
+        {
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = """{"estado":"ok"}""", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = """{"estado":"fallida"}""", VisitaIdExterno = "v2", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ServiceId = 100, PayloadJson = """{"estado":"fallida"}""", VisitaIdExterno = "v3", Hash = "h" },
+        });
+        // Excel: "visita fallida -> mismo coste": se cuentan las fallidas para tarificarlas igual.
+        var concept = CreateConcept("""{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"Estado","op":"Eq","value":"fallida"}]}}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(2m);
+    }
+
+    [Fact]
+    public async Task Evaluate_RecargoNocturnidad_FacturaVisitasNocturnasConIncremento50()
+    {
+        var (sut, loader) = CreateSut();
+        loader.Visitas.AddRange(new[]
+        {
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = """{"nocturnidad":true}""", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = """{"nocturnidad":false}""", VisitaIdExterno = "v2", Hash = "h" },
+        });
+        // 1 visita nocturna * tarifa 100 * (1 + 50%) = 150
+        var concept = CreateConcept("""
+        {"type":"BinaryOp","op":"Pct",
+         "left":{"type":"BinaryOp","op":"Mul",
+            "left":{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"Nocturnidad","op":"Eq","value":true}]}},
+            "right":{"type":"Number","value":100}},
+         "right":{"type":"Number","value":50}}
+        """);
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(150m);
+    }
+
+    [Fact]
+    public async Task Evaluate_SegundaVisita_FacturaAlCincuentaPorCiento()
+    {
+        var (sut, loader) = CreateSut();
+        loader.Visitas.AddRange(new[]
+        {
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = """{"numeroVisita":2}""", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = """{"numeroVisita":1}""", VisitaIdExterno = "v2", Hash = "h" },
+        });
+        // 1 segunda visita * tarifa 100 * 0.5 = 50
+        var concept = CreateConcept("""
+        {"type":"BinaryOp","op":"Mul",
+         "left":{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"NumeroVisita","op":"Gte","value":2}]}},
+         "right":{"type":"Number","value":50}}
+        """);
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(50m);
+    }
+
+    // === EXCEL tipos 5 y 6: Entidad-A × Entidad-B (Aggregate × Aggregate) ===
+
+    [Fact]
+    public async Task Evaluate_ConteoEntidadAxEntidadB_MultiplicaDosConteos()
+    {
+        var (sut, loader) = CreateSut();
+        loader.Visitas.AddRange(new[]
+        {
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = """{"tipoVisita":1}""", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = """{"tipoVisita":1}""", VisitaIdExterno = "v2", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ServiceId = 100, PayloadJson = """{"tipoVisita":2}""", VisitaIdExterno = "v3", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 4), UserId = 1, ServiceId = 100, PayloadJson = """{"tipoVisita":2}""", VisitaIdExterno = "v4", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, PayloadJson = """{"tipoVisita":2}""", VisitaIdExterno = "v5", Hash = "h" },
+        });
+        // Conteo tipo 1 (=2) × Conteo tipo 2 (=3) = 6
+        var concept = CreateConcept("""
+        {"type":"BinaryOp","op":"Mul",
+         "left":{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"TipoVisita","op":"Eq","value":1}]}},
+         "right":{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"TipoVisita","op":"Eq","value":2}]}}}
+        """);
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(6m);
+    }
+
+    [Fact]
+    public async Task Evaluate_SumaEntidadAxEntidadB_MultiplicaDosSumas()
+    {
+        var (sut, loader) = CreateSut();
+        loader.HorasBizneo.AddRange(new[]
+        {
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, Horas = 2m, PayloadJson = "{}", RegistroIdExterno = "r1", Hash = "h" },
+            new StagingBizneoAbsence { Fecha = new DateOnly(2026, 3, 6), UserId = 1, ServiceId = 100, Horas = 3m, PayloadJson = "{}", RegistroIdExterno = "r2", Hash = "h" },
+        });
+        loader.Gastos.AddRange(new[]
+        {
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 5), UserId = 1, ServiceId = 100, Importe = 10m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g1", Hash = "h1" },
+            new StagingPayHawkGasto { Fecha = new DateOnly(2026, 3, 10), UserId = 1, ServiceId = 100, Importe = 20m, PayloadJson = "{}", Categoria = "c", GastoIdExterno = "g2", Hash = "h2" },
+        });
+        // Suma horas (=5) × Suma importe (=30) = 150
+        var concept = CreateConcept("""
+        {"type":"BinaryOp","op":"Mul",
+         "left":{"type":"Aggregate","op":"Sum","field":"Horas","source":{"type":"Source","entity":"HorasBizneo","filters":[]}},
+         "right":{"type":"Aggregate","op":"Sum","field":"Importe","source":{"type":"Source","entity":"GastosPayHawk","filters":[]}}}
+        """);
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(150m);
+    }
+
+    [Fact]
+    public async Task Evaluate_FiltroIn_AceptaListaDeValores()
+    {
+        var (sut, loader) = CreateSut();
+        loader.Visitas.AddRange(new[]
+        {
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 1), UserId = 1, ServiceId = 100, PayloadJson = """{"zona":"A"}""", VisitaIdExterno = "v1", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 2), UserId = 1, ServiceId = 100, PayloadJson = """{"zona":"B"}""", VisitaIdExterno = "v2", Hash = "h" },
+            new StagingCeleroVisita { Fecha = new DateOnly(2026, 3, 3), UserId = 1, ServiceId = 100, PayloadJson = """{"zona":"C"}""", VisitaIdExterno = "v3", Hash = "h" },
+        });
+        // Operador In sobre lista de zonas (antes el conversor no deserializaba el array y daba 0).
+        var concept = CreateConcept("""{"type":"Aggregate","op":"Count","source":{"type":"Source","entity":"VisitasCelero","filters":[{"field":"Zona","op":"In","value":["A","C"]}]}}""");
+        var r = await sut.EvaluateAsync(concept, CreateClosure(), null, CancellationToken.None);
+        r.Resultado.Should().Be(2m);
+    }
+
     private sealed class FakeDataLoader : ICalculationDataLoader
     {
         public List<StagingPayHawkGasto> Gastos { get; } = new();

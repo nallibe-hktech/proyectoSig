@@ -31,13 +31,39 @@ public interface IClientService
     Task DeleteAsync(int id, int usuarioId, CancellationToken ct);
 }
 
-// Incidencias del cliente (PPT slide 6). Anidado bajo el cliente, patrón Tarifas/Presupuestos por servicio.
+// Incidencias del cliente (PPT slide 6 + prototipo). Anidado bajo el cliente (alta/edición) y con un
+// listado global de 1er nivel; el histórico se registra en cada cambio de estado.
 public interface IClienteIncidenciaService
 {
     Task<IReadOnlyList<ClienteIncidenciaDto>> ListByClientAsync(int clientId, int usuarioId, CancellationToken ct);
+    Task<PagedResult<IncidenciaListItemDto>> ListAllAsync(int usuarioId, int page, int pageSize, string? search, int? clientId, string? tipo, EstadoIncidencia? estado, CancellationToken ct);
     Task<ClienteIncidenciaDto> GetByIdAsync(int id, int clientId, int usuarioId, CancellationToken ct);
     Task<ClienteIncidenciaDto> CreateAsync(int clientId, ClienteIncidenciaCreateRequest req, int usuarioId, CancellationToken ct);
     Task<ClienteIncidenciaDto> UpdateAsync(int id, int clientId, ClienteIncidenciaUpdateRequest req, int usuarioId, CancellationToken ct);
+    Task<ClienteIncidenciaDto> CambiarEstadoAsync(int id, int clientId, IncidenciaCambioEstadoRequest req, int usuarioId, CancellationToken ct);
+    Task DeleteAsync(int id, int clientId, int usuarioId, CancellationToken ct);
+}
+
+// Configuración de Presupuesto (prototipo 24/28): partidas manuales por acción/servicio + márgenes.
+// Anidado bajo el servicio (escritura sólo Administrator). El "consumido" es manual por ahora.
+public interface IConfigPresupuestoService
+{
+    Task<ConfigPresupuestoDto> GetConfigAsync(int serviceId, int usuarioId, CancellationToken ct);
+    Task<PartidaPresupuestoDto> CreatePartidaAsync(int serviceId, PartidaPresupuestoCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<PartidaPresupuestoDto> UpdatePartidaAsync(int id, int serviceId, PartidaPresupuestoUpdateRequest req, int usuarioId, CancellationToken ct);
+    Task DeletePartidaAsync(int id, int serviceId, int usuarioId, CancellationToken ct);
+    Task<ConfigPresupuestoDto> SetMargenObjetivoAsync(int serviceId, MargenObjetivoRequest req, int usuarioId, CancellationToken ct);
+}
+
+// Configuración de Factura (prototipo 25/28): CRUD de categorías por cliente + panel de conceptos
+// disponibles. Anidado bajo el cliente (escritura sólo Administrator, como Incidencias).
+public interface ICategoriaFacturaService
+{
+    Task<IReadOnlyList<CategoriaFacturaDto>> ListByClientAsync(int clientId, int usuarioId, CancellationToken ct);
+    Task<ConfigFacturaResumenDto> GetResumenAsync(int clientId, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<ConceptoDisponibleDto>> ListConceptosDisponiblesAsync(int clientId, int usuarioId, CancellationToken ct);
+    Task<CategoriaFacturaDto> CreateAsync(int clientId, CategoriaFacturaCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<CategoriaFacturaDto> UpdateAsync(int id, int clientId, CategoriaFacturaUpdateRequest req, int usuarioId, CancellationToken ct);
     Task DeleteAsync(int id, int clientId, int usuarioId, CancellationToken ct);
 }
 
@@ -225,6 +251,12 @@ public interface ICeleroVisitaService
     Task<PagedCeleroVisitasDto> ListAsync(int page, int pageSize, string? searchNif = null, string? searchService = null, CancellationToken ct = default);
     Task<CeleroVisitaDetailDto> GetByIdAsync(int id, CancellationToken ct);
     Task<CeleroVisitaDetailDto> UpdateAsync(int id, CeleroVisitaUpdateRequest req, int usuarioId, CancellationToken ct);
+}
+
+public interface ITravelPerkService
+{
+    Task<PagedResult<TravelPerkLineaListDto>> ListAsync(int page, int pageSize, string? search = null, bool soloNoMaestro = false, CancellationToken ct = default);
+    Task<TravelPerkKpisDto> GetKpisAsync(CancellationToken ct = default);
 }
 
 public interface ISeedService

@@ -57,6 +57,11 @@ public record MiServicioDto(
     int? ClosureId, EstadoClosure? Estado, ApprovalStep? PasoActual,
     decimal? CosteTotal, decimal? FacturacionTotal, decimal? Margen);
 
+// A3 ERP (Contabilidad) — estado del hub de traspaso de facturas a A3 ERP.
+// Connected/Modo se derivan de la presencia de configuración (Integrations:A3Erp).
+// El traspaso genera un fichero descargable; nunca escribe en sistemas del cliente.
+public record A3ErpStatusDto(bool Connected, string Modo, string Mensaje);
+
 // Calculation
 public record CalculationDetailDto(int ClosureLineId, int ConceptId, string ConceptNombre, string FormulaSnapshotJson, string InputsJson, decimal Resultado, string? Incidencias, string SistemaOrigen, DateTime Timestamp);
 

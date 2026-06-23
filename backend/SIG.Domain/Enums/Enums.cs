@@ -6,6 +6,9 @@ public enum EstadoServicio { Activo, Inactivo }
 // Incidencias del cliente (PPT slide 6): ciclo de vida de una incidencia registrada manualmente.
 public enum EstadoIncidencia { Abierta, EnProceso, Resuelta }
 public enum TipoConcepto { Pago, Factura }
+// Configuración de Presupuesto (prototipo 24/28): cada partida es un presupuesto Anual o único para
+// toda la vida de la acción (Total acción).
+public enum TipoPartidaPresupuesto { Anual, TotalAccion }
 public enum EstadoPeriodo { Abierto, Cerrado, Bloqueado }
 public enum EstadoClosure { Borrador, EnAprobacion, Aprobado, Rechazado, Exportado }
 public enum ApprovalStep

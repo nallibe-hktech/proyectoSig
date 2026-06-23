@@ -93,6 +93,11 @@ logs/
 # ============================================================
 /Galán/
 /Mediapost/
+Logística/
+# Ficheros de datos del cliente sueltos (Excel de cierres, exports, etc.) — NUNCA versionar
+*.xlsx
+*.xls
+CierresIntegralesSIG*
 
 # Backups de BD (datos reales/PII) — nunca al repo
 backups/
@@ -100,3 +105,6 @@ backups/
 
 # PPT de mockups del cliente (binario pesado)
 *.pptx
+
+# Capturas/prototipos de trabajo local (no versionar)
+.tmp_proto/

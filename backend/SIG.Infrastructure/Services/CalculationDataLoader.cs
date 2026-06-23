@@ -32,6 +32,9 @@ public class CalculationDataLoader : ICalculationDataLoader
             .ToListAsync(ct);
         ctx.VisitasSgpv = await _db.StagingSgpvVisitas.AsNoTracking()
             .Where(s => s.ServiceId == serviceId && s.Fecha >= desde && s.Fecha <= hasta).ToListAsync(ct);
+        ctx.ViajesTravelPerk = await _db.StagingTravelPerkLineas.AsNoTracking()
+            .Where(t => t.ServiceId == serviceId && (t.FechaGasto == null || (t.FechaGasto >= desde && t.FechaGasto <= hasta)))
+            .ToListAsync(ct);
         ctx.Variables = await _db.Variables.AsNoTracking().ToListAsync(ct);
         return ctx;
     }

@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<CostCenter> CostCenters => Set<CostCenter>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClienteIncidencia> ClienteIncidencias => Set<ClienteIncidencia>();
+    public DbSet<IncidenciaHistorial> IncidenciaHistoriales => Set<IncidenciaHistorial>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<ServiceConcept> ServiceConcepts => Set<ServiceConcept>();
     public DbSet<ServiceUser> ServiceUsers => Set<ServiceUser>();
@@ -23,6 +24,9 @@ public class AppDbContext : DbContext
     public DbSet<ConceptUser> ConceptUsers => Set<ConceptUser>();
     public DbSet<TarifaServicio> TarifasServicio => Set<TarifaServicio>();
     public DbSet<PresupuestoServicio> PresupuestosServicio => Set<PresupuestoServicio>();
+    public DbSet<PartidaPresupuesto> PartidasPresupuesto => Set<PartidaPresupuesto>();
+    public DbSet<CategoriaFactura> CategoriasFactura => Set<CategoriaFactura>();
+    public DbSet<CategoriaFacturaConcepto> CategoriaFacturaConceptos => Set<CategoriaFacturaConcepto>();
     public DbSet<Forecast> Forecasts => Set<Forecast>();
     public DbSet<Variable> Variables => Set<Variable>();
     public DbSet<Period> Periods => Set<Period>();
@@ -56,6 +60,7 @@ public class AppDbContext : DbContext
     public DbSet<StagingA3InnuvaCompanyTest> StagingA3InnuvaCompaniesTest => Set<StagingA3InnuvaCompanyTest>();
     public DbSet<StagingA3InnuvaPayrollTest> StagingA3InnuvaPayrollsTest => Set<StagingA3InnuvaPayrollTest>();
     public DbSet<StagingTravelPerkViaje> StagingTravelPerkViajes => Set<StagingTravelPerkViaje>();
+    public DbSet<StagingTravelPerkLinea> StagingTravelPerkLineas => Set<StagingTravelPerkLinea>();
 
     // GALÁN - Logística
     public DbSet<StagingGalanEntrada> StagingGalanEntradas => Set<StagingGalanEntrada>();
