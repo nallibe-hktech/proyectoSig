@@ -869,65 +869,24 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             var token = await _oauthService.GetAccessTokenAsync(ct);
             _logger.LogInformation("[A3InnuvaNominas] Token obtenido: {TokenLength} caracteres", token?.Length ?? 0);
 
-            // Construir URL con parámetros de paginación y filtro opcional
-            var queryParams = $"?pageNumber={pageNumber}&pageSize={pageSize}&orderBy=companyCode asc";
-            if (lastUpdate.HasValue)
-            {
-                var filterDate = lastUpdate.Value.ToString("yyyy-MM-dd");
-                queryParams += $"&filter=companyCode eq 1 and (dropDate eq null or dropDate ge {filterDate})";
-            }
+            // Wolters Kluwer solo tiene acceso a empresa con código 1
+            // El endpoint GET /companies no está disponible (403 Forbidden)
+            // Retornar empresa con código 1 directamente
+            _logger.LogInformation($"[A3InnuvaNominas] ✅ Retornando empresa por defecto (código 1)");
 
-            var url = $"companies{queryParams}";
+            var company = new A3InnuvaNominasCompanyDto(
+                id: "1",
+                code: "1",
+                name: "SERVICE INNOVATIVO GROUP ESPAÑA",
+                taxId: "2Q4YX",
+                address: "Madrid",
+                city: "Madrid",
+                country: "España",
+                contactEmail: "plataforma.sig@sigespana.es",
+                contactPhone: ""
+            );
 
-            _logger.LogInformation($"[A3InnuvaNominas] GET /Laboral/api/{url}");
-            _logger.LogInformation($"[A3InnuvaNominas] BaseAddress: {_httpClient.BaseAddress}");
-
-            // Preparar request con OAuth token
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/Laboral/api/{url}");
-            request.Headers.Add("Authorization", $"Bearer {token}");
-            request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
-            request.Headers.Add("api-version", "2");
-            request.Headers.Add("Accept", "application/json");
-
-            _logger.LogInformation($"[A3InnuvaNominas] Request headers:");
-            _logger.LogInformation($"  - Authorization: Bearer {token.Substring(0, Math.Min(50, token.Length))}...");
-            _logger.LogInformation($"  - Ocp-Apim-Subscription-Key: {_subscriptionKey}");
-            _logger.LogInformation($"  - api-version: 2");
-            _logger.LogInformation($"  - Accept: application/json");
-
-            var response = await _httpClient.SendAsync(request, ct);
-            _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogError($"[A3InnuvaNominas] Error: {response.StatusCode} - {response.ReasonPhrase}");
-                _logger.LogError($"[A3InnuvaNominas] Response body: {responseContent}");
-                return Array.Empty<A3InnuvaNominasCompanyDto>();
-            }
-
-            var data = await response.Content.ReadFromJsonAsync<CompaniesResponse>(cancellationToken: ct);
-            var count = data?.Companies?.Count ?? 0;
-            _logger.LogInformation($"[A3InnuvaNominas] ✅ {count} empresas obtenidas");
-
-            if (data?.Companies == null) return Array.Empty<A3InnuvaNominasCompanyDto>();
-
-            return data.Companies.Select(c => new A3InnuvaNominasCompanyDto(
-                c.Id ?? "",
-                c.Code ?? "",
-                c.Name ?? "",
-                c.TaxId ?? "",
-                c.Address ?? "",
-                c.City ?? "",
-                c.Country ?? "",
-                c.ContactEmail ?? "",
-                c.ContactPhone ?? ""
-            )).ToList();
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "[A3InnuvaNominas] HttpRequestException en GetCompanies: {Message}", ex.Message);
-            return Array.Empty<A3InnuvaNominasCompanyDto>();
+            return new[] { company };
         }
         catch (Exception ex)
         {
