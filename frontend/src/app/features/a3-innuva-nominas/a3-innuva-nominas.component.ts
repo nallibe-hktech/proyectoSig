@@ -1,0 +1,320 @@
+import { Component, OnInit, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatTableModule } from '@angular/material/table';
+import { ActivatedRoute, Router } from '@angular/router';
+import { A3InnuvaNominasService, A3InnuvaNominaDto, PeriodoDto } from '../../core/api/a3-innuva-nominas.service';
+import { NotifyService } from '../../core/notify.service';
+
+@Component({
+  selector: 'app-a3-innuva-nominas',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatCheckboxModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatPaginatorModule,
+    MatProgressSpinnerModule,
+    MatSelectModule,
+    MatTabsModule,
+    MatTableModule,
+  ],
+  templateUrl: './a3-innuva-nominas.component.html',
+  styleUrls: ['./a3-innuva-nominas.component.scss'],
+})
+export class A3InnuvaNominasComponent implements OnInit {
+  // OAuth State
+  isAuthorized = signal(false);
+  oauthLoading = signal(false);
+  private readonly AUTHORIZED_KEY = 'a3innuva_nominas_authorized';
+
+  // PHASE 1 State
+  loadingPhase1 = signal(false);
+  loadingPhase2 = signal(false);
+  loadingPhase3 = signal(false);
+  syncStatus = signal('');
+
+  // PHASE 2: Nóminas Calculadas
+  nominasCalculadas = signal<A3InnuvaNominaDto[]>([]);
+  pageCalculadas = signal(1);
+  pageSizeCalculadas = signal(25);
+  totalCalculadas = signal(0);
+  searchCalculadas = '';
+
+  // PHASE 3: Nóminas Enviadas
+  nominasEnviadas = signal<A3InnuvaNominaDto[]>([]);
+  pageEnviadas = signal(1);
+  pageSizeEnviadas = signal(25);
+  totalEnviadas = signal(0);
+  searchEnviadas = '';
+
+  // Filtros
+  periodCode = '';
+  periods = signal<PeriodoDto[]>([]);
+
+  // Display
+  displayedColumnsCalculadas = ['fechaContrato', 'codigoEmpleado', 'nombreEmpleado', 'fecha', 'importeTotal'];
+  displayedColumnsEnviadas = ['fechaContrato', 'codigoEmpleado', 'nombreEmpleado', 'fecha', 'importeTotal'];
+
+  constructor(
+    private service: A3InnuvaNominasService,
+    private notify: NotifyService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) {}
+
+  ngOnInit(): void {
+    // Restaurar estado de autorización desde localStorage
+    const saved = localStorage.getItem(this.AUTHORIZED_KEY);
+    if (saved === 'true') this.isAuthorized.set(true);
+
+    // Detectar parámetro ?authorized=true desde callback de OAuth
+    this.route.queryParams.subscribe(params => {
+      if (params['authorized'] === 'true') {
+        this.isAuthorized.set(true);
+        localStorage.setItem(this.AUTHORIZED_KEY, 'true');
+        this.notify.success('✅ Autorización completada con Wolters Kluwer');
+      }
+    });
+
+    // Cargar periodos para los filtros
+    this.loadPeriods();
+
+    // Si está autorizado, cargar las nóminas
+    if (this.isAuthorized()) {
+      this.loadNominasCalculadas();
+      this.loadNominasEnviadas();
+    }
+  }
+
+  private loadPeriods(): void {
+    this.service.getPeriods().subscribe({
+      next: (periods: PeriodoDto[]) => {
+        this.periods.set(periods);
+      },
+      error: (err: any) => {
+        console.error('Error cargando periodos:', err);
+        this.notify.error('Error al cargar periodos');
+      }
+    });
+  }
+
+  initiateOAuth(): void {
+    this.oauthLoading.set(true);
+    this.service.getAuthorizeUrl().subscribe({
+      next: (res: { authorizeUrl: string; redirectUri: string; message: string }) => {
+        this.oauthLoading.set(false);
+        window.location.href = res.authorizeUrl;
+      },
+      error: (err: any) => {
+        this.oauthLoading.set(false);
+        this.notify.error('Error al iniciar autorización: ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  // ============ PHASE 1: SYNC PHASE ============
+  syncPhase1(): void {
+    const confirmMsg = '¿Ejecutar PHASE 1? (Sincronizar empresas → nóminas → empleados → conceptos)';
+    if (!confirm(confirmMsg)) return;
+
+    this.loadingPhase1.set(true);
+    this.syncStatus.set('⏳ Sincronizando empresas...');
+
+    this.service.syncCompanies().subscribe({
+      next: (): void => {
+        this.syncStatus.set('✅ Empresas sincronizadas. Sincronizando nóminas...');
+        this.syncPayrollsInternal();
+      },
+      error: (err: any) => {
+        this.loadingPhase1.set(false);
+        this.syncStatus.set('❌ Error sincronizando empresas');
+        this.notify.error('Error en PHASE 1 (companies): ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  private syncPayrollsInternal(): void {
+    this.service.syncPayrolls('1').subscribe({
+      next: (): void => {
+        this.syncStatus.set('✅ Nóminas sincronizadas. Sincronizando empleados...');
+        this.syncEmployees();
+      },
+      error: (err: any) => {
+        this.loadingPhase1.set(false);
+        this.syncStatus.set('❌ Error sincronizando nóminas');
+        this.notify.error('Error en PHASE 1 (payrolls): ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  private syncEmployees(): void {
+    this.service.syncEmployees('1').subscribe({
+      next: (): void => {
+        this.syncStatus.set('✅ Empleados sincronizados. Sincronizando conceptos...');
+        this.syncConceptos();
+      },
+      error: (err: any) => {
+        this.loadingPhase1.set(false);
+        this.syncStatus.set('❌ Error sincronizando empleados');
+        this.notify.error('Error en PHASE 1 (employees): ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  private syncConceptos(): void {
+    this.service.syncConceptos('1').subscribe({
+      next: (): void => {
+        this.loadingPhase1.set(false);
+        this.syncStatus.set('✅ PHASE 1 completada. Todos los datos sincronizados.');
+        this.loadNominasCalculadas();
+        this.notify.success('✅ PHASE 1 completada exitosamente');
+      },
+      error: (err: any) => {
+        this.loadingPhase1.set(false);
+        this.syncStatus.set('❌ Error sincronizando conceptos');
+        this.notify.error('Error en PHASE 1 (concepts): ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  // ============ PHASE 2: CALCULATE PHASE ============
+  syncPhase2(): void {
+    if (!this.periodCode) {
+      this.notify.error('Selecciona un período antes de calcular');
+      return;
+    }
+
+    const confirmMsg = `¿Ejecutar PHASE 2? (Calcular nóminas para período ${this.periodCode})`;
+    if (!confirm(confirmMsg)) return;
+
+    this.loadingPhase2.set(true);
+    this.syncStatus.set('⏳ Calculando nóminas...');
+
+    this.service.calculatePayrolls(this.periodCode).subscribe({
+      next: (): void => {
+        this.loadingPhase2.set(false);
+        this.syncStatus.set('✅ PHASE 2 completada. Nóminas calculadas.');
+        this.loadNominasCalculadas();
+        this.notify.success('✅ PHASE 2 completada exitosamente');
+      },
+      error: (err: any) => {
+        this.loadingPhase2.set(false);
+        this.syncStatus.set('❌ Error calculando nóminas');
+        this.notify.error('Error en PHASE 2: ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  // ============ PHASE 3: WRITE PHASE (optional) ============
+  syncPhase3(): void {
+    if (!this.periodCode) {
+      this.notify.error('Selecciona un período antes de escribir');
+      return;
+    }
+
+    const confirmMsg = `¿Ejecutar PHASE 3? (Escribir nóminas a Wolters Kluwer para período ${this.periodCode})`;
+    if (!confirm(confirmMsg)) return;
+
+    this.loadingPhase3.set(true);
+    this.syncStatus.set('⏳ Escribiendo nóminas en Wolters Kluwer...');
+
+    this.service.writePayrolls(this.periodCode).subscribe({
+      next: (): void => {
+        this.loadingPhase3.set(false);
+        this.syncStatus.set('✅ PHASE 3 completada. Nóminas escritas en Wolters Kluwer.');
+        this.loadNominasEnviadas();
+        this.notify.success('✅ PHASE 3 completada exitosamente');
+      },
+      error: (err: any) => {
+        this.loadingPhase3.set(false);
+        this.syncStatus.set('❌ Error escribiendo nóminas');
+        this.notify.error('Error en PHASE 3: ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  // ============ DATA LOADING ============
+  private loadNominasCalculadas(): void {
+    this.service.getNominasCalculadas(
+      this.pageCalculadas(),
+      this.pageSizeCalculadas(),
+      this.periodCode || undefined,
+      this.searchCalculadas || undefined
+    ).subscribe({
+      next: (res: any) => {
+        this.nominasCalculadas.set(res.items || []);
+        this.totalCalculadas.set(res.total || 0);
+      },
+      error: (err: any) => {
+        console.error('Error cargando nóminas calculadas:', err);
+        this.notify.error('Error al cargar nóminas calculadas');
+      }
+    });
+  }
+
+  private loadNominasEnviadas(): void {
+    this.service.getNominasEnviadas(
+      this.pageEnviadas(),
+      this.pageSizeEnviadas(),
+      this.periodCode || undefined,
+      this.searchEnviadas || undefined
+    ).subscribe({
+      next: (res) => {
+        this.nominasEnviadas.set(res.items || []);
+        this.totalEnviadas.set(res.total || 0);
+      },
+      error: (err: any) => {
+        console.error('Error cargando nóminas enviadas:', err);
+        this.notify.error('Error al cargar nóminas enviadas');
+      }
+    });
+  }
+
+  // ============ PAGINATION & SEARCH ============
+  onPageChangeCalculadas(event: PageEvent): void {
+    this.pageCalculadas.set(event.pageIndex + 1);
+    this.pageSizeCalculadas.set(event.pageSize);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadNominasCalculadas();
+  }
+
+  onPageChangeEnviadas(event: PageEvent): void {
+    this.pageEnviadas.set(event.pageIndex + 1);
+    this.pageSizeEnviadas.set(event.pageSize);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.loadNominasEnviadas();
+  }
+
+  onPeriodChange(): void {
+    this.pageCalculadas.set(1);
+    this.pageEnviadas.set(1);
+    this.loadNominasCalculadas();
+    this.loadNominasEnviadas();
+  }
+
+  onSearchCalculadas(): void {
+    this.pageCalculadas.set(1);
+    this.loadNominasCalculadas();
+  }
+
+  onSearchEnviadas(): void {
+    this.pageEnviadas.set(1);
+    this.loadNominasEnviadas();
+  }
+}
