@@ -157,6 +157,65 @@ ed2aa8f — fix: Add missing *matCellDef bindings to Bizneo and Intratime table 
 
 ---
 
+## 🔐 Credenciales y Configuración Local
+
+### ⚠️ Problema: Valores Sensibles en Commits
+
+El archivo `appsettings.json` **NUNCA** contiene credenciales reales. En cada commit, los valores sensibles se reemplazan por `__SET_VIA_ENVIRONMENT__` por seguridad.
+
+**Archivos en `.gitignore` (no commiteados):**
+- `appsettings.Development.json` — Tu configuración local con valores REALES
+- `appsettings.Testing.json` — Configuración de tests local
+- `.env` — Variables de entorno (si aplica)
+
+**Archivos commiteados (plantillas):**
+- `appsettings.json` — Base con `__SET_VIA_ENVIRONMENT__` placeholders
+- `appsettings.Development.json.example` — Template con ESTRUCTURA (sin valores)
+- `setup-appsettings.ps1` — Script que documenta cómo obtener valores reales
+
+### 🔍 Dónde Obtener Valores Sensibles
+
+Los valores reales están en el **historio de git**, en commits antes de ser sanitizados:
+
+```bash
+# Buscar commits con valores reales
+git log --all --oneline -- backend/SIG.API/appsettings.json | head -20
+
+# Ver valores en un commit específico
+git show 254462e:backend/SIG.API/appsettings.json | grep -A 100 Integrations
+```
+
+**Valores conocidos (Commit 254462e):**
+```json
+"Bizneo": { "ApiKey": "SFMyNTY.g2gDdAA..." }
+"Intratime": { "ApiToken": "ee946fc5...", "UserEmail": "notificaciones.sig@ftpsig.es", "UserPassword": "Siges2025*" }
+"Sgpv": { "Username": "sig", "Password": "hola" }
+"A3InnuvaNominas": { 
+  "ClientId": "WK.ES.API.a3innuvaNomina.47472",
+  "ClientSecret": "6G9n7Bddkiyyfsmt9frqVhtwbvdkvt6g",
+  "SubscriptionKey": "6waqth0w8zix9a4ykvxhn5kcd49xt9go"
+}
+```
+
+### ✅ Setup Correcto
+
+1. **Ejecutar script de setup:**
+   ```bash
+   cd backend
+   .\setup-appsettings.ps1
+   ```
+   
+2. **Editar `appsettings.Development.json`** con valores reales del historio de git (ver arriba)
+
+3. **NUNCA commitar** este archivo:
+   ```bash
+   git status  # Debe mostrar "appsettings.Development.json" como untracked
+   ```
+
+4. **Después de cada merge/pull**, solo necesitas verificar que los valores sensibles siguen en tu archivo local (no se pierden porque está en `.gitignore`)
+
+---
+
 ## 🛠️ Development Workflow
 
 ### ⚡ Local Setup (First Time or After Merge)

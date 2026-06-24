@@ -164,7 +164,7 @@ export class A3InnuvaNominasComponent implements OnInit {
   }
 
   private syncEmployees(): void {
-    this.service.syncEmployees('1').subscribe({
+    this.service.syncEmployees().subscribe({
       next: (): void => {
         this.syncStatus.set('✅ Empleados sincronizados. Sincronizando conceptos...');
         this.syncConceptos();
@@ -178,7 +178,7 @@ export class A3InnuvaNominasComponent implements OnInit {
   }
 
   private syncConceptos(): void {
-    this.service.syncConceptos('1').subscribe({
+    this.service.syncConceptos().subscribe({
       next: (): void => {
         this.loadingPhase1.set(false);
         this.syncStatus.set('✅ PHASE 1 completada. Todos los datos sincronizados.');

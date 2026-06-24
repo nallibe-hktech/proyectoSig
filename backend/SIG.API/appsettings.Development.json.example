@@ -15,11 +15,51 @@
   },
   "Integrations": {
     "UseFake": false,
+    "Bizneo": {
+      "BaseUrl": "https://talento-sigespana.bizneohr.com/api/v1/",
+      "ApiKey": "OBTENER_DEL_HISTORIO_GIT_COMMIT_254462E"
+    },
+    "Intratime": {
+      "BaseUrl": "https://newapi.intratime.es/api/",
+      "ApiToken": "OBTENER_DEL_HISTORIO_GIT_COMMIT_254462E",
+      "CompanyId": 11881,
+      "UserEmail": "OBTENER_DEL_HISTORIO_GIT_COMMIT_254462E",
+      "UserPassword": "OBTENER_DEL_HISTORIO_GIT_COMMIT_254462E"
+    },
     "PayHawk": {
-      "ApiKey": "fake-dev-key"
+      "BaseUrl": "https://api.payhawk.com/api/v3/",
+      "ApiKey": "VARIABLE_DE_ENTORNO",
+      "AccountId": "VARIABLE_DE_ENTORNO"
+    },
+    "Sgpv": {
+      "BaseUrl": "https://sig.sgpv.es/export/",
+      "Username": "OBTENER_DEL_HISTORIO_GIT_COMMIT_254462E",
+      "Password": "OBTENER_DEL_HISTORIO_GIT_COMMIT_254462E"
     },
     "A3Innuva": {
-      "ApiKey": "fake-dev-key"
+      "BaseUrl": "https://a3innuva-api.example.com/",
+      "ApiKey": "VARIABLE_DE_ENTORNO"
+    },
+    "TravelPerk": {
+      "BaseUrl": "https://api.travelperk.com/",
+      "ApiKey": "VARIABLE_DE_ENTORNO"
+    },
+    "Galan": {
+      "BasePath": "C:\\Projects\\workspaces\\SIG-es\\Logística\\Galán"
+    },
+    "Mediapost": {
+      "BasePath": "C:\\Projects\\workspaces\\SIG-es\\Logística\\Mediapost"
+    },
+    "A3InnuvaNominas": {
+      "BaseUrl": "https://a3api.wolterskluwer.es",
+      "ApiPath": "/Laboral/api",
+      "ClientId": "WK.ES.API.a3innuvaNomina.47472",
+      "ClientSecret": "6G9n7Bddkiyyfsmt9frqVhtwbvdkvt6g",
+      "AuthorizeEndpoint": "https://login.wolterskluwer.eu/auth/core/connect/authorize",
+      "TokenEndpoint": "https://login.wolterskluwer.eu/auth/core/connect/token",
+      "Scopes": "offline_access openid IDInfo WK.ES.A3EquipoContex",
+      "SubscriptionKey": "6waqth0w8zix9a4ykvxhn5kcd49xt9go",
+      "RedirectUri": "https://localhost:43971/Login"
     }
   }
 }

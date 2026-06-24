@@ -63,18 +63,18 @@ export class A3InnuvaNominasService {
 
   /**
    * PHASE 1.3: Sync employees from Wolters Kluwer
+   * Note: Processes all employees from synced payrolls (no company filter needed)
    */
-  syncEmployees(companyCode: string): Observable<any> {
-    const params = new HttpParams().set('companyCode', companyCode);
-    return this.http.post(`${this.apiUrl}/sync/employees`, {}, { params });
+  syncEmployees(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync/employees`, {});
   }
 
   /**
    * PHASE 1.4: Sync concepts (conceptos de nómina) from Wolters Kluwer
+   * Note: Processes all concepts from synced payrolls (no company filter needed)
    */
-  syncConceptos(companyCode: string): Observable<any> {
-    const params = new HttpParams().set('companyCode', companyCode);
-    return this.http.post(`${this.apiUrl}/sync-concepts`, {}, { params });
+  syncConceptos(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync-concepts`, {});
   }
 
   // ============ PHASE 2: CALCULATE ============

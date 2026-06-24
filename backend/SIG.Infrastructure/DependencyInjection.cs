@@ -112,7 +112,8 @@ public static class DependencyInjection
         services.AddScoped<GalanSyncService>();
         services.AddScoped<MediapostSyncService>();
         services.AddScoped<IA3InnuvaNominasService, A3InnuvaNominasService>();
-        services.AddScoped<IPaymentModelService, PaymentModelService>();
+        // TODO: PHASE 2 - Descomentar IPaymentModelService para validación de modelos de pago
+        // services.AddScoped<IPaymentModelService, PaymentModelService>();
 
         // Calculation
         services.AddScoped<IFormulaParser, FormulaParser>();

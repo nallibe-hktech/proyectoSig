@@ -45,20 +45,18 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
     private readonly IA3InnuvaNominasClient _client;
     private readonly ILogger<A3InnuvaNominasService> _logger;
     private readonly ICalculationEngine _calculationEngine;
-    private readonly IPaymentModelService _paymentModelService;
+    // TODO: PHASE 2 - IPaymentModelService para validación de modelos de pago
 
     public A3InnuvaNominasService(
         AppDbContext db,
         IA3InnuvaNominasClient client,
         ILogger<A3InnuvaNominasService> logger,
-        ICalculationEngine calculationEngine,
-        IPaymentModelService paymentModelService)
+        ICalculationEngine calculationEngine)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _client = client ?? throw new ArgumentNullException(nameof(client));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _calculationEngine = calculationEngine ?? throw new ArgumentNullException(nameof(calculationEngine));
-        _paymentModelService = paymentModelService ?? throw new ArgumentNullException(nameof(paymentModelService));
     }
 
     public async Task SyncCompaniesAsync(CancellationToken ct = default)
@@ -617,46 +615,18 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                         continue;
                     }
 
-                    // INTEGRACIÓN: Obtener cliente del empleado e identificar su modelo de pago
-                    // Nota: Por ahora asumimos cliente = SIG-es (ID 1). En producción mapear correctamente.
-                    int clientId = 1; // TODO: Mapear empleado → cliente correcto
-                    var paymentModelType = await _paymentModelService.GetPaymentModelTypeAsync(
-                        clientId,
-                        DateOnly.FromDateTime(period.FechaInicio.ToDateTime(TimeOnly.MinValue)),
-                        ct);
+                    // TODO: PHASE 2 - Integración con PaymentModelService para validación de modelos de pago
+                    // Por ahora, PHASE 1 solo suma importes crudos sin validación
 
-                    _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Empleado {codigoEmpleado}: Modelo de pago = {paymentModelType ?? "NO CONFIGURADO"}");
-
-                    // Calcular totales CON VALIDACIÓN DE MODELO DE PAGO
+                    // Calcular totales (PHASE 1: suma simple)
                     var totalPercepciones = 0m;
                     var totalDescuentos = 0m;
                     var incidencias = new List<string>();
 
                     foreach (var concepto in conceptos)
                     {
-                        // INTEGRACIÓN: Validar si concepto aplica al modelo de pago
-                        if (!string.IsNullOrEmpty(paymentModelType))
-                        {
-                            // Buscar concepto en BD (si existe)
-                            var dbConcepto = await _db.Concepts
-                                .AsNoTracking()
-                                .FirstOrDefaultAsync(c => c.Nombre == concepto.DescripcionConcepto && !c.IsDeleted, ct);
-
-                            if (dbConcepto != null)
-                            {
-                                var isApplicable = await _paymentModelService.IsConceptApplicableAsync(
-                                    dbConcepto.Id,
-                                    paymentModelType,
-                                    ct);
-
-                                if (!isApplicable)
-                                {
-                                    incidencias.Add($"Concepto '{concepto.DescripcionConcepto}' no aplica a modelo '{paymentModelType}'");
-                                    _logger.LogWarning($"[A3InnuvaNominas-PHASE2] Concepto {concepto.DescripcionConcepto} no aplica a {paymentModelType}");
-                                    continue; // Saltar este concepto
-                                }
-                            }
-                        }
+                        // PHASE 1: suma simple, sin validación de modelo de pago
+                        // PHASE 2: agregar validación con PaymentModelService
 
                         // Sumar concepto
                         if (concepto.TipoConcepto == "E") // Earnings/Percepciones

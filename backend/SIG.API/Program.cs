@@ -111,8 +111,8 @@ using (var scope = app.Services.CreateScope())
         try
         {
             await db.Database.MigrateAsync();
-            // Seed payment models configuration
-            await PaymentModelSeeder.SeedPaymentModelsAsync(db);
+            // TODO: PHASE 2 - Descomentar seeding de payment models
+            // await PaymentModelSeeder.SeedPaymentModelsAsync(db);
             if (app.Configuration.GetValue<bool>("Seed:AutoRun"))
             {
                 var seeder = scope.ServiceProvider.GetRequiredService<ISeedService>();
