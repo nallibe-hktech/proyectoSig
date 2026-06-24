@@ -808,7 +808,8 @@ public class A3InnuvaClient : IA3InnuvaClient
                 e.Nif,
                 e.FullName,
                 e.Department,
-                e.MonthlySalary
+                e.MonthlySalary,
+                DateTime.UtcNow
             )).ToList();
         }
         catch

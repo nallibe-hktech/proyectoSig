@@ -99,6 +99,36 @@ export class A3InnuvaNominasService {
 
   // ============ DATA FETCHING ============
   /**
+   * Get synced companies with pagination and search
+   */
+  getCompanies(
+    page: number,
+    pageSize: number,
+    search?: string
+  ): Observable<PagedResult<any>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+    if (search) params = params.set('search', search);
+    return this.http.get<PagedResult<any>>(`${this.apiUrl}/companies`, { params });
+  }
+
+  /**
+   * Get synced payrolls with pagination and search
+   */
+  getPayrolls(
+    page: number,
+    pageSize: number,
+    search?: string
+  ): Observable<PagedResult<any>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+    if (search) params = params.set('search', search);
+    return this.http.get<PagedResult<any>>(`${this.apiUrl}/payrolls`, { params });
+  }
+
+  /**
    * Get calculated payrolls (nóminas calculadas) with pagination and search
    */
   getNominasCalculadas(
@@ -137,5 +167,35 @@ export class A3InnuvaNominasService {
    */
   getPeriods(): Observable<PeriodoDto[]> {
     return this.http.get<PeriodoDto[]>(`${environment.apiUrl}/periods`);
+  }
+
+  /**
+   * Get synced employees with pagination and search
+   */
+  getEmployees(
+    page: number,
+    pageSize: number,
+    search?: string
+  ): Observable<PagedResult<any>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+    if (search) params = params.set('search', search);
+    return this.http.get<PagedResult<any>>(`${this.apiUrl}/employees`, { params });
+  }
+
+  /**
+   * Get synced concepts with pagination and search
+   */
+  getConceptos(
+    page: number,
+    pageSize: number,
+    search?: string
+  ): Observable<PagedResult<any>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+    if (search) params = params.set('search', search);
+    return this.http.get<PagedResult<any>>(`${this.apiUrl}/concepts`, { params });
   }
 }

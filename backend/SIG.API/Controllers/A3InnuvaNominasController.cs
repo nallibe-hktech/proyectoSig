@@ -334,6 +334,52 @@ public class A3InnuvaNominasController : ControllerBase
     }
 
     /// <summary>
+    /// Obtener lista paginada de empleados sincronizados desde Wolters Kluwer
+    /// </summary>
+    [HttpGet("employees")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetEmployees(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await _service.GetEmployeesAsync(page, pageSize, search, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error obteniendo empleados");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtener lista paginada de conceptos sincronizados desde Wolters Kluwer
+    /// </summary>
+    [HttpGet("concepts")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetConceptos(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await _service.GetConceptosAsync(page, pageSize, search, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error obteniendo conceptos");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// PHASE 2: Calcular nóminas a partir de conceptos sincronizados
     /// </summary>
     [HttpPost("calculate")]

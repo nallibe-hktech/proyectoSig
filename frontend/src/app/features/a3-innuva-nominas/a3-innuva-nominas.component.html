@@ -74,6 +74,225 @@
     </mat-card-content>
   </mat-card>
 
+  <!-- SECTION: PHASE 1 DETAILS (Empresas, Nóminas, Empleados, Conceptos) -->
+  <mat-card *ngIf="isAuthorized()" class="phase1-details-card">
+    <mat-card-header>
+      <mat-card-title>PHASE 1 — Detalles de Sincronización (Empresas → Nóminas → Empleados → Conceptos)</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <mat-tab-group>
+        <!-- TAB 1: EMPRESAS -->
+        <mat-tab label="Empresas">
+          <ng-template mat-tab-label>
+            <mat-icon>business</mat-icon>
+            <span>Empresas ({{ totalEmpresas() }})</span>
+          </ng-template>
+
+          <div class="tab-content">
+            <div class="search-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Buscar</mat-label>
+                <input matInput [(ngModel)]="searchEmpresas" (keyup)="onSearchEmpresas()">
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <mat-table [dataSource]="empresas()" class="mat-elevation-z1">
+              <ng-container matColumnDef="codigo">
+                <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.code }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="nombre">
+                <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.name }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="nif">
+                <mat-header-cell *matHeaderCellDef>NIF</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.taxId }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="ciudad">
+                <mat-header-cell *matHeaderCellDef>Ciudad</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.city }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="pais">
+                <mat-header-cell *matHeaderCellDef>País</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.country }}</mat-cell>
+              </ng-container>
+              <mat-header-row *matHeaderRowDef="displayedColumnsEmpresas"></mat-header-row>
+              <mat-row *matRowDef="let row; columns: displayedColumnsEmpresas;"></mat-row>
+            </mat-table>
+
+            <mat-paginator
+              [length]="totalEmpresas()"
+              [pageSize]="pageSizeEmpresas()"
+              [pageIndex]="pageEmpresas() - 1"
+              [pageSizeOptions]="[10, 25, 50, 100]"
+              showFirstLastButtons
+              (page)="onPageChangeEmpresas($event)">
+            </mat-paginator>
+          </div>
+        </mat-tab>
+
+        <!-- TAB 2: NÓMINAS SINCRONIZADAS -->
+        <mat-tab label="Nóminas">
+          <ng-template mat-tab-label>
+            <mat-icon>receipt</mat-icon>
+            <span>Nóminas ({{ totalNominas() }})</span>
+          </ng-template>
+
+          <div class="tab-content">
+            <div class="search-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Buscar</mat-label>
+                <input matInput [(ngModel)]="searchNominas" (keyup)="onSearchNominas()">
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <mat-table [dataSource]="nominas()" class="mat-elevation-z1">
+              <ng-container matColumnDef="idEmpleado">
+                <mat-header-cell *matHeaderCellDef>ID Empleado</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.employeeId }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="nombreEmpleado">
+                <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.employeeName }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="codigoPeriodo">
+                <mat-header-cell *matHeaderCellDef>Período</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.periodCode }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="salarioBase">
+                <mat-header-cell *matHeaderCellDef>Salario Base</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.baseSalary | number:'1.2-2' }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="salarioNeto">
+                <mat-header-cell *matHeaderCellDef>Salario Neto</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.netSalary | number:'1.2-2' }}</mat-cell>
+              </ng-container>
+              <mat-header-row *matHeaderRowDef="displayedColumnsNominas"></mat-header-row>
+              <mat-row *matRowDef="let row; columns: displayedColumnsNominas;"></mat-row>
+            </mat-table>
+
+            <mat-paginator
+              [length]="totalNominas()"
+              [pageSize]="pageSizeNominas()"
+              [pageIndex]="pageNominas() - 1"
+              [pageSizeOptions]="[10, 25, 50, 100]"
+              showFirstLastButtons
+              (page)="onPageChangeNominas($event)">
+            </mat-paginator>
+          </div>
+        </mat-tab>
+
+        <!-- TAB 3: EMPLEADOS -->
+        <mat-tab label="Empleados">
+          <ng-template mat-tab-label>
+            <mat-icon>people</mat-icon>
+            <span>Empleados ({{ totalEmpleados() }})</span>
+          </ng-template>
+
+          <div class="tab-content">
+            <div class="search-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Buscar</mat-label>
+                <input matInput [(ngModel)]="searchEmpleados" (keyup)="onSearchEmpleados()">
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <mat-table [dataSource]="empleados()" class="mat-elevation-z1">
+              <ng-container matColumnDef="nif">
+                <mat-header-cell *matHeaderCellDef>NIF</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.nif }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="nombre">
+                <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.nombre }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="departamento">
+                <mat-header-cell *matHeaderCellDef>Departamento</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.departamento || '-' }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="sueldoMensual">
+                <mat-header-cell *matHeaderCellDef>Sueldo Mensual</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.sueldoMensual | number:'1.2-2' }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="fechaUltimaSincronizacion">
+                <mat-header-cell *matHeaderCellDef>Última Sincronización</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.fechaUltimaSincronizacion | date:'short' }}</mat-cell>
+              </ng-container>
+              <mat-header-row *matHeaderRowDef="displayedColumnsEmpleados"></mat-header-row>
+              <mat-row *matRowDef="let row; columns: displayedColumnsEmpleados;"></mat-row>
+            </mat-table>
+
+            <mat-paginator
+              [length]="totalEmpleados()"
+              [pageSize]="pageSizeEmpleados()"
+              [pageIndex]="pageEmpleados() - 1"
+              [pageSizeOptions]="[10, 25, 50, 100]"
+              showFirstLastButtons
+              (page)="onPageChangeEmpleados($event)">
+            </mat-paginator>
+          </div>
+        </mat-tab>
+
+        <!-- TAB 4: CONCEPTOS -->
+        <mat-tab label="Conceptos">
+          <ng-template mat-tab-label>
+            <mat-icon>category</mat-icon>
+            <span>Conceptos ({{ totalConceptos() }})</span>
+          </ng-template>
+
+          <div class="tab-content">
+            <div class="search-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Buscar</mat-label>
+                <input matInput [(ngModel)]="searchConceptos" (keyup)="onSearchConceptos()">
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <mat-table [dataSource]="conceptos()" class="mat-elevation-z1">
+              <ng-container matColumnDef="codigoEmpleado">
+                <mat-header-cell *matHeaderCellDef>Código Empleado</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.codigoEmpleado }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="nombreEmpleado">
+                <mat-header-cell *matHeaderCellDef>Nombre Empleado</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.nombreEmpleado }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="descripcionConcepto">
+                <mat-header-cell *matHeaderCellDef>Descripción</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.descripcionConcepto }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="tipoConcepto">
+                <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.tipoConcepto }}</mat-cell>
+              </ng-container>
+              <ng-container matColumnDef="importe">
+                <mat-header-cell *matHeaderCellDef>Importe</mat-header-cell>
+                <mat-cell *matCellDef="let element">{{ element.importe | number:'1.2-2' }}</mat-cell>
+              </ng-container>
+              <mat-header-row *matHeaderRowDef="displayedColumnsConceptos"></mat-header-row>
+              <mat-row *matRowDef="let row; columns: displayedColumnsConceptos;"></mat-row>
+            </mat-table>
+
+            <mat-paginator
+              [length]="totalConceptos()"
+              [pageSize]="pageSizeConceptos()"
+              [pageIndex]="pageConceptos() - 1"
+              [pageSizeOptions]="[10, 25, 50, 100]"
+              showFirstLastButtons
+              (page)="onPageChangeConceptos($event)">
+            </mat-paginator>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card-content>
+  </mat-card>
+
   <!-- TABS CON NÓMINAS CALCULADAS / ENVIADAS -->
   <mat-tab-group *ngIf="isAuthorized()">
     <!-- TAB 1: NÓMINAS CALCULADAS -->

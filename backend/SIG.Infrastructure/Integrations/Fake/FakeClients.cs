@@ -322,7 +322,8 @@ public class A3InnuvaFakeClient : IA3InnuvaClient
                 $"{f.Random.Long(10000000, 99999999)}A",
                 f.Name.FullName(),
                 f.PickRandom(departamentos),
-                Math.Round(f.Random.Decimal(20000, 80000), 2)
+                Math.Round(f.Random.Decimal(20000, 80000), 2),
+                DateTime.UtcNow
             ));
         var list = faker.Generate(20);
         return Task.FromResult<IReadOnlyList<A3InnuvaEmpleadoDto>>(list);

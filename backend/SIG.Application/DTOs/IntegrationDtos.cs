@@ -36,7 +36,14 @@ public record SgpvVisitaDto(
     string? ServiceName,
     DateOnly Fecha,
     decimal? HorasDuracion);
-public record A3InnuvaEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento, decimal? SueldoMensual);
+public record A3InnuvaEmpleadoDto(
+    string IdExterno,
+    string NIF,
+    string Nombre,
+    string? Departamento,
+    decimal? SueldoMensual,
+    DateTime FechaUltimaSincronizacion
+);
 public record A3InnuvaGenericoDto(string IdExterno, string Nombre, string Tipo, DateTime? FechaRegistro);
 public record TravelPerkViajeDto(string ViajeIdExterno, string Solicitante, DateOnly FechaInicio, DateOnly? FechaFin, decimal Presupuesto, string Estado);
 // TravelPerk se integra por descarga Excel (hoja "report"), a nivel LÍNEA — no a nivel viaje.
@@ -191,4 +198,18 @@ public record A3InnuvaNominaCalculadaDto(
     bool FueEnviadoAWK,
     DateTime? FechaEnvio,
     string? ResponseWK
+);
+
+public record A3InnuvaConceptoDto(
+    string IdExterno,
+    string CodigoEmpleado,
+    string NombreEmpleado,
+    int CodigoConcepto,
+    string DescripcionConcepto,
+    string TipoConcepto,
+    decimal Importe,
+    string? Unidad,
+    bool EsManual,
+    bool EsEnEspecie,
+    DateTime FechaUltimaSincronizacion
 );

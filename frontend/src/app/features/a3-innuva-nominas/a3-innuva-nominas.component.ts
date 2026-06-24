@@ -63,6 +63,31 @@ export class A3InnuvaNominasComponent implements OnInit {
   totalEnviadas = signal(0);
   searchEnviadas = '';
 
+  // PHASE 1 Details: Empresas, Nóminas, Empleados, Conceptos
+  empresas = signal<any[]>([]);
+  pageEmpresas = signal(1);
+  pageSizeEmpresas = signal(25);
+  totalEmpresas = signal(0);
+  searchEmpresas = '';
+
+  nominas = signal<any[]>([]);
+  pageNominas = signal(1);
+  pageSizeNominas = signal(25);
+  totalNominas = signal(0);
+  searchNominas = '';
+
+  empleados = signal<any[]>([]);
+  pageEmpleados = signal(1);
+  pageSizeEmpleados = signal(25);
+  totalEmpleados = signal(0);
+  searchEmpleados = '';
+
+  conceptos = signal<any[]>([]);
+  pageConceptos = signal(1);
+  pageSizeConceptos = signal(25);
+  totalConceptos = signal(0);
+  searchConceptos = '';
+
   // Filtros
   periodCode = '';
   periods = signal<PeriodoDto[]>([]);
@@ -70,6 +95,10 @@ export class A3InnuvaNominasComponent implements OnInit {
   // Display
   displayedColumnsCalculadas = ['fechaContrato', 'codigoEmpleado', 'nombreEmpleado', 'fecha', 'importeTotal'];
   displayedColumnsEnviadas = ['fechaContrato', 'codigoEmpleado', 'nombreEmpleado', 'fecha', 'importeTotal'];
+  displayedColumnsEmpresas = ['codigo', 'nombre', 'nif', 'ciudad', 'pais'];
+  displayedColumnsNominas = ['idEmpleado', 'nombreEmpleado', 'codigoPeriodo', 'salarioBase', 'salarioNeto'];
+  displayedColumnsEmpleados = ['nif', 'nombre', 'departamento', 'sueldoMensual', 'fechaUltimaSincronizacion'];
+  displayedColumnsConceptos = ['codigoEmpleado', 'nombreEmpleado', 'descripcionConcepto', 'tipoConcepto', 'importe'];
 
   constructor(
     private service: A3InnuvaNominasService,
@@ -183,6 +212,7 @@ export class A3InnuvaNominasComponent implements OnInit {
         this.loadingPhase1.set(false);
         this.syncStatus.set('✅ PHASE 1 completada. Todos los datos sincronizados.');
         this.loadNominasCalculadas();
+        this.loadAllPhase1Details(); // Cargar detalles de empresas, nóminas, empleados, conceptos
         this.notify.success('✅ PHASE 1 completada exitosamente');
       },
       error: (err: any) => {
@@ -286,6 +316,83 @@ export class A3InnuvaNominasComponent implements OnInit {
     });
   }
 
+  // ============ PHASE 1 DETAILS: EMPRESAS, NÓMINAS, EMPLEADOS, CONCEPTOS ============
+  private loadEmpresas(): void {
+    this.service.getCompanies(
+      this.pageEmpresas(),
+      this.pageSizeEmpresas(),
+      this.searchEmpresas || undefined
+    ).subscribe({
+      next: (res: any) => {
+        this.empresas.set(res.items || []);
+        this.totalEmpresas.set(res.total || 0);
+      },
+      error: (err: any) => {
+        console.error('Error cargando empresas:', err);
+        this.notify.error('Error al cargar empresas');
+      }
+    });
+  }
+
+  private loadNominasDetails(): void {
+    this.service.getPayrolls(
+      this.pageNominas(),
+      this.pageSizeNominas(),
+      this.searchNominas || undefined
+    ).subscribe({
+      next: (res: any) => {
+        this.nominas.set(res.items || []);
+        this.totalNominas.set(res.total || 0);
+      },
+      error: (err: any) => {
+        console.error('Error cargando nóminas:', err);
+        this.notify.error('Error al cargar nóminas');
+      }
+    });
+  }
+
+  private loadEmpleados(): void {
+    this.service.getEmployees(
+      this.pageEmpleados(),
+      this.pageSizeEmpleados(),
+      this.searchEmpleados || undefined
+    ).subscribe({
+      next: (res: any) => {
+        this.empleados.set(res.items || []);
+        this.totalEmpleados.set(res.total || 0);
+      },
+      error: (err: any) => {
+        console.error('Error cargando empleados:', err);
+        this.notify.error('Error al cargar empleados');
+      }
+    });
+  }
+
+  private loadConceptos(): void {
+    this.service.getConceptos(
+      this.pageConceptos(),
+      this.pageSizeConceptos(),
+      this.searchConceptos || undefined
+    ).subscribe({
+      next: (res: any) => {
+        this.conceptos.set(res.items || []);
+        this.totalConceptos.set(res.total || 0);
+      },
+      error: (err: any) => {
+        console.error('Error cargando conceptos:', err);
+        this.notify.error('Error al cargar conceptos');
+      }
+    });
+  }
+
+  // Llamar a loadEmpresas/Nominas/Empleados/Conceptos después de PHASE 1 completada
+  private loadAllPhase1Details(): void {
+    this.loadEmpresas();
+    this.loadNominasDetails();
+    this.loadEmpleados();
+    this.loadConceptos();
+  }
+
   // ============ PAGINATION & SEARCH ============
   onPageChangeCalculadas(event: PageEvent): void {
     this.pageCalculadas.set(event.pageIndex + 1);
@@ -316,5 +423,49 @@ export class A3InnuvaNominasComponent implements OnInit {
   onSearchEnviadas(): void {
     this.pageEnviadas.set(1);
     this.loadNominasEnviadas();
+  }
+
+  onPageChangeEmpresas(event: PageEvent): void {
+    this.pageEmpresas.set(event.pageIndex + 1);
+    this.pageSizeEmpresas.set(event.pageSize);
+    this.loadEmpresas();
+  }
+
+  onPageChangeNominas(event: PageEvent): void {
+    this.pageNominas.set(event.pageIndex + 1);
+    this.pageSizeNominas.set(event.pageSize);
+    this.loadNominasDetails();
+  }
+
+  onPageChangeEmpleados(event: PageEvent): void {
+    this.pageEmpleados.set(event.pageIndex + 1);
+    this.pageSizeEmpleados.set(event.pageSize);
+    this.loadEmpleados();
+  }
+
+  onPageChangeConceptos(event: PageEvent): void {
+    this.pageConceptos.set(event.pageIndex + 1);
+    this.pageSizeConceptos.set(event.pageSize);
+    this.loadConceptos();
+  }
+
+  onSearchEmpresas(): void {
+    this.pageEmpresas.set(1);
+    this.loadEmpresas();
+  }
+
+  onSearchNominas(): void {
+    this.pageNominas.set(1);
+    this.loadNominasDetails();
+  }
+
+  onSearchEmpleados(): void {
+    this.pageEmpleados.set(1);
+    this.loadEmpleados();
+  }
+
+  onSearchConceptos(): void {
+    this.pageConceptos.set(1);
+    this.loadConceptos();
   }
 }

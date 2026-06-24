@@ -29,6 +29,8 @@ public interface IA3InnuvaNominasService
     // Read
     Task<PagedResult<A3InnuvaNominasCompanyDto>> GetCompaniesAsync(int page, int pageSize, string? search, CancellationToken ct);
     Task<PagedResult<A3InnuvaNominasPayrollDto>> GetPayrollsAsync(int page, int pageSize, string? search, CancellationToken ct);
+    Task<PagedResult<A3InnuvaEmpleadoDto>> GetEmployeesAsync(int page, int pageSize, string? search, CancellationToken ct);
+    Task<PagedResult<A3InnuvaConceptoDto>> GetConceptosAsync(int page, int pageSize, string? search, CancellationToken ct);
     Task<PagedResult<A3InnuvaNominaCalculadaDto>> GetNominasCalculadasAsync(int page, int pageSize, string? periodCode, string? search, CancellationToken ct);
     Task<PagedResult<A3InnuvaNominaCalculadaDto>> GetNominasCalculadasEnviadasAsync(int page, int pageSize, string? periodCode, CancellationToken ct);
 
@@ -907,6 +909,75 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             .ToListAsync(ct);
 
         return new PagedResult<A3InnuvaNominaCalculadaDto>(items, total, page, pageSize);
+    }
+
+    public async Task<PagedResult<A3InnuvaEmpleadoDto>> GetEmployeesAsync(int page, int pageSize, string? search, CancellationToken ct)
+    {
+        var query = _db.StagingA3InnuvaEmpleados.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = $"%{search.Trim()}%";
+            query = query.Where(e =>
+                EF.Functions.ILike(e.EmpleadoIdExterno, s) ||
+                EF.Functions.ILike(e.NIF, s) ||
+                EF.Functions.ILike(e.Nombre, s) ||
+                EF.Functions.ILike(e.Departamento, s));
+        }
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(e => e.Nombre)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(e => new A3InnuvaEmpleadoDto(
+                e.EmpleadoIdExterno ?? "",
+                e.NIF,
+                e.Nombre,
+                e.Departamento,
+                e.SueldoMensual,
+                e.FechaUltimaSincronizacion))
+            .ToListAsync(ct);
+
+        return new PagedResult<A3InnuvaEmpleadoDto>(items, total, page, pageSize);
+    }
+
+    public async Task<PagedResult<A3InnuvaConceptoDto>> GetConceptosAsync(int page, int pageSize, string? search, CancellationToken ct)
+    {
+        var query = _db.StagingA3InnuvaConceptos
+            .Where(c => c.DeletedAt == null)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = $"%{search.Trim()}%";
+            query = query.Where(c =>
+                EF.Functions.ILike(c.CodigoEmpleado, s) ||
+                EF.Functions.ILike(c.NombreEmpleado, s) ||
+                EF.Functions.ILike(c.DescripcionConcepto, s));
+        }
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(c => c.CodigoEmpleado)
+            .ThenBy(c => c.CodigoConcepto)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(c => new A3InnuvaConceptoDto(
+                c.IdExterno,
+                c.CodigoEmpleado,
+                c.NombreEmpleado,
+                c.CodigoConcepto,
+                c.DescripcionConcepto,
+                c.TipoConcepto,
+                c.Importe,
+                c.Unidad,
+                c.EsManual,
+                c.EsEnEspecie,
+                c.FechaUltimaSincronizacion))
+            .ToListAsync(ct);
+
+        return new PagedResult<A3InnuvaConceptoDto>(items, total, page, pageSize);
     }
 
     // Test methods - read from API but write to test tables
