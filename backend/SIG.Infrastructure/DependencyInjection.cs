@@ -107,6 +107,7 @@ public static class DependencyInjection
         services.AddScoped<GalanSyncService>();
         services.AddScoped<MediapostSyncService>();
         services.AddScoped<IA3InnuvaNominasService, A3InnuvaNominasService>();
+        services.AddScoped<IPaymentModelService, PaymentModelService>();
 
         // Calculation
         services.AddScoped<IFormulaParser, FormulaParser>();
@@ -124,6 +125,7 @@ public static class DependencyInjection
             services.AddSingleton<IPayHawkClient, PayHawkFakeClient>();
             services.AddSingleton<ISgpvClient, SgpvFakeClient>();
             services.AddSingleton<IA3InnuvaClient, A3InnuvaFakeClient>();
+            // NOTA: IA3InnuvaNominasClient se registra SIEMPRE fuera de este bloque (cliente real con OAuth)
             services.AddSingleton<ITravelPerkClient, TravelPerkFakeClient>();
             services.AddSingleton<IGalanClient, GalanCsvClient>();
             services.AddSingleton<IMediapostClient, MediapostExcelClient>();
@@ -214,45 +216,7 @@ public static class DependencyInjection
                 client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", a3InuvaKey);
             });
 
-            // A3 Innuva Nóminas (OAuth Wolters Kluwer)
-            var a3NominasUrl = config["Integrations:A3InnuvaNominas:BaseUrl"]
-                            ?? throw new InvalidOperationException("Integrations:A3InnuvaNominas:BaseUrl no configurada");
-            var wkClientId = config["Integrations:A3InnuvaNominas:ClientId"]
-                          ?? throw new InvalidOperationException("Integrations:A3InnuvaNominas:ClientId no configurada");
-            var wkClientSecret = config["Integrations:A3InnuvaNominas:ClientSecret"]
-                              ?? throw new InvalidOperationException("Integrations:A3InnuvaNominas:ClientSecret no configurada");
-            var wkTokenEndpoint = config["Integrations:A3InnuvaNominas:TokenEndpoint"]
-                               ?? throw new InvalidOperationException("Integrations:A3InnuvaNominas:TokenEndpoint no configurada");
-            var wkSubscriptionKey = config["Integrations:A3InnuvaNominas:SubscriptionKey"]
-                                 ?? throw new InvalidOperationException("Integrations:A3InnuvaNominas:SubscriptionKey no configurada");
-
-            // Registrar OAuthService
-            services.AddMemoryCache();
-            services.AddScoped<IWoltersKluwerOAuthService>(sp =>
-            {
-                var httpClient = new HttpClient();
-                var logger = sp.GetRequiredService<ILogger<WoltersKluwerOAuthService>>();
-                var cache = sp.GetRequiredService<IMemoryCache>();
-                var dbContext = sp.GetRequiredService<AppDbContext>();
-                var env = sp.GetRequiredService<IHostEnvironment>();
-                return new WoltersKluwerOAuthService(httpClient, wkClientId, wkClientSecret, cache, dbContext, logger, env);
-            });
-
-            // Registrar A3InnuvaNominasClient con HttpClientFactory
-            var a3NominasHttpClientName = "A3InnuvaNominas";
-            services.AddHttpClient(a3NominasHttpClientName, client =>
-            {
-                client.BaseAddress = new Uri(a3NominasUrl);
-            });
-
-            services.AddScoped<IA3InnuvaNominasClient>(sp =>
-            {
-                var factory = sp.GetRequiredService<IHttpClientFactory>();
-                var httpClient = factory.CreateClient(a3NominasHttpClientName);
-                var oauthService = sp.GetRequiredService<IWoltersKluwerOAuthService>();
-                var logger = sp.GetRequiredService<ILogger<A3InnuvaNominasClient>>();
-                return new A3InnuvaNominasClient(httpClient, oauthService, wkSubscriptionKey, logger);
-            });
+            // A3 Innuva Nóminas se registra SIEMPRE fuera del bloque if/else (cliente real con OAuth)
 
             // Travel Perk
             var travelPerkUrl = config["Integrations:TravelPerk:BaseUrl"]
@@ -270,6 +234,51 @@ public static class DependencyInjection
 
             // Mediapost (Excel client for local file reading)
             services.AddSingleton<IMediapostClient, MediapostExcelClient>();
+        }
+
+        // A3 Innuva Nóminas: SIEMPRE usar cliente real con OAuth (independiente del flag UseFake)
+        var a3NominasUrlAlways = config["Integrations:A3InnuvaNominas:BaseUrl"]
+                            ?? throw new InvalidOperationException("Integrations:A3InnuvaNominas:BaseUrl no configurada");
+        var wkClientIdAlways = config["Integrations:A3InnuvaNominas:ClientId"]
+                          ?? throw new InvalidOperationException("Integrations:A3InnuvaNominas:ClientId no configurada");
+        var wkClientSecretAlways = config["Integrations:A3InnuvaNominas:ClientSecret"]
+                              ?? throw new InvalidOperationException("Integrations:A3InnuvaNominas:ClientSecret no configurada");
+        var wkSubscriptionKeyAlways = config["Integrations:A3InnuvaNominas:SubscriptionKey"]
+                                 ?? throw new InvalidOperationException("Integrations:A3InnuvaNominas:SubscriptionKey no configurada");
+
+        // Registrar A3InnuvaNominasClient con HttpClientFactory
+        var a3NominasHttpClientName = "A3InnuvaNominas";
+        services.AddHttpClient(a3NominasHttpClientName, client =>
+        {
+            client.BaseAddress = new Uri(a3NominasUrlAlways);
+        });
+
+        services.AddScoped<IA3InnuvaNominasClient>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = factory.CreateClient(a3NominasHttpClientName);
+            var oauthService = sp.GetRequiredService<IWoltersKluwerOAuthService>();
+            var logger = sp.GetRequiredService<ILogger<A3InnuvaNominasClient>>();
+            var useFakeData = false; // SIEMPRE usar cliente real, no fake data
+            return new A3InnuvaNominasClient(httpClient, oauthService, wkSubscriptionKeyAlways, logger, useFakeData);
+        });
+
+        // Registrar OAuthService siempre (incluso en modo fake, para tests)
+        if (!services.Any(sd => sd.ServiceType == typeof(IWoltersKluwerOAuthService)))
+        {
+            services.AddMemoryCache();
+            services.AddScoped<IWoltersKluwerOAuthService>(sp =>
+            {
+                var httpClient = new HttpClient();
+                var logger = sp.GetRequiredService<ILogger<WoltersKluwerOAuthService>>();
+                var cache = sp.GetRequiredService<IMemoryCache>();
+                var dbContext = sp.GetRequiredService<AppDbContext>();
+                var env = sp.GetRequiredService<IHostEnvironment>();
+                var a3NominasUrl = config["Integrations:A3InnuvaNominas:BaseUrl"] ?? "https://a3api.wolterskluwer.es";
+                var wkClientId = config["Integrations:A3InnuvaNominas:ClientId"] ?? "test-client";
+                var wkClientSecret = config["Integrations:A3InnuvaNominas:ClientSecret"] ?? "test-secret";
+                return new WoltersKluwerOAuthService(httpClient, wkClientId, wkClientSecret, cache, dbContext, logger, env);
+            });
         }
 
         return services;

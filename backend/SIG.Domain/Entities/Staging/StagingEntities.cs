@@ -486,3 +486,57 @@ public class StagingA3InnuvaPayrollTest : IAuditable, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
 }
+
+// A3 INNUVA NÓMINAS - Conceptos de empleados (salarios, bonificaciones, etc.)
+public class StagingA3InnuvaConcepto : IAuditable, ISoftDeletable
+{
+    public int Id { get; set; }
+    public string IdExterno { get; set; } = null!;
+    public string CodigoEmpleado { get; set; } = null!;
+    public string NombreEmpleado { get; set; } = null!;
+    public int CodigoConcepto { get; set; }
+    public string DescripcionConcepto { get; set; } = null!;
+    public string TipoConcepto { get; set; } = null!; // "E" (Earnings/Percepciones), "D" (Deductions/Descuentos), "I" (Información)
+    public decimal Importe { get; set; }
+    public string? Unidad { get; set; } // "U" (Unidades), "%" (Porcentaje), etc.
+    public bool EsManual { get; set; }
+    public bool EsEnEspecie { get; set; }
+    public DateTime FechaUltimaSincronizacion { get; set; }
+
+    // Auditoría
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Soft-Delete
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+}
+
+// A3 INNUVA NÓMINAS - Nóminas calculadas (resultado de PHASE 2)
+public class StagingA3InnuvaNominaCalculada : IAuditable, ISoftDeletable
+{
+    public int Id { get; set; }
+    public string IdExterno { get; set; } = null!; // "{EmpleadoCode}_{PeriodCode}"
+    public string CodigoEmpleado { get; set; } = null!;
+    public string NombreEmpleado { get; set; } = null!;
+    public string CodigoPeriodo { get; set; } = null!;
+    public DateTime FechaPeriodo { get; set; }
+
+    // Cálculos
+    public decimal TotalPercepciones { get; set; } // Suma de conceptos tipo "E"
+    public decimal TotalDescuentos { get; set; }   // Suma de conceptos tipo "D"
+    public decimal SalarioNeto { get; set; }       // TotalPercepciones - TotalDescuentos
+
+    // Control
+    public bool FueEnviadoAWK { get; set; }        // ¿Fue enviado a Wolters Kluwer (PHASE 3)?
+    public DateTime? FechaEnvio { get; set; }
+    public string? ResponseWK { get; set; }        // Respuesta de Wolters Kluwer
+
+    // Auditoría
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Soft-Delete
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+}

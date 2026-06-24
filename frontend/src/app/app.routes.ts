@@ -129,8 +129,11 @@ export const routes: Routes = [
       // Forecast (PPT slide 36)
       { path: 'forecast', loadComponent: () => import('./features/forecast/forecast-resumen.component').then((m) => m.ForecastResumenComponent), title: 'Forecast — SIG' },
 
-      // A3 INNUVA Nóminas (Testing & Integration)
-      { path: 'a3-innuva', loadComponent: () => import('./features/a3-innuva/a3-innuva.component').then((m) => m.A3InnuvaComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'A3 INNUVA Nóminas — SIG' },
+      // A3 INNUVA - Nóminas (PHASE 1/2/3)
+      { path: 'a3-innuva-nominas', loadComponent: () => import('./features/a3-innuva-nominas/a3-innuva-nominas.component').then((m) => m.A3InnuvaNominasComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'A3 INNUVA Nóminas (3 Fases) — SIG' },
+
+      // A3 INNUVA - Pruebas (anterior)
+      { path: 'a3-innuva', loadComponent: () => import('./features/a3-innuva/a3-innuva.component').then((m) => m.A3InnuvaComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'A3 INNUVA (TEST) — SIG' },
 
       // Administración — CostCenters
       { path: 'cost-centers', loadComponent: () => import('./features/cost-centers/cost-centers-list.component').then((m) => m.CostCentersListComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Centros de Coste — SIG' },

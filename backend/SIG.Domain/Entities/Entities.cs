@@ -490,3 +490,74 @@ public class A3InnuvaOAuthToken
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
+
+// Payment model configuration: supports 3 payment models (FIXED, PER_VISIT, PER_SERVICE)
+public class PaymentModel : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ClientId { get; set; }
+    public Client Client { get; set; } = null!;
+    public string ModelType { get; set; } = null!;  // FIXED | PER_VISIT | PER_SERVICE
+    public DateOnly EffectiveFrom { get; set; }
+    public DateOnly? EffectiveUntil { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public ICollection<PaymentRatesConfiguration> RatesConfigurations { get; set; } = new List<PaymentRatesConfiguration>();
+    public ICollection<EmployeePaymentModelMapping> EmployeeMappings { get; set; } = new List<EmployeePaymentModelMapping>();
+}
+
+// Rate configuration per client/concept/month/year
+public class PaymentRatesConfiguration : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ClientId { get; set; }
+    public Client Client { get; set; } = null!;
+    public int? ConceptId { get; set; }
+    public Concept? Concept { get; set; }
+    public int Year { get; set; }
+    public int? Month { get; set; }  // null = applies to all months of the year
+    public decimal BaseRate { get; set; }
+    public string RateType { get; set; } = null!;  // FIXED | PERCENTAGE | FORMULA
+    public string? RateFormula { get; set; }        // for FORMULA type: "=salario_bruto_proyecto * 0.17"
+    public decimal? MinValue { get; set; }          // validation: minimum value
+    public decimal? MaxValue { get; set; }          // validation: maximum value
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// Per-employee payment model assignment (for edge cases where employee switches models mid-month)
+public class EmployeePaymentModelMapping : IAuditable
+{
+    public int Id { get; set; }
+    public int EmployeeId { get; set; }  // Foreign key to external employee system (INNUVA, etc.)
+    public string EmployeeCode { get; set; } = null!;
+    public int PaymentModelId { get; set; }
+    public PaymentModel PaymentModel { get; set; } = null!;
+    public int ClientId { get; set; }
+    public Client Client { get; set; } = null!;
+    public DateOnly EffectiveFrom { get; set; }
+    public DateOnly? EffectiveUntil { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// Concept applicability rules per payment model
+public class ConceptValidationRule : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ConceptId { get; set; }
+    public Concept Concept { get; set; } = null!;
+    public string PaymentModelType { get; set; } = null!;  // FIXED | PER_VISIT | PER_SERVICE
+    public bool IsApplicable { get; set; }          // whether concept applies to this payment model
+    public bool IsMandatory { get; set; }           // whether concept is required for this model
+    public string? CalculationMethod { get; set; }  // calculation strategy: PERCENTAGE_OF_SALARY, FIXED_AMOUNT, FORMULA, etc.
+    public string? AggregationLevel { get; set; }   // aggregation level: EMPLOYEE | PROJECT | VISIT | SERVICE
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}

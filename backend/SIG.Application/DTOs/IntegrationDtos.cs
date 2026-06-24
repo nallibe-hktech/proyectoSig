@@ -148,3 +148,37 @@ public record A3InnuvaNominasPayrollDto(
     decimal NetSalary,
     DateTime ProcessDate
 );
+
+public record EmployeeDto(
+    string EmployeeId,
+    string EmployeeCode,
+    string CompleteName,
+    string IdentifierNumber,
+    string? WorkplaceCode,
+    DateTime? EnrolmentDate
+);
+
+public record ConceptoDto(
+    string? ConceptCode,
+    string Description,
+    decimal Amount,
+    string ConceptType,
+    bool InKind,
+    bool Manual,
+    string ConceptCollectionTypeDesc,
+    string? CodigoEmpleado = null,
+    string? NombreEmpleado = null
+);
+
+public record A3InnuvaNominaCalculadaDto(
+    string IdExterno,
+    string CodigoEmpleado,
+    string NombreEmpleado,
+    string CodigoPeriodo,
+    decimal TotalPercepciones,
+    decimal TotalDescuentos,
+    decimal SalarioNeto,
+    bool FueEnviadoAWK,
+    DateTime? FechaEnvio,
+    string? ResponseWK
+);

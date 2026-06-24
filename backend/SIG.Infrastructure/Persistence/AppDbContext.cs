@@ -53,6 +53,8 @@ public class AppDbContext : DbContext
     public DbSet<StagingA3InnuvaContrato> StagingA3InnuvaContratos => Set<StagingA3InnuvaContrato>();
     public DbSet<StagingA3InnuvaCompany> StagingA3InnuvaCompanies => Set<StagingA3InnuvaCompany>();
     public DbSet<StagingA3InnuvaPayroll> StagingA3InnuvaPayrolls => Set<StagingA3InnuvaPayroll>();
+    public DbSet<StagingA3InnuvaConcepto> StagingA3InnuvaConceptos => Set<StagingA3InnuvaConcepto>();
+    public DbSet<StagingA3InnuvaNominaCalculada> StagingA3InnuvaNominasCalculadas => Set<StagingA3InnuvaNominaCalculada>();
     public DbSet<StagingA3InnuvaCompanyTest> StagingA3InnuvaCompaniesTest => Set<StagingA3InnuvaCompanyTest>();
     public DbSet<StagingA3InnuvaPayrollTest> StagingA3InnuvaPayrollsTest => Set<StagingA3InnuvaPayrollTest>();
     public DbSet<StagingTravelPerkViaje> StagingTravelPerkViajes => Set<StagingTravelPerkViaje>();
@@ -65,6 +67,12 @@ public class AppDbContext : DbContext
     // MEDIAPOST - Distribución
     public DbSet<StagingMediapostPedido> StagingMediapostPedidos => Set<StagingMediapostPedido>();
     public DbSet<StagingMediapostRecepcion> StagingMediapostRecepciones => Set<StagingMediapostRecepcion>();
+
+    // Payment Models Configuration
+    public DbSet<PaymentModel> PaymentModels => Set<PaymentModel>();
+    public DbSet<PaymentRatesConfiguration> PaymentRatesConfigurations => Set<PaymentRatesConfiguration>();
+    public DbSet<EmployeePaymentModelMapping> EmployeePaymentModelMappings => Set<EmployeePaymentModelMapping>();
+    public DbSet<ConceptValidationRule> ConceptValidationRules => Set<ConceptValidationRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

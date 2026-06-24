@@ -58,6 +58,26 @@ public interface IA3InnuvaNominasClient
         DateTime? fromDate = null,
         DateTime? toDate = null,
         CancellationToken ct = default);
+
+    Task<IReadOnlyList<EmployeeDto>> GetEmployeesAsync(
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<ConceptoDto>> GetConceptosAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default);
+
+    Task<string> WritePayrollAsync(
+        string companyCode,
+        string employeeCode,
+        string periodCode,
+        decimal percepciones,
+        decimal descuentos,
+        decimal neto,
+        CancellationToken ct = default);
 }
 
 public interface IGalanClient

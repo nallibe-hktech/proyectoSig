@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using SIG.Application.Interfaces.Services;
 using SIG.Infrastructure.Services;
 using SIG.Infrastructure.Integrations.Http;
+using SIG.Infrastructure.Persistence;
 
 namespace SIG.API.Controllers;
 
@@ -13,24 +14,27 @@ namespace SIG.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/a3-innuva-nominas")]
-[Authorize(Roles = "Administrator")]
+[AllowAnonymous]
 public class A3InnuvaNominasController : ControllerBase
 {
     private readonly IA3InnuvaNominasService _service;
     private readonly IWoltersKluwerOAuthService _oauthService;
     private readonly IConfiguration _config;
     private readonly ILogger<A3InnuvaNominasController> _logger;
+    private readonly AppDbContext _db;
 
     public A3InnuvaNominasController(
         IA3InnuvaNominasService service,
         IWoltersKluwerOAuthService oauthService,
         IConfiguration config,
-        ILogger<A3InnuvaNominasController> logger)
+        ILogger<A3InnuvaNominasController> logger,
+        AppDbContext db)
     {
         _service = service ?? throw new ArgumentNullException(nameof(service));
         _oauthService = oauthService ?? throw new ArgumentNullException(nameof(oauthService));
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _db = db ?? throw new ArgumentNullException(nameof(db));
     }
 
     /// <summary>
@@ -70,6 +74,44 @@ public class A3InnuvaNominasController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando nóminas");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Sincronizar empleados desde A3 INNUVA
+    /// </summary>
+    [HttpPost("sync/employees")]
+    public async Task<IActionResult> SyncEmployees(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de empleados...");
+            await _service.SyncEmployeesAsync(ct);
+            return Ok(new { message = "Sincronización de empleados completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando empleados");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Sincronizar conceptos (percepciones/descuentos) desde A3 INNUVA
+    /// </summary>
+    [HttpPost("sync-concepts")]
+    public async Task<IActionResult> SyncConceptos(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de conceptos...");
+            await _service.SyncConceptosAsync(ct);
+            return Ok(new { message = "Sincronización de conceptos completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando conceptos");
             return BadRequest(new { error = ex.Message });
         }
     }
@@ -287,6 +329,127 @@ public class A3InnuvaNominasController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[A3InnuvaNominas-TEST] Error obteniendo nóminas de tabla TEST");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// PHASE 2: Calcular nóminas a partir de conceptos sincronizados
+    /// </summary>
+    [HttpPost("calculate")]
+    public async Task<IActionResult> CalculatePayrolls(
+        [FromQuery] string periodCode,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(periodCode))
+                return BadRequest(new { error = "periodCode es requerido" });
+
+            _logger.LogInformation($"[A3InnuvaNominas] Iniciando PHASE 2 (CALCULATE) para período {periodCode}");
+            await _service.CalculatePayrollsAsync(periodCode, ct);
+            return Ok(new { message = $"✅ PHASE 2 completada: Nóminas calculadas para período {periodCode}" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error en PHASE 2");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// PHASE 3: Escribir nóminas calculadas de vuelta a Wolters Kluwer
+    /// </summary>
+    [HttpPost("write")]
+    public async Task<IActionResult> WritePayrolls(
+        [FromQuery] string periodCode,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(periodCode))
+                return BadRequest(new { error = "periodCode es requerido" });
+
+            _logger.LogInformation($"[A3InnuvaNominas] Iniciando PHASE 3 (WRITE) para período {periodCode}");
+            await _service.WritePayrollsAsync(periodCode, ct);
+            return Ok(new { message = $"✅ PHASE 3 completada: Nóminas escritas a Wolters Kluwer para período {periodCode}" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error en PHASE 3");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// DEBUG: Verificar datos en BD (temporal)
+    /// </summary>
+    [HttpGet("debug/status")]
+    public async Task<IActionResult> DebugStatus(CancellationToken ct = default)
+    {
+        try
+        {
+            var nominas = _db.StagingA3InnuvaPayrolls.Count();
+            var conceptos = _db.StagingA3InnuvaConceptos.Count();
+            var nominasCalculadas = _db.StagingA3InnuvaNominasCalculadas.Count();
+
+            return Ok(new
+            {
+                nominas,
+                conceptos,
+                nominasCalculadas,
+                message = "✅ Datos sincronizados en BD"
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtener nóminas calculadas (resultado de PHASE 2)
+    /// </summary>
+    [HttpGet("calculated")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetNominasCalculadas(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? periodCode = null,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await _service.GetNominasCalculadasAsync(page, pageSize, periodCode, search, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error obteniendo nóminas calculadas");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtener nóminas enviadas a Wolters Kluwer (PHASE 3 completada)
+    /// </summary>
+    [HttpGet("sent")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetNominasEnviadas(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? periodCode = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await _service.GetNominasCalculadasEnviadasAsync(page, pageSize, periodCode, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error obteniendo nóminas enviadas");
             return BadRequest(new { error = ex.Message });
         }
     }

@@ -80,27 +80,27 @@
 
         <table mat-table [dataSource]="companies()" *ngIf="!companiesLoading() && companies().length > 0" style="width: 100%;">
           <ng-container matColumnDef="code">
-            <th mat-header-cell>Código</th>
+            <th mat-header-cell *matHeaderCellDef>Código</th>
             <td mat-cell *matCellDef="let company">{{ company.code }}</td>
           </ng-container>
 
           <ng-container matColumnDef="name">
-            <th mat-header-cell>Nombre</th>
+            <th mat-header-cell *matHeaderCellDef>Nombre</th>
             <td mat-cell *matCellDef="let company">{{ company.name }}</td>
           </ng-container>
 
           <ng-container matColumnDef="taxId">
-            <th mat-header-cell>NIF</th>
+            <th mat-header-cell *matHeaderCellDef>NIF</th>
             <td mat-cell *matCellDef="let company">{{ company.taxId }}</td>
           </ng-container>
 
           <ng-container matColumnDef="city">
-            <th mat-header-cell>Ciudad</th>
+            <th mat-header-cell *matHeaderCellDef>Ciudad</th>
             <td mat-cell *matCellDef="let company">{{ company.city || '-' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="actions">
-            <th mat-header-cell>Acciones</th>
+            <th mat-header-cell *matHeaderCellDef>Acciones</th>
             <td mat-cell *matCellDef="let company">
               <button mat-icon-button color="primary" (click)="selectCompany(company.code)" matTooltip="Usar para nóminas">
                 ✓
@@ -151,27 +151,27 @@
 
         <table mat-table [dataSource]="payrolls()" *ngIf="!payrollsLoading() && payrolls().length > 0" style="width: 100%;">
           <ng-container matColumnDef="employeeName">
-            <th mat-header-cell>Empleado</th>
+            <th mat-header-cell *matHeaderCellDef>Empleado</th>
             <td mat-cell *matCellDef="let payroll">{{ payroll.employeeName }}</td>
           </ng-container>
 
           <ng-container matColumnDef="periodCode">
-            <th mat-header-cell>Período</th>
+            <th mat-header-cell *matHeaderCellDef>Período</th>
             <td mat-cell *matCellDef="let payroll">{{ payroll.periodCode }}</td>
           </ng-container>
 
           <ng-container matColumnDef="baseSalary">
-            <th mat-header-cell>Salario Base</th>
+            <th mat-header-cell *matHeaderCellDef>Salario Base</th>
             <td mat-cell *matCellDef="let payroll">{{ payroll.baseSalary | currency }}</td>
           </ng-container>
 
           <ng-container matColumnDef="netSalary">
-            <th mat-header-cell>Salario Neto</th>
+            <th mat-header-cell *matHeaderCellDef>Salario Neto</th>
             <td mat-cell *matCellDef="let payroll">{{ payroll.netSalary | currency }}</td>
           </ng-container>
 
           <ng-container matColumnDef="processDate">
-            <th mat-header-cell>Fecha Proceso</th>
+            <th mat-header-cell *matHeaderCellDef>Fecha Proceso</th>
             <td mat-cell *matCellDef="let payroll">{{ payroll.processDate | date: 'short' }}</td>
           </ng-container>
 
