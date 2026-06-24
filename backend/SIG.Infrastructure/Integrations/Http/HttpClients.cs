@@ -919,13 +919,13 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
 
             var queryParams = $"?pageNumber={pageNumber}&pageSize={pageSize}";
 
-            // Usar endpoint correcto: /Laboral/api/companies/{companyCode}/employees
-            var url = $"companies/{Uri.EscapeDataString(companyCode)}/employees{queryParams}";
+            // Endpoint correcto: api/companies/{companyCode}/employees (SIN / inicial para evitar doble slash)
+            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/employees{queryParams}";
 
-            _logger.LogInformation($"[A3InnuvaNominas] GET /Laboral/api/{url}");
+            _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
             _logger.LogInformation($"[A3InnuvaNominas] BaseAddress: {_httpClient.BaseAddress}");
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/Laboral/api/{url}");
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("Authorization", $"Bearer {token}");
             request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
             request.Headers.Add("Accept", "application/json");
@@ -962,8 +962,8 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
 
             // Convertir empleados a PayrollDto (para mantener compatibilidad con el flujo existente)
             return data.Select((e, index) => new A3InnuvaNominasPayrollDto(
-                e.EmployeeCode ?? $"EMP{index}",
-                e.EmployeeCode ?? "",
+                e.EmployeeId ?? $"ID{index}",  // ID externo = UUID
+                e.EmployeeId ?? "",             // EmployeeId = UUID (FIX: era EmployeeCode)
                 e.Name ?? e.CompleteName ?? "",
                 DateTime.UtcNow.Year.ToString(),
                 e.PactedSalary ?? 0,
@@ -1012,10 +1012,11 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
 
             var token = await _oauthService.GetAccessTokenAsync(ct);
 
-            var url = $"companies/1/employees?pageNumber={pageNumber}&pageSize={pageSize}";
-            _logger.LogInformation($"[A3InnuvaNominas] GET /Laboral/api/{url}");
+            // Wolters Kluwer devuelve array directo, sin paginación
+            var url = $"Laboral/api/companies/1/employees";
+            _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/Laboral/api/{url}");
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("Authorization", $"Bearer {token}");
             request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
             request.Headers.Add("api-version", "2");
@@ -1027,7 +1028,7 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             if (!response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogError($"[A3InnuvaNominas] Error: {response.StatusCode}");
+                _logger.LogError($"[A3InnuvaNominas] ❌ Error {response.StatusCode}: {responseContent}");
                 return Array.Empty<EmployeeDto>();
             }
 
@@ -1092,10 +1093,11 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             // MODO REAL: Llamar a la API
             var token = await _oauthService.GetAccessTokenAsync(ct);
 
-            var url = $"companies/1/employees/{Uri.EscapeDataString(employeeCode)}/concepts?pageNumber={pageNumber}&pageSize={pageSize}";
-            _logger.LogInformation($"[A3InnuvaNominas] GET /Laboral/api/{url}");
+            // Wolters Kluwer devuelve array directo, sin paginación
+            var url = $"Laboral/api/companies/1/employees/{Uri.EscapeDataString(employeeCode)}/concepts";
+            _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/Laboral/api/{url}");
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("Authorization", $"Bearer {token}");
             request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
             request.Headers.Add("api-version", "2");
@@ -1107,7 +1109,7 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             if (!response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogError($"[A3InnuvaNominas] Error: {response.StatusCode}");
+                _logger.LogError($"[A3InnuvaNominas] ❌ Error {response.StatusCode}: {responseContent}");
                 return Array.Empty<ConceptoDto>();
             }
 
@@ -1337,8 +1339,8 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             _logger.LogInformation($"[A3InnuvaNominas] WritePayrollAsync iniciado - empleado {employeeCode}, período {periodCode}");
             var token = await _oauthService.GetAccessTokenAsync(ct);
 
-            var url = $"companies/{Uri.EscapeDataString(companyCode)}/employees/{Uri.EscapeDataString(employeeCode)}/payroll";
-            _logger.LogInformation($"[A3InnuvaNominas] POST /Laboral/api/{url}");
+            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/employees/{Uri.EscapeDataString(employeeCode)}/payroll";
+            _logger.LogInformation($"[A3InnuvaNominas] POST {_httpClient.BaseAddress}{url}");
 
             var payload = new PayrollWriteRequest
             {
@@ -1354,7 +1356,7 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
                 System.Text.Encoding.UTF8,
                 "application/json");
 
-            var request = new HttpRequestMessage(HttpMethod.Post, $"/Laboral/api/{url}")
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
             {
                 Content = content
             };
@@ -1400,6 +1402,480 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
 
         [JsonPropertyName("processDate")]
         public DateTime ProcessDate { get; set; }
+    }
+
+    // ====== PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ======
+
+    /// <summary>
+    /// PHASE 1.3a: Get salary data for employee
+    /// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/salary
+    /// </summary>
+    public async Task<IReadOnlyList<SalaryDto>> GetSalaryAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] GetSalaryAsync iniciado - empleado {Code}", employeeCode);
+
+            if (_useFakeData)
+            {
+                var fakeSalaries = new List<SalaryDto>
+                {
+                    new SalaryDto(
+                        $"{employeeCode}_salary",
+                        employeeCode,
+                        "12345678A",
+                        2500m,
+                        2000m,
+                        "EUR",
+                        DateTime.Now.AddYears(-2),
+                        null
+                    )
+                };
+                return fakeSalaries;
+            }
+
+            var token = await _oauthService.GetAccessTokenAsync(ct);
+            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/employees/{Uri.EscapeDataString(employeeCode)}/salary";
+            _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
+            request.Headers.Add("Accept", "application/json");
+
+            var response = await _httpClient.SendAsync(request, ct);
+            _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError($"[A3InnuvaNominas] Error GetSalary: {response.StatusCode}");
+                return Array.Empty<SalaryDto>();
+            }
+
+            var data = await response.Content.ReadFromJsonAsync<List<SalaryResponse>>(cancellationToken: ct);
+            if (data == null) return Array.Empty<SalaryDto>();
+
+            return data.Select(s => new SalaryDto(
+                $"{employeeCode}_salary",
+                employeeCode,
+                s.NIF ?? "",
+                s.GrossSalary ?? 0,
+                s.NetSalary ?? 0,
+                s.Currency ?? "EUR",
+                s.StartDate,
+                s.EndDate
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error GetSalary: {Message}", ex.Message);
+            return Array.Empty<SalaryDto>();
+        }
+    }
+
+    /// <summary>
+    /// PHASE 1.3b: Get IRPF (tax) data for employee
+    /// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/irpf
+    /// </summary>
+    public async Task<IReadOnlyList<IRPFDto>> GetIRPFAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] GetIRPFAsync iniciado - empleado {Code}", employeeCode);
+
+            if (_useFakeData)
+            {
+                var fakeIRPF = new List<IRPFDto>
+                {
+                    new IRPFDto(
+                        $"{employeeCode}_irpf",
+                        employeeCode,
+                        "12345678A",
+                        "IRPF",
+                        21m,
+                        500m,
+                        DateTime.Now.AddYears(-1),
+                        null
+                    )
+                };
+                return fakeIRPF;
+            }
+
+            var token = await _oauthService.GetAccessTokenAsync(ct);
+            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/employees/{Uri.EscapeDataString(employeeCode)}/irpf";
+            _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
+            request.Headers.Add("Accept", "application/json");
+
+            var response = await _httpClient.SendAsync(request, ct);
+            _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError($"[A3InnuvaNominas] Error GetIRPF: {response.StatusCode}");
+                return Array.Empty<IRPFDto>();
+            }
+
+            var data = await response.Content.ReadFromJsonAsync<List<IRPFResponse>>(cancellationToken: ct);
+            if (data == null) return Array.Empty<IRPFDto>();
+
+            return data.Select(i => new IRPFDto(
+                $"{employeeCode}_irpf",
+                employeeCode,
+                i.NIF ?? "",
+                i.TaxType ?? "IRPF",
+                i.TaxRate ?? 0,
+                i.RetentionAmount ?? 0,
+                i.StartDate,
+                i.EndDate
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error GetIRPF: {Message}", ex.Message);
+            return Array.Empty<IRPFDto>();
+        }
+    }
+
+    /// <summary>
+    /// PHASE 1.3c: Get remuneration data for employee
+    /// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/remuneration
+    /// </summary>
+    public async Task<IReadOnlyList<RemunerationDto>> GetRemunerationAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] GetRemunerationAsync iniciado - empleado {Code}", employeeCode);
+
+            if (_useFakeData)
+            {
+                var fakeRemuneration = new List<RemunerationDto>
+                {
+                    new RemunerationDto(
+                        $"{employeeCode}_rem_bonus",
+                        employeeCode,
+                        "12345678A",
+                        "Bono",
+                        500m,
+                        "Desempeño",
+                        DateTime.Now.AddMonths(-3),
+                        null
+                    )
+                };
+                return fakeRemuneration;
+            }
+
+            var token = await _oauthService.GetAccessTokenAsync(ct);
+            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/employees/{Uri.EscapeDataString(employeeCode)}/remuneration";
+            _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
+            request.Headers.Add("Accept", "application/json");
+
+            var response = await _httpClient.SendAsync(request, ct);
+            _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError($"[A3InnuvaNominas] Error GetRemuneration: {response.StatusCode}");
+                return Array.Empty<RemunerationDto>();
+            }
+
+            var data = await response.Content.ReadFromJsonAsync<List<RemunerationResponse>>(cancellationToken: ct);
+            if (data == null) return Array.Empty<RemunerationDto>();
+
+            return data.Select(r => new RemunerationDto(
+                $"{employeeCode}_rem_{r.RemunerationType}",
+                employeeCode,
+                r.NIF ?? "",
+                r.RemunerationType ?? "",
+                r.Amount ?? 0,
+                r.Concept,
+                r.StartDate,
+                r.EndDate
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error GetRemuneration: {Message}", ex.Message);
+            return Array.Empty<RemunerationDto>();
+        }
+    }
+
+    /// <summary>
+    /// PHASE 1.3d: Get bank account data for employee
+    /// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/bankaccounts
+    /// </summary>
+    public async Task<IReadOnlyList<BankAccountDto>> GetBankAccountsAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] GetBankAccountsAsync iniciado - empleado {Code}", employeeCode);
+
+            if (_useFakeData)
+            {
+                var fakeBankAccounts = new List<BankAccountDto>
+                {
+                    new BankAccountDto(
+                        $"{employeeCode}_bank",
+                        employeeCode,
+                        "12345678A",
+                        "ES9121000418450200051332",
+                        "BBVAESMM",
+                        "Juan García López",
+                        "Principal",
+                        true,
+                        DateTime.Now.AddYears(-3),
+                        null
+                    )
+                };
+                return fakeBankAccounts;
+            }
+
+            var token = await _oauthService.GetAccessTokenAsync(ct);
+            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/employees/{Uri.EscapeDataString(employeeCode)}/bankaccounts";
+            _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
+            request.Headers.Add("Accept", "application/json");
+
+            var response = await _httpClient.SendAsync(request, ct);
+            _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError($"[A3InnuvaNominas] Error GetBankAccounts: {response.StatusCode}");
+                return Array.Empty<BankAccountDto>();
+            }
+
+            var data = await response.Content.ReadFromJsonAsync<List<BankAccountResponse>>(cancellationToken: ct);
+            if (data == null) return Array.Empty<BankAccountDto>();
+
+            return data.Select(b => new BankAccountDto(
+                $"{employeeCode}_bank",
+                employeeCode,
+                b.NIF ?? "",
+                b.IBAN ?? "",
+                b.BIC,
+                b.AccountHolderName,
+                b.AccountType,
+                b.IsPrimary ?? false,
+                b.StartDate,
+                b.EndDate
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error GetBankAccounts: {Message}", ex.Message);
+            return Array.Empty<BankAccountDto>();
+        }
+    }
+
+    /// <summary>
+    /// PHASE 1.3e: Get agreement data for employee
+    /// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/agreements
+    /// </summary>
+    public async Task<IReadOnlyList<AgreementDto>> GetAgreementsAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] GetAgreementsAsync iniciado - empleado {Code}", employeeCode);
+
+            if (_useFakeData)
+            {
+                var fakeAgreements = new List<AgreementDto>
+                {
+                    new AgreementDto(
+                        $"{employeeCode}_agree",
+                        employeeCode,
+                        "12345678A",
+                        "COL_2024",
+                        "Convenio Sector Servicios 2024",
+                        "Colectivo",
+                        DateTime.Parse("2024-01-01"),
+                        DateTime.Parse("2024-12-31"),
+                        "Acuerdo negociación colectiva sectorial"
+                    )
+                };
+                return fakeAgreements;
+            }
+
+            var token = await _oauthService.GetAccessTokenAsync(ct);
+            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/employees/{Uri.EscapeDataString(employeeCode)}/agreements";
+            _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
+            request.Headers.Add("Accept", "application/json");
+
+            var response = await _httpClient.SendAsync(request, ct);
+            _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError($"[A3InnuvaNominas] Error GetAgreements: {response.StatusCode}");
+                return Array.Empty<AgreementDto>();
+            }
+
+            var data = await response.Content.ReadFromJsonAsync<List<AgreementResponse>>(cancellationToken: ct);
+            if (data == null) return Array.Empty<AgreementDto>();
+
+            return data.Select(a => new AgreementDto(
+                $"{employeeCode}_agree",
+                employeeCode,
+                a.NIF ?? "",
+                a.AgreementCode ?? "",
+                a.AgreementName ?? "",
+                a.AgreementType ?? "",
+                a.StartDate,
+                a.EndDate,
+                a.Description
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error GetAgreements: {Message}", ex.Message);
+            return Array.Empty<AgreementDto>();
+        }
+    }
+
+    // Response DTOs for Phase 1 Redesigned endpoints
+
+    private class SalaryResponse
+    {
+        [JsonPropertyName("nif")]
+        public string? NIF { get; set; }
+
+        [JsonPropertyName("grossSalary")]
+        public decimal? GrossSalary { get; set; }
+
+        [JsonPropertyName("netSalary")]
+        public decimal? NetSalary { get; set; }
+
+        [JsonPropertyName("currency")]
+        public string? Currency { get; set; }
+
+        [JsonPropertyName("startDate")]
+        public DateTime StartDate { get; set; }
+
+        [JsonPropertyName("endDate")]
+        public DateTime? EndDate { get; set; }
+    }
+
+    private class IRPFResponse
+    {
+        [JsonPropertyName("nif")]
+        public string? NIF { get; set; }
+
+        [JsonPropertyName("taxType")]
+        public string? TaxType { get; set; }
+
+        [JsonPropertyName("taxRate")]
+        public decimal? TaxRate { get; set; }
+
+        [JsonPropertyName("retentionAmount")]
+        public decimal? RetentionAmount { get; set; }
+
+        [JsonPropertyName("startDate")]
+        public DateTime StartDate { get; set; }
+
+        [JsonPropertyName("endDate")]
+        public DateTime? EndDate { get; set; }
+    }
+
+    private class RemunerationResponse
+    {
+        [JsonPropertyName("nif")]
+        public string? NIF { get; set; }
+
+        [JsonPropertyName("remunerationType")]
+        public string? RemunerationType { get; set; }
+
+        [JsonPropertyName("amount")]
+        public decimal? Amount { get; set; }
+
+        [JsonPropertyName("concept")]
+        public string? Concept { get; set; }
+
+        [JsonPropertyName("startDate")]
+        public DateTime StartDate { get; set; }
+
+        [JsonPropertyName("endDate")]
+        public DateTime? EndDate { get; set; }
+    }
+
+    private class BankAccountResponse
+    {
+        [JsonPropertyName("nif")]
+        public string? NIF { get; set; }
+
+        [JsonPropertyName("iban")]
+        public string? IBAN { get; set; }
+
+        [JsonPropertyName("bic")]
+        public string? BIC { get; set; }
+
+        [JsonPropertyName("accountHolderName")]
+        public string? AccountHolderName { get; set; }
+
+        [JsonPropertyName("accountType")]
+        public string? AccountType { get; set; }
+
+        [JsonPropertyName("isPrimary")]
+        public bool? IsPrimary { get; set; }
+
+        [JsonPropertyName("startDate")]
+        public DateTime StartDate { get; set; }
+
+        [JsonPropertyName("endDate")]
+        public DateTime? EndDate { get; set; }
+    }
+
+    private class AgreementResponse
+    {
+        [JsonPropertyName("nif")]
+        public string? NIF { get; set; }
+
+        [JsonPropertyName("agreementCode")]
+        public string? AgreementCode { get; set; }
+
+        [JsonPropertyName("agreementName")]
+        public string? AgreementName { get; set; }
+
+        [JsonPropertyName("agreementType")]
+        public string? AgreementType { get; set; }
+
+        [JsonPropertyName("startDate")]
+        public DateTime StartDate { get; set; }
+
+        [JsonPropertyName("endDate")]
+        public DateTime? EndDate { get; set; }
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
     }
 }
 

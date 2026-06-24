@@ -444,7 +444,7 @@ public class StagingA3InnuvaCompany : IAuditable, ISoftDeletable
     public DateTime? DeletedAt { get; set; }
 }
 
-public class StagingA3InnuvaPayroll : IAuditable, ISoftDeletable
+public class StagingA3InnuvaPayroll : IStagingRow, IAuditable, ISoftDeletable
 {
     public int Id { get; set; }
     public string IdExterno { get; set; } = null!;
@@ -455,6 +455,13 @@ public class StagingA3InnuvaPayroll : IAuditable, ISoftDeletable
     public decimal Deducciones { get; set; }
     public decimal SalarioNeto { get; set; }
     public DateTime FechaProcesamiento { get; set; }
+
+    // IStagingRow properties
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
 
     // Auditoría
     public DateTime CreatedAt { get; set; }
@@ -562,4 +569,145 @@ public class StagingA3InnuvaNominaCalculada : IAuditable, ISoftDeletable
     // Soft-Delete
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
+}
+
+// ====== PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ======
+
+/// <summary>
+/// PHASE 1.3a: Datos de salario del empleado
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/salary
+/// </summary>
+public class StagingA3InnuvaSalary : IStagingRow
+{
+    public int Id { get; set; }
+    public string SalaryIdExterno { get; set; } = null!;  // {EmployeeId}_{ContractId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public string ContratoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de salary desde API
+    public decimal ImporteBruto { get; set; }
+    public decimal ImporteNeto { get; set; }
+    public string? Moneda { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.3b: Retenciones de impuestos (IRPF en España)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/irpf
+/// </summary>
+public class StagingA3InnuvaIRPF : IStagingRow
+{
+    public int Id { get; set; }
+    public string IRPFIdExterno { get; set; } = null!;  // {EmployeeId}_{ImpuestoId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de IRPF
+    public string TipoImpuesto { get; set; } = null!;  // "IRPF", "SS", etc.
+    public decimal PercentajeTariacion { get; set; }
+    public decimal ImporteRetencion { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.3c: Remuneraciones (percepciones complementarias)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/remuneration
+/// </summary>
+public class StagingA3InnuvaRemuneration : IStagingRow
+{
+    public int Id { get; set; }
+    public string RemuneracionIdExterno { get; set; } = null!;  // {EmployeeId}_{RemuId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de remuneration
+    public string TipoRemuneracion { get; set; } = null!;  // "Bono", "Comisión", "Plus", etc.
+    public decimal Importe { get; set; }
+    public string? Concepto { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.3d: Cuentas bancarias del empleado
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/bankaccounts
+/// </summary>
+public class StagingA3InnuvaBankAccount : IStagingRow
+{
+    public int Id { get; set; }
+    public string CuentaIdExterno { get; set; } = null!;  // {EmployeeId}_{CuentaId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de cuenta bancaria
+    public string IBAN { get; set; } = null!;
+    public string? BIC { get; set; }
+    public string? NombreTitular { get; set; }
+    public string? TipoCuenta { get; set; }  // "Principal", "Adicional", etc.
+    public bool EsPrincipal { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.3e: Acuerdos / Colectivos (datos de negociación colectiva)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/agreements
+/// </summary>
+public class StagingA3InnuvaAgreement : IStagingRow
+{
+    public int Id { get; set; }
+    public string AcuerdoIdExterno { get; set; } = null!;  // {EmployeeId}_{AgreementId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de agreement
+    public string CodigoAcuerdo { get; set; } = null!;
+    public string NombreAcuerdo { get; set; } = null!;
+    public string? TipoAcuerdo { get; set; }  // "Colectivo", "Empresa", "Individual", etc.
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+    public string? Descripcion { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
 }

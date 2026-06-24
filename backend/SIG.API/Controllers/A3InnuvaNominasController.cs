@@ -116,6 +116,108 @@ public class A3InnuvaNominasController : ControllerBase
         }
     }
 
+    // ====== PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ======
+
+    /// <summary>
+    /// PHASE 1.3a: Sync salary data for all employees
+    /// </summary>
+    [HttpPost("sync-salary")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SyncSalary(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de salarios...");
+            await _service.SyncSalaryAsync(ct);
+            return Ok(new { message = "Sincronización de salarios completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando salarios");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// PHASE 1.3b: Sync IRPF (tax) data for all employees
+    /// </summary>
+    [HttpPost("sync-irpf")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SyncIRPF(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de IRPF...");
+            await _service.SyncIRPFAsync(ct);
+            return Ok(new { message = "Sincronización de IRPF completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando IRPF");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// PHASE 1.3c: Sync remuneration data for all employees
+    /// </summary>
+    [HttpPost("sync-remuneration")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SyncRemuneration(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de remuneraciones...");
+            await _service.SyncRemunerationAsync(ct);
+            return Ok(new { message = "Sincronización de remuneraciones completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando remuneraciones");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// PHASE 1.3d: Sync bank account data for all employees
+    /// </summary>
+    [HttpPost("sync-bank-accounts")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SyncBankAccounts(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de cuentas bancarias...");
+            await _service.SyncBankAccountsAsync(ct);
+            return Ok(new { message = "Sincronización de cuentas bancarias completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando cuentas bancarias");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// PHASE 1.3e: Sync agreement data for all employees
+    /// </summary>
+    [HttpPost("sync-agreements")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SyncAgreements(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de acuerdos...");
+            await _service.SyncAgreementsAsync(ct);
+            return Ok(new { message = "Sincronización de acuerdos completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando acuerdos");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     /// <summary>
     /// Obtener lista paginada de empresas sincronizadas
     /// </summary>
@@ -207,7 +309,7 @@ public class A3InnuvaNominasController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> HandleOAuthCallback(
         [FromQuery] string code,
-        [FromQuery] string redirectUri = "http://localhost:4200/a3-innuva/oauth-callback",
+        [FromQuery] string redirectUri = "http://localhost:4200/a3-innuva-nominas/oauth-callback",
         CancellationToken ct = default)
     {
         try
@@ -449,6 +551,44 @@ public class A3InnuvaNominasController : ControllerBase
         }
         catch (Exception ex)
         {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// DEBUG: Limpiar tablas staging (temporal - solo para desarrollo)
+    /// </summary>
+    [HttpPost("debug/clean")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CleanStagingTables(CancellationToken ct = default)
+    {
+        try
+        {
+            var nominasToDelete = _db.StagingA3InnuvaPayrolls.ToList();
+            var nominasDeleted = nominasToDelete.Count;
+            _db.StagingA3InnuvaPayrolls.RemoveRange(nominasToDelete);
+
+            var empleadosToDelete = _db.StagingA3InnuvaEmpleados.ToList();
+            var empleadosDeleted = empleadosToDelete.Count;
+            _db.StagingA3InnuvaEmpleados.RemoveRange(empleadosToDelete);
+
+            var conceptosToDelete = _db.StagingA3InnuvaConceptos.ToList();
+            var conceptosDeleted = conceptosToDelete.Count;
+            _db.StagingA3InnuvaConceptos.RemoveRange(conceptosToDelete);
+
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new
+            {
+                message = "✅ Tablas staging limpiadas",
+                nominasDeleted,
+                empleadosDeleted,
+                conceptosDeleted
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error limpiando tablas staging");
             return BadRequest(new { error = ex.Message });
         }
     }

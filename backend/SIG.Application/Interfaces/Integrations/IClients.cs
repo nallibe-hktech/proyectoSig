@@ -85,6 +85,32 @@ public interface IA3InnuvaNominasClient
         decimal descuentos,
         decimal neto,
         CancellationToken ct = default);
+
+    // PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints
+    Task<IReadOnlyList<SalaryDto>> GetSalaryAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<IRPFDto>> GetIRPFAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<RemunerationDto>> GetRemunerationAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<BankAccountDto>> GetBankAccountsAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<AgreementDto>> GetAgreementsAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
 }
 
 public interface IGalanClient

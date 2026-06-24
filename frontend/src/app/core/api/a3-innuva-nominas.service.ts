@@ -77,6 +77,47 @@ export class A3InnuvaNominasService {
     return this.http.post(`${this.apiUrl}/sync-concepts`, {});
   }
 
+  // ============ PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ============
+  /**
+   * PHASE 1.5: Sync salary data (Contracts) from Wolters Kluwer
+   * Fetches: GrossSalary, NetSalary, Currency, StartDate, EndDate
+   */
+  syncSalary(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync-salary`, {});
+  }
+
+  /**
+   * PHASE 1.6: Sync IRPF (tax retention) data from Wolters Kluwer
+   * Fetches: TaxType, TaxRate, RetentionAmount, StartDate, EndDate
+   */
+  syncIRPF(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync-irpf`, {});
+  }
+
+  /**
+   * PHASE 1.7: Sync remuneration data (bonuses, incentives) from Wolters Kluwer
+   * Fetches: RemunerationType, Amount, Concept, StartDate, EndDate
+   */
+  syncRemuneration(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync-remuneration`, {});
+  }
+
+  /**
+   * PHASE 1.8: Sync bank account data from Wolters Kluwer
+   * Fetches: IBAN, BIC, AccountHolderName, AccountType, IsPrimary, StartDate, EndDate
+   */
+  syncBankAccounts(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync-bank-accounts`, {});
+  }
+
+  /**
+   * PHASE 1.9: Sync collective agreements data from Wolters Kluwer
+   * Fetches: AgreementCode, AgreementName, AgreementType, StartDate, EndDate, Description
+   */
+  syncAgreements(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync-agreements`, {});
+  }
+
   // ============ PHASE 2: CALCULATE ============
   /**
    * PHASE 2: Calculate payrolls (nóminas calculadas)
@@ -142,7 +183,7 @@ export class A3InnuvaNominasService {
       .set('pageSize', pageSize.toString());
     if (periodCode) params = params.set('periodCode', periodCode);
     if (search) params = params.set('search', search);
-    return this.http.get<PagedResult<A3InnuvaNominaDto>>(`${this.apiUrl}/nóminas-calculadas`, { params });
+    return this.http.get<PagedResult<A3InnuvaNominaDto>>(`${this.apiUrl}/calculated`, { params });
   }
 
   /**
@@ -159,7 +200,7 @@ export class A3InnuvaNominasService {
       .set('pageSize', pageSize.toString());
     if (periodCode) params = params.set('periodCode', periodCode);
     if (search) params = params.set('search', search);
-    return this.http.get<PagedResult<A3InnuvaNominaDto>>(`${this.apiUrl}/nóminas-enviadas`, { params });
+    return this.http.get<PagedResult<A3InnuvaNominaDto>>(`${this.apiUrl}/sent`, { params });
   }
 
   /**

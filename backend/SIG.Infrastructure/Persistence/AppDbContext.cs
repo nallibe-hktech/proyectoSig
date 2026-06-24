@@ -61,6 +61,14 @@ public class AppDbContext : DbContext
     public DbSet<StagingA3InnuvaNominaCalculada> StagingA3InnuvaNominasCalculadas => Set<StagingA3InnuvaNominaCalculada>();
     public DbSet<StagingA3InnuvaCompanyTest> StagingA3InnuvaCompaniesTest => Set<StagingA3InnuvaCompanyTest>();
     public DbSet<StagingA3InnuvaPayrollTest> StagingA3InnuvaPayrollsTest => Set<StagingA3InnuvaPayrollTest>();
+
+    // PHASE 1 REDESIGNED: Real Wolters Kluwer API endpoints (salary, IRPF, remuneration, bankaccounts, agreements)
+    public DbSet<StagingA3InnuvaSalary> StagingA3InnuvaSalaries => Set<StagingA3InnuvaSalary>();
+    public DbSet<StagingA3InnuvaIRPF> StagingA3InnuvaIRPFs => Set<StagingA3InnuvaIRPF>();
+    public DbSet<StagingA3InnuvaRemuneration> StagingA3InnuvaRemunerations => Set<StagingA3InnuvaRemuneration>();
+    public DbSet<StagingA3InnuvaBankAccount> StagingA3InnuvaBankAccounts => Set<StagingA3InnuvaBankAccount>();
+    public DbSet<StagingA3InnuvaAgreement> StagingA3InnuvaAgreements => Set<StagingA3InnuvaAgreement>();
+
     public DbSet<StagingTravelPerkViaje> StagingTravelPerkViajes => Set<StagingTravelPerkViaje>();
     public DbSet<StagingTravelPerkLinea> StagingTravelPerkLineas => Set<StagingTravelPerkLinea>();
 

@@ -213,3 +213,63 @@ public record A3InnuvaConceptoDto(
     bool EsEnEspecie,
     DateTime FechaUltimaSincronizacion
 );
+
+// ====== PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ======
+
+public record SalaryDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    decimal GrossSalary,
+    decimal NetSalary,
+    string? Currency,
+    DateTime StartDate,
+    DateTime? EndDate
+);
+
+public record IRPFDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    string TaxType,
+    decimal TaxRate,
+    decimal RetentionAmount,
+    DateTime StartDate,
+    DateTime? EndDate
+);
+
+public record RemunerationDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    string RemunerationType,
+    decimal Amount,
+    string? Concept,
+    DateTime StartDate,
+    DateTime? EndDate
+);
+
+public record BankAccountDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    string IBAN,
+    string? BIC,
+    string? AccountHolderName,
+    string? AccountType,
+    bool IsPrimary,
+    DateTime StartDate,
+    DateTime? EndDate
+);
+
+public record AgreementDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    string AgreementCode,
+    string AgreementName,
+    string? AgreementType,
+    DateTime StartDate,
+    DateTime? EndDate,
+    string? Description
+);
