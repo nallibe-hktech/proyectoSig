@@ -39,6 +39,16 @@ public record SgpvVisitaDto(
 public record A3InnuvaEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento, decimal? SueldoMensual);
 public record A3InnuvaGenericoDto(string IdExterno, string Nombre, string Tipo, DateTime? FechaRegistro);
 public record TravelPerkViajeDto(string ViajeIdExterno, string Solicitante, DateOnly FechaInicio, DateOnly? FechaFin, decimal Presupuesto, string Estado);
+// TravelPerk se integra por descarga Excel (hoja "report"), a nivel LÍNEA — no a nivel viaje.
+// CostObject = "Cost object" = proyecto/CECO al que se imputa el coste; CosteSinIVA = "Cost per traveler without tax".
+public record TravelPerkLineaDto(
+    string TripId,
+    string Service,
+    string? CostObject,
+    decimal CosteSinIVA,
+    string? TravelerEmail,
+    string? Currency,
+    DateOnly? FechaGasto);
 public record IntratimeExpenseDto(string ExpenseIdExterno, string? UserIdExterno, DateTime FechaExpense, decimal Cantidad, string NombreExpense, string? Descripcion, string? ProyectoNombre);
 public record IntratimeClienteDto(
     string ClienteIdExterno,        // CLIENT_ID

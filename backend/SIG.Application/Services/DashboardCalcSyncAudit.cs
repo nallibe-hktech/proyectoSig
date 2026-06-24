@@ -1,6 +1,8 @@
 using System.Text.Json;
+using SIG.Application.Alerts;
 using SIG.Application.Common;
 using SIG.Application.DTOs;
+using SIG.Application.Integrations;
 using SIG.Application.Interfaces.Integrations;
 using SIG.Application.Interfaces.Repositories;
 using SIG.Application.Interfaces.Services;
@@ -250,10 +252,16 @@ public class SyncService : ISyncService
     private readonly IUserRepository _userRepo;
     private readonly IServiceRepository _serviceRepo;
     private readonly ICeleroMappingRepository _mappingRepo;
+    private readonly ITravelPerkExcelClient _travelPerkExcel;
+    private readonly IStagingRepository<StagingTravelPerkLinea> _travelPerkLineaRepo;
+    private readonly ICostCenterRepository _costCenterRepo;
 
     public SyncService(
         ICeleroClient celero, IBizneoClient bizneo, IIntratimeClient intratime, IPayHawkClient payhawk, ISgpvClient sgpv,
         IGalanClient galan, IMediapostClient mediapost,
+        ITravelPerkExcelClient travelPerkExcel,
+        IStagingRepository<StagingTravelPerkLinea> travelPerkLineaRepo,
+        ICostCenterRepository costCenterRepo,
         IStagingRepository<StagingCeleroVisita> celeroRepo,
         IStagingRepository<StagingBizneoEmpleado> empRepo,
         IStagingRepository<StagingBizneoAbsence> absenceRepo,
@@ -298,6 +306,9 @@ public class SyncService : ISyncService
         _mediapostPedidoRepo = mediapostPedidoRepo;
         _mediapostRecepcionRepo = mediapostRecepcionRepo;
         _mappingRepo = mappingRepo;
+        _travelPerkExcel = travelPerkExcel;
+        _travelPerkLineaRepo = travelPerkLineaRepo;
+        _costCenterRepo = costCenterRepo;
     }
 
     public async Task<SyncResultDto> SyncAsync(string sistema, CancellationToken ct)
@@ -1014,8 +1025,49 @@ public class SyncService : ISyncService
                 await _mediapostRecepcionRepo.SaveChangesAsync(ct);
                 break;
             }
-            case "a3innuva":
             case "travelperk":
+            {
+                // Descarga Excel (SharePoint) → líneas → imputación por CECO (Cost object → Servicio).
+                var lineas = await _travelPerkExcel.GetLineasAsync(ct) ?? Array.Empty<TravelPerkLineaDto>();
+                if (lineas.Count > 0)
+                {
+                    var mapaCeco = await _costCenterRepo.GetCecoToServiceMapAsync(ct);
+                    var nuevas = new List<StagingTravelPerkLinea>();
+                    foreach (var l in lineas)
+                    {
+                        var json = JsonSerializer.Serialize(l);
+                        var hash = Sha256(json);
+                        if (await _travelPerkLineaRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+
+                        var serviceId = TravelPerkCecoResolver.ResolverServiceId(l.CostObject, mapaCeco);
+                        // CECO de cliente que no casa con la tabla maestra → coste sin imputar (alerta de calidad).
+                        var cecoNoMaestro = l.CostObject is not null && serviceId is null;
+
+                        nuevas.Add(new StagingTravelPerkLinea
+                        {
+                            TripId = l.TripId,
+                            Service = l.Service,
+                            CostObject = l.CostObject,
+                            Ceco = TravelPerkCecoResolver.NormalizarCeco(l.CostObject),
+                            ServiceId = serviceId,
+                            CosteSinIVA = l.CosteSinIVA,
+                            FechaGasto = l.FechaGasto,
+                            TravelerEmail = l.TravelerEmail,
+                            Currency = l.Currency,
+                            PayloadJson = json,
+                            Hash = hash,
+                            FechaUltimaSincronizacion = DateTime.UtcNow,
+                            FlagProcesado = false,
+                            ErrorProcesamiento = cecoNoMaestro ? AlertaCodigos.CecoNoMaestro : null
+                        });
+                        ins++;
+                    }
+                    await _travelPerkLineaRepo.AddRangeAsync(nuevas, ct);
+                    await _travelPerkLineaRepo.SaveChangesAsync(ct);
+                }
+                break;
+            }
+            case "a3innuva":
                 throw new IntegrationException(sistema, "Sistema aún no implementado en modo sincronización.");
             default:
                 throw new IntegrationException(sistema, "Sistema no soportado. Use celero, bizneo, intratime-*, payhawk, sgpv*, a3innuva, travelperk, galan-*, mediapost-*.");

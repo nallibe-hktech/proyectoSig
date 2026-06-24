@@ -185,6 +185,29 @@ public class StagingTravelPerkViaje : IStagingRow
     public string? ErrorProcesamiento { get; set; }
 }
 
+// TravelPerk a nivel LÍNEA (hoja "report" de la descarga Excel). Es el grano que usa el cierre de costes:
+// cada línea se imputa al CECO de su "Cost object" (→ cliente/servicio); las líneas sin CECO (Subscription fee)
+// van al CECO interno de SIG (0423). Convive con StagingTravelPerkViaje (viaje-level, en desuso para el cierre).
+public class StagingTravelPerkLinea : IStagingRow
+{
+    public int Id { get; set; }
+    public string TripId { get; set; } = null!;
+    public string Service { get; set; } = null!;      // Hotels, Flights, Premium Service, Refund for train, Subscription fee...
+    public string? CostObject { get; set; }            // "Cost object" crudo (NNNN_CLIENTE); null = sin CECO de cliente
+    public string Ceco { get; set; } = null!;          // CECO normalizado para imputación (0423 si la línea no trae CostObject)
+    public int? ServiceId { get; set; }                // resuelto del CECO; null si el CECO no casa con la tabla maestra
+    public decimal CosteSinIVA { get; set; }           // "Cost per traveler without tax"
+    public DateOnly? FechaGasto { get; set; }
+    public string? TravelerEmail { get; set; }
+    public string? Currency { get; set; }
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
 public class StagingSgpvProducto : IStagingRow
 {
     public int Id { get; set; }

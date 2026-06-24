@@ -153,9 +153,7 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
                 {
                     Field = filterElement.TryGetProperty("field", out var f) ? f.GetString() ?? "" : "",
                     Op = filterElement.TryGetProperty("op", out var o) ? o.GetString() ?? "" : "",
-                    Value = filterElement.TryGetProperty("value", out var v) ?
-                        (v.ValueKind == JsonValueKind.String ? v.GetString() as object :
-                         v.ValueKind == JsonValueKind.Number ? v.GetDouble() as object : null) : null
+                    Value = filterElement.TryGetProperty("value", out var v) ? ReadFilterValue(v) : null
                 };
                 sourceNode.Filters.Add(filter);
             }
@@ -163,6 +161,17 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
 
         return sourceNode;
     }
+
+    // Valor de un filtro: soporta string, número, booleano (flags de excepción) y array (operador In).
+    private static object? ReadFilterValue(JsonElement v) => v.ValueKind switch
+    {
+        JsonValueKind.String => v.GetString(),
+        JsonValueKind.Number => v.GetDouble(),
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        JsonValueKind.Array => v.EnumerateArray().Select(ReadFilterValue).ToList(),
+        _ => null
+    };
 
     private static AggregateNode DeserializeAggregateNode(JsonElement root)
     {

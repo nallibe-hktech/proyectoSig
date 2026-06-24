@@ -322,6 +322,69 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("calculation_logs", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.CategoriaFactura", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClientId")
+                        .HasColumnType("integer")
+                        .HasColumnName("client_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nombre");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_categorias_factura");
+
+                    b.HasIndex("ClientId")
+                        .HasDatabaseName("ix_categorias_factura_client_id");
+
+                    b.ToTable("categorias_factura", (string)null);
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.CategoriaFacturaConcepto", b =>
+                {
+                    b.Property<int>("CategoriaFacturaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("categoria_factura_id");
+
+                    b.Property<int>("ConceptId")
+                        .HasColumnType("integer")
+                        .HasColumnName("concept_id");
+
+                    b.HasKey("CategoriaFacturaId", "ConceptId")
+                        .HasName("pk_categoria_factura_conceptos");
+
+                    b.HasIndex("ConceptId")
+                        .HasDatabaseName("ix_categoria_factura_conceptos_concept_id");
+
+                    b.ToTable("categoria_factura_conceptos", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.CierreCostes", b =>
                 {
                     b.Property<int>("Id")
@@ -578,9 +641,18 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("estado");
 
+                    b.Property<DateTime>("FechaApertura")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_apertura");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<string>("Origen")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("origen");
 
                     b.Property<string>("Tipo")
                         .IsRequired()
@@ -1000,6 +1072,126 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("forecasts", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.IncidenciaHistorial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha");
+
+                    b.Property<int>("IncidenciaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("incidencia_id");
+
+                    b.Property<string>("Nota")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("nota");
+
+                    b.Property<string>("Responsable")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("responsable");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incidencia_historiales");
+
+                    b.HasIndex("IncidenciaId")
+                        .HasDatabaseName("ix_incidencia_historiales_incidencia_id");
+
+                    b.ToTable("incidencia_historiales", (string)null);
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.PartidaPresupuesto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("Anio")
+                        .HasColumnType("integer")
+                        .HasColumnName("anio");
+
+                    b.Property<decimal>("Consumido")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("consumido");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nombre");
+
+                    b.Property<decimal>("Presupuesto")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("presupuesto");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_id");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_partidas_presupuesto");
+
+                    b.HasIndex("ServiceId")
+                        .HasDatabaseName("ix_partidas_presupuesto_service_id");
+
+                    b.ToTable("partidas_presupuesto", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.Period", b =>
                 {
                     b.Property<int>("Id")
@@ -1251,6 +1443,11 @@ namespace SIG.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<decimal?>("MargenObjetivoPct")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("margen_objetivo_pct");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -3289,6 +3486,82 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("staging_sgpv_visitas", (string)null);
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingTravelPerkLinea", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ceco")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ceco");
+
+                    b.Property<string>("CostObject")
+                        .HasColumnType("text")
+                        .HasColumnName("cost_object");
+
+                    b.Property<decimal>("CosteSinIVA")
+                        .HasColumnType("numeric")
+                        .HasColumnName("coste_sin_iva");
+
+                    b.Property<string>("Currency")
+                        .HasColumnType("text")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("ErrorProcesamiento")
+                        .HasColumnType("text")
+                        .HasColumnName("error_procesamiento");
+
+                    b.Property<DateOnly?>("FechaGasto")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_gasto");
+
+                    b.Property<DateTime>("FechaUltimaSincronizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_ultima_sincronizacion");
+
+                    b.Property<bool>("FlagProcesado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("flag_procesado");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_json");
+
+                    b.Property<string>("Service")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("service");
+
+                    b.Property<int?>("ServiceId")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_id");
+
+                    b.Property<string>("TravelerEmail")
+                        .HasColumnType("text")
+                        .HasColumnName("traveler_email");
+
+                    b.Property<string>("TripId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("trip_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_staging_travel_perk_lineas");
+
+                    b.ToTable("staging_travel_perk_lineas", (string)null);
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingTravelPerkViaje", b =>
                 {
                     b.Property<int>("Id")
@@ -3663,6 +3936,39 @@ namespace SIG.Infrastructure.Migrations
                     b.Navigation("Concept");
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.CategoriaFactura", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_categorias_factura_clients_client_id");
+
+                    b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.CategoriaFacturaConcepto", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.CategoriaFactura", "CategoriaFactura")
+                        .WithMany("Conceptos")
+                        .HasForeignKey("CategoriaFacturaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_categoria_factura_conceptos_categorias_factura_categoria_fa");
+
+                    b.HasOne("SIG.Domain.Entities.Concept", "Concept")
+                        .WithMany()
+                        .HasForeignKey("ConceptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_categoria_factura_conceptos_concepts_concept_id");
+
+                    b.Navigation("CategoriaFactura");
+
+                    b.Navigation("Concept");
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.CierreCostes", b =>
                 {
                     b.HasOne("SIG.Domain.Entities.Period", "Period")
@@ -3820,6 +4126,30 @@ namespace SIG.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_forecasts_services_service_id");
+
+                    b.Navigation("Service");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.IncidenciaHistorial", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.ClienteIncidencia", "Incidencia")
+                        .WithMany("Historial")
+                        .HasForeignKey("IncidenciaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_incidencia_historiales_cliente_incidencias_incidencia_id");
+
+                    b.Navigation("Incidencia");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.PartidaPresupuesto", b =>
+                {
+                    b.HasOne("SIG.Domain.Entities.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_partidas_presupuesto_services_service_id");
 
                     b.Navigation("Service");
                 });
@@ -4030,6 +4360,11 @@ namespace SIG.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SIG.Domain.Entities.CategoriaFactura", b =>
+                {
+                    b.Navigation("Conceptos");
+                });
+
             modelBuilder.Entity("SIG.Domain.Entities.CierreCostes", b =>
                 {
                     b.Navigation("Alertas");
@@ -4055,6 +4390,11 @@ namespace SIG.Infrastructure.Migrations
             modelBuilder.Entity("SIG.Domain.Entities.Client", b =>
                 {
                     b.Navigation("Services");
+                });
+
+            modelBuilder.Entity("SIG.Domain.Entities.ClienteIncidencia", b =>
+                {
+                    b.Navigation("Historial");
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.ClosureLine", b =>

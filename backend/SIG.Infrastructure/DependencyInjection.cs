@@ -65,6 +65,8 @@ public static class DependencyInjection
         services.AddScoped<ITarifaServicioRepository, TarifaServicioRepository>();
         services.AddScoped<IPresupuestoServicioRepository, PresupuestoServicioRepository>();
         services.AddScoped<IClienteIncidenciaRepository, ClienteIncidenciaRepository>();
+        services.AddScoped<ICategoriaFacturaRepository, CategoriaFacturaRepository>();
+        services.AddScoped<IPartidaPresupuestoRepository, PartidaPresupuestoRepository>();
         services.AddScoped<IForecastRepository, ForecastRepository>();
         services.AddScoped<IClosureAlertaRepository, ClosureAlertaRepository>();
         services.AddScoped<IStagingA3InnuvaContratoRepository, StagingA3InnuvaContratoRepository>();
@@ -87,6 +89,8 @@ public static class DependencyInjection
         services.AddScoped<ITarifaServicioService, TarifaServicioService>();
         services.AddScoped<IPresupuestoServicioService, PresupuestoServicioService>();
         services.AddScoped<IClienteIncidenciaService, ClienteIncidenciaService>();
+        services.AddScoped<ICategoriaFacturaService, CategoriaFacturaService>();
+        services.AddScoped<IConfigPresupuestoService, ConfigPresupuestoService>();
         services.AddScoped<IForecastService, ForecastService>();
         services.AddScoped<IReportsService, ReportsService>();
         services.AddScoped<IContratoService, ContratoService>();
@@ -99,6 +103,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<ISyncService, SyncService>();
         services.AddScoped<ICeleroVisitaService, CeleroVisitaService>();
+        services.AddScoped<ITravelPerkService, TravelPerkService>();
         services.AddScoped<IExportService, ExportService>();
         services.AddScoped<ISeedService, DataSeeder>();
         services.AddScoped<IDataProcessorService, DataProcessorService>();
@@ -235,6 +240,10 @@ public static class DependencyInjection
             // Mediapost (Excel client for local file reading)
             services.AddSingleton<IMediapostClient, MediapostExcelClient>();
         }
+
+        // TravelPerk: descarga Excel por SharePoint (la API se descartó por presupuesto). Cliente de fichero
+        // a nivel línea, registrado en todos los modos igual que Galán/Mediapost.
+        services.AddSingleton<ITravelPerkExcelClient, TravelPerkExcelClient>();
 
         // A3 Innuva Nóminas: SIEMPRE usar cliente real con OAuth (independiente del flag UseFake)
         var a3NominasUrlAlways = config["Integrations:A3InnuvaNominas:BaseUrl"]

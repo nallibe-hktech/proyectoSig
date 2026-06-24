@@ -266,6 +266,49 @@ public class PresupuestosController : ControllerBase
     }
 }
 
+// Configuración de Presupuesto (prototipo 24/28): partidas por acción/servicio + márgenes. Lectura para
+// autenticados (restringida a servicios accesibles en el servicio); escritura solo Administrator.
+[ApiController]
+[Route("api/services/{serviceId:int}/config-presupuesto")]
+[Authorize]
+public class ConfigPresupuestoController : ControllerBase
+{
+    private readonly IConfigPresupuestoService _svc;
+    public ConfigPresupuestoController(IConfigPresupuestoService svc) { _svc = svc; }
+
+    private int UserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new InvalidOperationException("NameIdentifier claim not found"));
+
+    [HttpGet]
+    public async Task<IActionResult> Get(int serviceId, CancellationToken ct) =>
+        Ok(await _svc.GetConfigAsync(serviceId, UserId, ct));
+
+    [HttpPost("partidas")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> CreatePartida(int serviceId, SIG.Application.DTOs.PartidaPresupuestoCreateRequest req, CancellationToken ct)
+    {
+        var r = await _svc.CreatePartidaAsync(serviceId, req, UserId, ct);
+        return CreatedAtAction(nameof(Get), new { serviceId }, r);
+    }
+
+    [HttpPut("partidas/{id:int}")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> UpdatePartida(int serviceId, int id, SIG.Application.DTOs.PartidaPresupuestoUpdateRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpdatePartidaAsync(id, serviceId, req, UserId, ct));
+
+    [HttpDelete("partidas/{id:int}")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> DeletePartida(int serviceId, int id, CancellationToken ct)
+    {
+        await _svc.DeletePartidaAsync(id, serviceId, UserId, ct);
+        return NoContent();
+    }
+
+    [HttpPut("margen-objetivo")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> SetMargenObjetivo(int serviceId, SIG.Application.DTOs.MargenObjetivoRequest req, CancellationToken ct) =>
+        Ok(await _svc.SetMargenObjetivoAsync(serviceId, req, UserId, ct));
+}
+
 // Forecast por servicio (PPT slide 36). Lectura: autenticado; escritura: Administrator/Backoffice
 // (mismo criterio que Tarifas/Presupuestos). Upsert por mes; rechaza meses cerrados (409 period_closed).
 [ApiController]
@@ -334,4 +377,45 @@ public class DevController : ControllerBase
     {
         return _env.IsDevelopment() || _env.EnvironmentName == "Testing" || _env.EnvironmentName == "E2E";
     }
+}
+
+// A3 ERP (Contabilidad) — hub de traspaso de facturas del cierre a A3 ERP (salida).
+// El export real vive en ExportsController (api/exports/a3-erp/{closureId}); aquí solo
+// se expone el estado de conexión y un sync stub. NUNCA escribe en sistemas del cliente.
+[ApiController]
+[Route("api/a3-erp")]
+[Authorize(Roles = "Administrator,Fico")]
+public class A3ErpController : ControllerBase
+{
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
+    public A3ErpController(Microsoft.Extensions.Configuration.IConfiguration config) { _config = config; }
+
+    // Estado derivado solo de la presencia de configuración local: no realiza ninguna
+    // llamada de red al ERP del cliente. Sin config válida → modo Test (degradación limpia).
+    [HttpGet("status")]
+    public ActionResult<SIG.Application.DTOs.A3ErpStatusDto> GetStatus()
+    {
+        var baseUrl = _config["Integrations:A3Erp:BaseUrl"];
+        var apiKey = _config["Integrations:A3Erp:ApiKey"];
+        var configured = !string.IsNullOrWhiteSpace(baseUrl)
+                         && !string.IsNullOrWhiteSpace(apiKey)
+                         && apiKey != "YOUR_API_KEY_HERE"
+                         && apiKey != "__SET_VIA_ENVIRONMENT__";
+
+        var dto = configured
+            ? new SIG.Application.DTOs.A3ErpStatusDto(true, "Produccion",
+                "Conectado a A3 ERP. El traspaso genera un fichero de facturas para importar manualmente; la plataforma no escribe en A3 ERP.")
+            : new SIG.Application.DTOs.A3ErpStatusDto(false, "Test",
+                "A3 ERP no configurado (modo test). El traspaso genera un fichero descargable; no se conecta ni escribe en A3 ERP.");
+        return Ok(dto);
+    }
+
+    // Importación desde A3 ERP: pendiente de especificación de la API. Stub honesto,
+    // sin tablas staging ni llamadas externas.
+    [HttpPost("sync")]
+    public IActionResult Sync() =>
+        Problem(
+            detail: "Sincronización desde A3 ERP pendiente de especificación de la API.",
+            statusCode: 501,
+            title: "No implementado");
 }

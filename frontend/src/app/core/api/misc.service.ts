@@ -28,7 +28,7 @@ export class AuditService {
 @Injectable({ providedIn: 'root' })
 export class SyncService {
   private readonly http = inject(HttpClient);
-  sync(system: 'celero' | 'bizneo' | 'intratime' | 'payhawk' | 'sgpv' | 'sgpv-productos' | 'galan' | 'mediapost') {
+  sync(system: 'celero' | 'bizneo' | 'intratime' | 'payhawk' | 'sgpv' | 'sgpv-productos' | 'galan' | 'mediapost' | 'travelperk') {
     return this.http.post<SyncResultDto>(`${environment.apiUrl}/sync/${system}`, {});
   }
   processAll() {

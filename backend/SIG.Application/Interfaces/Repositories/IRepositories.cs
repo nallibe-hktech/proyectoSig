@@ -161,9 +161,14 @@ public interface IDepartmentRepository
     Task SaveChangesAsync(CancellationToken ct);
 }
 
+// Par CECO→Servicio del join ServiceCostCenter (usado para imputar costes por CECO, p.ej. TravelPerk).
+public record CecoServicio(string Codigo, int ServiceId);
+
 public interface ICostCenterRepository
 {
     Task<IReadOnlyList<CostCenter>> ListAsync(CancellationToken ct);
+    // Mapa de imputación CECO→Servicio (join ServiceCostCenter): cada par (Codigo de CECO, ServiceId).
+    Task<IReadOnlyList<CecoServicio>> GetCecoToServiceMapAsync(CancellationToken ct);
     Task<CostCenter?> GetByIdAsync(int id, CancellationToken ct);
     Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId, CancellationToken ct);
     Task<bool> HasServicesAsync(int id, CancellationToken ct);
@@ -190,8 +195,37 @@ public interface IPresupuestoServicioRepository
 public interface IClienteIncidenciaRepository
 {
     Task<IReadOnlyList<ClienteIncidencia>> ListByClientAsync(int clientId, CancellationToken ct);
+    // Listado global paginado, restringido a los clientes accesibles por el usuario, con filtros.
+    Task<PagedResult<ClienteIncidencia>> ListAllForUserAsync(int usuarioId, int page, int pageSize, string? search, int? clientId, string? tipo, EstadoIncidencia? estado, CancellationToken ct);
     Task<ClienteIncidencia?> GetByIdAsync(int id, CancellationToken ct);
+    Task<ClienteIncidencia?> GetByIdWithDetailAsync(int id, CancellationToken ct);
     Task AddAsync(ClienteIncidencia entity, CancellationToken ct);
+    Task AddHistorialAsync(IncidenciaHistorial entry, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
+public interface IPartidaPresupuestoRepository
+{
+    Task<IReadOnlyList<PartidaPresupuesto>> ListByServiceAsync(int serviceId, CancellationToken ct);
+    Task<PartidaPresupuesto?> GetByIdAsync(int id, CancellationToken ct);
+    Task AddAsync(PartidaPresupuesto entity, CancellationToken ct);
+    // Margen operativo real de la acción a partir de los cierres: (facturación − coste) / facturación.
+    // Null si la acción aún no tiene facturación con la que comparar.
+    Task<decimal?> GetMargenRealPctAsync(int serviceId, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
+public interface ICategoriaFacturaRepository
+{
+    Task<IReadOnlyList<CategoriaFactura>> ListByClientAsync(int clientId, CancellationToken ct);
+    Task<CategoriaFactura?> GetByIdWithConceptosAsync(int id, CancellationToken ct);
+    // Conceptos de facturación (Tipo=Factura) disponibles para el cliente: globales (ServiceId null) o
+    // vinculados a algún servicio del cliente (vía Concept.ServiceId o ServiceConcept).
+    Task<IReadOnlyList<Concept>> ListConceptosFacturacionDelClienteAsync(int clientId, CancellationToken ct);
+    // Devuelve, para los conceptos indicados, en qué categoría del cliente están ya asignados (si alguna).
+    Task<IReadOnlyDictionary<int, CategoriaFactura>> GetAsignacionesAsync(int clientId, IReadOnlyCollection<int> conceptIds, CancellationToken ct);
+    Task AddAsync(CategoriaFactura entity, CancellationToken ct);
+    void Remove(CategoriaFactura entity);
     Task SaveChangesAsync(CancellationToken ct);
 }
 

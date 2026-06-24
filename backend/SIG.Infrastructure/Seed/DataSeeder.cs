@@ -69,7 +69,10 @@ public class DataSeeder : ISeedService
                 service_users,
                 service_concepts,
                 service_cost_centers,
+                partidas_presupuesto,
                 services,
+                categoria_factura_conceptos,
+                categorias_factura,
                 concept_users,
                 concepts,
                 clients,
@@ -99,6 +102,8 @@ public class DataSeeder : ISeedService
 
         var (rMap, dMap, costCenters, passwordHash) = await SeedMasterDataAsync(ct);
         var (uByEmail, servicesList, concepts) = await SeedEntityDataAsync(passwordHash, dMap, rMap, costCenters, ct);
+        await SeedCategoriasFacturaAsync(concepts, ct);
+        await SeedPartidasPresupuestoAsync(servicesList, ct);
         var (periodsList, cierresFull) = await SeedTransactionDataAsync(servicesList, ct);
 
         await SeedStagingDataAsync(uByEmail.Values.ToList(), servicesList.ToList(), periodsList, uByEmail, ct);
@@ -124,7 +129,8 @@ public class DataSeeder : ISeedService
         var clients = await SeedClientsAsync(ct);
         var variables = await SeedVariablesAsync(ct);
         var tarifaHoraId = variables.First(v => v.Nombre == "TarifaHora").Id;
-        var concepts = await SeedConceptsAsync(tarifaHoraId, ct);
+        var zonaBonusId = variables.First(v => v.Nombre == "ZonaBonus").Id;
+        var concepts = await SeedConceptsAsync(tarifaHoraId, zonaBonusId, ct);
         var services = await SeedServicesAsync(clients, costCenters, concepts, dMap, uByEmail, ct);
         return (uByEmail, services.ToList(), concepts);
     }
@@ -175,12 +181,19 @@ public class DataSeeder : ISeedService
 
     private async Task<List<CostCenter>> SeedCostCentersAsync(CancellationToken ct)
     {
+        // CECOs de EJEMPLO (datos ficticios). Formato real confirmado con la doc del cliente:
+        //   CECO maestro (6 díg) = 0 + proyecto(3 díg) + subcuenta(2 díg).
+        //   El "Cost object" de TravelPerk (4 díg) son los 4 PRIMEROS dígitos del CECO de 6.
+        // Por eso TravelPerkCecoResolver casa por "el CECO maestro empieza por el prefijo de 4 díg".
+        // Aquí cada CECO usa un proyecto distinto (sin prefijos compartidos) para no introducir ambigüedad.
+        // Los CECOs y clientes REALES (010301 GRANINI, etc.) NO se versionan: se cargan en dev con el
+        // script local backend/seed-cecos-reales.local.sql (gitignored, gobierno del dato del cliente).
         var costCenters = new List<CostCenter>
         {
-            new() { Codigo = "025888", Nombre = "Operaciones campo" },
-            new() { Codigo = "035501", Nombre = "GPV España" },
-            new() { Codigo = "035502", Nombre = "GPV Portugal" },
-            new() { Codigo = "041200", Nombre = "Formación" }
+            new() { Codigo = "010101", Nombre = "Operaciones campo" },
+            new() { Codigo = "020201", Nombre = "GPV España" },
+            new() { Codigo = "030301", Nombre = "GPV Portugal" },
+            new() { Codigo = "040401", Nombre = "Formación" }
         };
         _db.CostCenters.AddRange(costCenters);
         await _db.SaveChangesAsync(ct);
@@ -271,7 +284,7 @@ public class DataSeeder : ISeedService
         return variables;
     }
 
-    private async Task<List<Concept>> SeedConceptsAsync(int tarifaHoraId, CancellationToken ct)
+    private async Task<List<Concept>> SeedConceptsAsync(int tarifaHoraId, int zonaBonusId, CancellationToken ct)
     {
         var fechaDesde = new DateOnly(2025, 1, 1);
         var concepts = new List<Concept>
@@ -279,6 +292,13 @@ public class DataSeeder : ISeedService
             new() { Nombre = "Suma de gastos directos", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "Aggregate", op = "Sum", field = "Importe",
                 source = new { type = "Source", entity = "GastosPayHawk", filters = new object[0] }
+            }) },
+            // Viajes Travel Perk: coste sin IVA de los viajes imputados al Servicio/CECO del cliente (los
+            // "Refund for train" vienen en negativo → netean al sumar). Se asigna a los servicios cuyos viajes
+            // se refacturan/imputan; NO se hardcodea por cliente, se cuelga del Servicio vía ServiceConcept.
+            new() { Nombre = "Viajes Travel Perk", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "Aggregate", op = "Sum", field = "Importe",
+                source = new { type = "Source", entity = "ViajesTravelPerk", filters = new object[0] }
             }) },
             new() { Nombre = "Bonus por visita estándar", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "BinaryOp", op = "Mul",
@@ -348,10 +368,95 @@ public class DataSeeder : ISeedService
                 left = new { type = "ConceptRef", conceptIds = new int[0] },
                 right = new { type = "Number", value = 0.065 }
             }) },
+
+            // #1 idQuestion Celero -> variable: nº de visitas × bonus de zona, donde el bonus sale de la
+            // respuesta Celero (Q21) mapeada por la variable ZonaBonus (A=1.5 / B=1.2 / C=1.0).
+            new() { Nombre = "Ejemplo — Visitas con bonus de zona (Variable desde idQuestion Celero)", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero", filters = new object[0] } },
+                right = new { type = "Variable", variableId = zonaBonusId }
+            }) },
+
+            // #4 flag de excepción "fallida": las visitas fallidas se facturan al mismo coste (cuota fija).
+            new() { Nombre = "Ejemplo — Visitas fallidas a mismo coste (flag Estado)", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
+                    filters = new[] { new { field = "Estado", op = "Eq", value = (object)"fallida" } } } },
+                right = new { type = "Number", value = 18 }
+            }) },
+
+            // #4 flag de excepción "nocturnidad": visitas nocturnas con incremento del 50 % (operador Pct).
+            new() { Nombre = "Ejemplo — Recargo nocturnidad +50% (flag Nocturnidad)", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Pct",
+                left = new { type = "BinaryOp", op = "Mul",
+                    left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
+                        filters = new[] { new { field = "Nocturnidad", op = "Eq", value = (object)true } } } },
+                    right = new { type = "Number", value = 18 } },
+                right = new { type = "Number", value = 50 }
+            }) },
+
+            // TIPO 5 (Conteo de Entidad-A × Entidad-B): producto de dos conteos de la misma entidad segmentados.
+            new() { Nombre = "Ejemplo — Conteo Entidad-A × Entidad-B (tipo 5)", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
+                    filters = new[] { new { field = "TipoVisita", op = "Eq", value = (object)1 } } } },
+                right = new { type = "Aggregate", op = "Count", source = new { type = "Source", entity = "VisitasCelero",
+                    filters = new[] { new { field = "TipoVisita", op = "Eq", value = (object)2 } } } }
+            }) },
+
+            // TIPO 6 (Suma de Entidad-A × Entidad-B): producto de dos sumas de entidades distintas.
+            new() { Nombre = "Ejemplo — Suma Entidad-A × Entidad-B (tipo 6)", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+                type = "BinaryOp", op = "Mul",
+                left = new { type = "Aggregate", op = "Sum", field = "Horas", source = new { type = "Source", entity = "HorasBizneo", filters = new object[0] } },
+                right = new { type = "Aggregate", op = "Sum", field = "Importe", source = new { type = "Source", entity = "GastosPayHawk", filters = new object[0] } }
+            }) },
         };
         _db.Concepts.AddRange(concepts);
         await _db.SaveChangesAsync(ct);
         return concepts;
+    }
+
+    // Configuración de Factura (prototipo 25/28): categorías ILUSTRATIVAS por cliente que agrupan conceptos
+    // de facturación. El mapeo real lo valida SIG; aquí solo demostramos la pantalla con datos anónimos y
+    // dejamos algún concepto sin asignar (como en el prototipo, que muestra "sin asignar" en el panel).
+    private async Task SeedCategoriasFacturaAsync(List<Concept> concepts, CancellationToken ct)
+    {
+        var clients = await _db.Clients.ToListAsync(ct);
+        Concept? Find(string nombre) => concepts.FirstOrDefault(c => c.Nombre == nombre);
+        var porVisita = Find("Facturación por visita");
+        var mensualidad = Find("Mensualidad fija servicio");
+        // "Refacturación gastos" se deja deliberadamente SIN asignar para que el KPI lo refleje.
+
+        var categorias = new List<CategoriaFactura>();
+        foreach (var cli in clients)
+        {
+            if (porVisita != null)
+                categorias.Add(new CategoriaFactura { ClientId = cli.Id, Nombre = "Servicio de campo",
+                    Conceptos = new List<CategoriaFacturaConcepto> { new() { ConceptId = porVisita.Id } } });
+            if (mensualidad != null)
+                categorias.Add(new CategoriaFactura { ClientId = cli.Id, Nombre = "Cuota mensual",
+                    Conceptos = new List<CategoriaFacturaConcepto> { new() { ConceptId = mensualidad.Id } } });
+        }
+        _db.CategoriasFactura.AddRange(categorias);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    // Configuración de Presupuesto (prototipo 24/28): partidas ILUSTRATIVAS por servicio (entrada manual, sin
+    // origen de datos — lo dice el propio prototipo) + un margen operativo objetivo de ejemplo. Datos anónimos.
+    private async Task SeedPartidasPresupuestoAsync(List<Service> services, CancellationToken ct)
+    {
+        var partidas = new List<PartidaPresupuesto>();
+        foreach (var s in services)
+        {
+            s.MargenObjetivoPct = 28m; // objetivo ilustrativo
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Personal de campo", Tipo = TipoPartidaPresupuesto.Anual, Anio = 2026, Presupuesto = 52000m, Consumido = 38900m, Descripcion = "Salario bruto + incentivos" });
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Gastos de personal", Tipo = TipoPartidaPresupuesto.Anual, Anio = 2026, Presupuesto = 18000m, Consumido = 14220m, Descripcion = "Payhawk + dietas" });
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Kilometraje", Tipo = TipoPartidaPresupuesto.TotalAccion, Presupuesto = 9000m, Consumido = 5300m, Descripcion = "Importe km" });
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Formaciones", Tipo = TipoPartidaPresupuesto.TotalAccion, Presupuesto = 11000m, Consumido = 3000m, Descripcion = "Facturación formaciones" });
+            partidas.Add(new PartidaPresupuesto { ServiceId = s.Id, Nombre = "Logística", Tipo = TipoPartidaPresupuesto.TotalAccion, Presupuesto = 5000m, Consumido = 0m, Descripcion = "Galán / Mediapost" });
+        }
+        _db.PartidasPresupuesto.AddRange(partidas);
+        await _db.SaveChangesAsync(ct); // persiste partidas + el MargenObjetivoPct de los servicios ya trackeados
     }
 
     private async Task<List<Period>> SeedPeriodsAsync(CancellationToken ct)

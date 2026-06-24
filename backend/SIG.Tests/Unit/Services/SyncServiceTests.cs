@@ -1,3 +1,4 @@
+using SIG.Application.Alerts;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Integrations;
 using SIG.Application.Interfaces.Repositories;
@@ -34,8 +35,11 @@ public class SyncServiceTests
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly IServiceRepository _serviceRepo = Substitute.For<IServiceRepository>();
     private readonly ICeleroMappingRepository _mappingRepo = Substitute.For<ICeleroMappingRepository>();
+    private readonly ITravelPerkExcelClient _travelPerkExcel = Substitute.For<ITravelPerkExcelClient>();
+    private readonly IStagingRepository<StagingTravelPerkLinea> _travelPerkLineaRepo = Substitute.For<IStagingRepository<StagingTravelPerkLinea>>();
+    private readonly ICostCenterRepository _costCenterRepo = Substitute.For<ICostCenterRepository>();
 
-    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _sgpv, _galan, _mediapost, _celeroRepo, _empRepo, _absenceRepo, _ficRepo, _intratimeEmpRepo, _clkReqRepo, _expenseRepo, _gastoRepo, _sgpvRepo, _sgpvProductoRepo, _galanEntradaRepo, _galanSalidaRepo, _galanStockRepo, _mediapostPedidoRepo, _mediapostRecepcionRepo, _userRepo, _serviceRepo, _mappingRepo);
+    private SyncService CreateSut() => new(_celero, _bizneo, _intratime, _payhawk, _sgpv, _galan, _mediapost, _travelPerkExcel, _travelPerkLineaRepo, _costCenterRepo, _celeroRepo, _empRepo, _absenceRepo, _ficRepo, _intratimeEmpRepo, _clkReqRepo, _expenseRepo, _gastoRepo, _sgpvRepo, _sgpvProductoRepo, _galanEntradaRepo, _galanSalidaRepo, _galanStockRepo, _mediapostPedidoRepo, _mediapostRecepcionRepo, _userRepo, _serviceRepo, _mappingRepo);
 
     [Fact]
     public async Task SyncAsync_SistemaDesconocido_LanzaIntegrationException()
@@ -162,11 +166,54 @@ public class SyncServiceTests
     }
 
     [Fact]
-    public async Task SyncAsync_TravelPerk_ThrowsNotImplemented()
+    public async Task SyncAsync_TravelPerk_SinFichero_DevuelveExitoSinInsertar()
     {
+        _travelPerkExcel.GetLineasAsync(Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<TravelPerkLineaDto>());
+
         var sut = CreateSut();
-        await FluentActions.Awaiting(() => sut.SyncAsync("travelperk", CancellationToken.None))
-            .Should().ThrowAsync<IntegrationException>();
+        var result = await sut.SyncAsync("travelperk", CancellationToken.None);
+
+        result.Sistema.Should().Be("travelperk");
+        result.Exito.Should().BeTrue();
+        result.RegistrosInsertados.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SyncAsync_TravelPerk_ImputaPorCeco_YMarcaCecoNoMaestro()
+    {
+        _travelPerkExcel.GetLineasAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            new TravelPerkLineaDto("T1", "Hotels", "0139_INPOST", 60m, null, "EUR", new DateOnly(2026, 5, 10)),
+            new TravelPerkLineaDto("T2", "Flights", "9999_DESCONOCIDO", 50m, null, "EUR", new DateOnly(2026, 5, 11)),
+            new TravelPerkLineaDto("T3", "Subscription fee", null, 99m, null, "EUR", new DateOnly(2026, 5, 31)),
+        });
+        _costCenterRepo.GetCecoToServiceMapAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { new CecoServicio("0139_INPOST", 7) });
+        _travelPerkLineaRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        List<StagingTravelPerkLinea>? capturadas = null;
+        await _travelPerkLineaRepo.AddRangeAsync(
+            Arg.Do<IEnumerable<StagingTravelPerkLinea>>(x => capturadas = x.ToList()), Arg.Any<CancellationToken>());
+
+        var sut = CreateSut();
+        var result = await sut.SyncAsync("travelperk", CancellationToken.None);
+
+        result.RegistrosInsertados.Should().Be(3);
+        capturadas.Should().NotBeNull();
+
+        var hotel = capturadas!.Single(l => l.TripId == "T1");
+        hotel.ServiceId.Should().Be(7);                     // CECO casa → imputado al servicio
+        hotel.ErrorProcesamiento.Should().BeNull();
+
+        var desconocido = capturadas!.Single(l => l.TripId == "T2");
+        desconocido.ServiceId.Should().BeNull();            // CECO no está en la tabla maestra
+        desconocido.ErrorProcesamiento.Should().Be(AlertaCodigos.CecoNoMaestro);
+
+        var sub = capturadas!.Single(l => l.TripId == "T3");
+        sub.Ceco.Should().Be("0423");                       // sin Cost object → CECO interno SIG
+        sub.ServiceId.Should().BeNull();
+        sub.ErrorProcesamiento.Should().BeNull();           // gasto interno, NO es CECO no-maestro
     }
 
     [Fact]
