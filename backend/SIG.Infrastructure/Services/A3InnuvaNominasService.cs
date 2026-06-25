@@ -629,6 +629,20 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                     g => g.Sum(x => x.Gasto.Importe),
                     StringComparer.OrdinalIgnoreCase);
 
+            // 5b. Cargar IRPF (descuentos fiscales)
+            var irpfData = await _db.StagingA3InnuvaIRPFs
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            var irpfByEmpleado = irpfData
+                .GroupBy(i => i.EmpleadoIdExterno ?? "")
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Sum(x => x.ImporteRetencion),
+                    StringComparer.OrdinalIgnoreCase);
+
+            _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Carguados {irpfData.Count} registros IRPF para {irpfByEmpleado.Count} empleados");
+
             _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Calculando nóminas para {empleados.Count} empleados...");
 
             int nominasCalculadas = 0;
@@ -661,16 +675,19 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                         ? gastosByNif[nif]
                         : 0m;
 
-                    // Deducciones: Buscar conceptos con tipos que típicamente representen descuentos
-                    // Si hay "D" (deductions), "DESC" (descuentos), "IRPF", etc., sumarlos
-                    // Si NO hay, descuentos = 0 (falta sincronización de PHASE 1)
-                    var descuentos = conceptosEmpleado
+                    // Deducciones: IRPF + otras retenciones
+                    var irpfDelEmpleado = irpfByEmpleado.ContainsKey(codigoEmpleado)
+                        ? irpfByEmpleado[codigoEmpleado]
+                        : 0m;
+
+                    // También buscar descuentos en conceptos (por si hay tipo "D" u otros)
+                    var descuentosConceptos = conceptosEmpleado
                         .Where(c => c.TipoConcepto == "D" ||
                                    c.TipoConcepto?.Contains("DESC", StringComparison.OrdinalIgnoreCase) == true ||
-                                   c.TipoConcepto?.Contains("IRPF", StringComparison.OrdinalIgnoreCase) == true ||
-                                   c.TipoConcepto?.Contains("SS", StringComparison.OrdinalIgnoreCase) == true ||
-                                   c.TipoConcepto?.Contains("IRPF", StringComparison.OrdinalIgnoreCase) == true)
+                                   c.TipoConcepto?.Contains("SS", StringComparison.OrdinalIgnoreCase) == true)
                         .Sum(c => c.Importe);
+
+                    var descuentos = irpfDelEmpleado + descuentosConceptos;
 
                     var totalPercepciones = percepciones + reembolsosPayhawk;
                     var salarioNeto = totalPercepciones - descuentos;
@@ -1277,9 +1294,8 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             _logger.LogInformation("[A3InnuvaNominas] SyncIRPFAsync iniciado");
 
             var employees = await _db.StagingA3InnuvaEmpleados
-                
-                .Take(100)
-                .ToListAsync(ct);
+                .AsNoTracking()
+                .ToListAsync(ct); // Cargar TODOS los empleados para sincronizar IRPF
 
             if (employees.Count == 0)
             {
