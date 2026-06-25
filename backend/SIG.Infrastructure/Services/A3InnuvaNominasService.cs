@@ -617,13 +617,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Carguados {payhawkGastos.Count} gastos PayHawk");
 
-            // 5. Preparar lookups
-            // NIF por código empleado (A3 Innuva → NIF)
-            var nifByCode = empleados
-                .Where(e => !string.IsNullOrEmpty(e.EmpleadoIdExterno))
-                .ToDictionary(e => e.EmpleadoIdExterno!, e => e.NIF ?? "", StringComparer.OrdinalIgnoreCase);
-
-            // Gastos PayHawk agrupados por NIF
+            // 5. Preparar gastos PayHawk por NIF
             var gastosByNif = payhawkGastos
                 .GroupBy(x => x.NIF ?? "")
                 .ToDictionary(
@@ -631,38 +625,41 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                     g => g.Sum(x => x.Gasto.Importe),
                     StringComparer.OrdinalIgnoreCase);
 
-            // Conceptos agrupados por código empleado
-            var conceptosByEmpleado = conceptos
-                .ToLookup(c => c.CodigoEmpleado ?? "", StringComparer.OrdinalIgnoreCase);
-
             _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Calculando nóminas para {empleados.Count} empleados...");
 
             int nominasCalculadas = 0;
             int erroresCalculados = 0;
 
-            // 6. Calcular por empleado
+            // 6. Calcular por empleado (JOIN en memoria con conceptos)
             foreach (var empleado in empleados)
             {
                 try
                 {
                     var codigoEmpleado = empleado.EmpleadoIdExterno ?? "";
-                    var nif = nifByCode.GetValueOrDefault(codigoEmpleado, "");
-                    var conceptosEmpleado = conceptosByEmpleado[codigoEmpleado].ToList();
+                    var nif = empleado.NIF ?? "";
 
-                    // Percepciones: tipo E (salarial) e I (extrasalarial)
+                    // INNER JOIN: conceptos por este empleado (case-insensitive)
+                    var conceptosEmpleado = conceptos
+                        .Where(c => c.CodigoEmpleado != null &&
+                                   c.CodigoEmpleado.Equals(codigoEmpleado, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Empleado={codigoEmpleado} ({empleado.Nombre}): Conceptos encontrados={conceptosEmpleado.Count}");
+
+                    // Percepciones: Tipo "Fijo" (base salary, vacation accruals, etc.) + "Variable" (mileage, bonuses, etc.)
+                    // NOTA: Wolters Kluwer API retorna "Fijo"/"Variable", NO "E"/"I"/"D"
                     var percepciones = conceptosEmpleado
-                        .Where(c => c.TipoConcepto == "E" || c.TipoConcepto == "I")
+                        .Where(c => c.TipoConcepto == "Fijo" || c.TipoConcepto == "Variable")
                         .Sum(c => c.Importe);
 
-                    // Reembolsos PayHawk (percepciones extrasalariales)
-                    var reembolsosPayhawk = !string.IsNullOrEmpty(nif)
-                        ? gastosByNif.GetValueOrDefault(nif, 0m)
+                    // Reembolsos PayHawk (percepciones extrasalariales) - por NIF del empleado
+                    var reembolsosPayhawk = !string.IsNullOrEmpty(nif) && gastosByNif.ContainsKey(nif)
+                        ? gastosByNif[nif]
                         : 0m;
 
-                    // Deducciones: tipo D (SS, IRPF, desempleo)
-                    var descuentos = conceptosEmpleado
-                        .Where(c => c.TipoConcepto == "D")
-                        .Sum(c => c.Importe);
+                    // Deducciones: No hay datos de descuentos en el sync actual de Wolters Kluwer
+                    // (IRPF, SS, desempleo se enviarán desde otro endpoint o están en PayrollSync)
+                    var descuentos = 0m;
 
                     var totalPercepciones = percepciones + reembolsosPayhawk;
                     var salarioNeto = totalPercepciones - descuentos;

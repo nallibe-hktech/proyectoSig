@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SIG.Application.Interfaces.Services;
 using SIG.Infrastructure.Services;
@@ -525,6 +526,109 @@ public class A3InnuvaNominasController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[A3InnuvaNominas] Error obteniendo conceptos");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// DIAGNOSTICS: Verificar estado de sincronización y datos para debugging
+    /// </summary>
+    [HttpGet("diagnose")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DiagnosticPayrollData(CancellationToken ct = default)
+    {
+        try
+        {
+            // Contar datos
+            var empleadosCount = await _db.StagingA3InnuvaEmpleados.CountAsync(ct);
+            var conceptosCount = await _db.StagingA3InnuvaConceptos.Where(c => c.DeletedAt == null).CountAsync(ct);
+            var payhawkCount = await _db.StagingPayHawkGastos.CountAsync(ct);
+            var nominasCalculadasCount = await _db.StagingA3InnuvaNominasCalculadas.CountAsync(ct);
+
+            // Muestras de datos
+            var empleadosSample = await _db.StagingA3InnuvaEmpleados
+                .Take(5)
+                .Select(e => new { e.EmpleadoIdExterno, e.NIF, e.Nombre })
+                .ToListAsync(ct);
+
+            var conceptosSample = await _db.StagingA3InnuvaConceptos
+                .Where(c => c.DeletedAt == null)
+                .OrderBy(c => c.CodigoEmpleado)
+                .Take(15)
+                .Select(c => new { c.CodigoEmpleado, c.NombreEmpleado, c.DescripcionConcepto, c.TipoConcepto, c.Importe })
+                .ToListAsync(ct);
+
+            // Tipos de concepto únicos
+            var tiposConcepto = await _db.StagingA3InnuvaConceptos
+                .Where(c => c.DeletedAt == null)
+                .Select(c => c.TipoConcepto)
+                .Distinct()
+                .ToListAsync(ct);
+
+            // Detalles de un empleado: todos sus conceptos
+            var primerEmpleado = await _db.StagingA3InnuvaEmpleados
+                .FirstOrDefaultAsync(ct);
+
+            var conceptosPrimerEmpleado = new List<object>();
+            var calcDetails = new object();
+
+            if (primerEmpleado != null)
+            {
+                conceptosPrimerEmpleado = await _db.StagingA3InnuvaConceptos
+                    .Where(c => c.DeletedAt == null && c.CodigoEmpleado == primerEmpleado.EmpleadoIdExterno)
+                    .Select(c => new
+                    {
+                        c.CodigoEmpleado,
+                        c.NombreEmpleado,
+                        c.DescripcionConcepto,
+                        c.TipoConcepto,
+                        c.Importe
+                    })
+                    .Cast<object>()
+                    .ToListAsync(ct);
+
+                // Simular cálculo para el primer empleado
+                var percepciones = await _db.StagingA3InnuvaConceptos
+                    .Where(c => c.DeletedAt == null && c.CodigoEmpleado == primerEmpleado.EmpleadoIdExterno &&
+                               (c.TipoConcepto == "E" || c.TipoConcepto == "I"))
+                    .SumAsync(c => (decimal?)c.Importe, ct) ?? 0m;
+
+                var descuentos = await _db.StagingA3InnuvaConceptos
+                    .Where(c => c.DeletedAt == null && c.CodigoEmpleado == primerEmpleado.EmpleadoIdExterno && c.TipoConcepto == "D")
+                    .SumAsync(c => (decimal?)c.Importe, ct) ?? 0m;
+
+                var payhawk = await _db.StagingPayHawkGastos
+                    .Join(_db.Users, g => g.UserId, u => u.Id, (g, u) => new { g.Importe, NIF = u.NIF })
+                    .Where(x => x.NIF == primerEmpleado.NIF)
+                    .SumAsync(x => (decimal?)x.Importe, ct) ?? 0m;
+
+                calcDetails = new
+                {
+                    EmpleadoCode = primerEmpleado.EmpleadoIdExterno,
+                    EmpleadoNombre = primerEmpleado.Nombre,
+                    NIF = primerEmpleado.NIF,
+                    ConceptosEncontrados = conceptosPrimerEmpleado.Count,
+                    TotalPercepciones = percepciones,
+                    TotalDescuentos = descuentos,
+                    GastosPayHawk = payhawk,
+                    SalarioNeto = percepciones + payhawk - descuentos
+                };
+            }
+
+            return Ok(new
+            {
+                timestamp = DateTime.UtcNow,
+                totals = new { empleadosCount, conceptosCount, payhawkCount, nominasCalculadasCount },
+                empleadosSample,
+                conceptosSample,
+                tiposConcepto,
+                primerEmpleadoAnalisis = calcDetails,
+                conceptosPrimerEmpleado
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error en diagnóstico");
             return BadRequest(new { error = ex.Message });
         }
     }
