@@ -2,15 +2,16 @@
 # Azure DevOps Pipeline — Plataforma Digital SIG (SIG ES)
 # Entorno: DEV  |  Despliega al pulsar push sobre la rama 'dev'
 #
-# Despliega a los recursos creados en rg-siges-dev:
-#   - API .NET 10  -> App Service  app-siges-api-dev
-#   - Frontend Angular -> Static Web App  swa-siges-front-dev
-#   - Migraciones EF Core -> PostgreSQL  psql-siges-dev / sigesdb
+# MODO SIN SERVICE CONNECTION (no requiere permisos de Microsoft Entra):
+#   - API .NET 10      -> App Service  app-siges-api-dev   (via publish profile)
+#   - Frontend Angular -> Static Web App swa-siges-front-dev (via deployment token)
 #
-# HUECOS A RELLENAR cuando exista el proyecto en Azure DevOps:
-#   1. AZURE_SERVICE_CONNECTION  -> nombre de la Service Connection a la suscripción
-#   2. SWA_DEPLOYMENT_TOKEN        -> guardar como variable secreta del pipeline
-#   3. (opcional) la connection string para migraciones, como variable secreta
+# Las MIGRACIONES EF Core NO se aplican aqui: se ejecutan a mano cuando haya
+# cambios de esquema, para mantener el control (coordinacion con Nallibe).
+#
+# VARIABLES SECRETAS A CREAR EN EL PIPELINE (Edit > Variables, marcar "secret"):
+#   1. AZURE_WEBAPP_PUBLISH_PROFILE -> contenido COMPLETO del publish-profile.xml
+#   2. SWA_DEPLOYMENT_TOKEN         -> token de la Static Web App
 # ============================================================================
 
 trigger:
@@ -22,19 +23,14 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  # ---- Recursos Azure (entorno DEV) ----
-  resourceGroup: 'rg-siges-dev'
   appServiceName: 'app-siges-api-dev'
-  # ---- Nombre de la Service Connection (crear en Project Settings > Service connections) ----
-  azureServiceConnection: 'AZURE_SERVICE_CONNECTION'   # <-- RELLENAR
-  # ---- Versiones ----
   dotnetVersion: '10.0.x'
   nodeVersion: '20.x'
   buildConfiguration: 'Release'
 
 stages:
 # ===========================================================================
-# STAGE 1 — BACKEND (.NET 10 API)
+# STAGE 1 — BACKEND (.NET 10 API)  — despliegue por publish profile
 # ===========================================================================
 - stage: Backend
   displayName: 'Build & Deploy API (.NET 10)'
@@ -54,34 +50,21 @@ stages:
       - script: dotnet publish backend/SIG.API/SIG.API.csproj -c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/api
         displayName: 'Publish API'
 
-      # ---- Migraciones EF Core contra la BBDD de Azure ----
-      # Requiere la herramienta dotnet-ef y la connection string como variable secreta.
-      # El nombre de la clave debe coincidir con lo que lee el codigo: ConnectionStrings:Default
-      - script: |
-          dotnet tool install --global dotnet-ef
-          export PATH="$PATH:$HOME/.dotnet/tools"
-          dotnet ef database update \
-            --project backend/SIG.Infrastructure \
-            --startup-project backend/SIG.API
-        displayName: 'Aplicar migraciones EF Core'
-        env:
-          ConnectionStrings__Default: $(SIGES_DB_CONNECTION)   # <-- variable SECRETA del pipeline
-        # Si prefieres NO migrar automaticamente en cada deploy, comenta este bloque.
-
-      - task: AzureWebApp@1
-        displayName: 'Desplegar al App Service'
+      # Despliegue al App Service usando el publish profile (sin Service Connection)
+      - task: AzureRmWebAppDeployment@4
+        displayName: 'Desplegar al App Service (publish profile)'
         inputs:
-          azureSubscription: '$(azureServiceConnection)'
-          appType: 'webAppLinux'
-          appName: '$(appServiceName)'
-          package: '$(Build.ArtifactStagingDirectory)/api'
+          ConnectionType: 'PublishProfile'
+          PublishProfile: '$(AZURE_WEBAPP_PUBLISH_PROFILE)'
+          WebAppKind: 'webAppLinux'
+          Package: '$(Build.ArtifactStagingDirectory)/api'
 
 # ===========================================================================
-# STAGE 2 — FRONTEND (Angular)
+# STAGE 2 — FRONTEND (Angular)  — despliegue por deployment token
 # ===========================================================================
 - stage: Frontend
   displayName: 'Build & Deploy Front (Angular)'
-  dependsOn: Backend          # primero backend, luego front (por si usa endpoints nuevos)
+  dependsOn: Backend
   jobs:
   - job: BuildDeployFront
     displayName: 'Compilar y desplegar Angular'
@@ -97,10 +80,9 @@ stages:
           npm run build -- --configuration production
         displayName: 'Build Angular (produccion)'
 
-      # Despliegue a Static Web App mediante el deployment token (variable secreta)
       - task: AzureStaticWebApp@0
         displayName: 'Desplegar a Static Web App'
         inputs:
           app_location: 'frontend/dist/frontend/browser'
           skip_app_build: true
-          azure_static_web_apps_api_token: $(SWA_DEPLOYMENT_TOKEN)   # <-- variable SECRETA
+          azure_static_web_apps_api_token: $(SWA_DEPLOYMENT_TOKEN)
