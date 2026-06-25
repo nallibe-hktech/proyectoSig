@@ -7,7 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ConceptService } from '../../core/api/concepts.service';
-import { ConceptDetailDto } from '../../models/dtos';
+import { ServiceService } from '../../core/api/services.service';
+import { ConceptDetailDto, ServiceListItemDto } from '../../models/dtos';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
@@ -38,7 +39,18 @@ import { NotifyService } from '../../core/notify.service';
               <dt>Tipo</dt><dd><mat-chip>{{ concept()!.tipo }}</mat-chip></dd>
               <dt>Vigente desde</dt><dd class="mono-num">{{ concept()!.fechaDesde | date:'dd/MM/yyyy' }}</dd>
               <dt>Vigente hasta</dt><dd class="mono-num">{{ concept()!.fechaHasta ? (concept()!.fechaHasta | date:'dd/MM/yyyy') : 'Indefinido' }}</dd>
-              <dt>Servicios asociados</dt><dd>{{ concept()!.serviceIds.length }}</dd>
+              <dt>Servicios asociados</dt>
+              <dd>
+                @if (relatedServices().length > 0) {
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    @for (svc of relatedServices(); track svc.id) {
+                      <mat-chip>{{ svc.nombre }}</mat-chip>
+                    }
+                  </div>
+                } @else {
+                  <span style="color: var(--mat-sys-on-surface-variant);">Ninguno</span>
+                }
+              </dd>
               <dt>Usuarios</dt><dd>{{ concept()!.userIds.length }}</dd>
             </dl>
           </mat-card-content>
@@ -61,6 +73,7 @@ import { NotifyService } from '../../core/notify.service';
 })
 export class ConceptDetailComponent implements OnInit {
   private readonly conceptSvc = inject(ConceptService);
+  private readonly serviceSvc = inject(ServiceService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
@@ -68,6 +81,7 @@ export class ConceptDetailComponent implements OnInit {
 
   protected readonly concept = signal<ConceptDetailDto | null>(null);
   protected readonly loading = signal(true);
+  protected readonly relatedServices = signal<ServiceListItemDto[]>([]);
 
   protected formattedJson(): string {
     const c = this.concept(); if (!c) return '';
@@ -77,7 +91,24 @@ export class ConceptDetailComponent implements OnInit {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.conceptSvc.getById(id).subscribe({
-      next: (c) => { this.concept.set(c); this.loading.set(false); },
+      next: (c) => {
+        this.concept.set(c);
+        // Load service details for associated services
+        if (c.serviceIds && c.serviceIds.length > 0) {
+          this.serviceSvc.list(1, 1000).subscribe({
+            next: (result) => {
+              const associatedSvcs = result.items.filter(s => c.serviceIds.includes(s.id));
+              this.relatedServices.set(associatedSvcs);
+              this.loading.set(false);
+            },
+            error: () => {
+              this.loading.set(false);
+            },
+          });
+        } else {
+          this.loading.set(false);
+        }
+      },
       error: () => { this.loading.set(false); this.notify.error('No se pudo cargar el concept'); },
     });
   }
