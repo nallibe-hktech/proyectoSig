@@ -791,4 +791,32 @@ public class A3InnuvaNominasController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Generar y descargar plantilla Excel A3 Innuva para upload manual
+    /// </summary>
+    [HttpGet("generate-excel")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GenerateExcel(
+        [FromQuery] string periodCode,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(periodCode))
+                return BadRequest(new { error = "periodCode es requerido" });
+
+            _logger.LogInformation($"[A3InnuvaNominas] Generando Excel para período {periodCode}");
+
+            var excelBytes = await _service.GenerateExcelAsync(periodCode, ct);
+
+            var fileName = $"A3InnuvaNominas_{periodCode.Replace("-", "")}.xlsx";
+            return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error generando Excel");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }

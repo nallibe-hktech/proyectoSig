@@ -1,3 +1,4 @@
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
@@ -51,6 +52,9 @@ public interface IA3InnuvaNominasService
     Task SyncPayrollsTestAsync(string companyCode, CancellationToken ct = default);
     Task<PagedResult<A3InnuvaNominasCompanyDto>> GetCompaniesTestAsync(int page, int pageSize, string? search, CancellationToken ct);
     Task<PagedResult<A3InnuvaNominasPayrollDto>> GetPayrollsTestAsync(int page, int pageSize, string? search, CancellationToken ct);
+
+    // Excel generation for manual upload
+    Task<byte[]> GenerateExcelAsync(string periodCode, CancellationToken ct = default);
 }
 
 public class A3InnuvaNominasService : IA3InnuvaNominasService
@@ -1742,6 +1746,148 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[A3InnuvaNominas] Error SyncContractTimetablesAsync: {Message}", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Generar plantilla Excel A3 Innuva (ARCHIVO A3NOM.xls) para descarga manual
+    /// Estructura:
+    /// - Filas 1-7: Metadatos (período, empresa, tipo paga)
+    /// - Fila 8: Encabezados de columnas
+    /// - Filas 9+: Un empleado por fila con datos y cálculos
+    /// </summary>
+    public async Task<byte[]> GenerateExcelAsync(string periodCode, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation($"[A3InnuvaNominas] Generando plantilla Excel para período {periodCode}...");
+
+            // 1. Cargar nóminas calculadas para el período
+            var nominasCalculadas = await _db.StagingA3InnuvaNominasCalculadas
+                .Where(n => n.CodigoPeriodo == periodCode)
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            if (nominasCalculadas.Count == 0)
+            {
+                throw new InvalidOperationException($"No hay nóminas calculadas para el período {periodCode}");
+            }
+
+            _logger.LogInformation($"[A3InnuvaNominas] Cargadas {nominasCalculadas.Count} nóminas calculadas");
+
+            // 2. Cargar empleados A3 por código
+            var empleados = await _db.StagingA3InnuvaEmpleados
+                .AsNoTracking()
+                .ToDictionaryAsync(e => e.EmpleadoIdExterno, ct);
+
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {empleados.Count} empleados A3");
+
+            // 3. Cargar gastos PayHawk del período (KM + SUPLIDOS)
+            // Join con Users para obtener NIF
+            var payhawkGastosConNIF = await _db.StagingPayHawkGastos
+                .Join(_db.Users, g => g.UserId, u => u.Id, (g, u) => new { Gasto = g, NIF = u.NIF })
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {payhawkGastosConNIF.Count} gastos PayHawk con NIF");
+
+            // 4. Crear workbook Excel
+            using var workbook = new XLWorkbook();
+            var ws = workbook.Worksheets.Add("Nómina");
+
+            // Parsear período (formato: "2026-06" o "202606")
+            var periodParts = periodCode.Replace("-", "");
+            var periodDate = DateTime.TryParseExact(
+                periodCode.Contains("-") ? periodCode : $"{periodCode.Substring(0, 4)}-{periodCode.Substring(4)}",
+                new[] { "yyyy-MM", "yyyy-MM-dd" },
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None,
+                out var parsed) ? parsed : DateTime.Now;
+
+            var diasMes = DateTime.DaysInMonth(periodDate.Year, periodDate.Month);
+            var fechaCierre = new DateTime(periodDate.Year, periodDate.Month, diasMes);
+
+            // Metadatos (Filas 1-7)
+            ws.Cell(1, 1).Value = ""; // Fila vacía
+            ws.Cell(2, 1).Value = "";
+            ws.Cell(3, 2).Value = "Paga Mensual";
+            ws.Cell(3, 12).Value = "Asiento de nomina PRUEBA"; // Col L (12)
+
+            ws.Cell(4, 2).Value = $"Del 01/{periodDate.Month:D2}/{periodDate.Year} al {diasMes:D2}/{periodDate.Month:D2}/{periodDate.Year}";
+            ws.Cell(4, 29).Value = fechaCierre.ToString("yyyy-MM-dd"); // Col AC (29)
+
+            ws.Cell(5, 2).Value = "Empresa: 1 - SERVICE INNOVATION GROUP ESPANA SERVICIO";
+
+            ws.Cell(6, 1).Value = "";
+            ws.Cell(7, 1).Value = "";
+
+            // Encabezados (Fila 8)
+            var headers = new[] { "NIF", "Apellidos", "Nombre", "Centro", "Categoría", "Empresa", "Almacén", "Departamento",
+                "", "", "Importe Bruto", "", "", "", "", "", "", "", "", "km", "SUPLIDOS", "", "", "", "", "", "Descuentos Absentismo" };
+
+            for (int col = 1; col <= headers.Length; col++)
+            {
+                if (!string.IsNullOrEmpty(headers[col - 1]))
+                {
+                    ws.Cell(8, col).Value = headers[col - 1];
+                }
+            }
+
+            // Datos empleados (Filas 9+)
+            int rowIndex = 9;
+            foreach (var nomina in nominasCalculadas)
+            {
+                empleados.TryGetValue(nomina.CodigoEmpleado, out var empleado);
+
+                // Cols A-H: Datos del empleado
+                ws.Cell(rowIndex, 1).Value = empleado?.NIF ?? "";  // A: NIF
+                ws.Cell(rowIndex, 2).Value = empleado?.Nombre ?? ""; // B: Apellidos (usando Nombre como fallback)
+                ws.Cell(rowIndex, 3).Value = empleado?.Nombre ?? ""; // C: Nombre
+                ws.Cell(rowIndex, 4).Value = ""; // D: Centro
+                ws.Cell(rowIndex, 5).Value = ""; // E: Categoría
+                ws.Cell(rowIndex, 6).Value = "1"; // F: Empresa (hardcoded to 1)
+                ws.Cell(rowIndex, 7).Value = ""; // G: Almacén
+                ws.Cell(rowIndex, 8).Value = ""; // H: Departamento
+
+                // Col K (11): Importe Bruto (TotalPercepciones)
+                ws.Cell(rowIndex, 11).Value = nomina.TotalPercepciones;
+
+                // Col T (20): KM (calculado desde PayHawk - Categoría "Kilometraje")
+                var kmGastos = payhawkGastosConNIF
+                    .Where(x => empleado != null && x.NIF == empleado.NIF && x.Gasto.Categoria == "Kilometraje")
+                    .Sum(x => x.Gasto.Importe);
+                ws.Cell(rowIndex, 20).Value = kmGastos > 0 ? kmGastos : 0;
+
+                // Col U (21): SUPLIDOS (gastos reembolsables PayHawk - todas las categorías excepto Kilometraje)
+                var suplidosGastos = payhawkGastosConNIF
+                    .Where(x => empleado != null && x.NIF == empleado.NIF && x.Gasto.Categoria != "Kilometraje")
+                    .Sum(x => x.Gasto.Importe);
+                ws.Cell(rowIndex, 21).Value = suplidosGastos > 0 ? suplidosGastos : 0;
+
+                // Col Z (26): Descuento Absentismo (TotalDescuentos como fallback)
+                ws.Cell(rowIndex, 26).Value = nomina.TotalDescuentos;
+
+                rowIndex++;
+            }
+
+            // Ajustar ancho de columnas
+            ws.Column(11).Width = 14; // Importe Bruto
+            ws.Column(20).Width = 10; // KM
+            ws.Column(21).Width = 14; // SUPLIDOS
+            ws.Column(26).Width = 14; // Descuentos
+
+            // Convertir a bytes y retornar
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+
+            _logger.LogInformation($"[A3InnuvaNominas] ✅ Plantilla Excel generada correctamente para {nominasCalculadas.Count} empleados");
+
+            return stream.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error generando plantilla Excel");
+            throw;
         }
     }
 
