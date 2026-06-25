@@ -27,9 +27,9 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
   retries: 1,
-  reporter: 'line',
+  reporter: 'html',
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:4200',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -40,3 +40,5 @@ export default defineConfig({
     },
   ],
 });
+
+

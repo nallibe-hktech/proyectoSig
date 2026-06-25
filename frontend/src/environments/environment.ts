@@ -3,6 +3,6 @@
 // El dominio real debe ser configurado por IT antes del despliegue.
 export const environment = {
   production: true,
-  apiUrl: 'https://<dominio-produccion>/api',
+  apiUrl: 'https://app-siges-api-dev.azurewebsites.net/api',
   showDemoCredentials: false,
 };
