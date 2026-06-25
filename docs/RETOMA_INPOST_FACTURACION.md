@@ -65,12 +65,17 @@ Localizada la cadena exacta: `CeleroPostgresClient.cs` (SQL) → `CeleroVisitaDt
 - **"Tipo de visita":** las tablas resumen dicen "tiempo, provincia y tipo"; la entrevista solo dice "tiempo y provincia". Probable que "tipo" = modalidad diurna/pernocta. Confirmar.
 - **Unidades de `realDuration`** en Celero: ¿minutos, segundos, HH:MM? Verificar contra la BBDD real.
 
-### 4.3 Cambio técnico pendiente (ingesta de Celero)
-Para que las franjas operen sobre dato real, **enriquecer DTO + SQL** (NO requiere migración de BBDD ni tocar el motor, porque el cálculo lee del `PayloadJson`):
-- `CeleroPostgresClient.cs:33` (SQL): añadir `realDuration` (duración), `visitStatus` (estado), `cancellationReason`, y **JOIN a POA/centro** para `addressState` (provincia).
-- `IntegrationDtos.cs:3` (DTO `CeleroVisitaDto`): añadir `DuracionMinutos, Estado, Provincia, CancellationReason`.
-- `CeleroPostgresClient.cs:54` (reader) y `FakeClients.cs` / `HttpClients.cs`: rellenar los campos nuevos. El `Serialize(d)` de `DashboardCalcSyncAudit.cs:334` los mete solo en el payload.
-- **DECISIÓN DELICADA:** el SQL filtra hoy `WHERE v.status = 'done'` (`CeleroPostgresClient.cs:43`), que **descarta fallidas y canceladas** — pero Inpost las necesita. Relajar ese filtro **afecta a TODOS los clientes**. Hacerlo configurable o por cliente. Validar antes de implementar.
+### 4.3 Cambio técnico de ingesta de Celero — IMPLEMENTADO 2026-06-24 (salvo provincia)
+Para que las franjas operen sobre dato real se enriqueció **DTO + SQL** (NO requiere migración de BBDD ni toca el motor, porque el cálculo lee del `PayloadJson`). Estado por punto:
+- ✅ `IntegrationDtos.cs` (DTO `CeleroVisitaDto`): añadidos `DuracionMinutos, Estado, Provincia, CancellationReason` (opcionales, no rompen construcciones existentes). El `Serialize(d)` de `DashboardCalcSyncAudit.cs` los vuelca al `PayloadJson` automáticamente.
+- ✅ `CeleroPostgresClient.cs` (SQL + reader): añadidas columnas `realDuration` (→ `DuracionMinutos`), `v.status` (→ `Estado`), `cancellationReason`. SQL extraído a `BuildVisitasSql(bool)` para test sin BD.
+- ✅ **DECISIÓN DELICADA resuelta como configurable:** el filtro `WHERE v.status = 'done'` ahora depende del flag `Integrations:Celero:IncluirNoRealizadas` (ctor `CeleroPostgresClient(conn, incluirNoRealizadas=false)`). **Por defecto false = comportamiento histórico (solo 'done') para TODOS los clientes**; se activa solo cuando un cliente (Inpost) deba facturar fallidas/canceladas.
+- ✅ `FakeClients.cs` (`CeleroFakeClient`): produce los campos nuevos con valores de ejemplo anónimos (sin PII). `HttpClients.cs` devuelve lista vacía (sin construir DTOs) → sin cambios.
+- ✅ Motor: `RowAdapter` ya expone `Estado` (flag de excepción tipado) y el resto (`DuracionMinutos`, `Provincia`, `CancellationReason`) como filtrables por nombre vía `Extra` — sin tocar el motor. Además se corrigió `CoerceBool`/`ToBool` para reconocer booleanos en inglés (`Yes`/`No`), observado en los datos de feedback de Celero.
+- ✅ **`addressState` (provincia) RESUELTO 2026-06-24:** la hoja `CeleroOne` del Excel del cliente sitúa `addressState` en el VisitReport (campo de la propia visita), por lo que **no requiere JOIN a centro/POA**. La SQL lee `v."addressState" AS provincia` y el DTO rellena `Provincia`. Golden `InpostOtraProvinciaGoldenTests` verifica segmentación provincia × franja.
+- ⏳ **PENDIENTE — validación contra BBDD real:** los nombres de columna (`realDuration`/`status`/`cancellationReason`/`addressState`, trazados a la hoja `CeleroOne`) no se han podido ejecutar contra Celero real (sin acceso). Confirmar al desplegar. Matiz de `CeleroOne`: describe `visitStatus` con estados en español (Abierta/Chequeada/en progreso/Realizada) mientras el dato crudo filtrado es `done`; confirmar el enum real.
+
+**Tests añadidos (todos verdes):** `CeleroIngestaPayloadTests` (round-trip DTO→PayloadJson→RowAdapter, segmentación por provincia/franja/estado, booleano inglés) y `CeleroPostgresClientSqlTests` (filtro de estado por defecto vs relajado, columnas nuevas, read-only preservado, sin PII en fake). Suite completa 434/434.
 
 ---
 

@@ -98,6 +98,8 @@ public class CalculationContext
         string s => s.Equals("true", StringComparison.OrdinalIgnoreCase)
                  || s.Equals("sí", StringComparison.OrdinalIgnoreCase)
                  || s.Equals("si", StringComparison.OrdinalIgnoreCase)
+                 // Las respuestas booleanas de Celero llegan en inglés ("Yes"/"No"); sin esto un "Yes" se evaluaría como false.
+                 || s.Equals("yes", StringComparison.OrdinalIgnoreCase)
                  || s == "1",
         _ => TryDecimal(o) != 0m
     };
@@ -212,6 +214,8 @@ public class RowAdapter
         string s => s.Equals("true", StringComparison.OrdinalIgnoreCase)
                  || s.Equals("sí", StringComparison.OrdinalIgnoreCase)
                  || s.Equals("si", StringComparison.OrdinalIgnoreCase)
+                 // Respuestas booleanas de Celero en inglés ("Yes"/"No").
+                 || s.Equals("yes", StringComparison.OrdinalIgnoreCase)
                  || s == "1",
         _ => ToDecimal(o) != 0m
     };

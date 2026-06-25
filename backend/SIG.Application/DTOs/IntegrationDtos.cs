@@ -5,7 +5,15 @@ public record CeleroVisitaDto(
     string ResourceNif,
     string ServiceName,
     string MissionName,
-    DateOnly Fecha);
+    DateOnly Fecha,
+    // Campos de origen Celero ingestados para alimentar la segmentación del motor por PayloadJson
+    // (ver docs/RETOMA_INPOST_FACTURACION.md §4.3). Se serializan completos al PayloadJson y el
+    // RowAdapter los expone: "Estado" se mapea al flag de excepción tipado; el resto queda filtrable
+    // por nombre vía el diccionario Extra. Opcionales para no romper construcciones existentes.
+    int? DuracionMinutos = null,         // realDuration de Celero (unidad pendiente de confirmar, §4.2)
+    string? Estado = null,               // visitStatus: done | failed | cancelled ...
+    string? Provincia = null,            // addressState del centro/POA
+    string? CancellationReason = null);  // cancellationReason cuando la visita no se realiza
 public record BizneoEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento);
 public record BizneoAbsenceDto(string RegistroIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Horas);
 public record IntratimeEmpleadoDto(
