@@ -155,12 +155,17 @@ interface RolDef {
                 <div class="sig-detail-section-title">Usuarios con este Rol <span>3</span></div>
                 <div class="sig-avatar-chip">
                   <div class="sig-avatar" style="background:#7c3aed">AT</div>
-                  <div class="sig-avatar-info"><span class="sig-avatar-name">Adrian Tomas</span><span class="sig-avatar-role">adrian.tomas&#64;sigeurope.com</span></div>
+                  <div class="sig-avatar-info"><span class="sig-avatar-name">Adri&aacute;n Tom&aacute;s</span><span class="sig-avatar-role">adrian.tomas&#64;sigeurope.com</span></div>
                   <button class="sig-quitar-btn">Quitar</button>
                 </div>
                 <div class="sig-avatar-chip">
                   <div class="sig-avatar" style="background:#0d9488">TM</div>
-                  <div class="sig-avatar-info"><span class="sig-avatar-name">Tomas Martin</span><span class="sig-avatar-role">tomas.martin&#64;sigeurope.com</span></div>
+                  <div class="sig-avatar-info"><span class="sig-avatar-name">Tom&aacute;s Mart&iacute;n</span><span class="sig-avatar-role">tomas.martin&#64;sigeurope.com</span></div>
+                  <button class="sig-quitar-btn">Quitar</button>
+                </div>
+                <div class="sig-avatar-chip">
+                  <div class="sig-avatar" style="background:#2563eb">NB</div>
+                  <div class="sig-avatar-info"><span class="sig-avatar-name">Nati Bustamante</span><span class="sig-avatar-role">natibustamante&#64;sig.com</span></div>
                   <button class="sig-quitar-btn">Quitar</button>
                 </div>
                 <span class="sig-add-link">+ Añadir Usuario</span>

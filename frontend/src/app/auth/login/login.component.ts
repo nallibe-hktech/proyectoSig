@@ -71,7 +71,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
                     class="sig-input"
                     type="email"
                     formControlName="email"
-                    placeholder="nombre@sigeurope.com"
+                    placeholder="nombre@sigespana.es"
                     autocomplete="email"
                     data-testid="input-email"
                   />
@@ -138,7 +138,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
                 }
               </button>
 
-              <div class="sig-or-divider"><span>o continua con</span></div>
+              <div class="sig-or-divider"><span>o contin&uacute;a con</span></div>
 
               <button
                 type="button"
@@ -181,7 +181,7 @@ interface DemoCred { email: string; password: string; nombre: string; rol: strin
           }
 
           <footer class="sig-login-footer">
-            SIG-ES Plataforma Integral v1.0 &middot; &copy; 2026 Service Innovation Group &middot; Excellence made in Europe
+            SIG-ES Plataforma Integral v1.0 &middot; h&amp;k consulting &middot; &copy; 2026
           </footer>
         </div>
 

@@ -36,14 +36,19 @@ Nada commiteado aún. Sugerencia de commits temáticos:
 - `feat(presupuesto): Forecast como pestaña`
 - `fix(i18n): registrar locale es; fix wrap importes Contabilidad`
 
-### 1. Revisión de FIDELIDAD de pantallas existentes (diff fino NO hecho)
-Existen y están alineadas a grandes rasgos, pero falta contrastar detalle contra el penpot:
-- **Roles** — matriz de permisos completa (9 roles × Pagos/Facturaciones/Usuarios/Roles, ámbito Global/Proyecto) + nota "Editar incluye Eliminar · datos de Celero".
-- **Periodos** — detalle de cierres (Facturación día 9; Nóminas grupo A día 30 / grupo B día 15), ciclo de vida, "Cierre por servicio" (Nómina/Factura OK/Alerta).
+### 1. Revisión de FIDELIDAD de pantallas existentes (diff fino)
+
+**✅ Hecho 2026-06-25 (segunda sesión, build dev verde):** contrastadas 4 pantallas contra los boards reales del penpot (`A-Roles`, `A-Periodos`, `A-Conceptos de Pago`, `A- Login`) extraídos del `.penpot`:
+- **Login** — alineado texto exacto del board: placeholder `nombre@sigespana.es`, "o continúa con", footer `SIG-ES Plataforma Integral v1.0 · h&k consulting · © 2026`. El botón Azure AD / Microsoft SSO ya existía.
+- **Roles** — ya tenía la matriz 9 roles + nota footer; añadido el 3er usuario que faltaba (header decía "3" y sólo había 2): **Nati Bustamante** (NB · natibustamante@sig.com), y acentuados Adrián Tomás / Tomás Martín.
+- **Conceptos — editor de fórmula** — variables/operaciones/expresión ya estaban (AST real, superior a la maqueta). Añadido lo que faltaba del board: panel **"Preview — Cálculo Aplicado (Juan Pérez · Mayo 2026)"** (€ 1.250, origen Payhawk API, trazabilidad de registros — **ilustrativo**) + indicador **"Jerarquía de Aplicación: Global → Servicio → Empleado"**.
+- **Periodos** — era tabla simple; **reconstruida** al layout del board (tokens `--sig-*`): tabla real (PeriodService) con columnas Periodo / Cierre Nóminas / Cierre Facturación / Estado / Acciones (conserva cerrar/reabrir/editar) + panel lateral **"Cierres y fechas de pago"** (emisión día 9; pago grupo A día 30 / B día 15), **"Ciclo de vida del periodo"** (leyenda 5 estados) y **"Cierre por servicio"** (tabla Amex Shop Small / Granini GPVs / Amex New — **ilustrativa**, marcada `demo`). El desglose Nóminas/Facturación por servicio sigue bloqueado por backend.
+
+**⏳ Pendiente del diff fino (no abordado aún):**
 - **Clientes / Servicios / CECOs / Departamentos / Usuarios** — paneles de detalle (origen Celero vs entrada manual, resumen facturación, usuarios vinculados, asignaciones).
-- **Conceptos — editor de fórmula** — variables (Σ Gasto Payhawk, Nº Visitas Celero…), operaciones, Preview del cálculo, jerarquía Global/Servicio/Empleado.
-- **Login** — botón Azure AD / Microsoft SSO + branding "h&k consulting · © 2026".
 - **Dashboard** — el "objetivo" sigue placeholder (ver SUP-07).
+
+> **Nota terminología:** el penpot usa la nomenclatura vieja (Proyecto/Acción); el código usa la canónica Servicio/Concepto (rename Ola 1). Se respeta el código, NO se revierte a Proyecto/Acción.
 
 > **Informes**: el penpot aún dibuja Power BI, pero la decisión firme es **nativo** (ver `informes-nativos-no-powerbi`). NO regresar a Power BI.
 
