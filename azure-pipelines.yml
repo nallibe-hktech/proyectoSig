@@ -1,0 +1,106 @@
+# ============================================================================
+# Azure DevOps Pipeline — Plataforma Digital SIG (SIG ES)
+# Entorno: DEV  |  Despliega al pulsar push sobre la rama 'dev'
+#
+# Despliega a los recursos creados en rg-siges-dev:
+#   - API .NET 10  -> App Service  app-siges-api-dev
+#   - Frontend Angular -> Static Web App  swa-siges-front-dev
+#   - Migraciones EF Core -> PostgreSQL  psql-siges-dev / sigesdb
+#
+# HUECOS A RELLENAR cuando exista el proyecto en Azure DevOps:
+#   1. AZURE_SERVICE_CONNECTION  -> nombre de la Service Connection a la suscripción
+#   2. SWA_DEPLOYMENT_TOKEN        -> guardar como variable secreta del pipeline
+#   3. (opcional) la connection string para migraciones, como variable secreta
+# ============================================================================
+
+trigger:
+  branches:
+    include:
+      - dev            # el pipeline se dispara SOLO con push a la rama dev
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # ---- Recursos Azure (entorno DEV) ----
+  resourceGroup: 'rg-siges-dev'
+  appServiceName: 'app-siges-api-dev'
+  # ---- Nombre de la Service Connection (crear en Project Settings > Service connections) ----
+  azureServiceConnection: 'AZURE_SERVICE_CONNECTION'   # <-- RELLENAR
+  # ---- Versiones ----
+  dotnetVersion: '10.0.x'
+  nodeVersion: '20.x'
+  buildConfiguration: 'Release'
+
+stages:
+# ===========================================================================
+# STAGE 1 — BACKEND (.NET 10 API)
+# ===========================================================================
+- stage: Backend
+  displayName: 'Build & Deploy API (.NET 10)'
+  jobs:
+  - job: BuildDeployApi
+    displayName: 'Compilar y desplegar SIG.API'
+    steps:
+      - task: UseDotNet@2
+        displayName: 'Instalar .NET SDK 10'
+        inputs:
+          packageType: 'sdk'
+          version: '$(dotnetVersion)'
+
+      - script: dotnet restore backend/SIG.API/SIG.API.csproj
+        displayName: 'Restore'
+
+      - script: dotnet publish backend/SIG.API/SIG.API.csproj -c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/api
+        displayName: 'Publish API'
+
+      # ---- Migraciones EF Core contra la BBDD de Azure ----
+      # Requiere la herramienta dotnet-ef y la connection string como variable secreta.
+      # El nombre de la clave debe coincidir con lo que lee el codigo: ConnectionStrings:Default
+      - script: |
+          dotnet tool install --global dotnet-ef
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet ef database update \
+            --project backend/SIG.Infrastructure \
+            --startup-project backend/SIG.API
+        displayName: 'Aplicar migraciones EF Core'
+        env:
+          ConnectionStrings__Default: $(SIGES_DB_CONNECTION)   # <-- variable SECRETA del pipeline
+        # Si prefieres NO migrar automaticamente en cada deploy, comenta este bloque.
+
+      - task: AzureWebApp@1
+        displayName: 'Desplegar al App Service'
+        inputs:
+          azureSubscription: '$(azureServiceConnection)'
+          appType: 'webAppLinux'
+          appName: '$(appServiceName)'
+          package: '$(Build.ArtifactStagingDirectory)/api'
+
+# ===========================================================================
+# STAGE 2 — FRONTEND (Angular)
+# ===========================================================================
+- stage: Frontend
+  displayName: 'Build & Deploy Front (Angular)'
+  dependsOn: Backend          # primero backend, luego front (por si usa endpoints nuevos)
+  jobs:
+  - job: BuildDeployFront
+    displayName: 'Compilar y desplegar Angular'
+    steps:
+      - task: NodeTool@0
+        displayName: 'Instalar Node'
+        inputs:
+          versionSpec: '$(nodeVersion)'
+
+      - script: |
+          cd frontend
+          npm ci
+          npm run build -- --configuration production
+        displayName: 'Build Angular (produccion)'
+
+      # Despliegue a Static Web App mediante el deployment token (variable secreta)
+      - task: AzureStaticWebApp@0
+        displayName: 'Desplegar a Static Web App'
+        inputs:
+          app_location: 'frontend/dist/frontend/browser'
+          skip_app_build: true
+          azure_static_web_apps_api_token: $(SWA_DEPLOYMENT_TOKEN)   # <-- variable SECRETA
