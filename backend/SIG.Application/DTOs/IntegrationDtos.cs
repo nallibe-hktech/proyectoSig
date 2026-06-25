@@ -5,7 +5,11 @@ public record CeleroVisitaDto(
     string ResourceNif,
     string ServiceName,
     string MissionName,
-    DateOnly Fecha);
+    DateOnly Fecha,
+    int DuracionRealMinutos,
+    string Provincia,
+    string Ciudad,
+    string Estado);
 public record BizneoEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento);
 public record BizneoAbsenceDto(string RegistroIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Horas);
 public record IntratimeEmpleadoDto(

@@ -35,12 +35,15 @@ public class CeleroPostgresClient : ICeleroClient
                        COALESCE(r."resourceExternalId",'') AS resource_nif,
                        COALESCE(m."serviceName",'')        AS service_name,
                        COALESCE(m."missionType",'')        AS mission_name,
-                       v."planDate"                        AS fecha
+                       v."planDate"                        AS fecha,
+                       COALESCE(v."duration", 0)           AS duracion_real_minutos,
+                       COALESCE(r."addressState",'')       AS provincia,
+                       COALESCE(r."addressCity",'')        AS ciudad,
+                       COALESCE(v."status",'')             AS estado
                 FROM public.visit v
                 JOIN public.analytics_mission_list_view m ON m."missionId" = v."missionId"
                 JOIN public.resource_list_view r          ON r."resourceId" = v."resourceId"
                 WHERE v."planDate" BETWEEN @desde AND @hasta
-                  AND v.status = 'done'
                 ORDER BY v.id
                 """;
 
@@ -56,8 +59,13 @@ public class CeleroPostgresClient : ICeleroClient
                 var serviceName = reader.GetString(2);
                 var missionName = reader.GetString(3);
                 var fecha = DateOnly.FromDateTime(reader.GetDateTime(4));
+                var duracionRealMinutos = reader.GetInt32(5);
+                var provincia = reader.GetString(6);
+                var ciudad = reader.GetString(7);
+                var estado = reader.GetString(8);
 
-                visitas.Add(new CeleroVisitaDto(visitaId, resourceNif, serviceName, missionName, fecha));
+                visitas.Add(new CeleroVisitaDto(visitaId, resourceNif, serviceName, missionName, fecha,
+                    duracionRealMinutos, provincia, ciudad, estado));
             }
         }
         catch (Exception ex)
