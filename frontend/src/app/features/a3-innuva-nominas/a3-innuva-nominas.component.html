@@ -31,8 +31,8 @@
         <mat-form-field appearance="outline">
           <mat-label>Período</mat-label>
           <mat-select [(ngModel)]="periodCode" (selectionChange)="onPeriodChange()">
-            <mat-option *ngFor="let p of periods()" [value]="p.code">
-              {{ p.name }} ({{ p.code }})
+            <mat-option *ngFor="let p of periods()" [value]="p.nombre">
+              {{ p.nombre }} ({{ p.estado }})
             </mat-option>
           </mat-select>
         </mat-form-field>
@@ -312,12 +312,6 @@
         </div>
 
         <mat-table [dataSource]="nominasCalculadas()" class="mat-elevation-z1">
-          <!-- Fecha Contrato Column -->
-          <ng-container matColumnDef="fechaContrato">
-            <mat-header-cell *matHeaderCellDef>Fecha Contrato</mat-header-cell>
-            <mat-cell *matCellDef="let element">{{ element.fechaContrato | date:'short' }}</mat-cell>
-          </ng-container>
-
           <!-- Código Empleado Column -->
           <ng-container matColumnDef="codigoEmpleado">
             <mat-header-cell *matHeaderCellDef>Código Empleado</mat-header-cell>
@@ -330,16 +324,28 @@
             <mat-cell *matCellDef="let element">{{ element.nombreEmpleado }}</mat-cell>
           </ng-container>
 
-          <!-- Fecha Column -->
-          <ng-container matColumnDef="fecha">
-            <mat-header-cell *matHeaderCellDef>Fecha</mat-header-cell>
-            <mat-cell *matCellDef="let element">{{ element.fecha | date:'short' }}</mat-cell>
+          <!-- Código Período Column -->
+          <ng-container matColumnDef="codigoPeriodo">
+            <mat-header-cell *matHeaderCellDef>Período</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.codigoPeriodo }}</mat-cell>
           </ng-container>
 
-          <!-- Importe Total Column -->
-          <ng-container matColumnDef="importeTotal">
-            <mat-header-cell *matHeaderCellDef>Importe Total</mat-header-cell>
-            <mat-cell *matCellDef="let element">{{ element.importeTotal | number:'1.2-2' }}</mat-cell>
+          <!-- Total Percepciones Column -->
+          <ng-container matColumnDef="totalPercepciones">
+            <mat-header-cell *matHeaderCellDef>Percepciones</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.totalPercepciones | number:'1.2-2' }}</mat-cell>
+          </ng-container>
+
+          <!-- Total Descuentos Column -->
+          <ng-container matColumnDef="totalDescuentos">
+            <mat-header-cell *matHeaderCellDef>Descuentos</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.totalDescuentos | number:'1.2-2' }}</mat-cell>
+          </ng-container>
+
+          <!-- Salario Neto Column -->
+          <ng-container matColumnDef="salarioNeto">
+            <mat-header-cell *matHeaderCellDef>Salario Neto</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.salarioNeto | number:'1.2-2' }}</mat-cell>
           </ng-container>
 
           <mat-header-row *matHeaderRowDef="displayedColumnsCalculadas"></mat-header-row>
@@ -374,12 +380,6 @@
         </div>
 
         <mat-table [dataSource]="nominasEnviadas()" class="mat-elevation-z1">
-          <!-- Fecha Contrato Column -->
-          <ng-container matColumnDef="fechaContrato">
-            <mat-header-cell *matHeaderCellDef>Fecha Contrato</mat-header-cell>
-            <mat-cell *matCellDef="let element">{{ element.fechaContrato | date:'short' }}</mat-cell>
-          </ng-container>
-
           <!-- Código Empleado Column -->
           <ng-container matColumnDef="codigoEmpleado">
             <mat-header-cell *matHeaderCellDef>Código Empleado</mat-header-cell>
@@ -392,16 +392,28 @@
             <mat-cell *matCellDef="let element">{{ element.nombreEmpleado }}</mat-cell>
           </ng-container>
 
-          <!-- Fecha Column -->
-          <ng-container matColumnDef="fecha">
-            <mat-header-cell *matHeaderCellDef>Fecha</mat-header-cell>
-            <mat-cell *matCellDef="let element">{{ element.fecha | date:'short' }}</mat-cell>
+          <!-- Código Período Column -->
+          <ng-container matColumnDef="codigoPeriodo">
+            <mat-header-cell *matHeaderCellDef>Período</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.codigoPeriodo }}</mat-cell>
           </ng-container>
 
-          <!-- Importe Total Column -->
-          <ng-container matColumnDef="importeTotal">
-            <mat-header-cell *matHeaderCellDef>Importe Total</mat-header-cell>
-            <mat-cell *matCellDef="let element">{{ element.importeTotal | number:'1.2-2' }}</mat-cell>
+          <!-- Total Percepciones Column -->
+          <ng-container matColumnDef="totalPercepciones">
+            <mat-header-cell *matHeaderCellDef>Percepciones</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.totalPercepciones | number:'1.2-2' }}</mat-cell>
+          </ng-container>
+
+          <!-- Total Descuentos Column -->
+          <ng-container matColumnDef="totalDescuentos">
+            <mat-header-cell *matHeaderCellDef>Descuentos</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.totalDescuentos | number:'1.2-2' }}</mat-cell>
+          </ng-container>
+
+          <!-- Salario Neto Column -->
+          <ng-container matColumnDef="salarioNeto">
+            <mat-header-cell *matHeaderCellDef>Salario Neto</mat-header-cell>
+            <mat-cell *matCellDef="let element">{{ element.salarioNeto | number:'1.2-2' }}</mat-cell>
           </ng-container>
 
           <mat-header-row *matHeaderRowDef="displayedColumnsEnviadas"></mat-header-row>

@@ -119,27 +119,7 @@ public class A3InnuvaNominasController : ControllerBase
     // ====== PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ======
 
     /// <summary>
-    /// PHASE 1.3a: Sync salary data for all employees
-    /// </summary>
-    [HttpPost("sync-salary")]
-    [AllowAnonymous]
-    public async Task<IActionResult> SyncSalary(CancellationToken ct)
-    {
-        try
-        {
-            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de salarios...");
-            await _service.SyncSalaryAsync(ct);
-            return Ok(new { message = "Sincronización de salarios completada" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando salarios");
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// PHASE 1.3b: Sync IRPF (tax) data for all employees
+    /// PHASE 1.3a: Sync IRPF (tax) data for all employees
     /// </summary>
     [HttpPost("sync-irpf")]
     [AllowAnonymous]
@@ -214,6 +194,40 @@ public class A3InnuvaNominasController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando acuerdos");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("sync-contract-agreements")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SyncContractAgreements(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de acuerdos de contrato...");
+            await _service.SyncContractAgreementsAsync(ct);
+            return Ok(new { message = "Sincronización de acuerdos de contrato completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando acuerdos de contrato");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("sync-contract-timetables")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SyncContractTimetables(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de horarios de contrato...");
+            await _service.SyncContractTimetablesAsync(ct);
+            return Ok(new { message = "Sincronización de horarios de contrato completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando horarios de contrato");
             return BadRequest(new { error = ex.Message });
         }
     }
@@ -325,6 +339,40 @@ public class A3InnuvaNominasController : ControllerBase
         {
             _logger.LogError(ex, "[A3InnuvaNominas-OAuth] Error intercambiando código");
             return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// DEBUG: Check current OAuth token status in database
+    /// </summary>
+    [HttpGet("oauth/status")]
+    [AllowAnonymous]
+    public IActionResult GetOAuthStatus()
+    {
+        try
+        {
+            var token = _db.A3InnuvaOAuthTokens.FirstOrDefault();
+            if (token == null)
+            {
+                return Ok(new {
+                    status = "NO_TOKEN",
+                    message = "No OAuth token found in database. Please complete the authorization flow first."
+                });
+            }
+
+            return Ok(new {
+                status = "TOKEN_FOUND",
+                accessToken = token.AccessToken?.Substring(0, Math.Min(50, token.AccessToken.Length)) + "...",
+                refreshToken = token.RefreshToken?.Substring(0, Math.Min(50, token.RefreshToken?.Length ?? 0)) + "...",
+                accessTokenExpiresAt = token.AccessTokenExpiresAt,
+                isValid = token.IsValid,
+                createdAt = token.CreatedAt,
+                updatedAt = token.UpdatedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 

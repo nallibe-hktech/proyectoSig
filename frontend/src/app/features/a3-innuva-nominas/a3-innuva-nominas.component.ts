@@ -93,8 +93,8 @@ export class A3InnuvaNominasComponent implements OnInit {
   periods = signal<PeriodoDto[]>([]);
 
   // Display
-  displayedColumnsCalculadas = ['fechaContrato', 'codigoEmpleado', 'nombreEmpleado', 'fecha', 'importeTotal'];
-  displayedColumnsEnviadas = ['fechaContrato', 'codigoEmpleado', 'nombreEmpleado', 'fecha', 'importeTotal'];
+  displayedColumnsCalculadas = ['codigoEmpleado', 'nombreEmpleado', 'codigoPeriodo', 'totalPercepciones', 'totalDescuentos', 'salarioNeto'];
+  displayedColumnsEnviadas = ['codigoEmpleado', 'nombreEmpleado', 'codigoPeriodo', 'totalPercepciones', 'totalDescuentos', 'salarioNeto'];
   displayedColumnsEmpresas = ['codigo', 'nombre', 'nif', 'ciudad', 'pais'];
   displayedColumnsNominas = ['idEmpleado', 'nombreEmpleado', 'codigoPeriodo', 'salarioBase', 'salarioNeto'];
   displayedColumnsEmpleados = ['nif', 'nombre', 'departamento', 'sueldoMensual', 'fechaUltimaSincronizacion'];
@@ -124,8 +124,9 @@ export class A3InnuvaNominasComponent implements OnInit {
     // Cargar periodos para los filtros
     this.loadPeriods();
 
-    // Si está autorizado, cargar las nóminas
+    // Si está autorizado, cargar TODOS los datos (sin esperar a PHASE 1)
     if (this.isAuthorized()) {
+      this.loadAllPhase1Details();  // Cargar empresas, empleados, conceptos, nóminas
       this.loadNominasCalculadas();
       this.loadNominasEnviadas();
     }
@@ -159,7 +160,7 @@ export class A3InnuvaNominasComponent implements OnInit {
 
   // ============ PHASE 1: SYNC PHASE ============
   syncPhase1(): void {
-    const confirmMsg = '¿Ejecutar PHASE 1? (Sincronizar empresas → empleados → nóminas → conceptos → salarios → IRPF → remuneraciones → cuentas bancarias → acuerdos)';
+    const confirmMsg = '¿Ejecutar PHASE 1? (Sincronizar empresas → nóminas → empleados → conceptos → contratos)';
     if (!confirm(confirmMsg)) return;
 
     this.loadingPhase1.set(true);
@@ -167,8 +168,8 @@ export class A3InnuvaNominasComponent implements OnInit {
 
     this.service.syncCompanies().subscribe({
       next: (): void => {
-        this.syncStatus.set('✅ Empresas sincronizadas. Sincronizando empleados...');
-        this.syncEmployeesInternal();
+        this.syncStatus.set('✅ Empresas sincronizadas. Sincronizando nóminas...');
+        this.syncPayrollsInternal();
       },
       error: (err: any) => {
         this.loadingPhase1.set(false);
@@ -178,25 +179,11 @@ export class A3InnuvaNominasComponent implements OnInit {
     });
   }
 
-  private syncEmployeesInternal(): void {
-    this.service.syncEmployees().subscribe({
-      next: (): void => {
-        this.syncStatus.set('✅ Empleados sincronizados. Sincronizando nóminas...');
-        this.syncPayrollsInternal();
-      },
-      error: (err: any) => {
-        this.loadingPhase1.set(false);
-        this.syncStatus.set('❌ Error sincronizando empleados');
-        this.notify.error('Error en PHASE 1 (employees): ' + (err.error?.error || err.message));
-      }
-    });
-  }
-
   private syncPayrollsInternal(): void {
     this.service.syncPayrolls('1').subscribe({
       next: (): void => {
-        this.syncStatus.set('✅ Nóminas sincronizadas. Sincronizando conceptos...');
-        this.syncConceptosInternal();
+        this.syncStatus.set('✅ Nóminas sincronizadas. Sincronizando empleados...');
+        this.syncEmployeesInternal();
       },
       error: (err: any) => {
         this.loadingPhase1.set(false);
@@ -206,11 +193,25 @@ export class A3InnuvaNominasComponent implements OnInit {
     });
   }
 
+  private syncEmployeesInternal(): void {
+    this.service.syncEmployees().subscribe({
+      next: (): void => {
+        this.syncStatus.set('✅ Empleados sincronizados. Sincronizando conceptos...');
+        this.syncConceptosInternal();
+      },
+      error: (err: any) => {
+        this.loadingPhase1.set(false);
+        this.syncStatus.set('❌ Error sincronizando empleados');
+        this.notify.error('Error en PHASE 1 (employees): ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
   private syncConceptosInternal(): void {
     this.service.syncConceptos().subscribe({
       next: (): void => {
-        this.syncStatus.set('✅ Conceptos sincronizados. Sincronizando datos de salarios...');
-        this.syncSalaryInternal();
+        this.syncStatus.set('✅ Conceptos sincronizados. Sincronizando acuerdos de contrato...');
+        this.syncContractAgreementsInternal();
       },
       error: (err: any) => {
         this.loadingPhase1.set(false);
@@ -220,76 +221,33 @@ export class A3InnuvaNominasComponent implements OnInit {
     });
   }
 
-  // ============ PHASE 1 REDESIGNED: Real Wolters Kluwer Data ============
-  private syncSalaryInternal(): void {
-    this.service.syncSalary().subscribe({
+  private syncContractAgreementsInternal(): void {
+    this.service.syncContractAgreements().subscribe({
       next: (): void => {
-        this.syncStatus.set('✅ Salarios sincronizados. Sincronizando IRPF...');
-        this.syncIRPFInternal();
+        this.syncStatus.set('✅ Acuerdos de contrato sincronizados. Sincronizando horarios de contrato...');
+        this.syncContractTimetablesInternal();
       },
       error: (err: any) => {
         this.loadingPhase1.set(false);
-        this.syncStatus.set('❌ Error sincronizando salarios');
-        this.notify.error('Error en PHASE 1 (salary): ' + (err.error?.error || err.message));
+        this.syncStatus.set('❌ Error sincronizando acuerdos de contrato');
+        this.notify.error('Error en PHASE 1 (contract agreements): ' + (err.error?.error || err.message));
       }
     });
   }
 
-  private syncIRPFInternal(): void {
-    this.service.syncIRPF().subscribe({
-      next: (): void => {
-        this.syncStatus.set('✅ IRPF sincronizado. Sincronizando remuneraciones...');
-        this.syncRemunerationInternal();
-      },
-      error: (err: any) => {
-        this.loadingPhase1.set(false);
-        this.syncStatus.set('❌ Error sincronizando IRPF');
-        this.notify.error('Error en PHASE 1 (irpf): ' + (err.error?.error || err.message));
-      }
-    });
-  }
-
-  private syncRemunerationInternal(): void {
-    this.service.syncRemuneration().subscribe({
-      next: (): void => {
-        this.syncStatus.set('✅ Remuneraciones sincronizadas. Sincronizando cuentas bancarias...');
-        this.syncBankAccountsInternal();
-      },
-      error: (err: any) => {
-        this.loadingPhase1.set(false);
-        this.syncStatus.set('❌ Error sincronizando remuneraciones');
-        this.notify.error('Error en PHASE 1 (remuneration): ' + (err.error?.error || err.message));
-      }
-    });
-  }
-
-  private syncBankAccountsInternal(): void {
-    this.service.syncBankAccounts().subscribe({
-      next: (): void => {
-        this.syncStatus.set('✅ Cuentas bancarias sincronizadas. Sincronizando acuerdos colectivos...');
-        this.syncAgreementsInternal();
-      },
-      error: (err: any) => {
-        this.loadingPhase1.set(false);
-        this.syncStatus.set('❌ Error sincronizando cuentas bancarias');
-        this.notify.error('Error en PHASE 1 (bank_accounts): ' + (err.error?.error || err.message));
-      }
-    });
-  }
-
-  private syncAgreementsInternal(): void {
-    this.service.syncAgreements().subscribe({
+  private syncContractTimetablesInternal(): void {
+    this.service.syncContractTimetables().subscribe({
       next: (): void => {
         this.loadingPhase1.set(false);
-        this.syncStatus.set('✅ PHASE 1 completada. Todos los datos sincronizados.');
+        this.syncStatus.set('✅ PHASE 1 completada. Todos los datos sincronizados (Empresas → Nóminas → Empleados → Conceptos → Contratos).');
         this.loadNominasCalculadas();
         this.loadAllPhase1Details(); // Cargar detalles de empresas, nóminas, empleados, conceptos
         this.notify.success('✅ PHASE 1 completada exitosamente');
       },
       error: (err: any) => {
         this.loadingPhase1.set(false);
-        this.syncStatus.set('❌ Error sincronizando acuerdos');
-        this.notify.error('Error en PHASE 1 (agreements): ' + (err.error?.error || err.message));
+        this.syncStatus.set('❌ Error sincronizando horarios de contrato');
+        this.notify.error('Error en PHASE 1 (contract timetables): ' + (err.error?.error || err.message));
       }
     });
   }

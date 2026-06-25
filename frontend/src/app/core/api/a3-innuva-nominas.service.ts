@@ -21,11 +21,12 @@ export interface PagedResult<T> {
 }
 
 export interface PeriodoDto {
-  id: string;
-  code: string;
-  name: string;
-  startDate: string;
-  endDate: string;
+  id: number;
+  nombre: string;
+  fechaInicio: string;
+  fechaFin: string;
+  diaPago: number;
+  estado: string;
 }
 
 @Injectable({
@@ -79,15 +80,7 @@ export class A3InnuvaNominasService {
 
   // ============ PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ============
   /**
-   * PHASE 1.5: Sync salary data (Contracts) from Wolters Kluwer
-   * Fetches: GrossSalary, NetSalary, Currency, StartDate, EndDate
-   */
-  syncSalary(): Observable<any> {
-    return this.http.post(`${this.apiUrl}/sync-salary`, {});
-  }
-
-  /**
-   * PHASE 1.6: Sync IRPF (tax retention) data from Wolters Kluwer
+   * PHASE 1.5: Sync IRPF (tax retention) data from Wolters Kluwer
    * Fetches: TaxType, TaxRate, RetentionAmount, StartDate, EndDate
    */
   syncIRPF(): Observable<any> {
@@ -95,7 +88,7 @@ export class A3InnuvaNominasService {
   }
 
   /**
-   * PHASE 1.7: Sync remuneration data (bonuses, incentives) from Wolters Kluwer
+   * PHASE 1.6: Sync remuneration data (bonuses, incentives) from Wolters Kluwer
    * Fetches: RemunerationType, Amount, Concept, StartDate, EndDate
    */
   syncRemuneration(): Observable<any> {
@@ -103,7 +96,7 @@ export class A3InnuvaNominasService {
   }
 
   /**
-   * PHASE 1.8: Sync bank account data from Wolters Kluwer
+   * PHASE 1.7: Sync bank account data from Wolters Kluwer
    * Fetches: IBAN, BIC, AccountHolderName, AccountType, IsPrimary, StartDate, EndDate
    */
   syncBankAccounts(): Observable<any> {
@@ -111,11 +104,27 @@ export class A3InnuvaNominasService {
   }
 
   /**
-   * PHASE 1.9: Sync collective agreements data from Wolters Kluwer
+   * PHASE 1.8: Sync collective agreements data from Wolters Kluwer
    * Fetches: AgreementCode, AgreementName, AgreementType, StartDate, EndDate, Description
    */
   syncAgreements(): Observable<any> {
     return this.http.post(`${this.apiUrl}/sync-agreements`, {});
+  }
+
+  /**
+   * PHASE 1.9: Sync contract agreement data from Wolters Kluwer
+   * Fetches per-employee contract details: ContractCode, Description, Labour Period, Contribution Type
+   */
+  syncContractAgreements(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync-contract-agreements`, {});
+  }
+
+  /**
+   * PHASE 1.10: Sync contract timetable data from Wolters Kluwer
+   * Fetches per-employee work schedule: WorkDayType, Total Hours, Start/End Times, Complementary Hours
+   */
+  syncContractTimetables(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync-contract-timetables`, {});
   }
 
   // ============ PHASE 2: CALCULATE ============

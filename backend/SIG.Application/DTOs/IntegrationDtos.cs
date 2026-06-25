@@ -176,7 +176,7 @@ public record EmployeeDto(
 );
 
 public record ConceptoDto(
-    string? ConceptCode,
+    int? ConceptCode,
     string Description,
     decimal Amount,
     string ConceptType,
@@ -272,4 +272,44 @@ public record AgreementDto(
     DateTime StartDate,
     DateTime? EndDate,
     string? Description
+);
+
+// CONTRACT AGREEMENT - Datos del contrato (contractCode, labourPeriodStartDate, etc.)
+public record ContractAgreementDto(
+    string IdExterno,
+    string EmployeeCode,
+    string? ContractCode,
+    string? ContractDescription,
+    DateTime? LabourPeriodStartDate,
+    DateTime? LabourPeriodEndDate,
+    int? ContributionTypeID,
+    string? ContributionType,
+    string? ContributionModalityType,
+    string? CnoOccupationID,
+    decimal? AnnualGrossAmount,
+    int? CollectionTypeID,
+    string? CollectionType
+);
+
+// CONTRACT TIMETABLE - Datos de horario de trabajo
+public record ContractTimetableDto(
+    string IdExterno,
+    string EmployeeCode,
+    string? WorkDayTypeID,
+    decimal? TotalWeekHours,
+    string? CompleteWorkDayStartID,
+    string? CompleteWorkDayEndID,
+    bool? IndComplementaryHours,
+    string? PartialPeriodTypeID,
+    decimal? PartialHours
+);
+
+// CONTRACT CLAUSES - Cláusulas del contrato (opcional, puede estar vacío)
+public record ContractClauseDto(
+    string IdExterno,
+    string EmployeeCode,
+    string? ClauseCode,
+    string? ClauseDescription,
+    DateTime? StartDate,
+    DateTime? EndDate
 );

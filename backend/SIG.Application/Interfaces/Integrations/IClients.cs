@@ -111,6 +111,19 @@ public interface IA3InnuvaNominasClient
         string companyCode,
         string employeeCode,
         CancellationToken ct = default);
+
+    // PHASE 1.5: Contract Data (agreement & timetable per employee)
+    Task<IReadOnlyList<ContractAgreementDto>> GetContractAgreementAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<ContractTimetableDto>> GetContractTimetableAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default);
 }
 
 public interface IGalanClient

@@ -68,6 +68,8 @@ public class AppDbContext : DbContext
     public DbSet<StagingA3InnuvaRemuneration> StagingA3InnuvaRemunerations => Set<StagingA3InnuvaRemuneration>();
     public DbSet<StagingA3InnuvaBankAccount> StagingA3InnuvaBankAccounts => Set<StagingA3InnuvaBankAccount>();
     public DbSet<StagingA3InnuvaAgreement> StagingA3InnuvaAgreements => Set<StagingA3InnuvaAgreement>();
+    public DbSet<StagingA3InnuvaContractAgreement> StagingA3InnuvaContractAgreements => Set<StagingA3InnuvaContractAgreement>();
+    public DbSet<StagingA3InnuvaContractTimetable> StagingA3InnuvaContractTimetables => Set<StagingA3InnuvaContractTimetable>();
 
     public DbSet<StagingTravelPerkViaje> StagingTravelPerkViajes => Set<StagingTravelPerkViaje>();
     public DbSet<StagingTravelPerkLinea> StagingTravelPerkLineas => Set<StagingTravelPerkLinea>();

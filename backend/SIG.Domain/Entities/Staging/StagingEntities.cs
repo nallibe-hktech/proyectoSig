@@ -711,3 +711,63 @@ public class StagingA3InnuvaAgreement : IStagingRow
     public bool FlagProcesado { get; set; }
     public string? ErrorProcesamiento { get; set; }
 }
+
+/// <summary>
+/// PHASE 1.5: Acuerdo de Contrato (contractCode, labourPeriodStartDate, annualGrossAmount, etc.)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/contract-agreement
+/// </summary>
+public class StagingA3InnuvaContractAgreement : IStagingRow
+{
+    public int Id { get; set; }
+    public string ContratoIdExterno { get; set; } = null!;  // {EmployeeId}_{ContractCode}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+
+    // Datos de contrato-acuerdo
+    public string? CodigoContrato { get; set; }
+    public string? DescripcionContrato { get; set; }
+    public DateTime? FechaInicioPeriodoLaboral { get; set; }
+    public DateTime? FechaFinPeriodoLaboral { get; set; }
+    public int? TipoAportacionID { get; set; }
+    public string? TipoAportacion { get; set; }
+    public string? ModalidadAportacion { get; set; }
+    public string? CodigoOcupacionCNO { get; set; }
+    public decimal? MontoAñualBruto { get; set; }
+    public int? TipoCobroID { get; set; }
+    public string? TipoCobro { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.6: Horario de Trabajo (totalWeekHours, workDayType, etc.)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/contract/timetable
+/// </summary>
+public class StagingA3InnuvaContractTimetable : IStagingRow
+{
+    public int Id { get; set; }
+    public string HorarioIdExterno { get; set; } = null!;  // {EmployeeId}_timetable
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+
+    // Datos de horario de trabajo
+    public string? TipoDiaLaboralID { get; set; }  // "Complete", "Partial", etc.
+    public decimal? TotalHorasSemanal { get; set; }
+    public string? DiaLaboralCompletoInicio { get; set; }  // "Monday", "Tuesday", etc.
+    public string? DiaLaboralCompletoFin { get; set; }     // "Friday", "Thursday", etc.
+    public bool? TieneHorasComplementarias { get; set; }
+    public string? TipoPeriodoPartial { get; set; }
+    public decimal? HorasPartial { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}

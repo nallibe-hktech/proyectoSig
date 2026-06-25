@@ -62,14 +62,6 @@
         <app-dashboard-design></app-dashboard-design>
       </a>
       <span class="sig-spacer"></span>
-      @if (periodos().length > 0) {
-        <mat-select [value]="selectedPeriodo()" (valueChange)="onChangePeriodo($event)"
-          class="sig-periodo-select" aria-label="Seleccionar periodo" data-testid="select-periodo" panelClass="sig-periodo-panel">
-          @for (p of periodos(); track p.id) {
-            <mat-option [value]="p.id">{{ p.nombre }}</mat-option>
-          }
-        </mat-select>
-      }
       <button mat-icon-button (click)="theme.toggle()"
         [attr.aria-label]="theme.isDark() ? 'Modo claro' : 'Modo oscuro'"
         [matTooltip]="theme.isDark() ? 'Modo claro' : 'Modo oscuro'"

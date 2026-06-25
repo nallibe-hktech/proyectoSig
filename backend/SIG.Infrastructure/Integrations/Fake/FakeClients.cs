@@ -409,11 +409,11 @@ public class A3InnuvaNominasFakeClient : IA3InnuvaNominasClient
     {
         var conceptos = new List<ConceptoDto>
         {
-            new("001", "Salario Base", 2500m, "E", false, false, "Percepciones"),
-            new("002", "Complemento Antigüedad", 300m, "E", false, false, "Percepciones"),
-            new("003", "IRPF", -400m, "D", false, false, "Descuentos"),
-            new("004", "Seguridad Social", -250m, "D", false, false, "Descuentos"),
-            new("005", "Bono Desempeño", 500m, "E", false, false, "Percepciones"),
+            new(001, "Salario Base", 2500m, "E", false, false, "Percepciones"),
+            new(002, "Complemento Antigüedad", 300m, "E", false, false, "Percepciones"),
+            new(003, "IRPF", -400m, "D", false, false, "Descuentos"),
+            new(004, "Seguridad Social", -250m, "D", false, false, "Descuentos"),
+            new(005, "Bono Desempeño", 500m, "E", false, false, "Percepciones"),
         };
         return Task.FromResult<IReadOnlyList<ConceptoDto>>(conceptos);
     }
@@ -468,6 +468,24 @@ public class A3InnuvaNominasFakeClient : IA3InnuvaNominasClient
             new($"{employeeCode}_agree", employeeCode, "12345678A", "COL_2024", "Convenio Sector Servicios 2024", "Colectivo", DateTime.Parse("2024-01-01"), DateTime.Parse("2024-12-31"), "Acuerdo negociación colectiva sectorial")
         };
         return Task.FromResult<IReadOnlyList<AgreementDto>>(agreements);
+    }
+
+    public Task<IReadOnlyList<ContractAgreementDto>> GetContractAgreementAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default)
+    {
+        return Task.FromResult<IReadOnlyList<ContractAgreementDto>>(new List<ContractAgreementDto>());
+    }
+
+    public Task<IReadOnlyList<ContractTimetableDto>> GetContractTimetableAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default)
+    {
+        return Task.FromResult<IReadOnlyList<ContractTimetableDto>>(new List<ContractTimetableDto>());
     }
 }
 
