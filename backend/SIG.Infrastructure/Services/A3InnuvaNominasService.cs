@@ -643,6 +643,20 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Carguados {irpfData.Count} registros IRPF para {irpfByEmpleado.Count} empleados");
 
+            // 5c. Cargar datos de remuneration (salario teórico, pagas extra, etc.)
+            var remuneracionData = await _db.StagingA3InnuvaRemunerations
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            var remuneracionByEmpleado = remuneracionData
+                .GroupBy(r => r.EmpleadoIdExterno ?? "")
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.ToList(), // Guardar lista completa para filtrar por tipo
+                    StringComparer.OrdinalIgnoreCase);
+
+            _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Carguados {remuneracionData.Count} registros de remuneration para {remuneracionByEmpleado.Count} empleados");
+
             _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Calculando nóminas para {empleados.Count} empleados...");
 
             int nominasCalculadas = 0;
@@ -656,38 +670,38 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                     var codigoEmpleado = empleado.EmpleadoIdExterno ?? "";
                     var nif = empleado.NIF ?? "";
 
-                    // INNER JOIN: conceptos por este empleado (case-insensitive)
-                    var conceptosEmpleado = conceptos
-                        .Where(c => c.CodigoEmpleado != null &&
-                                   c.CodigoEmpleado.Equals(codigoEmpleado, StringComparison.OrdinalIgnoreCase))
-                        .ToList();
+                    // Obtener remuneration de este empleado (CONCEPTS + INCENTIVES)
+                    var remuneracionEmpleado = remuneracionByEmpleado.ContainsKey(codigoEmpleado)
+                        ? remuneracionByEmpleado[codigoEmpleado]
+                        : new List<StagingA3InnuvaRemuneration>();
 
-                    _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Empleado={codigoEmpleado} ({empleado.Nombre}): Conceptos encontrados={conceptosEmpleado.Count}");
+                    _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Empleado={codigoEmpleado} ({empleado.Nombre}): Remuneración registros={remuneracionEmpleado.Count}");
 
-                    // Percepciones: Tipo "Fijo" (base salary, vacation accruals, etc.) + "Variable" (mileage, bonuses, etc.)
-                    // NOTA: Wolters Kluwer API retorna "Fijo"/"Variable", NO "E"/"I"/"D"
-                    var percepciones = conceptosEmpleado
-                        .Where(c => c.TipoConcepto == "Fijo" || c.TipoConcepto == "Variable")
-                        .Sum(c => c.Importe);
+                    // Percepciones: THEORETICAL-GROSS + EXTRAPAYMENTS + INCENTIVES (desde remuneration)
+                    var percepciones = remuneracionEmpleado
+                        .Where(r => r.TipoRemuneracion == "THEORETICAL-GROSS" ||
+                                   r.TipoRemuneracion == "EXTRAPAYMENTS" ||
+                                   r.TipoRemuneracion == "INCENTIVES" ||
+                                   r.TipoRemuneracion == "CONCEPTS" ||
+                                   r.TipoRemuneracion?.Contains("EXTRA", StringComparison.OrdinalIgnoreCase) == true)
+                        .Sum(r => r.Importe);
 
                     // Reembolsos PayHawk (percepciones extrasalariales) - por NIF del empleado
                     var reembolsosPayhawk = !string.IsNullOrEmpty(nif) && gastosByNif.ContainsKey(nif)
                         ? gastosByNif[nif]
                         : 0m;
 
-                    // Deducciones: IRPF + otras retenciones
+                    // Deducciones: IRPF + SANCIONES (de remuneration)
                     var irpfDelEmpleado = irpfByEmpleado.ContainsKey(codigoEmpleado)
                         ? irpfByEmpleado[codigoEmpleado]
                         : 0m;
 
-                    // También buscar descuentos en conceptos (por si hay tipo "D" u otros)
-                    var descuentosConceptos = conceptosEmpleado
-                        .Where(c => c.TipoConcepto == "D" ||
-                                   c.TipoConcepto?.Contains("DESC", StringComparison.OrdinalIgnoreCase) == true ||
-                                   c.TipoConcepto?.Contains("SS", StringComparison.OrdinalIgnoreCase) == true)
-                        .Sum(c => c.Importe);
+                    var sancionesDelEmpleado = remuneracionEmpleado
+                        .Where(r => r.TipoRemuneracion == "SANCTIONS" ||
+                                   r.TipoRemuneracion?.Contains("SANCION", StringComparison.OrdinalIgnoreCase) == true)
+                        .Sum(r => r.Importe);
 
-                    var descuentos = irpfDelEmpleado + descuentosConceptos;
+                    var descuentos = irpfDelEmpleado + sancionesDelEmpleado;
 
                     var totalPercepciones = percepciones + reembolsosPayhawk;
                     var salarioNeto = totalPercepciones - descuentos;
@@ -1367,9 +1381,8 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             _logger.LogInformation("[A3InnuvaNominas] SyncRemunerationAsync iniciado");
 
             var employees = await _db.StagingA3InnuvaEmpleados
-                
-                .Take(100)
-                .ToListAsync(ct);
+                .AsNoTracking()
+                .ToListAsync(ct); // Cargar TODOS los empleados
 
             if (employees.Count == 0)
             {
