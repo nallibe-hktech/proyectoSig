@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, input, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -27,12 +27,13 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
     MatFormFieldModule, MatSelectModule, MatProgressSpinnerModule, BreadcrumbsComponent,
   ],
   template: `
-    <div class="sig-page">
-      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Forecast' }]" />
-
-      <div class="sig-page__header">
-        <h1 class="sig-page__title">Forecast — Resumen</h1>
-      </div>
+    <div [class.sig-page]="!embedded()">
+      @if (!embedded()) {
+        <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Forecast' }]" />
+        <div class="sig-page__header">
+          <h1 class="sig-page__title">Forecast — Resumen</h1>
+        </div>
+      }
 
       <mat-card>
         <mat-card-content>
@@ -135,6 +136,10 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
   `],
 })
 export class ForecastResumenComponent implements OnInit {
+  // Cuando se embebe como pestaña (p. ej. dentro de Config. Presupuesto) se oculta
+  // su propio chrome de página (breadcrumb + cabecera + padding).
+  readonly embedded = input(false);
+
   private readonly forecastSvc = inject(ForecastService);
   private readonly serviceSvc = inject(ServiceService);
   private readonly clientSvc = inject(ClientService);

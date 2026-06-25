@@ -18,6 +18,20 @@ import { A3ErpStatusDto, CierreListItemDto } from '../../models/dtos';
 // A3 ERP (Contabilidad) — hub de SALIDA: traspasa las facturas de un cierre de
 // facturación validado a A3 ERP generando un fichero descargable (no escribe en A3 ERP).
 // El lado de importación queda como stub honesto hasta tener spec de la API de A3 ERP.
+// Los bloques de visión contable (cierres a contabilizar, costes externos, historial)
+// son maqueta ilustrativa fiel al penpot, pendientes de cerrar la spec con SIG.
+interface CierreContableMaqueta {
+  cliente: string; servicio: string; tipo: 'Pago' | 'Factura';
+  importe: string; destino: string; estado: 'Enviado' | 'Pendiente' | 'Error';
+}
+interface CosteExternoMaqueta {
+  servicio: string; proveedor: string; tipo: string;
+  pagado: string; refacturado: string; margen: string;
+}
+interface HistorialEnvioMaqueta {
+  estado: 'Enviado' | 'Pendiente' | 'Error'; descripcion: string; fecha: string;
+}
+
 @Component({
   selector: 'app-a3-erp',
   standalone: true,
@@ -28,7 +42,7 @@ import { A3ErpStatusDto, CierreListItemDto } from '../../models/dtos';
   ],
   template: `
     <div class="sig-page">
-      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'A3 ERP' }]" />
+      <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Contabilidad' }]" />
       <div class="sig-page__header">
         <h1 class="sig-page__title"><mat-icon class="title-icon">account_balance</mat-icon> A3 ERP — Contabilidad</h1>
       </div>
@@ -38,6 +52,90 @@ import { A3ErpStatusDto, CierreListItemDto } from '../../models/dtos';
         descargable para importar manualmente; la plataforma <strong>no escribe</strong> en A3 ERP ni en
         ningún sistema del cliente.
       </p>
+
+      <!-- Cierres aprobados — listos para contabilizar (maqueta penpot) -->
+      <mat-card class="a3-card a3-card--wide">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>fact_check</mat-icon>
+          <mat-card-title>Cierres aprobados — listos para contabilizar</mat-card-title>
+          <mat-card-subtitle>Servicio: Todos · Mayo 2026 · los pagos van a A3 Innuva y las facturas a A3 ERP</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <table class="a3-table">
+            <thead>
+              <tr><th>Cliente</th><th>Servicio</th><th>Tipo</th><th class="num">Importe</th><th>Destino</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+              @for (r of cierresAContabilizar(); track $index) {
+                <tr>
+                  <td>{{ r.cliente }}</td>
+                  <td>{{ r.servicio }}</td>
+                  <td><span class="a3-pill" [class.pago]="r.tipo === 'Pago'" [class.factura]="r.tipo === 'Factura'">{{ r.tipo }}</span></td>
+                  <td class="num">{{ r.importe }}</td>
+                  <td>{{ r.destino }}</td>
+                  <td><span class="a3-state" [class]="'a3-state--' + r.estado.toLowerCase()">{{ r.estado }}</span></td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="6" class="a3-totals">
+                  <span>Total pagos → A3 Innuva <strong>€ 23.500</strong></span>
+                  <span>Total facturas → A3 ERP <strong>€ 40.000</strong></span>
+                  <span>Registros <strong>5</strong></span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+          <button mat-stroked-button color="primary" class="a3-inline-btn" disabled
+                  matTooltip="Maqueta ilustrativa: el envío real se hace en «Envío a sistemas A3» (abajo).">
+            <mat-icon>send</mat-icon> Generar y enviar a A3
+          </button>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Costes de servicios externos y logística (maqueta penpot) -->
+      <mat-card class="a3-card a3-card--wide">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>local_shipping</mat-icon>
+          <mat-card-title>Costes de servicios externos y logística — coste de proyecto</mat-card-title>
+          <mat-card-subtitle>Mayo 2026 · diferenciando lo pagado a proveedor vs lo refacturado al cliente</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="a3-note">
+            Los servicios externos y la logística (Galán / Mediapost) computan como coste de proyecto.
+            La diferencia entre lo refacturado y lo pagado al proveedor es el margen de logística.
+            <strong>⚠ Importes ilustrativos</strong>, dependen del cierre de Config. Factura con SIG.
+          </p>
+          <table class="a3-table">
+            <thead>
+              <tr><th>Servicio / Cliente</th><th>Proveedor</th><th>Tipo</th><th class="num">Pagado a proveedor</th><th class="num">Refacturado al cliente</th><th class="num">Margen</th></tr>
+            </thead>
+            <tbody>
+              @for (r of costesExternos(); track $index) {
+                <tr>
+                  <td>{{ r.servicio }}</td>
+                  <td>{{ r.proveedor }}</td>
+                  <td>{{ r.tipo }}</td>
+                  <td class="num">{{ r.pagado }}</td>
+                  <td class="num">{{ r.refacturado }}</td>
+                  <td class="num">{{ r.margen }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3">Totales</td>
+                <td class="num"><strong>€ 7.450</strong></td>
+                <td class="num"><strong>€ 8.230</strong></td>
+                <td class="num"><strong>€ 780</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </mat-card-content>
+      </mat-card>
+
+      <h2 class="a3-section">Envío a sistemas A3</h2>
 
       <!-- Estado de Autorización -->
       <mat-card class="a3-card">
@@ -121,12 +219,53 @@ import { A3ErpStatusDto, CierreListItemDto } from '../../models/dtos';
           </button>
         </mat-card-actions>
       </mat-card>
+
+      <!-- Historial de envíos (maqueta penpot) -->
+      <mat-card class="a3-card a3-card--wide">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>history</mat-icon>
+          <mat-card-title>Historial de envíos</mat-card-title>
+          <mat-card-subtitle>⚠ Datos ilustrativos</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <table class="a3-table">
+            <thead><tr><th>Estado</th><th>Envío</th><th>Fecha / hora</th></tr></thead>
+            <tbody>
+              @for (h of historialEnvios(); track $index) {
+                <tr>
+                  <td><span class="a3-state" [class]="'a3-state--' + h.estado.toLowerCase()">{{ h.estado }}</span></td>
+                  <td>{{ h.descripcion }}</td>
+                  <td>{{ h.fecha }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </mat-card-content>
+      </mat-card>
     </div>
   `,
   styles: [`
     .title-icon { vertical-align: middle; margin-right: 6px; }
     .a3-card { margin-bottom: 16px; max-width: 820px; }
+    .a3-card--wide { max-width: 1000px; }
     .a3-card--muted { opacity: 0.85; }
+    .a3-section { font-size: 16px; font-weight: 700; margin: 28px 0 12px; color: var(--mat-sys-on-surface); }
+    .a3-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .a3-table th, .a3-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--mat-sys-outline-variant); white-space: nowrap; }
+    .a3-table th { color: var(--mat-sys-on-surface-variant); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .a3-table td.num, .a3-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .a3-table tfoot td { border-top: 2px solid var(--mat-sys-outline-variant); border-bottom: none; font-weight: 600; }
+    .a3-totals { display: flex; gap: 24px; flex-wrap: wrap; color: var(--mat-sys-on-surface-variant); font-weight: 500; }
+    .a3-totals strong { color: var(--mat-sys-on-surface); }
+    .a3-pill { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .a3-pill.pago { background: rgba(59,130,246,.12); color: #3b82f6; }
+    .a3-pill.factura { background: rgba(34,197,94,.12); color: #22c55e; }
+    .a3-state { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .a3-state--enviado { background: rgba(34,197,94,.12); color: #22c55e; }
+    .a3-state--pendiente { background: rgba(245,158,11,.12); color: #f59e0b; }
+    .a3-state--error { background: rgba(239,68,68,.12); color: #ef4444; }
+    .a3-note { color: var(--mat-sys-on-surface-variant); font-size: 12.5px; margin: 0 0 12px; }
+    .a3-inline-btn { margin-top: 12px; }
     .a3-status { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-weight: 500; }
     .a3-status mat-icon { vertical-align: middle; font-size: 18px; height: 18px; width: 18px; }
     .a3-status .ok { color: var(--mat-sys-primary); }
@@ -150,6 +289,28 @@ export class A3ErpComponent implements OnInit {
   protected readonly selectedClosureId = signal<number | null>(null);
   protected readonly exporting = signal(false);
   protected readonly syncing = signal(false);
+
+  // Maqueta penpot (ilustrativo): visión de contabilidad. No proviene de API hasta cerrar spec con SIG.
+  protected readonly cierresAContabilizar = signal<CierreContableMaqueta[]>([
+    { cliente: 'American Express', servicio: 'Amex Shop Small', tipo: 'Pago', importe: '€ 15.000', destino: 'A3 Innuva', estado: 'Enviado' },
+    { cliente: 'American Express', servicio: 'Amex Shop Small', tipo: 'Factura', importe: '€ 20.500', destino: 'A3 ERP', estado: 'Enviado' },
+    { cliente: 'Granini', servicio: 'Granini GPVs', tipo: 'Pago', importe: '€ 8.500', destino: 'A3 Innuva', estado: 'Pendiente' },
+    { cliente: 'Granini', servicio: 'Granini GPVs', tipo: 'Factura', importe: '€ 12.000', destino: 'A3 ERP', estado: 'Pendiente' },
+    { cliente: 'Apple', servicio: 'Apple Formaciones', tipo: 'Factura', importe: '€ 7.500', destino: 'A3 ERP', estado: 'Error' },
+  ]);
+
+  protected readonly costesExternos = signal<CosteExternoMaqueta[]>([
+    { servicio: 'Granini GPVs · Granini', proveedor: 'Galán', tipo: 'Logística', pagado: '€ 3.200', refacturado: '€ 3.680', margen: '€ 480' },
+    { servicio: 'Coty Verano 26 · Coty', proveedor: 'Mediapost', tipo: 'Logística', pagado: '€ 2.450', refacturado: '€ 2.450', margen: '€ 0' },
+    { servicio: 'Apple Formaciones · Apple', proveedor: 'Formador externo', tipo: 'Servicio externo', pagado: '€ 1.800', refacturado: '€ 2.100', margen: '€ 300' },
+  ]);
+
+  protected readonly historialEnvios = signal<HistorialEnvioMaqueta[]>([
+    { estado: 'Enviado', descripcion: 'Amex — Pagos (A3 Innuva)', fecha: '31/05 08:02' },
+    { estado: 'Enviado', descripcion: 'Amex — Facturas (A3 ERP)', fecha: '31/05 08:03' },
+    { estado: 'Error', descripcion: 'Apple Formaciones — factura sin línea de detalle', fecha: '31/05 08:05' },
+    { estado: 'Pendiente', descripcion: 'Granini — Pagos y Facturas', fecha: '—' },
+  ]);
 
   ngOnInit(): void {
     this.a3erp.getStatus().subscribe({

@@ -74,30 +74,44 @@ export class ShellComponent implements OnInit {
     return name.charAt(0).toUpperCase();
   });
 
+  // Navegación canónica según el penpot (verdad de diseño): grupos
+  // Principal / Administración / Configuración, en español. Las integraciones
+  // y herramientas internas (que el penpot no lista) van a un grupo aparte.
   private readonly allOperativoNav: NavItem[] = [
     { label: 'Dashboard', route: '/dashboard', icon: 'dashboard', testId: 'nav-dashboard' },
-    { label: 'Clients', route: '/clients', icon: 'groups', testId: 'nav-clients' },
+    { label: 'Clientes', route: '/clients', icon: 'groups', testId: 'nav-clients' },
     { label: 'Incidencias', route: '/incidencias', icon: 'report_problem', testId: 'nav-incidencias' },
-    { label: 'Servicios', route: '/services', icon: 'task_alt', testId: 'nav-services' },
-    { label: 'Concepts', route: '/concepts', icon: 'calculate', testId: 'nav-concepts' },
-    { label: 'Variables', route: '/variables', icon: 'data_object', testId: 'nav-variables' },
-    { label: 'Periods', route: '/periods', icon: 'calendar_month', testId: 'nav-periods' },
-    { label: 'Approvals', route: '/approvals', icon: 'approval', testId: 'nav-approvals' },
-    { label: 'Cierres de Costes', route: '/cierres-costes', icon: 'payments', testId: 'nav-cierres-costes' },
-    { label: 'Cierres de Facturación', route: '/cierres-facturacion', icon: 'receipt_long', testId: 'nav-cierres-facturacion' },
     { label: 'Informes', route: '/reports', icon: 'bar_chart', testId: 'nav-reports' },
-    { label: 'Forecast', route: '/forecast', icon: 'trending_up', testId: 'nav-forecast' },
+    { label: 'Servicios', route: '/services', icon: 'task_alt', testId: 'nav-services' },
+    { label: 'Conceptos', route: '/concepts', icon: 'calculate', testId: 'nav-concepts' },
+    { label: 'Periodos', route: '/periods', icon: 'calendar_month', testId: 'nav-periods' },
+    { label: 'Aprobaciones', route: '/approvals', icon: 'approval', testId: 'nav-approvals' },
+    { label: 'Contabilidad', route: '/a3-erp', icon: 'account_balance', testId: 'nav-contabilidad', roles: ['Administrator', 'Fico'] },
   ];
 
   private readonly allAdminNav: NavItem[] = [
+    { label: 'Usuarios', route: '/users', icon: 'manage_accounts', testId: 'nav-users', roles: ['Administrator', 'Auditor'] },
+    { label: 'Roles', route: '/roles', icon: 'verified_user', testId: 'nav-roles', roles: ['Administrator', 'Auditor'] },
+    { label: 'CECOs', route: '/cost-centers', icon: 'account_tree', testId: 'nav-cost-centers', roles: ['Administrator'] },
+    { label: 'Departamentos', route: '/departments', icon: 'corporate_fare', testId: 'nav-departments', roles: ['Administrator'] },
+    { label: 'Auditoría', route: '/audit', icon: 'history', testId: 'nav-audit', roles: ['Administrator', 'Auditor'] },
+  ];
+
+  private readonly allConfigNav: NavItem[] = [
     { label: 'Config. Presupuesto', route: '/config-presupuesto', icon: 'savings', testId: 'nav-config-presupuesto', roles: ['Administrator', 'Fico'] },
     { label: 'Config. Factura', route: '/config-factura', icon: 'request_quote', testId: 'nav-config-factura', roles: ['Administrator', 'Fico'] },
+    { label: 'Errores Nómina/Pagos', route: '/errores-nomina', icon: 'rule', testId: 'nav-errores-nomina', roles: ['Administrator', 'Fico', 'RRHH'] },
+    { label: 'Errores Facturación', route: '/errores-facturacion', icon: 'price_check', testId: 'nav-errores-facturacion', roles: ['Administrator', 'Fico'] },
+    { label: 'Traspaso CECOs', route: '/traspaso-cecos', icon: 'swap_horiz', testId: 'nav-traspaso-cecos', roles: ['Administrator', 'Fico'] },
+  ];
+
+  // Integraciones y herramientas internas (no forman parte del menú del penpot,
+  // pero deben seguir siendo accesibles). Solo Administrador/Fico.
+  private readonly allIntegracionesNav: NavItem[] = [
+    { label: 'Cierres de Costes', route: '/cierres-costes', icon: 'payments', testId: 'nav-cierres-costes', roles: ['Administrator', 'Fico'] },
+    { label: 'Cierres de Facturación', route: '/cierres-facturacion', icon: 'receipt_long', testId: 'nav-cierres-facturacion', roles: ['Administrator', 'Fico'] },
+    { label: 'Variables', route: '/variables', icon: 'data_object', testId: 'nav-variables', roles: ['Administrator'] },
     { label: 'Contratos un día', route: '/contratos-un-dia', icon: 'description', testId: 'nav-contratos-un-dia', roles: ['Administrator', 'Backoffice'] },
-    { label: 'Cost Centers', route: '/cost-centers', icon: 'account_balance', testId: 'nav-cost-centers', roles: ['Administrator'] },
-    { label: 'Departments', route: '/departments', icon: 'corporate_fare', testId: 'nav-departments', roles: ['Administrator'] },
-    { label: 'Roles', route: '/roles', icon: 'verified_user', testId: 'nav-roles', roles: ['Administrator', 'Auditor'] },
-    { label: 'Users', route: '/users', icon: 'manage_accounts', testId: 'nav-users', roles: ['Administrator', 'Auditor'] },
-    { label: 'Audit Log', route: '/audit', icon: 'history', testId: 'nav-audit', roles: ['Administrator', 'Auditor'] },
     { label: 'Sync', route: '/sync', icon: 'refresh', testId: 'nav-sync', roles: ['Administrator'] },
     { label: 'Celero Visitas', route: '/celero-visitas', icon: 'location_on', testId: 'nav-celero-visitas', roles: ['Administrator'] },
     { label: 'Galán', route: '/galan', icon: 'warehouse', testId: 'nav-galan', roles: ['Administrator'] },
@@ -106,12 +120,13 @@ export class ShellComponent implements OnInit {
     { label: 'Intratime', route: '/intratime', icon: 'schedule', testId: 'nav-intratime', roles: ['Administrator'] },
     { label: 'PayHawk', route: '/payhawk', icon: 'receipt_long', testId: 'nav-payhawk', roles: ['Administrator', 'Fico'] },
     { label: 'Travel Perk', route: '/travelperk', icon: 'flight_takeoff', testId: 'nav-travelperk', roles: ['Administrator', 'Fico'] },
-    { label: 'A3 ERP', route: '/a3-erp', icon: 'account_balance', testId: 'nav-a3-erp', roles: ['Administrator', 'Fico'] },
     { label: 'A3 INNUVA Nóminas', route: '/a3-innuva', icon: 'person_add_alt', testId: 'nav-a3-innuva', roles: ['Administrator'] },
   ];
 
   protected readonly operativoNav = computed(() => this.filterByRole(this.allOperativoNav));
   protected readonly adminNav = computed(() => this.filterByRole(this.allAdminNav));
+  protected readonly configNav = computed(() => this.filterByRole(this.allConfigNav));
+  protected readonly integracionesNav = computed(() => this.filterByRole(this.allIntegracionesNav));
 
   // Períodos para selector AppBar
   protected readonly periodos = signal<PeriodDto[]>([]);
