@@ -604,6 +604,10 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Carguados {conceptos.Count} conceptos");
 
+            // Diagnóstico: tipos de concepto disponibles
+            var tiposUnicos = conceptos.Select(c => c.TipoConcepto).Distinct().ToList();
+            _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Tipos de concepto encontrados: {string.Join(", ", tiposUnicos)}");
+
             // 4. Cargar gastos PayHawk del período + join con User para obtener NIF
             var payhawkGastos = await _db.StagingPayHawkGastos
                 .Where(g => g.Fecha >= period.FechaInicio && g.Fecha <= period.FechaFin)
@@ -657,16 +661,24 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                         ? gastosByNif[nif]
                         : 0m;
 
-                    // Deducciones: No hay datos de descuentos en el sync actual de Wolters Kluwer
-                    // (IRPF, SS, desempleo se enviarán desde otro endpoint o están en PayrollSync)
-                    var descuentos = 0m;
+                    // Deducciones: Buscar conceptos con tipos que típicamente representen descuentos
+                    // Si hay "D" (deductions), "DESC" (descuentos), "IRPF", etc., sumarlos
+                    // Si NO hay, descuentos = 0 (falta sincronización de PHASE 1)
+                    var descuentos = conceptosEmpleado
+                        .Where(c => c.TipoConcepto == "D" ||
+                                   c.TipoConcepto?.Contains("DESC", StringComparison.OrdinalIgnoreCase) == true ||
+                                   c.TipoConcepto?.Contains("IRPF", StringComparison.OrdinalIgnoreCase) == true ||
+                                   c.TipoConcepto?.Contains("SS", StringComparison.OrdinalIgnoreCase) == true ||
+                                   c.TipoConcepto?.Contains("IRPF", StringComparison.OrdinalIgnoreCase) == true)
+                        .Sum(c => c.Importe);
 
                     var totalPercepciones = percepciones + reembolsosPayhawk;
                     var salarioNeto = totalPercepciones - descuentos;
 
+                    var descuentoInfo = descuentos > 0 ? $"Descuentos={descuentos:F2}" : "Descuentos=0 (NO HAY EN DATOS)";
                     _logger.LogInformation(
                         $"[A3InnuvaNominas-PHASE2] Empleado {codigoEmpleado} ({empleado.Nombre}): " +
-                        $"Percepciones={percepciones:F2}, Reembolsos={reembolsosPayhawk:F2}, Descuentos={descuentos:F2}, Neto={salarioNeto:F2}");
+                        $"Percepciones={percepciones:F2}, Reembolsos={reembolsosPayhawk:F2}, {descuentoInfo}, Neto={salarioNeto:F2}");
 
                     // Guardar nómina calculada
                     var idExterno = $"{codigoEmpleado}_{periodCode}";
