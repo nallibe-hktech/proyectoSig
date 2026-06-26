@@ -485,6 +485,29 @@ public class A3InnuvaNominasController : ControllerBase
     }
 
     /// <summary>
+    /// Obtener lista paginada de empleados de tabla TEST
+    /// </summary>
+    [HttpGet("test/employees")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetEmployeesTest(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await _service.GetEmployeesTestAsync(page, pageSize, search, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas-TEST] Error obteniendo empleados de tabla TEST");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Obtener lista paginada de empleados sincronizados desde Wolters Kluwer
     /// </summary>
     [HttpGet("employees")]

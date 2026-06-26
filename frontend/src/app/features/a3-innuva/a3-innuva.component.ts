@@ -48,13 +48,17 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
   isAuthorized = signal(false);
 
   companies = signal<A3InnuvaCompanyDto[]>([]);
+  employees = signal<any[]>([]);
   payrolls = signal<A3InnuvaPayrollDto[]>([]);
+  periods = signal<string[]>([]);
 
   page = signal(1);
   pageSize = signal(25);
   companiesTotal = signal(0);
+  employeesTotal = signal(0);
   payrollsTotal = signal(0);
 
+  employeesLoading = signal(false);
   selectedCompany: string | null = null;
   selectedPeriod: string | null = null;
   lastSyncMessage = '';
@@ -62,6 +66,7 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
 
   searchCompanies = '';
   searchPayrolls = '';
+  searchEmployees = '';
 
   private readonly TEST_MODE_KEY = 'a3innuva_isTestMode';
   private readonly AUTHORIZED_KEY = 'a3innuva_isAuthorized';
@@ -103,6 +108,8 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
         }
 
         this.loadCompanies();
+        this.loadEmployees();
+        this.loadPeriods();
       });
   }
 
@@ -197,6 +204,36 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
     });
   }
 
+  syncPayrolls(): void {
+    if (!this.selectedCompany) {
+      this.notify.warning('Selecciona una empresa primero');
+      return;
+    }
+
+    this.loading.set(true);
+    this.lastSyncMessage = 'Sincronizando nóminas y calculando datos...';
+
+    const call = this.isTestMode()
+      ? this.a3Service.syncPayrollsTest(this.selectedCompany)
+      : this.a3Service.syncPayrolls(this.selectedCompany);
+
+    call.subscribe({
+      next: (res) => {
+        this.loading.set(false);
+        this.lastSyncMessage = res.message;
+        this.notify.success('✅ ' + res.message);
+        this.page.set(1);
+        this.loadPayrolls();
+        this.loadPeriods();
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.lastSyncMessage = '❌ Error: ' + (err.error?.error || err.message);
+        this.notify.error('Error sincronizando nóminas: ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
   loadCompanies(): void {
     this.companiesLoading.set(true);
 
@@ -231,6 +268,8 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
         this.payrolls.set(res.items);
         this.payrollsTotal.set(res.total);
         this.payrollsLoading.set(false);
+        // Cargar períodos únicos después de cargar nóminas
+        this.loadPeriods();
       },
       error: (err) => {
         this.payrollsLoading.set(false);
@@ -239,26 +278,54 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadEmployees(): void {
+    this.employeesLoading.set(true);
+
+    const call = this.isTestMode()
+      ? this.a3Service.getEmployeesTest(this.page(), this.pageSize(), this.searchEmployees || undefined)
+      : this.a3Service.getEmployees(this.page(), this.pageSize(), this.searchEmployees || undefined);
+
+    call.subscribe({
+      next: (res: PagedResult<any>) => {
+        this.employees.set(res.items);
+        this.employeesTotal.set(res.total);
+        this.employeesLoading.set(false);
+      },
+      error: (err) => {
+        this.employeesLoading.set(false);
+        this.notify.error('Error cargando empleados');
+      }
+    });
+  }
+
+  loadPeriods(): void {
+    // Extraer períodos únicos de las nóminas cargadas
+    const periodsSet = new Set(this.payrolls().map(p => p.periodCode));
+    const uniquePeriods = Array.from(periodsSet).sort().reverse();
+    this.periods.set(uniquePeriods);
+  }
+
   selectCompany(code: string): void {
     this.selectedCompany = code;
     this.page.set(1);
     this.loadPayrolls();
   }
 
-  onPageChange(event: PageEvent, type: 'companies' | 'payrolls'): void {
+  onPageChange(event: PageEvent, type: 'companies' | 'payrolls' | 'employees'): void {
     this.page.set(event.pageIndex + 1);
     this.pageSize.set(event.pageSize);
 
     if (type === 'companies') {
       this.loadCompanies();
+    } else if (type === 'employees') {
+      this.loadEmployees();
     } else {
       this.loadPayrolls();
     }
   }
 
   getUniquePeriods(): string[] {
-    const periods = this.payrolls().map(p => p.periodCode);
-    return Array.from(new Set(periods)).sort().reverse();
+    return this.periods();
   }
 
   downloadExcel(): void {

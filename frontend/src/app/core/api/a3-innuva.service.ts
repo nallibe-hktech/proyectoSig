@@ -71,6 +71,14 @@ export class A3InnuvaService {
     return this.http.get<PagedResult<A3InnuvaPayrollDto>>(`${this.apiUrl}/payrolls`, { params });
   }
 
+  getEmployees(page: number, pageSize: number, search?: string): Observable<PagedResult<any>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+    if (search) params = params.set('search', search);
+    return this.http.get<PagedResult<any>>(`${this.apiUrl}/employees`, { params });
+  }
+
   // === TEST ENDPOINTS (Write to TEST tables only) ===
   syncCompaniesTest(): Observable<any> {
     return this.http.post(`${this.apiUrl}/test/sync/companies`, {});
@@ -96,6 +104,14 @@ export class A3InnuvaService {
       .set('pageSize', pageSize.toString());
     if (search) params = params.set('search', search);
     return this.http.get<PagedResult<A3InnuvaPayrollDto>>(`${this.apiUrl}/test/payrolls`, { params });
+  }
+
+  getEmployeesTest(page: number, pageSize: number, search?: string): Observable<PagedResult<any>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+    if (search) params = params.set('search', search);
+    return this.http.get<PagedResult<any>>(`${this.apiUrl}/test/employees`, { params });
   }
 
   // === OAUTH ENDPOINTS ===

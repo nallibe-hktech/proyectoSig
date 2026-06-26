@@ -52,6 +52,7 @@ public interface IA3InnuvaNominasService
     Task SyncPayrollsTestAsync(string companyCode, CancellationToken ct = default);
     Task<PagedResult<A3InnuvaNominasCompanyDto>> GetCompaniesTestAsync(int page, int pageSize, string? search, CancellationToken ct);
     Task<PagedResult<A3InnuvaNominasPayrollDto>> GetPayrollsTestAsync(int page, int pageSize, string? search, CancellationToken ct);
+    Task<PagedResult<A3InnuvaEmpleadoDto>> GetEmployeesTestAsync(int page, int pageSize, string? search, CancellationToken ct);
 
     // Excel generation for manual upload
     Task<byte[]> GenerateExcelAsync(string periodCode, CancellationToken ct = default);
@@ -188,89 +189,18 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
     {
         try
         {
-            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de nóminas (payrolls)...");
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización y cálculo de nóminas...");
 
-            // ⚡ FIX: Cargar todos los hashes existentes en memoria (una sola query)
-            var existingPayrolls = await _db.StagingA3InnuvaPayrolls
-                .Where(p => p.DeletedAt == null)
-                .AsNoTracking()
-                .Select(p => p.Hash)
-                .ToListAsync(ct);
+            // Determinar período actual (formato: YYYY-MM)
+            var now = DateTime.UtcNow;
+            var periodCode = $"{now.Year}-{now.Month:D2}";
 
-            var existingHashSet = new HashSet<string>(existingPayrolls, StringComparer.OrdinalIgnoreCase);
-            _logger.LogInformation($"[A3InnuvaNominas] ✅ Nóminas existentes en memoria: {existingHashSet.Count}");
+            _logger.LogInformation($"[A3InnuvaNominas] Usando período: {periodCode}");
 
-            int totalSynced = 0;
-            int pageNumber = 1;
-            const int pageSize = 25;
-            bool hasMore = true;
+            // Calcular nóminas usando datos de PayHawk + A3 Innuva
+            await CalculatePayrollsAsync(periodCode, ct);
 
-            while (hasMore)
-            {
-                try
-                {
-                    // Endpoint: GET /Laboral/api/companies/{companyCode}/payroll?pageNumber=X&pageSize=Y
-                    var payrolls = await _client.GetPayrollsAsync(companyCode, pageNumber, pageSize, null, null, ct);
-
-                    if (payrolls == null || payrolls.Count == 0)
-                    {
-                        _logger.LogInformation($"[A3InnuvaNominas] No hay más nóminas en página {pageNumber}");
-                        hasMore = false;
-                        break;
-                    }
-
-                    foreach (var payroll in payrolls)
-                    {
-                        var hash = ComputeHash($"{payroll.EmployeeId}_{payroll.PeriodCode}_{payroll.ProcessDate}");
-
-                        // ⚡ FIX: Búsqueda O(1) en HashSet, solo insertar si es nuevo
-                        if (existingHashSet.Contains(hash))
-                        {
-                            _logger.LogDebug($"[A3InnuvaNominas] Payroll duplicado (ya existe): {hash}");
-                            continue;
-                        }
-
-                        _db.StagingA3InnuvaPayrolls.Add(new StagingA3InnuvaPayroll
-                        {
-                            IdExterno = payroll.Id ?? "",
-                            IdEmpleado = payroll.EmployeeId,
-                            NombreEmpleado = payroll.EmployeeName,
-                            CodigoPeriodo = payroll.PeriodCode,
-                            SalarioBase = payroll.BaseSalary,
-                            SalarioNeto = payroll.NetSalary,
-                            Deducciones = payroll.Deductions,
-                            FechaProcesamiento = payroll.ProcessDate,
-                            Hash = hash,
-                            PayloadJson = System.Text.Json.JsonSerializer.Serialize(payroll),
-                            FechaUltimaSincronizacion = DateTime.UtcNow,
-                            FlagProcesado = false,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        });
-
-                        existingHashSet.Add(hash); // Agregar al set para este sync
-                        Interlocked.Increment(ref totalSynced);
-                    }
-
-                    // Si obtuvo menos registros que el pageSize, ya no hay más
-                    if (payrolls.Count < pageSize)
-                    {
-                        hasMore = false;
-                    }
-                    else
-                    {
-                        pageNumber++;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"[A3InnuvaNominas] Error sincronizando nóminas en página {pageNumber}");
-                    hasMore = false;
-                }
-            }
-
-            await _db.SaveChangesAsync(ct);
-            _logger.LogInformation($"[A3InnuvaNominas] ✅ Sincronización de nóminas completada: {totalSynced} registros procesados");
+            _logger.LogInformation($"[A3InnuvaNominas] ✅ Sincronización de nóminas completada para período {periodCode}");
         }
         catch (Exception ex)
         {
@@ -985,9 +915,13 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
     }
 
     public async Task<PagedResult<A3InnuvaEmpleadoDto>> GetEmployeesAsync(int page, int pageSize, string? search, CancellationToken ct)
-    {
-        var query = _db.StagingA3InnuvaEmpleados.AsQueryable();
+        => await GetEmployeesInternalAsync(_db.StagingA3InnuvaEmpleados, page, pageSize, search, ct);
 
+    public async Task<PagedResult<A3InnuvaEmpleadoDto>> GetEmployeesTestAsync(int page, int pageSize, string? search, CancellationToken ct)
+        => await GetEmployeesInternalAsync(_db.StagingA3InnuvaEmpleados, page, pageSize, search, ct);
+
+    private async Task<PagedResult<A3InnuvaEmpleadoDto>> GetEmployeesInternalAsync(IQueryable<StagingA3InnuvaEmpleado> query, int page, int pageSize, string? search, CancellationToken ct)
+    {
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = $"%{search.Trim()}%";
