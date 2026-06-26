@@ -197,16 +197,24 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas] Período objetivo: {periodCode}");
 
-            // CHECK INCREMENTAL: Si hace <6 horas que sincronizamos, reutilizar datos
-            const int horasAntesDeReSincronizar = 6;
+            // CHECK INCREMENTAL: Si hace <N horas que sincronizamos Y existen conceptos, reutilizar datos
+            // NOTA: Cambiar a 0 para forzar resincronización cada vez (para testing con datos nuevos de WK)
+            const int horasAntesDeReSincronizar = 0;  // Forzar resincronización cada vez para obtener datos reales de WK
             var ultimaSincEmpleados = await _db.StagingA3InnuvaEmpleados
+                .AsNoTracking()  // ← Agregar AsNoTracking para evitar conflictos de tracking
                 .OrderByDescending(e => e.FechaUltimaSincronizacion)
                 .FirstOrDefaultAsync(ct);
 
+            var conceptosExisten = await _db.StagingA3InnuvaConceptos
+                .AsNoTracking()  // ← Agregar AsNoTracking para evitar conflictos de tracking
+                .Where(c => c.DeletedAt == null)
+                .AnyAsync(ct);
+
             if (ultimaSincEmpleados != null &&
-                (now - ultimaSincEmpleados.FechaUltimaSincronizacion).TotalHours < horasAntesDeReSincronizar)
+                (now - ultimaSincEmpleados.FechaUltimaSincronizacion).TotalHours < horasAntesDeReSincronizar &&
+                conceptosExisten)  // ← VERIFICAR que conceptos existan antes de hacer shortcut
             {
-                _logger.LogInformation($"[A3InnuvaNominas] ⚡ Datos sincronizados hace {Math.Round((now - ultimaSincEmpleados.FechaUltimaSincronizacion).TotalMinutes)} min. Reutilizando sin re-sincronizar.");
+                _logger.LogInformation($"[A3InnuvaNominas] ⚡ Datos sincronizados hace {Math.Round((now - ultimaSincEmpleados.FechaUltimaSincronizacion).TotalMinutes)} min y conceptos existen. Reutilizando sin re-sincronizar.");
 
                 // PASO 5 SOLO: Calcular nóminas con datos existentes
                 _logger.LogInformation("[A3InnuvaNominas] PASO 5: Calculando nóminas (datos reusados)...");
@@ -216,8 +224,11 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                 return;
             }
 
-            // Si NO hay datos recientes, hacer sync completo
-            _logger.LogInformation("[A3InnuvaNominas] 🔄 Datos antigüos o ausentes. Sincronizando de cero...");
+            // Si NO hay datos recientes O NO existen conceptos, hacer sync completo
+            if (!conceptosExisten)
+                _logger.LogInformation("[A3InnuvaNominas] 🔄 Conceptos ausentes. Sincronizando de cero...");
+            else
+                _logger.LogInformation("[A3InnuvaNominas] 🔄 Datos antiguos. Sincronizando de cero...");
 
             // PASO 1: Sincronizar empleados
             _logger.LogInformation("[A3InnuvaNominas] PASO 1: Sincronizando empleados...");
@@ -294,8 +305,8 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             _logger.LogInformation($"[A3InnuvaNominas] {uniqueEmployees.Count} empleados únicos después de deduplicación");
 
             // ⚡ FIX: Cargar todos los empleados existentes en memoria (una sola query)
+            // SIN AsNoTracking() porque vamos a hacer updates más abajo
             var existingEmployees = await _db.StagingA3InnuvaEmpleados
-                .AsNoTracking()
                 .ToListAsync(ct);
 
             var existingEmployeeDict = existingEmployees.ToDictionary(e => e.EmpleadoIdExterno, StringComparer.OrdinalIgnoreCase);
@@ -417,6 +428,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             int conceptosProcessados = 0;
 
             // Para cada empleado, obtener sus conceptos usando EmployeeCode (que es EmpleadoIdExterno)
+            // IMPORTANTE: Agregar pequeño delay entre empleados para evitar sobrecargar la API
             foreach (var employee in employees)
             {
                 try
@@ -463,6 +475,10 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                 {
                     _logger.LogError(ex, $"[A3InnuvaNominas] Error obteniendo conceptos para empleado {employee.EmpleadoIdExterno}");
                 }
+
+                // Throttle: pequeño delay entre empleados para evitar sobrecargar la API A3 Innuva
+                // Con 1800+ empleados, sin throttling la API se satura y rechaza conexiones
+                await Task.Delay(150, ct);
             }
 
             if (allConceptos.Count == 0)
@@ -1345,13 +1361,13 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             }
 
             int totalSynced = 0;
-            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = ct };
 
-            await Parallel.ForEachAsync(employees, parallelOptions, async (employee, cancellationToken) =>
+            // IMPORTANTE: Usar loop secuencial (NO Parallel.ForEachAsync) para evitar conflictos de DbContext
+            foreach (var employee in employees)
             {
                 try
                 {
-                    var irpfs = await _client.GetIRPFAsync("1", employee.EmpleadoIdExterno, cancellationToken);
+                    var irpfs = await _client.GetIRPFAsync("1", employee.EmpleadoIdExterno, ct);
 
                     foreach (var irpf in irpfs)
                     {
@@ -1359,7 +1375,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             $"{irpf.EmployeeCode}_{irpf.TaxType}_{irpf.TaxRate}");
 
                         var existing = await _db.StagingA3InnuvaIRPFs
-                            .FirstOrDefaultAsync(i => i.Hash == hash, cancellationToken);
+                            .FirstOrDefaultAsync(i => i.Hash == hash, ct);
 
                         if (existing != null) continue;
 
@@ -1380,14 +1396,17 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             FlagProcesado = false
                         });
 
-                        Interlocked.Increment(ref totalSynced);
+                        totalSynced++;
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"[A3InnuvaNominas] Error sincronizando IRPF para {employee.EmpleadoIdExterno}");
                 }
-            });
+
+                // Throttle: pequeño delay entre empleados
+                await Task.Delay(150, ct);
+            }
 
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ SyncIRPFAsync completado: {totalSynced} registros");
@@ -1418,49 +1437,54 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             }
 
             int totalSynced = 0;
-            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = ct };
 
-            await Parallel.ForEachAsync(employees, parallelOptions, async (employee, cancellationToken) =>
+            // IMPORTANTE: Usar loop secuencial (NO Parallel.ForEachAsync) para evitar conflictos de DbContext
+            foreach (var employee in employees)
             {
                 try
                 {
-                    var remunerations = await _client.GetRemunerationAsync("1", employee.EmpleadoIdExterno, cancellationToken);
+                    // CORRECIÓN: Usar GetConceptosAsync en lugar de GetRemunerationAsync
+                    // El endpoint /remuneration no existe. Los datos están en /concepts
+                    var conceptos = await _client.GetConceptosAsync(employee.EmpleadoIdExterno, 1, 100, ct);
 
-                    foreach (var remuneration in remunerations)
+                    foreach (var concepto in conceptos)
                     {
                         var hash = ComputeHash(
-                            $"{remuneration.EmployeeCode}_{remuneration.RemunerationType}_{remuneration.Amount}");
+                            $"{employee.EmpleadoIdExterno}_{concepto.ConceptCode}_{concepto.Amount}");
 
                         var existing = await _db.StagingA3InnuvaRemunerations
-                            .FirstOrDefaultAsync(r => r.Hash == hash, cancellationToken);
+                            .FirstOrDefaultAsync(r => r.Hash == hash, ct);
 
                         if (existing != null) continue;
 
                         _db.StagingA3InnuvaRemunerations.Add(new StagingA3InnuvaRemuneration
                         {
-                            RemuneracionIdExterno = remuneration.IdExterno,
-                            EmpleadoIdExterno = remuneration.EmployeeCode,
+                            RemuneracionIdExterno = $"{employee.EmpleadoIdExterno}_concept_{concepto.ConceptCode}",
+                            EmpleadoIdExterno = employee.EmpleadoIdExterno,
                             UserId = employee.UserId,
-                            NIF = remuneration.NIF,
-                            TipoRemuneracion = remuneration.RemunerationType,
-                            Importe = remuneration.Amount,
-                            Concepto = remuneration.Concept,
-                            FechaInicio = remuneration.StartDate,
-                            FechaFin = remuneration.EndDate,
-                            PayloadJson = System.Text.Json.JsonSerializer.Serialize(remuneration),
+                            NIF = employee.NIF,
+                            TipoRemuneracion = concepto.ConceptType ?? "CONCEPTS", // Mapea conceptType de WK
+                            Importe = concepto.Amount,
+                            Concepto = concepto.Description,
+                            FechaInicio = DateTime.Now,
+                            FechaFin = null,
+                            PayloadJson = System.Text.Json.JsonSerializer.Serialize(concepto),
                             Hash = hash,
                             FechaUltimaSincronizacion = DateTime.UtcNow,
                             FlagProcesado = false
                         });
 
-                        Interlocked.Increment(ref totalSynced);
+                        totalSynced++;
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"[A3InnuvaNominas] Error sincronizando remuneraciones para {employee.EmpleadoIdExterno}");
+                    _logger.LogError(ex, $"[A3InnuvaNominas] Error sincronizando conceptos/remuneraciones para {employee.EmpleadoIdExterno}");
                 }
-            });
+
+                // Throttle: pequeño delay entre empleados
+                await Task.Delay(150, ct);
+            }
 
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ SyncRemunerationAsync completado: {totalSynced} registros");
@@ -1492,13 +1516,13 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             }
 
             int totalSynced = 0;
-            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = ct };
 
-            await Parallel.ForEachAsync(employees, parallelOptions, async (employee, cancellationToken) =>
+            // IMPORTANTE: Usar loop secuencial (NO Parallel.ForEachAsync) para evitar conflictos de DbContext
+            foreach (var employee in employees)
             {
                 try
                 {
-                    var bankAccounts = await _client.GetBankAccountsAsync("1", employee.EmpleadoIdExterno, cancellationToken);
+                    var bankAccounts = await _client.GetBankAccountsAsync("1", employee.EmpleadoIdExterno, ct);
 
                     foreach (var account in bankAccounts)
                     {
@@ -1506,7 +1530,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             $"{account.EmployeeCode}_{account.IBAN}");
 
                         var existing = await _db.StagingA3InnuvaBankAccounts
-                            .FirstOrDefaultAsync(b => b.Hash == hash, cancellationToken);
+                            .FirstOrDefaultAsync(b => b.Hash == hash, ct);
 
                         if (existing != null) continue;
 
@@ -1529,14 +1553,17 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             FlagProcesado = false
                         });
 
-                        Interlocked.Increment(ref totalSynced);
+                        totalSynced++;
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"[A3InnuvaNominas] Error sincronizando cuentas bancarias para {employee.EmpleadoIdExterno}");
                 }
-            });
+
+                // Throttle: pequeño delay entre empleados
+                await Task.Delay(150, ct);
+            }
 
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ SyncBankAccountsAsync completado: {totalSynced} registros");
@@ -1568,13 +1595,13 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             }
 
             int totalSynced = 0;
-            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = ct };
 
-            await Parallel.ForEachAsync(employees, parallelOptions, async (employee, cancellationToken) =>
+            // IMPORTANTE: Usar loop secuencial (NO Parallel.ForEachAsync) para evitar conflictos de DbContext
+            foreach (var employee in employees)
             {
                 try
                 {
-                    var agreements = await _client.GetAgreementsAsync("1", employee.EmpleadoIdExterno, cancellationToken);
+                    var agreements = await _client.GetAgreementsAsync("1", employee.EmpleadoIdExterno, ct);
 
                     foreach (var agreement in agreements)
                     {
@@ -1582,7 +1609,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             $"{agreement.EmployeeCode}_{agreement.AgreementCode}");
 
                         var existing = await _db.StagingA3InnuvaAgreements
-                            .FirstOrDefaultAsync(a => a.Hash == hash, cancellationToken);
+                            .FirstOrDefaultAsync(a => a.Hash == hash, ct);
 
                         if (existing != null) continue;
 
@@ -1604,14 +1631,17 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             FlagProcesado = false
                         });
 
-                        Interlocked.Increment(ref totalSynced);
+                        totalSynced++;
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"[A3InnuvaNominas] Error sincronizando acuerdos para {employee.EmpleadoIdExterno}");
                 }
-            });
+
+                // Throttle: pequeño delay entre empleados
+                await Task.Delay(150, ct);
+            }
 
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ SyncAgreementsAsync completado: {totalSynced} registros");
@@ -1640,14 +1670,14 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             }
 
             int totalSynced = 0;
-            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = ct };
 
-            await Parallel.ForEachAsync(employees, parallelOptions, async (employee, cancellationToken) =>
+            // IMPORTANTE: Usar loop secuencial (NO Parallel.ForEachAsync) para evitar conflictos de DbContext
+            foreach (var employee in employees)
             {
                 try
                 {
                     var contractAgreements = await _client.GetContractAgreementAsync(
-                        employee.EmpleadoIdExterno, 1, 25, cancellationToken);
+                        employee.EmpleadoIdExterno, 1, 25, ct);
 
                     foreach (var contract in contractAgreements)
                     {
@@ -1655,7 +1685,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             $"{contract.EmployeeCode}_{contract.ContractCode}");
 
                         var existing = await _db.StagingA3InnuvaContractAgreements
-                            .FirstOrDefaultAsync(c => c.Hash == hash, cancellationToken);
+                            .FirstOrDefaultAsync(c => c.Hash == hash, ct);
 
                         if (existing != null) continue;
 
@@ -1681,14 +1711,17 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             FlagProcesado = false
                         });
 
-                        Interlocked.Increment(ref totalSynced);
+                        totalSynced++;
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"[A3InnuvaNominas] Error sincronizando acuerdo de contrato para {employee.EmpleadoIdExterno}");
                 }
-            });
+
+                // Throttle: pequeño delay entre empleados
+                await Task.Delay(150, ct);
+            }
 
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ SyncContractAgreementsAsync completado: {totalSynced} registros");
@@ -1717,14 +1750,14 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             }
 
             int totalSynced = 0;
-            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = ct };
 
-            await Parallel.ForEachAsync(employees, parallelOptions, async (employee, cancellationToken) =>
+            // IMPORTANTE: Usar loop secuencial (NO Parallel.ForEachAsync) para evitar conflictos de DbContext
+            foreach (var employee in employees)
             {
                 try
                 {
                     var contractTimetables = await _client.GetContractTimetableAsync(
-                        employee.EmpleadoIdExterno, 1, 25, cancellationToken);
+                        employee.EmpleadoIdExterno, 1, 25, ct);
 
                     foreach (var timetable in contractTimetables)
                     {
@@ -1732,7 +1765,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             $"{timetable.EmployeeCode}_timetable");
 
                         var existing = await _db.StagingA3InnuvaContractTimetables
-                            .FirstOrDefaultAsync(t => t.Hash == hash, cancellationToken);
+                            .FirstOrDefaultAsync(t => t.Hash == hash, ct);
 
                         if (existing != null) continue;
 
@@ -1754,14 +1787,17 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                             FlagProcesado = false
                         });
 
-                        Interlocked.Increment(ref totalSynced);
+                        totalSynced++;
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"[A3InnuvaNominas] Error sincronizando horario de contrato para {employee.EmpleadoIdExterno}");
                 }
-            });
+
+                // Throttle: pequeño delay entre empleados
+                await Task.Delay(150, ct);
+            }
 
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ SyncContractTimetablesAsync completado: {totalSynced} registros");

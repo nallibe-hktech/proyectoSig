@@ -53,47 +53,17 @@ public class DataProcessorService : IDataProcessorService
         _logger.LogInformation($"[Bizneo Empleados] Encontrados {pendientes.Count} registros pendientes");
 
         int processed = 0, errors = 0;
-        int nuevos = 0, actualizados = 0;
 
         foreach (var staging in pendientes)
         {
             try
             {
-                // Buscar usuario por NIF
-                var usuario = await _userRepo.ListAsync(ct)
-                    .ContinueWith(t => t.Result.FirstOrDefault(u => u.NIF == staging.NIF), ct);
-
-                if (usuario == null)
-                {
-                    // Crear nuevo usuario
-                    usuario = new User
-                    {
-                        Nombre = staging.Nombre,
-                        Apellidos = "", // No disponible en staging
-                        NIF = staging.NIF,
-                        Email = $"{staging.Nombre.ToLower().Replace(" ", ".")}@empresa.es",
-                        PasswordHash = "temp", // Usuario necesita resetear
-                        IsDeleted = false,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    _db.Users.Add(usuario);
-                    nuevos++;
-                    _logger.LogDebug($"[Bizneo] Nuevo usuario: {staging.Nombre} ({staging.NIF})");
-                }
-                else
-                {
-                    // Actualizar datos existentes
-                    usuario.Nombre = staging.Nombre;
-                    usuario.UpdatedAt = DateTime.UtcNow;
-                    actualizados++;
-                    _logger.LogDebug($"[Bizneo] Usuario actualizado: {staging.Nombre} ({staging.NIF})");
-                }
-
-                // Marcar staging como procesado
+                // Solo marcar como procesado (NO crear usuarios de login)
+                // Los empleados de Bizneo solo se usan para mapeo de UserId en A3 Innuva
                 staging.FlagProcesado = true;
                 staging.ErrorProcesamiento = null;
                 processed++;
+                _logger.LogDebug($"[Bizneo] Empleado procesado: {staging.Nombre} (UserId: {staging.UserId})");
             }
             catch (Exception ex)
             {
@@ -104,7 +74,7 @@ public class DataProcessorService : IDataProcessorService
         }
 
         await _db.SaveChangesAsync(ct);
-        _logger.LogInformation($"[Bizneo Empleados] Resultado: {nuevos} nuevos, {actualizados} actualizados, {errors} errores");
+        _logger.LogInformation($"[Bizneo Empleados] Resultado: {processed} procesados, {errors} errores");
         return (processed, errors);
     }
 

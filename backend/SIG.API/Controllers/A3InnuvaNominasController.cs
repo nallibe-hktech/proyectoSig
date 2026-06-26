@@ -80,6 +80,30 @@ public class A3InnuvaNominasController : ControllerBase
     }
 
     /// <summary>
+    /// Recalcular nóminas para un período específico (sin resincronizar datos)
+    /// Útil cuando la sincronización anterior falló en el paso de cálculo
+    /// </summary>
+    [HttpPost("recalcular")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Recalcular([FromQuery] string periodCode, CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(periodCode))
+                return BadRequest(new { error = "periodCode es requerido" });
+
+            _logger.LogInformation($"[A3InnuvaNominas] Recalculando nóminas para período {periodCode}...");
+            await _service.CalculatePayrollsAsync(periodCode, ct);
+            return Ok(new { message = $"Recálculo de nóminas completado para período {periodCode}" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error recalculando nóminas");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Sincronizar empleados desde A3 INNUVA
     /// </summary>
     [HttpPost("sync/employees")]
@@ -117,6 +141,25 @@ public class A3InnuvaNominasController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Sincronizar remuneration (salarios, pagas extra) desde A3 INNUVA
+    /// </summary>
+    [HttpPost("sync-remuneration")]
+    public async Task<IActionResult> SyncRemuneration(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de remuneration...");
+            await _service.SyncRemunerationAsync(ct);
+            return Ok(new { message = "Sincronización de remuneration completada" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando remuneration");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // ====== PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ======
 
     /// <summary>
@@ -135,26 +178,6 @@ public class A3InnuvaNominasController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando IRPF");
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// PHASE 1.3c: Sync remuneration data for all employees
-    /// </summary>
-    [HttpPost("sync-remuneration")]
-    [AllowAnonymous]
-    public async Task<IActionResult> SyncRemuneration(CancellationToken ct)
-    {
-        try
-        {
-            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización de remuneraciones...");
-            await _service.SyncRemunerationAsync(ct);
-            return Ok(new { message = "Sincronización de remuneraciones completada" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[A3InnuvaNominas] Error sincronizando remuneraciones");
             return BadRequest(new { error = ex.Message });
         }
     }
@@ -869,6 +892,128 @@ public class A3InnuvaNominasController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[A3InnuvaNominas] Error generando Excel");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Diagnóstico: Ver qué datos hay en las tablas staging para un período
+    /// Ayuda a identificar qué falta para completar el Excel
+    /// </summary>
+    [HttpGet("diagnostico")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Diagnostico([FromQuery] string periodCode, CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(periodCode))
+                return BadRequest(new { error = "periodCode es requerido" });
+
+            // Contar nóminas calculadas
+            var nominasCount = await _db.StagingA3InnuvaNominasCalculadas
+                .Where(n => n.CodigoPeriodo == periodCode)
+                .CountAsync(ct);
+
+            // Contar empleados A3 totales
+            var empleadosA3Count = await _db.StagingA3InnuvaEmpleados.CountAsync(ct);
+            var empleadosA3ConUserId = await _db.StagingA3InnuvaEmpleados
+                .Where(e => e.UserId.HasValue)
+                .CountAsync(ct);
+
+            // Contar gastos PayHawk totales
+            var gastosPayHawkCount = await _db.StagingPayHawkGastos.CountAsync(ct);
+            var gastosConUserId = await _db.StagingPayHawkGastos
+                .Where(g => g.UserId > 0)
+                .CountAsync(ct);
+
+            // Contar ausencias Bizneo
+            var ausenciasCount = await _db.StagingBizneoAbsences.CountAsync(ct);
+
+            // Contar conceptos y remuneration
+            var conceptosCount = await _db.StagingA3InnuvaConceptos.CountAsync(ct);
+            var remunerationCount = await _db.StagingA3InnuvaRemunerations.CountAsync(ct);
+
+            // Detalles de nóminas del período
+            var nominasDetalles = await _db.StagingA3InnuvaNominasCalculadas
+                .Where(n => n.CodigoPeriodo == periodCode)
+                .Select(n => new
+                {
+                    codigoEmpleado = n.CodigoEmpleado,
+                    totalPercepciones = n.TotalPercepciones
+                })
+                .Take(10)
+                .ToListAsync(ct);
+
+            // Detalles de gastos PayHawk
+            var gastosDetalles = await _db.StagingPayHawkGastos
+                .Select(g => new
+                {
+                    userId = g.UserId,
+                    categoria = g.Categoria,
+                    importe = g.Importe
+                })
+                .Take(20)
+                .ToListAsync(ct);
+
+            // 🔍 NUEVO: Diagnóstico de NIFs (por qué no están matcheando)
+            var bizneoNifs = await _db.StagingBizneoEmpleados
+                .Select(b => new { b.NIF, b.Nombre, b.UserId })
+                .Take(20)
+                .ToListAsync(ct);
+
+            var a3Nifs = await _db.StagingA3InnuvaEmpleados
+                .Select(a => new { a.NIF, a.Nombre, a.UserId })
+                .Take(20)
+                .ToListAsync(ct);
+
+            // Contar Bizneo empleados
+            var bizneoEmpleadosTotal = await _db.StagingBizneoEmpleados.CountAsync(ct);
+            var bizneoEmpleadosConNif = await _db.StagingBizneoEmpleados
+                .Where(b => !string.IsNullOrEmpty(b.NIF))
+                .CountAsync(ct);
+
+            return Ok(new
+            {
+                periodo = periodCode,
+                resumen = new
+                {
+                    nominasCalculadas = nominasCount,
+                    empleadosA3Total = empleadosA3Count,
+                    empleadosA3ConUserId = empleadosA3ConUserId,
+                    gastosPayHawkTotal = gastosPayHawkCount,
+                    gastosPayHawkConUserId = gastosConUserId,
+                    ausenciasBizneo = ausenciasCount,
+                    conceptos = conceptosCount,
+                    remuneration = remunerationCount,
+                    bizneoEmpleadosTotal = bizneoEmpleadosTotal,
+                    bizneoEmpleadosConNif = bizneoEmpleadosConNif
+                },
+                detalles = new
+                {
+                    nominasDetallesSample = nominasDetalles,
+                    gastosDetallesSample = gastosDetalles
+                },
+                nifMappingDiagnostico = new
+                {
+                    bizneoNifsSample = bizneoNifs,
+                    a3NifsSample = a3Nifs,
+                    nota = "Si Bizneo NIFs están vacíos o no coinciden con A3 NIFs, la causa es: (1) Bizneo devuelve NIFs genéricos o vacíos, (2) A3 tiene NIFs reales que no matchean"
+                },
+                diagnostico = new
+                {
+                    ok = nominasCount > 0 && empleadosA3ConUserId > 0 && gastosConUserId > 0,
+                    falta = new
+                    {
+                        nominasCalculadas = nominasCount == 0 ? "❌ NO HAY nóminas calculadas para este período" : "✓ Nóminas OK",
+                        empleadosConUserId = empleadosA3ConUserId == 0 ? "❌ NO HAY empleados A3 con UserId (sin mapeo Bizneo). Verifica nifMappingDiagnostico" : $"✓ {empleadosA3ConUserId} empleados con UserId",
+                        gastosPayHawk = gastosConUserId == 0 ? "❌ NO HAY gastos PayHawk con UserId" : $"✓ {gastosConUserId} gastos con UserId"
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error en diagnóstico");
             return BadRequest(new { error = ex.Message });
         }
     }

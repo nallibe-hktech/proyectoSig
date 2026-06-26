@@ -118,3 +118,4 @@ backend/SIG.API/publish/
 
 # Datos REALES del cliente para dev local (CECOs, clientes...). Nunca versionar (gobierno del dato).
 *.local.sql
+.bak files

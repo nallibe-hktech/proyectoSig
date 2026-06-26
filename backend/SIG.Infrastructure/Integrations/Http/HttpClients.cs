@@ -1052,80 +1052,98 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
         int pageSize = 25,
         CancellationToken ct = default)
     {
-        try
+        // Retry logic: hasta 3 intentos con backoff exponencial en caso de timeout
+        const int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            _logger.LogInformation("[A3InnuvaNominas] GetConceptosAsync iniciado - empleado {Code}, página {Page}", employeeCode, pageNumber);
-
-            // MODO FAKE: Retornar conceptos simulados (limitado a 1 página = 5 conceptos)
-            if (_useFakeData)
+            try
             {
-                _logger.LogInformation("[A3InnuvaNominas] Usando conceptos FAKE para empleado {Code}", employeeCode);
+                _logger.LogInformation("[A3InnuvaNominas] GetConceptosAsync iniciado - empleado {Code}, página {Page}, intento {Attempt}/{MaxRetries}",
+                    employeeCode, pageNumber, attempt, maxRetries);
 
-                var fakeConceptos = new List<ConceptoDto>
+                // MODO FAKE: Retornar conceptos simulados (limitado a 1 página = 5 conceptos)
+                if (_useFakeData)
                 {
-                    new ConceptoDto(001, "Salario Base", 2500m, "E", false, false, "Percepciones"),
-                    new ConceptoDto(002, "Complemento Antigüedad", 300m, "E", false, false, "Percepciones"),
-                    new ConceptoDto(003, "IRPF", -400m, "D", false, false, "Descuentos"),
-                    new ConceptoDto(004, "Seguridad Social", -250m, "D", false, false, "Descuentos"),
-                    new ConceptoDto(005, "Bono Desempeño", 500m, "E", false, false, "Percepciones"),
-                };
+                    _logger.LogInformation("[A3InnuvaNominas] Usando conceptos FAKE para empleado {Code}", employeeCode);
 
-                // Paginación finita: solo página 1 tiene datos, página 2+ retorna vacío
-                if (pageNumber > 1)
+                    var fakeConceptos = new List<ConceptoDto>
+                    {
+                        new ConceptoDto(001, "Salario Base", 2500m, "E", false, false, "Percepciones"),
+                        new ConceptoDto(002, "Complemento Antigüedad", 300m, "E", false, false, "Percepciones"),
+                        new ConceptoDto(003, "IRPF", -400m, "D", false, false, "Descuentos"),
+                        new ConceptoDto(004, "Seguridad Social", -250m, "D", false, false, "Descuentos"),
+                        new ConceptoDto(005, "Bono Desempeño", 500m, "E", false, false, "Percepciones"),
+                    };
+
+                    // Paginación finita: solo página 1 tiene datos, página 2+ retorna vacío
+                    if (pageNumber > 1)
+                    {
+                        _logger.LogInformation("[A3InnuvaNominas] Página {Page} > 1, retornando vacío (paginación finita)", pageNumber);
+                        return Array.Empty<ConceptoDto>();
+                    }
+
+                    return fakeConceptos.Skip((pageNumber - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToList();
+                }
+
+                // MODO REAL: Llamar a la API
+                var token = await _oauthService.GetAccessTokenAsync(ct);
+
+                // Endpoint: /concepts?pageNumber=X&pageSize=Y (parámetros OBLIGATORIOS)
+                var url = $"Laboral/api/companies/1/employees/{Uri.EscapeDataString(employeeCode)}/concepts?pageNumber={pageNumber}&pageSize={pageSize}";
+                _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
+
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.Add("Authorization", $"Bearer {token}");
+                request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
+                request.Headers.Add("api-version", "v2");
+                request.Headers.Add("Accept", "application/json");
+
+                var response = await _httpClient.SendAsync(request, ct);
+                _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
+
+                if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation("[A3InnuvaNominas] Página {Page} > 1, retornando vacío (paginación finita)", pageNumber);
+                    var responseContent = await response.Content.ReadAsStringAsync(ct);
+                    _logger.LogError($"[A3InnuvaNominas] ❌ Error {response.StatusCode}: {responseContent}");
                     return Array.Empty<ConceptoDto>();
                 }
 
-                return fakeConceptos.Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
+                var data = await response.Content.ReadFromJsonAsync<List<ConceptResponse>>(cancellationToken: ct);
+                var count = data?.Count ?? 0;
+                _logger.LogInformation($"[A3InnuvaNominas] ✅ {count} conceptos obtenidos");
+
+                if (data == null) return Array.Empty<ConceptoDto>();
+
+                return data.Select(c => new ConceptoDto(
+                    c.ConceptCode,
+                    c.Description ?? "",
+                    c.Amount ?? 0m,
+                    c.ConceptType ?? "E",
+                    c.InKind ?? false,
+                    c.Manual ?? false,
+                    c.ConceptCollectionTypeDesc ?? ""
+                )).ToList();
             }
-
-            // MODO REAL: Llamar a la API
-            var token = await _oauthService.GetAccessTokenAsync(ct);
-
-            // Endpoint: /concepts?pageNumber=X&pageSize=Y (parámetros OBLIGATORIOS)
-            var url = $"Laboral/api/companies/1/employees/{Uri.EscapeDataString(employeeCode)}/concepts?pageNumber={pageNumber}&pageSize={pageSize}";
-            _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
-
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("Authorization", $"Bearer {token}");
-            request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
-            request.Headers.Add("api-version", "v2");
-            request.Headers.Add("Accept", "application/json");
-
-            var response = await _httpClient.SendAsync(request, ct);
-            _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
-
-            if (!response.IsSuccessStatusCode)
+            catch (TaskCanceledException ex) when (attempt < maxRetries)
             {
-                var responseContent = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogError($"[A3InnuvaNominas] ❌ Error {response.StatusCode}: {responseContent}");
+                // Timeout: esperar con backoff exponencial antes de reintentar
+                int delayMs = (int)Math.Pow(2, attempt) * 500; // 1000ms, 2000ms, etc.
+                _logger.LogWarning($"[A3InnuvaNominas] Timeout en intento {attempt}: esperando {delayMs}ms antes de reintentar...");
+                await Task.Delay(delayMs, ct);
+                continue; // Reintentar
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[A3InnuvaNominas] Error GetConceptos: {Message}", ex.Message);
                 return Array.Empty<ConceptoDto>();
             }
-
-            var data = await response.Content.ReadFromJsonAsync<List<ConceptResponse>>(cancellationToken: ct);
-            var count = data?.Count ?? 0;
-            _logger.LogInformation($"[A3InnuvaNominas] ✅ {count} conceptos obtenidos");
-
-            if (data == null) return Array.Empty<ConceptoDto>();
-
-            return data.Select(c => new ConceptoDto(
-                c.ConceptCode,
-                c.Description ?? "",
-                c.Amount ?? 0m,
-                c.ConceptType ?? "E",
-                c.InKind ?? false,
-                c.Manual ?? false,
-                c.ConceptCollectionTypeDesc ?? ""
-            )).ToList();
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[A3InnuvaNominas] Error GetConceptos: {Message}", ex.Message);
-            return Array.Empty<ConceptoDto>();
-        }
+
+        // Si llegamos aquí, todos los reintentos fallaron por timeout
+        _logger.LogError("[A3InnuvaNominas] GetConceptosAsync: Todos los {MaxRetries} intentos fallaron", maxRetries);
+        return Array.Empty<ConceptoDto>();
     }
 
     private class CompaniesResponse
@@ -1567,9 +1585,9 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
                         $"{employeeCode}_rem_bonus",
                         employeeCode,
                         "12345678A",
-                        "Bono",
+                        "EXTRAPAYMENTS",
                         500m,
-                        "Desempeño",
+                        "Bono por desempeño",
                         DateTime.Now.AddMonths(-3),
                         null
                     )
@@ -1598,16 +1616,28 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             var data = await response.Content.ReadFromJsonAsync<List<RemunerationResponse>>(cancellationToken: ct);
             if (data == null) return Array.Empty<RemunerationDto>();
 
-            return data.Select(r => new RemunerationDto(
-                $"{employeeCode}_rem_{r.RemunerationType}",
-                employeeCode,
-                r.NIF ?? "",
-                r.RemunerationType ?? "",
-                r.Amount ?? 0,
-                r.Concept,
-                r.StartDate,
-                r.EndDate
-            )).ToList();
+            return data.Select(r =>
+            {
+                // Mapear conceptType de WK a tipos que espera el motor
+                var remType = r.ConceptType switch
+                {
+                    "Fijo" when r.Description?.Contains("SALARIO", StringComparison.OrdinalIgnoreCase) == true => "THEORETICAL-GROSS",
+                    "Fijo" => "CONCEPTS",
+                    "Variable" => "EXTRAPAYMENTS",
+                    _ => r.ConceptType ?? "CONCEPTS"
+                };
+
+                return new RemunerationDto(
+                    $"{employeeCode}_rem_{r.ConceptCode}",
+                    employeeCode,
+                    "",  // WK no proporciona NIF en esta respuesta
+                    remType,
+                    r.Amount,
+                    r.Description ?? "",
+                    DateTime.Now,  // WK no proporciona fecha de inicio
+                    null
+                );
+            }).ToList();
         }
         catch (Exception ex)
         {
@@ -1966,20 +1996,29 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
 
     private class RemunerationResponse
     {
-        [JsonPropertyName("nif")]
-        public string? NIF { get; set; }
+        [JsonPropertyName("conceptCode")]
+        public int ConceptCode { get; set; }
 
-        [JsonPropertyName("remunerationType")]
-        public string? RemunerationType { get; set; }
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
 
         [JsonPropertyName("amount")]
-        public decimal? Amount { get; set; }
+        public decimal Amount { get; set; }
 
-        [JsonPropertyName("concept")]
-        public string? Concept { get; set; }
+        [JsonPropertyName("conceptType")]
+        public string? ConceptType { get; set; }
 
-        [JsonPropertyName("startDate")]
-        public DateTime StartDate { get; set; }
+        [JsonPropertyName("inKind")]
+        public bool InKind { get; set; }
+
+        [JsonPropertyName("manual")]
+        public bool Manual { get; set; }
+
+        [JsonPropertyName("conceptCollectionTypeID")]
+        public int ConceptCollectionTypeID { get; set; }
+
+        [JsonPropertyName("conceptCollectionTypeDesc")]
+        public string? ConceptCollectionTypeDesc { get; set; }
 
         [JsonPropertyName("endDate")]
         public DateTime? EndDate { get; set; }

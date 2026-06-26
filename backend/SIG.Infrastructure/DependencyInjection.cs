@@ -265,6 +265,8 @@ public static class DependencyInjection
         services.AddHttpClient(a3NominasHttpClientName, client =>
         {
             client.BaseAddress = new Uri(a3NominasUrlAlways);
+            // Timeout de 300 segundos (5 minutos) - A3 Innuva puede ser lenta con 1800+ requests
+            client.Timeout = TimeSpan.FromSeconds(300);
         });
 
         services.AddScoped<IA3InnuvaNominasClient>(sp =>
@@ -273,7 +275,7 @@ public static class DependencyInjection
             var httpClient = factory.CreateClient(a3NominasHttpClientName);
             var oauthService = sp.GetRequiredService<IWoltersKluwerOAuthService>();
             var logger = sp.GetRequiredService<ILogger<A3InnuvaNominasClient>>();
-            var useFakeData = false; // SIEMPRE usar cliente real, no fake data
+            var useFakeData = config.GetValue<bool>("Integrations:A3InnuvaNominas:UseFakeData", false);
             return new A3InnuvaNominasClient(httpClient, oauthService, wkSubscriptionKeyAlways, logger, useFakeData);
         });
 
