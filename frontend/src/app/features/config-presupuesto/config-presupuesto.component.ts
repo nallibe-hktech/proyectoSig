@@ -8,6 +8,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { ForecastResumenComponent } from '../forecast/forecast-resumen.component';
 import { ConfigPresupuestoService } from '../../core/api/config-presupuesto.service';
 import { ServiceService } from '../../core/api/services.service';
 import { ClientService } from '../../core/api/clients.service';
@@ -31,8 +33,8 @@ interface EditorState {
   imports: [
     CommonModule, FormsModule,
     MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatTooltipModule,
-    BreadcrumbsComponent, SkeletonComponent,
+    MatSelectModule, MatTooltipModule, MatButtonToggleModule,
+    BreadcrumbsComponent, SkeletonComponent, ForecastResumenComponent,
   ],
   template: `
     <div class="sig-page">
@@ -40,12 +42,22 @@ interface EditorState {
 
       <div class="sig-page__header">
         <h1 class="sig-page__title"><mat-icon class="title-icon">savings</mat-icon> Configuración de Presupuesto</h1>
-        @if (canManage() && serviceId()) {
+        @if (vista() === 'presupuesto' && canManage() && serviceId()) {
           <button mat-flat-button color="primary" (click)="nueva()" data-testid="btn-nueva-partida">
             <mat-icon>add</mat-icon> Añadir partida
           </button>
         }
       </div>
+
+      <!-- Pestañas (penpot): Presupuesto confirmado | Forecast ventas / GPP -->
+      <mat-button-toggle-group class="vista-toggle" [value]="vista()" (change)="vista.set($event.value)" data-testid="vista-toggle">
+        <mat-button-toggle value="presupuesto" data-testid="tab-presupuesto">Presupuesto confirmado</mat-button-toggle>
+        <mat-button-toggle value="forecast" data-testid="tab-forecast">Forecast ventas / GPP</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      @if (vista() === 'forecast') {
+        <app-forecast-resumen [embedded]="true" />
+      } @else {
 
       <!-- Barra de filtros (prototipo) -->
       <div class="sig-filter-bar">
@@ -234,10 +246,12 @@ interface EditorState {
           </div>
         </div>
       }
+      }
     </div>
   `,
   styles: [`
     .title-icon { vertical-align: middle; margin-right: 6px; }
+    .vista-toggle { margin-bottom: 18px; }
     .sig-filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
     .ff { width: 200px; } .ff-wide { width: 300px; } .ff-narrow { width: 130px; }
     .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
@@ -289,6 +303,9 @@ export class ConfigPresupuestoComponent implements OnInit {
   private readonly clientSvc = inject(ClientService);
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotifyService);
+
+  // Pestaña activa (penpot): 'presupuesto' (confirmado) | 'forecast' (ventas/GPP).
+  protected readonly vista = signal<'presupuesto' | 'forecast'>('presupuesto');
 
   protected readonly servicios = signal<ServiceListItemDto[]>([]);
   protected readonly clientes = signal<ClientListItemDto[]>([]);

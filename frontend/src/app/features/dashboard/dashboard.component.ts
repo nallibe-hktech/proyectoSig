@@ -426,6 +426,11 @@ import { environment } from '../../../environments/environment';
 
       </div>
 
+      <!-- Footer (penpot): branding plataforma -->
+      <footer class="sig-exec-footer">
+        <span>SIG-ES Plataforma Integral v1.0 &middot; h&amp;k consulting &middot; &copy; 2026</span>
+      </footer>
+
     </div>
 `,
   styles: [`
@@ -435,6 +440,13 @@ import { environment } from '../../../environments/environment';
       padding: 28px 28px 40px;
       background: var(--sig-bg-app);
       min-height: 100vh;
+    }
+
+    .sig-exec-footer {
+      margin-top: 28px; padding-top: 16px;
+      border-top: 1px solid var(--sig-border);
+      text-align: center;
+      font-size: 12px; color: var(--sig-text-muted);
     }
 
     /* Header */

@@ -56,6 +56,15 @@ export const routes: Routes = [
       // Configuración de Presupuesto (prototipo 24/28: partidas manuales por acción + márgenes)
       { path: 'config-presupuesto', loadComponent: () => import('./features/config-presupuesto/config-presupuesto.component').then((m) => m.ConfigPresupuestoComponent), title: 'Configuración de Presupuesto — SIG' },
 
+      // Errores de Nómina / Pagos (penpot Configuración — maqueta validación del cierre de pagos)
+      { path: 'errores-nomina', loadComponent: () => import('./features/errores/errores-nomina.component').then((m) => m.ErroresNominaComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Fico', 'RRHH'] }, title: 'Errores de Nómina/Pagos — SIG' },
+
+      // Errores de Facturación (penpot Configuración — alertas de desviación Tipo A/B)
+      { path: 'errores-facturacion', loadComponent: () => import('./features/errores/errores-facturacion.component').then((m) => m.ErroresFacturacionComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Fico'] }, title: 'Errores de Facturación — SIG' },
+
+      // Traspaso entre CECOs (penpot Configuración — informe de solo lectura)
+      { path: 'traspaso-cecos', loadComponent: () => import('./features/traspaso-cecos/traspaso-cecos.component').then((m) => m.TraspasoCecosComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Fico'] }, title: 'Traspaso entre CECOs — SIG' },
+
       // Services
       { path: 'services', loadComponent: () => import('./features/services/services-list.component').then((m) => m.ServicesListComponent), title: 'Servicios — SIG' },
       { path: 'services/nuevo', loadComponent: () => import('./features/services/service-form.component').then((m) => m.ServiceFormComponent), title: 'Nuevo Servicio — SIG' },

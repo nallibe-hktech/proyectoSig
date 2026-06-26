@@ -56,7 +56,7 @@ builder.Services.AddSwaggerGen(c =>
 
 // CORS para Angular en localhost:4200
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
-    .WithOrigins("http://localhost:4200")
+    .WithOrigins("http://localhost:4200", "https://thankful-sand-06e86fb03.7.azurestaticapps.net")
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials()));
@@ -137,3 +137,4 @@ using (var scope = app.Services.CreateScope())
 await app.RunAsync();
 
 public partial class Program { } // NOSONAR — top-level statements
+

@@ -108,6 +108,13 @@ backups/
 
 # Capturas/prototipos de trabajo local (no versionar)
 .tmp_proto/
+.tmp_vsdx/
+*.png
+*.penpot
+
+# Artefactos de build/publish del backend (no versionar)
+backend/SIG.API/publish/
+*.zip
 
 # Datos REALES del cliente para dev local (CECOs, clientes...). Nunca versionar (gobierno del dato).
 *.local.sql

@@ -60,6 +60,32 @@ import {
           </mat-card-content>
         </mat-card>
 
+        <!-- Preview del cálculo aplicado + jerarquía (penpot: Conceptos de Pago) -->
+        <mat-card style="margin-bottom: 16px;" data-testid="formula-preview-aplicado">
+          <mat-card-content>
+            <div class="sig-preview-head">
+              <h3 class="sig-section-label" style="margin:0;">Preview — Cálculo Aplicado <span class="sig-preview-ctx">(Juan Pérez · Mayo 2026)</span></h3>
+              <span class="sig-preview-demo">ejemplo ilustrativo</span>
+            </div>
+            <div class="sig-preview-grid">
+              <div class="sig-preview-amount">€ 1.250</div>
+              <div class="sig-preview-trace">
+                <div><strong>Origen:</strong> Payhawk API <span class="sig-preview-sep">·</span> <strong>Importado:</strong> 31/05/2026 08:00</div>
+                <div>Suma de Gasto Payhawk: <strong>1.250,00 €</strong> <span class="sig-preview-muted">(registros: 15/01, 22/01, 07/02…)</span></div>
+              </div>
+            </div>
+
+            <h3 class="sig-section-label" style="margin:16px 0 8px;">Jerarquía de Aplicación</h3>
+            <div class="sig-jerarquia">
+              <span class="sig-jer-chip">Global</span>
+              <mat-icon class="sig-jer-arrow" aria-hidden="true">chevron_right</mat-icon>
+              <span class="sig-jer-chip">Servicio</span>
+              <mat-icon class="sig-jer-arrow" aria-hidden="true">chevron_right</mat-icon>
+              <span class="sig-jer-chip">Empleado</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
         <div class="sig-editor-grid">
           <!-- Paleta de primitivas -->
           <mat-card class="sig-palette" data-testid="palette">
@@ -365,6 +391,18 @@ import {
     .sig-filter-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
     .sig-filter-small { width: 140px; }
     .sig-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    /* Preview cálculo aplicado */
+    .sig-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .sig-preview-ctx { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--mat-sys-on-surface-variant); }
+    .sig-preview-demo { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sig-warning); background: color-mix(in srgb, var(--sig-warning) 14%, transparent); border: 1px solid color-mix(in srgb, var(--sig-warning) 35%, transparent); padding: 2px 8px; border-radius: 10px; }
+    .sig-preview-grid { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 10px; padding: 14px 16px; background: var(--mat-sys-surface-variant); border-radius: 10px; }
+    .sig-preview-amount { font-size: 30px; font-weight: 800; color: var(--sig-success); line-height: 1; }
+    .sig-preview-trace { font-size: 13px; color: var(--mat-sys-on-surface); display: flex; flex-direction: column; gap: 4px; }
+    .sig-preview-sep { opacity: .5; margin: 0 4px; }
+    .sig-preview-muted { color: var(--mat-sys-on-surface-variant); }
+    .sig-jerarquia { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .sig-jer-chip { font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 8px; background: color-mix(in srgb, var(--sig-blue) 12%, transparent); color: var(--sig-blue); border: 1px solid color-mix(in srgb, var(--sig-blue) 30%, transparent); }
+    .sig-jer-arrow { color: var(--mat-sys-on-surface-variant); font-size: 18px; width: 18px; height: 18px; }
   `],
 })
 export class FormulaEditorComponent implements OnInit {

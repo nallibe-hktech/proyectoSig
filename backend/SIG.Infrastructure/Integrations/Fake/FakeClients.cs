@@ -49,9 +49,10 @@ public class CeleroFakeClient : ICeleroClient
             "11234567L", "21234567M", "31234567N", "41234567P", "51234567Q"
         };
 
-        var provincias = new[] { "Madrid", "Barcelona", "Valencia", "Bilbao", "Sevilla", "Málaga", "Alicante", "Murcia" };
-        var ciudades = new[] { "Madrid", "Barcelona", "Valencia", "Bilbao", "Sevilla", "Málaga", "Alicante", "Murcia", "Córdoba", "Palma" };
-        var estados = new[] { "done", "cancelled", "pending", "in_progress", "failed" };
+        // Valores de ejemplo anónimos para los campos de origen Celero (duración/estado/provincia):
+        // alimentan la segmentación del motor por PayloadJson sin introducir PII en el repo.
+        var provincias = new[] { "Madrid", "Barcelona", "Valencia", "Sevilla", "Vizcaya", "Zaragoza" };
+        var estados = new[] { "done", "done", "done", "done", "failed", "cancelled" };
 
         var faker = new Faker<CeleroVisitaDto>()
             .CustomInstantiator(f => new CeleroVisitaDto(
@@ -60,10 +61,10 @@ public class CeleroFakeClient : ICeleroClient
                 f.PickRandom(servicios),
                 f.PickRandom(misiones),
                 DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue))),
-                f.Random.Int(15, 480),  // duracionRealMinutos: 15 minutos a 8 horas
-                f.PickRandom(provincias),
-                f.PickRandom(ciudades),
-                f.PickRandom(estados)
+                DuracionMinutos: f.Random.Int(5, 180),
+                Estado: f.PickRandom(estados),
+                Provincia: f.PickRandom(provincias),
+                CancellationReason: null
             ));
         // Semilla local fija: cada llamada produce el MISMO lote → la sincronización es idempotente
         // (la 2ª sync detecta todos los registros como duplicados por hash SHA256).

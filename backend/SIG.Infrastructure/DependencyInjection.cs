@@ -141,8 +141,12 @@ public static class DependencyInjection
             // Celero: use PostgreSQL client
             var celeroConnStr = config.GetConnectionString("Celero")
                               ?? throw new InvalidOperationException("ConnectionStrings:Celero no configurada");
+            // Por defecto solo visitas 'done' (comportamiento histórico, válido para todos los clientes).
+            // Activar Integrations:Celero:IncluirNoRealizadas solo cuando un cliente (p.ej. Inpost) deba
+            // facturar fallidas/canceladas (ver docs/RETOMA_INPOST_FACTURACION.md §4.3).
+            var celeroIncluirNoRealizadas = config.GetValue<bool>("Integrations:Celero:IncluirNoRealizadas");
             services.AddScoped<ICeleroClient>(sp =>
-                new CeleroPostgresClient(celeroConnStr));
+                new CeleroPostgresClient(celeroConnStr, celeroIncluirNoRealizadas));
 
             // Bizneo
             var bizneoUrl = config["Integrations:Bizneo:BaseUrl"]
