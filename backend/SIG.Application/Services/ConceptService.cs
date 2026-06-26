@@ -45,6 +45,7 @@ public class ConceptService : IConceptService
             FechaDesde = req.FechaDesde,
             FechaHasta = req.FechaHasta,
             FormulaJson = req.FormulaJson,
+            ServiceId = req.ServiceId,
             ConceptUsers = req.UserIds.Select(uId => new ConceptUser { UserId = uId }).ToList()
         };
         await _repo.AddAsync(c, ct);
@@ -63,6 +64,7 @@ public class ConceptService : IConceptService
         c.FechaDesde = req.FechaDesde;
         c.FechaHasta = req.FechaHasta;
         c.FormulaJson = req.FormulaJson;
+        c.ServiceId = req.ServiceId;
         c.ConceptUsers.Clear();
         foreach (var uId in req.UserIds) c.ConceptUsers.Add(new ConceptUser { ConceptId = id, UserId = uId });
         await _repo.SaveChangesAsync(ct);
@@ -88,6 +90,6 @@ public class ConceptService : IConceptService
 
     private static ConceptDetailDto Map(Concept c) =>
         new(c.Id, c.Nombre, c.Tipo, c.FechaDesde, c.FechaHasta, c.FormulaJson,
-            c.ServiceConcepts.Select(x => x.ServiceId).ToArray(),
+            c.ServiceId,
             c.ConceptUsers.Select(x => x.UserId).ToArray());
 }

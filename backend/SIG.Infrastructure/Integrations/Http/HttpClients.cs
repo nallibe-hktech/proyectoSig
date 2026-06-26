@@ -915,26 +915,21 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
                 throw new ArgumentNullException(nameof(companyCode));
 
             var token = await _oauthService.GetAccessTokenAsync(ct);
-            _logger.LogInformation("[A3InnuvaNominas] Token obtenido: {TokenLength} caracteres", token?.Length ?? 0);
 
+            // Construir URL con paginación (obligatoria en WK API)
             var queryParams = $"?pageNumber={pageNumber}&pageSize={pageSize}";
+            if (fromDate.HasValue)
+                queryParams += $"&fromDate={fromDate:yyyy-MM-dd}";
+            if (toDate.HasValue)
+                queryParams += $"&toDate={toDate:yyyy-MM-dd}";
 
-            // Nota: Endpoint /salary devuelve 404 (no existe en WK API)
-            // Usando /payrolls como alternativa; si tampoco existe, retorna vacío
-            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/payrolls{queryParams}";
-
+            var url = $"Laboral/api/companies/{companyCode}/payrolls{queryParams}";
             _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
-            _logger.LogInformation($"[A3InnuvaNominas] BaseAddress: {_httpClient.BaseAddress}");
 
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("Authorization", $"Bearer {token}");
             request.Headers.Add("Ocp-Apim-Subscription-Key", _subscriptionKey);
             request.Headers.Add("Accept", "application/json");
-
-            _logger.LogInformation($"[A3InnuvaNominas] Request headers:");
-            _logger.LogInformation($"  - Authorization: Bearer {token.Substring(0, Math.Min(50, token.Length))}...");
-            _logger.LogInformation($"  - Ocp-Apim-Subscription-Key: {_subscriptionKey}");
-            _logger.LogInformation($"  - Accept: application/json");
 
             var response = await _httpClient.SendAsync(request, ct);
             _logger.LogInformation($"[A3InnuvaNominas] Response status: {response.StatusCode}");
@@ -942,26 +937,22 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             if (!response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogError($"[A3InnuvaNominas] Error: {response.StatusCode} - {response.ReasonPhrase}");
-                _logger.LogError($"[A3InnuvaNominas] Response body: {responseContent}");
+                _logger.LogError($"[A3InnuvaNominas] ❌ Error {response.StatusCode}: {responseContent}");
                 return Array.Empty<A3InnuvaNominasPayrollDto>();
             }
 
+            // WK devuelve array directo de nóminas: [{...}, {...}]
             var responseBody = await response.Content.ReadAsStringAsync(ct);
-            _logger.LogInformation($"[A3InnuvaNominas] Respuesta JSON: {responseBody.Substring(0, Math.Min(500, responseBody.Length))}...");
-
-            // Wolters Kluwer retorna array directo de nóminas: [{...}, {...}]
             var data = JsonSerializer.Deserialize<List<PayrollResponse>>(responseBody);
-            var count = data?.Count ?? 0;
-            _logger.LogInformation($"[A3InnuvaNominas] ✅ {count} nóminas obtenidas");
-
             if (data == null || data.Count == 0)
             {
                 _logger.LogWarning("[A3InnuvaNominas] Respuesta de nóminas es null o vacía");
                 return Array.Empty<A3InnuvaNominasPayrollDto>();
             }
 
-            // Convertir respuestas de nóminas a PayrollDto
+            var count = data.Count;
+            _logger.LogInformation($"[A3InnuvaNominas] ✅ {count} nóminas obtenidas");
+
             return data.Select(p => new A3InnuvaNominasPayrollDto(
                 p.Id ?? "",
                 p.EmployeeId ?? "",
@@ -2096,5 +2087,119 @@ public class TravelPerkClient : ITravelPerkClient
         public decimal Budget { get; set; }
         [JsonPropertyName("status")]
         public string? Status { get; set; }
+    }
+}
+
+/// <summary>
+/// A3 INNUVA ERP - Wolters Kluwer OINV API (Facturación)
+/// OAuth-authenticated client for invoice and client data retrieval
+/// </summary>
+public class A3InnuvaERPClient : IA3InnuvaERPClient
+{
+    private readonly HttpClient _httpClient;
+    private readonly IWoltersKluwerOAuthService _oauthService;
+    private readonly string _baseUrl;
+    private readonly string _apiPath;
+    private readonly string _subscriptionKey;
+    private readonly ILogger<A3InnuvaERPClient> _logger;
+
+    public A3InnuvaERPClient(
+        HttpClient httpClient,
+        IWoltersKluwerOAuthService oauthService,
+        string baseUrl,
+        string apiPath,
+        string subscriptionKey,
+        ILogger<A3InnuvaERPClient> logger)
+    {
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _oauthService = oauthService ?? throw new ArgumentNullException(nameof(oauthService));
+        _baseUrl = baseUrl ?? throw new ArgumentNullException(nameof(baseUrl));
+        _apiPath = apiPath ?? throw new ArgumentNullException(nameof(apiPath));
+        _subscriptionKey = subscriptionKey ?? throw new ArgumentNullException(nameof(subscriptionKey));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <summary>
+    /// Get facturas (invoices) from Wolters Kluwer OINV API
+    /// STUB: Endpoints to be confirmed with Wolters Kluwer
+    /// </summary>
+    public async Task<IReadOnlyList<A3ERPFacturaDto>> GetFacturasAsync(
+        string companyCode,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaERP] GetFacturasAsync iniciado - empresa {Company}", companyCode);
+
+            if (string.IsNullOrWhiteSpace(companyCode))
+                throw new ArgumentNullException(nameof(companyCode));
+
+            var token = await _oauthService.GetAccessTokenAsync(ct);
+            _logger.LogInformation("[A3InnuvaERP] Token obtenido: {TokenLength} caracteres", token?.Length ?? 0);
+
+            // STUB: Placeholder implementation - endpoints to be confirmed
+            _logger.LogInformation("[A3InnuvaERP] ⚠️ GetFacturasAsync - STUB implementation (awaiting endpoint confirmation)");
+            return Array.Empty<A3ERPFacturaDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaERP] Error GetFacturas: {ExceptionType} - {Message}", ex.GetType().Name, ex.Message);
+            return Array.Empty<A3ERPFacturaDto>();
+        }
+    }
+
+    /// <summary>
+    /// Get clientes (clients) from Wolters Kluwer OINV API
+    /// STUB: Endpoints to be confirmed with Wolters Kluwer
+    /// </summary>
+    public async Task<IReadOnlyList<A3ERPClienteDto>> GetClientesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaERP] GetClientesAsync iniciado");
+
+            var token = await _oauthService.GetAccessTokenAsync(ct);
+            _logger.LogInformation("[A3InnuvaERP] Token obtenido: {TokenLength} caracteres", token?.Length ?? 0);
+
+            // STUB: Placeholder implementation - endpoints to be confirmed
+            _logger.LogInformation("[A3InnuvaERP] ⚠️ GetClientesAsync - STUB implementation (awaiting endpoint confirmation)");
+            return Array.Empty<A3ERPClienteDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaERP] Error GetClientes: {ExceptionType} - {Message}", ex.GetType().Name, ex.Message);
+            return Array.Empty<A3ERPClienteDto>();
+        }
+    }
+
+    /// <summary>
+    /// Get líneas de factura (invoice lines) from Wolters Kluwer OINV API
+    /// STUB: Endpoints to be confirmed with Wolters Kluwer
+    /// </summary>
+    public async Task<IReadOnlyList<A3ERPLineaFacturaDto>> GetLineasFacturaAsync(
+        string facturaId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaERP] GetLineasFacturaAsync iniciado - factura {FacturaId}", facturaId);
+
+            if (string.IsNullOrWhiteSpace(facturaId))
+                throw new ArgumentNullException(nameof(facturaId));
+
+            var token = await _oauthService.GetAccessTokenAsync(ct);
+            _logger.LogInformation("[A3InnuvaERP] Token obtenido: {TokenLength} caracteres", token?.Length ?? 0);
+
+            // STUB: Placeholder implementation - endpoints to be confirmed
+            _logger.LogInformation("[A3InnuvaERP] ⚠️ GetLineasFacturaAsync - STUB implementation (awaiting endpoint confirmation)");
+            return Array.Empty<A3ERPLineaFacturaDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaERP] Error GetLineasFactura: {ExceptionType} - {Message}", ex.GetType().Name, ex.Message);
+            return Array.Empty<A3ERPLineaFacturaDto>();
+        }
     }
 }

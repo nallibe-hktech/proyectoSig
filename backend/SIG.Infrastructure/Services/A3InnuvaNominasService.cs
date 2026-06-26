@@ -1783,13 +1783,44 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             _logger.LogInformation($"[A3InnuvaNominas] Cargados {empleados.Count} empleados A3");
 
             // 3. Cargar gastos PayHawk del período (KM + SUPLIDOS)
-            // Join con Users para obtener NIF
-            var payhawkGastosConNIF = await _db.StagingPayHawkGastos
-                .Join(_db.Users, g => g.UserId, u => u.Id, (g, u) => new { Gasto = g, NIF = u.NIF })
+            // Resolver NIFs via Service→ServiceUsers→User (no usar UserId directo)
+            var gastos = await _db.StagingPayHawkGastos
                 .AsNoTracking()
                 .ToListAsync(ct);
 
-            _logger.LogInformation($"[A3InnuvaNominas] Cargados {payhawkGastosConNIF.Count} gastos PayHawk con NIF");
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastos.Count} gastos PayHawk raw");
+
+            // Cargar Services con sus ServiceUsers para resolver NIFs
+            var servicesWithUsers = await _db.Services
+                .Include(s => s.ServiceUsers)
+                .ThenInclude(su => su.User)
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            // Map: NIF → List<gasto> (resolver via Service→ServiceUsers→User)
+            var gastosByNif = new Dictionary<string, List<StagingPayHawkGasto>>();
+
+            foreach (var gasto in gastos)
+            {
+                if (!gasto.ServiceId.HasValue) continue;
+
+                var service = servicesWithUsers.FirstOrDefault(s => s.Id == gasto.ServiceId.Value);
+                if (service?.ServiceUsers == null || service.ServiceUsers.Count == 0) continue;
+
+                // Para cada usuario en el servicio, agregar el gasto (puede distribuirse entre múltiples usuarios)
+                foreach (var su in service.ServiceUsers.Where(su => su.User != null && !string.IsNullOrEmpty(su.User.NIF)))
+                {
+                    var nif = su.User.NIF;
+                    if (!gastosByNif.TryGetValue(nif, out var list))
+                    {
+                        list = new List<StagingPayHawkGasto>();
+                        gastosByNif[nif] = list;
+                    }
+                    list.Add(gasto);
+                }
+            }
+
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastosByNif.Count} NIFs únicos con gastos PayHawk");
 
             // 4. Crear workbook Excel
             using var workbook = new XLWorkbook();
@@ -1853,15 +1884,18 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                 ws.Cell(rowIndex, 11).Value = nomina.TotalPercepciones;
 
                 // Col T (20): KM (calculado desde PayHawk - Categoría "Kilometraje")
-                var kmGastos = payhawkGastosConNIF
-                    .Where(x => empleado != null && x.NIF == empleado.NIF && x.Gasto.Categoria == "Kilometraje")
-                    .Sum(x => x.Gasto.Importe);
+                var nif = empleado?.NIF ?? "";
+                var gastosEmpleado = gastosByNif.TryGetValue(nif, out var listaGastos) ? listaGastos : new List<StagingPayHawkGasto>();
+
+                var kmGastos = gastosEmpleado
+                    .Where(x => x.Categoria == "Kilometraje")
+                    .Sum(x => x.Importe);
                 ws.Cell(rowIndex, 20).Value = kmGastos > 0 ? kmGastos : 0;
 
                 // Col U (21): SUPLIDOS (gastos reembolsables PayHawk - todas las categorías excepto Kilometraje)
-                var suplidosGastos = payhawkGastosConNIF
-                    .Where(x => empleado != null && x.NIF == empleado.NIF && x.Gasto.Categoria != "Kilometraje")
-                    .Sum(x => x.Gasto.Importe);
+                var suplidosGastos = gastosEmpleado
+                    .Where(x => x.Categoria != "Kilometraje")
+                    .Sum(x => x.Importe);
                 ws.Cell(rowIndex, 21).Value = suplidosGastos > 0 ? suplidosGastos : 0;
 
                 // Col Z (26): Descuento Absentismo (TotalDescuentos como fallback)

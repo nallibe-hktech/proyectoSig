@@ -273,6 +273,27 @@ public static class DependencyInjection
             return new A3InnuvaNominasClient(httpClient, oauthService, wkSubscriptionKeyAlways, logger, useFakeData);
         });
 
+        // Registrar A3InnuvaERPClient (OINV API - Facturación)
+        // NOTA: STUB implementation. Requires separate OAuth credentials for ERP vs Nominas in the future
+        var a3ERPHttpClientName = "A3InnuvaERP";
+        var a3ERPUrl = config["Integrations:A3InnuvaERP:BaseUrl"] ?? "https://a3api.wolterskluwer.es";
+        var a3ERPApiPath = config["Integrations:A3InnuvaERP:ApiPath"] ?? "/OINV/api";
+        var a3ERPSubscriptionKey = config["Integrations:A3InnuvaERP:SubscriptionKey"] ?? "stub-key";
+
+        services.AddHttpClient(a3ERPHttpClientName, client =>
+        {
+            client.BaseAddress = new Uri(a3ERPUrl);
+        });
+
+        services.AddScoped<IA3InnuvaERPClient>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = factory.CreateClient(a3ERPHttpClientName);
+            var oauthService = sp.GetRequiredService<IWoltersKluwerOAuthService>();
+            var logger = sp.GetRequiredService<ILogger<A3InnuvaERPClient>>();
+            return new A3InnuvaERPClient(httpClient, oauthService, a3ERPUrl, a3ERPApiPath, a3ERPSubscriptionKey, logger);
+        });
+
         // Registrar OAuthService siempre (incluso en modo fake, para tests)
         if (!services.Any(sd => sd.ServiceType == typeof(IWoltersKluwerOAuthService)))
         {

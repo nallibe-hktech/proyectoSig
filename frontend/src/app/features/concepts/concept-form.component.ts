@@ -60,8 +60,9 @@ import { ServiceListItemDto } from '../../models/dtos';
             </div>
             <div class="sig-form-row">
               <mat-form-field class="sig-form-field">
-                <mat-label>Servicios asociados</mat-label>
-                <mat-select [value]="selectedServiceIds()" (selectionChange)="onServicesChange($event.value)" multiple data-testid="select-servicios">
+                <mat-label>Servicio asociado (opcional)</mat-label>
+                <mat-select [value]="selectedServiceId()" (selectionChange)="onServiceChange($event.value)" data-testid="select-servicio">
+                  <mat-option [value]="null">-- Sin servicio --</mat-option>
                   @for (svc of availableServices(); track svc.id) {
                     <mat-option [value]="svc.id">{{ svc.nombre }}</mat-option>
                   }
@@ -103,7 +104,7 @@ export class ConceptFormComponent implements OnInit {
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
   protected readonly availableServices = signal<ServiceListItemDto[]>([]);
-  protected readonly selectedServiceIds = signal<number[]>([]);
+  protected readonly selectedServiceId = signal<number | null>(null);
 
   protected readonly form = this.fb.nonNullable.group({
     nombre: ['', [Validators.required]],
@@ -112,7 +113,7 @@ export class ConceptFormComponent implements OnInit {
     fechaHasta: [null as Date | null],
   });
   private formulaJson = '{}';
-  private serviceIds: number[] = [];
+  private serviceId: number | null = null;
   private userIds: number[] = [];
 
   ngOnInit(): void {
@@ -140,8 +141,8 @@ export class ConceptFormComponent implements OnInit {
             fechaHasta: c.fechaHasta ? new Date(c.fechaHasta) : null,
           });
           this.formulaJson = c.formulaJson;
-          this.serviceIds = c.serviceIds;
-          this.selectedServiceIds.set(c.serviceIds);
+          this.serviceId = c.serviceId ?? null;
+          this.selectedServiceId.set(c.serviceId ?? null);
           this.userIds = c.userIds;
           this.loading.set(false);
         },
@@ -150,9 +151,9 @@ export class ConceptFormComponent implements OnInit {
     }
   }
 
-  protected onServicesChange(value: number[]): void {
-    this.selectedServiceIds.set(value);
-    this.serviceIds = value;
+  protected onServiceChange(value: number | null): void {
+    this.selectedServiceId.set(value);
+    this.serviceId = value;
   }
 
   protected submit(): void {
@@ -163,7 +164,7 @@ export class ConceptFormComponent implements OnInit {
       nombre: v.nombre, tipo: v.tipo,
       fechaDesde: v.fechaDesde.toISOString().slice(0, 10),
       fechaHasta: v.fechaHasta ? v.fechaHasta.toISOString().slice(0, 10) : null,
-      formulaJson: this.formulaJson, serviceIds: this.serviceIds, userIds: this.userIds,
+      formulaJson: this.formulaJson, serviceId: this.serviceId, userIds: this.userIds,
     };
     this.submitting.set(true);
     const obs = this.isEdit() ? this.conceptSvc.update(this.id()!, payload) : this.conceptSvc.create(payload);

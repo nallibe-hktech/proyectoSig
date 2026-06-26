@@ -317,3 +317,40 @@ public record ContractClauseDto(
     DateTime? StartDate,
     DateTime? EndDate
 );
+
+// A3 INNUVA ERP - Wolters Kluwer OINV API (Facturación)
+public record A3ERPFacturaDto(
+    string IdExterno,
+    string CodigoFactura,
+    string CodigoCliente,
+    string NombreCliente,
+    DateTime FechaFactura,
+    decimal ImporteBase,
+    decimal ImporteIVA,
+    decimal ImporteTotal,
+    string Estado,
+    DateTime? FechaVencimiento
+);
+
+public record A3ERPClienteDto(
+    string IdExterno,
+    string CodigoCliente,
+    string NombreCliente,
+    string? NIF,
+    string? Email,
+    string? Telefono,
+    string? Direccion,
+    string? Ciudad,
+    string? CodigoPostal
+);
+
+public record A3ERPLineaFacturaDto(
+    string IdExterno,
+    string FacturaId,
+    string CodigoProducto,
+    string DescripcionProducto,
+    int Cantidad,
+    decimal PrecioUnitario,
+    decimal ImporteLinea,
+    string? ConceptoFacturacion
+);

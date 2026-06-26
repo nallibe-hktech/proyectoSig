@@ -138,3 +138,21 @@ public interface IMediapostClient
     Task<IReadOnlyList<MediapostPedidoDto>> GetPedidosAsync(DateTime desde, DateTime hasta, CancellationToken ct);
     Task<IReadOnlyList<MediapostRecepcionDto>> GetRecepcionesAsync(DateTime desde, DateTime hasta, CancellationToken ct);
 }
+
+// A3 INNUVA ERP - Wolters Kluwer OINV API (Facturación)
+public interface IA3InnuvaERPClient
+{
+    // STUB: Endpoints a confirmar con Wolters Kluwer OINV API
+    Task<IReadOnlyList<A3ERPFacturaDto>> GetFacturasAsync(
+        string companyCode,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<A3ERPClienteDto>> GetClientesAsync(
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<A3ERPLineaFacturaDto>> GetLineasFacturaAsync(
+        string facturaId,
+        CancellationToken ct = default);
+}

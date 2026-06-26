@@ -63,9 +63,9 @@ public record ServiceUpdateRequest(string Nombre, int ClientId, int? DepartmentI
 
 // Concept
 public record ConceptListItemDto(int Id, string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta);
-public record ConceptDetailDto(int Id, string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ServiceIds, int[] UserIds);
-public record ConceptCreateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ServiceIds, int[] UserIds);
-public record ConceptUpdateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int[] ServiceIds, int[] UserIds);
+public record ConceptDetailDto(int Id, string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int? ServiceId, int[] UserIds);
+public record ConceptCreateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int? ServiceId, int[] UserIds);
+public record ConceptUpdateRequest(string Nombre, TipoConcepto Tipo, DateOnly FechaDesde, DateOnly? FechaHasta, string FormulaJson, int? ServiceId, int[] UserIds);
 public record ValidarFormulaRequest(string FormulaJson);
 public record ValidarFormulaResponse(bool Ok, string[] Errores);
 

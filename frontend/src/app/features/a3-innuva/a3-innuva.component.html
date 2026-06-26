@@ -49,8 +49,8 @@
         <button mat-raised-button color="primary" (click)="syncCompanies()" [disabled]="loading()">
           {{ loading() ? 'Sincronizando...' : '📥 Sincronizar Empresas' }}
         </button>
-        <button mat-raised-button color="accent" (click)="syncPayrolls()" [disabled]="loading() || !selectedCompany">
-          {{ loading() ? 'Sincronizando...' : '📥 Sincronizar Nóminas' }}
+        <button mat-raised-button color="accent" (click)="syncEmployees()" [disabled]="loading()">
+          {{ loading() ? 'Sincronizando...' : '📥 Sincronizar Empleados' }}
         </button>
       </div>
 
@@ -142,6 +142,19 @@
           </mat-form-field>
           <button mat-icon-button (click)="loadPayrolls()" matTooltip="Buscar" [disabled]="!selectedCompany">
             🔍
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">
+          <mat-form-field style="width: 250px;">
+            <mat-label>Seleccionar período</mat-label>
+            <select matNativeControl [(ngModel)]="selectedPeriod">
+              <option value="" disabled>Elige un período</option>
+              <option *ngFor="let period of getUniquePeriods()" [value]="period">{{ period }}</option>
+            </select>
+          </mat-form-field>
+          <button mat-raised-button color="accent" (click)="downloadExcel()" [disabled]="!selectedPeriod || downloadingExcel()">
+            {{ downloadingExcel() ? '⏳ Descargando...' : '📥 Descargar Excel' }}
           </button>
         </div>
 

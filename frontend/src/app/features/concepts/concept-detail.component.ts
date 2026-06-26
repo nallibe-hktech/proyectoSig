@@ -93,11 +93,11 @@ export class ConceptDetailComponent implements OnInit {
     this.conceptSvc.getById(id).subscribe({
       next: (c) => {
         this.concept.set(c);
-        // Load service details for associated services
-        if (c.serviceIds && c.serviceIds.length > 0) {
+        // Load service details for associated service
+        if (c.serviceId) {
           this.serviceSvc.list(1, 1000).subscribe({
             next: (result) => {
-              const associatedSvcs = result.items.filter(s => c.serviceIds.includes(s.id));
+              const associatedSvcs = result.items.filter(s => s.id === c.serviceId);
               this.relatedServices.set(associatedSvcs);
               this.loading.set(false);
             },

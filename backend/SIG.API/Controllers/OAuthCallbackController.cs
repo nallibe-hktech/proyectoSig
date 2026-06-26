@@ -43,14 +43,14 @@ public class OAuthCallbackController : ControllerBase
             if (!string.IsNullOrEmpty(error))
             {
                 _logger.LogError($"[OAuthCallback] ❌ Error de WK: {error}");
-                return Redirect($"http://localhost:4200/a3-innuva-nominas/oauth-callback?error={error}");
+                return Redirect($"http://localhost:4200/a3-innuva/oauth-callback?error={error}");
             }
 
             // Validar que tenemos el code
             if (string.IsNullOrWhiteSpace(code))
             {
                 _logger.LogError("[OAuthCallback] ❌ No se recibió authorization code");
-                return Redirect("http://localhost:4200/a3-innuva-nominas/oauth-callback?error=no_code");
+                return Redirect("http://localhost:4200/a3-innuva/oauth-callback?error=no_code");
             }
 
             // El redirect_uri debe coincidir con el que usamos en la solicitud OAuth
@@ -63,12 +63,12 @@ public class OAuthCallbackController : ControllerBase
             _logger.LogInformation("[OAuthCallback] ✅ Tokens obtenidos exitosamente");
 
             // Redirigir al frontend con status de éxito
-            return Redirect("http://localhost:4200/a3-innuva-nominas?authorized=true");
+            return Redirect("http://localhost:4200/a3-innuva?authorized=true");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[OAuthCallback] ❌ Error procesando callback OAuth");
-            return Redirect($"http://localhost:4200/a3-innuva-nominas/oauth-callback?error={Uri.EscapeDataString(ex.Message)}");
+            return Redirect($"http://localhost:4200/a3-innuva/oauth-callback?error={Uri.EscapeDataString(ex.Message)}");
         }
     }
 

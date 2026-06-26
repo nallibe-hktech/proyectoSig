@@ -31,7 +31,7 @@ public class ConceptServiceTests
     [Fact]
     public async Task CreateAsync_FormulaInvalida_LanzaFormulaInvalidException()
     {
-        var req = new ConceptCreateRequest("X", TipoConcepto.Pago, new DateOnly(2026, 1, 1), null, "{}", Array.Empty<int>(), Array.Empty<int>());
+        var req = new ConceptCreateRequest("X", TipoConcepto.Pago, new DateOnly(2026, 1, 1), null, "{}", null, Array.Empty<int>());
         _parser.TryValidate(Arg.Any<string>(), out Arg.Any<string[]>())
             .Returns(call => { call[1] = new[] { "JSON mal" }; return false; });
 
@@ -42,7 +42,7 @@ public class ConceptServiceTests
     [Fact]
     public async Task CreateAsync_FormulaValida_PersisteConcept()
     {
-        var req = new ConceptCreateRequest("Nuevo", TipoConcepto.Factura, new DateOnly(2026, 1, 1), null, """{"type":"Number","value":1}""", new[] { 10 }, new[] { 5 });
+        var req = new ConceptCreateRequest("Nuevo", TipoConcepto.Factura, new DateOnly(2026, 1, 1), null, """{"type":"Number","value":1}""", 10, new[] { 5 });
         _parser.TryValidate(Arg.Any<string>(), out Arg.Any<string[]>())
             .Returns(call => { call[1] = Array.Empty<string>(); return true; });
 
@@ -58,7 +58,7 @@ public class ConceptServiceTests
     public async Task UpdateAsync_ConceptNoEncontrado_LanzaEntityNotFoundException()
     {
         _repo.GetByIdAndUsuarioIdAsync(1, 99, Arg.Any<CancellationToken>()).Returns((Concept?)null);
-        var req = new ConceptUpdateRequest("X", TipoConcepto.Pago, new DateOnly(2026, 1, 1), null, "{}", Array.Empty<int>(), Array.Empty<int>());
+        var req = new ConceptUpdateRequest("X", TipoConcepto.Pago, new DateOnly(2026, 1, 1), null, "{}", null, Array.Empty<int>());
 
         await FluentActions.Awaiting(() => _sut.UpdateAsync(1, req, 99, CancellationToken.None))
             .Should().ThrowAsync<EntityNotFoundException>();
