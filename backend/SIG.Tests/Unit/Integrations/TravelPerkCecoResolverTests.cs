@@ -57,4 +57,32 @@ public class TravelPerkCecoResolverTests
     {
         TravelPerkCecoResolver.ResolverServiceId(null, new[] { new CecoServicio("0139", 7) }).Should().BeNull();
     }
+
+    [Fact]
+    public void EsCecoInternoSig_SinCostObject_EsTrue()
+    {
+        TravelPerkCecoResolver.EsCecoInternoSig(null, Array.Empty<string>()).Should().BeTrue();
+        TravelPerkCecoResolver.EsCecoInternoSig("  ", new[] { "0316" }).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EsCecoInternoSig_CodigoEstructural4Digitos_EsTrue()
+    {
+        // CECO de departamento de SIG (4 díg, sin subcuenta), p.ej. "0316_COMERCIAL"
+        TravelPerkCecoResolver.EsCecoInternoSig("0316_COMERCIAL", new[] { "0315", "0316" }).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EsCecoInternoSig_EstructuralConSubcuenta_MatchPorPrefijo()
+    {
+        // Admin temporal: el maestro guarda 6 díg (032201/032202); TravelPerk trae el prefijo "0322"
+        TravelPerkCecoResolver.EsCecoInternoSig("0322_ADMIN", new[] { "032201", "032202" }).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EsCecoInternoSig_CecoDeCliente_EsFalse()
+    {
+        TravelPerkCecoResolver.EsCecoInternoSig("0102_COTY", new[] { "0315", "0316" }).Should().BeFalse();
+        TravelPerkCecoResolver.EsCecoInternoSig("0102_COTY", Array.Empty<string>()).Should().BeFalse();
+    }
 }

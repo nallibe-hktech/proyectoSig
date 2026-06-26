@@ -533,6 +533,11 @@ public class CostCenterRepository : ICostCenterRepository
         await _db.ServiceCostCenters.AsNoTracking()
             .Select(sc => new CecoServicio(sc.CostCenter.Codigo, sc.ServiceId))
             .ToListAsync(ct);
+    public async Task<IReadOnlyList<string>> GetInternalSigCecoCodesAsync(CancellationToken ct) =>
+        await _db.CostCenters.AsNoTracking()
+            .Where(c => !_db.ServiceCostCenters.Any(sc => sc.CostCenterId == c.Id))
+            .Select(c => c.Codigo)
+            .ToListAsync(ct);
     public Task<CostCenter?> GetByIdAsync(int id, CancellationToken ct) =>
         _db.CostCenters.FirstOrDefaultAsync(c => c.Id == id, ct);
     public Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId, CancellationToken ct) =>

@@ -38,8 +38,8 @@ public class CeleroPostgresClient : ICeleroClient
             using var lockCmd = new NpgsqlCommand("SET default_transaction_read_only = on;", conn);
             await lockCmd.ExecuteNonQueryAsync(ct);
 
-            // Las columnas de enriquecimiento (realDuration/cancellationReason/addressState) se trazaron
-            // desde el Excel del cliente, NO contra la BBDD real (ver docs/RETOMA_INPOST_FACTURACION.md §4.3).
+            // Las columnas de enriquecimiento (realDuration/cancellationReason/addressState/addressCity) se
+            // trazaron desde el Excel del cliente, NO contra la BBDD real (ver docs/RETOMA_INPOST_FACTURACION.md §4.3).
             // Si no existen, pedirlas rompe TODA la sincronización (42703). Detectamos cuáles existen de
             // verdad y las ausentes se ingieren como NULL (graceful degradation, solo lectura).
             var columnasDisponibles = await GetColumnasVisitDisponiblesAsync(conn, ct);
@@ -62,12 +62,14 @@ public class CeleroPostgresClient : ICeleroClient
                 var estado = reader.IsDBNull(6) ? null : reader.GetString(6);
                 var cancellationReason = reader.IsDBNull(7) ? null : reader.GetString(7);
                 var provincia = reader.IsDBNull(8) ? null : reader.GetString(8);
+                var ciudad = reader.IsDBNull(9) ? null : reader.GetString(9);
 
                 visitas.Add(new CeleroVisitaDto(
                     visitaId, resourceNif, serviceName, missionName, fecha,
                     DuracionMinutos: duracion,
                     Estado: estado,
                     Provincia: provincia,
+                    Ciudad: ciudad,
                     CancellationReason: cancellationReason));
             }
         }
@@ -91,7 +93,7 @@ public class CeleroPostgresClient : ICeleroClient
     /// <summary>Columnas de enriquecimiento (origen Celero/Inpost) que pueden no existir en el esquema real.</summary>
     public static readonly IReadOnlyList<string> ColumnasOpcionalesVisit = new[]
     {
-        "realDuration", "cancellationReason", "addressState"
+        "realDuration", "cancellationReason", "addressState", "addressCity"
     };
 
     /// <summary>
@@ -111,6 +113,7 @@ public class CeleroPostgresClient : ICeleroClient
         var duracion     = columnasVisit.Contains("realDuration")       ? "v.\"realDuration\""       : "NULL::int";
         var cancellation = columnasVisit.Contains("cancellationReason") ? "v.\"cancellationReason\"" : "NULL::text";
         var provincia    = columnasVisit.Contains("addressState")       ? "v.\"addressState\""       : "NULL::text";
+        var ciudad       = columnasVisit.Contains("addressCity")        ? "v.\"addressCity\""        : "NULL::text";
 
         return $"""
             SELECT v.id::text                          AS visita_id,
@@ -121,7 +124,8 @@ public class CeleroPostgresClient : ICeleroClient
                    {duracion}                          AS duracion,
                    COALESCE(v.status,'')               AS estado,
                    {cancellation}                      AS cancellation_reason,
-                   {provincia}                         AS provincia
+                   {provincia}                         AS provincia,
+                   {ciudad}                            AS ciudad
             FROM public.visit v
             JOIN public.analytics_mission_list_view m ON m."missionId" = v."missionId"
             JOIN public.resource_list_view r          ON r."resourceId" = v."resourceId"

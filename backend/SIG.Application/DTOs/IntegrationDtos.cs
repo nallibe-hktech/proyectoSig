@@ -13,6 +13,7 @@ public record CeleroVisitaDto(
     int? DuracionMinutos = null,         // realDuration de Celero (unidad pendiente de confirmar, §4.2)
     string? Estado = null,               // visitStatus: done | failed | cancelled ...
     string? Provincia = null,            // addressState del centro/POA
+    string? Ciudad = null,               // addressCity de la visita (enriquecimiento CAMBIO 4)
     string? CancellationReason = null);  // cancellationReason cuando la visita no se realiza
 public record BizneoEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento);
 public record BizneoAbsenceDto(string RegistroIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Horas);

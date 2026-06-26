@@ -1032,6 +1032,7 @@ public class SyncService : ISyncService
                 if (lineas.Count > 0)
                 {
                     var mapaCeco = await _costCenterRepo.GetCecoToServiceMapAsync(ct);
+                    var cecosInternosSig = await _costCenterRepo.GetInternalSigCecoCodesAsync(ct) ?? Array.Empty<string>();
                     var nuevas = new List<StagingTravelPerkLinea>();
                     foreach (var l in lineas)
                     {
@@ -1040,8 +1041,11 @@ public class SyncService : ISyncService
                         if (await _travelPerkLineaRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
 
                         var serviceId = TravelPerkCecoResolver.ResolverServiceId(l.CostObject, mapaCeco);
-                        // CECO de cliente que no casa con la tabla maestra → coste sin imputar (alerta de calidad).
-                        var cecoNoMaestro = l.CostObject is not null && serviceId is null;
+                        // Gasto interno de SIG: sin Cost object (suscripción → 0423) o CECO estructural de SIG.
+                        var esInternoSig = serviceId is null
+                            && TravelPerkCecoResolver.EsCecoInternoSig(l.CostObject, cecosInternosSig);
+                        // CECO de cliente que no casa con la tabla maestra (y no es interno) → sin imputar (alerta de calidad).
+                        var cecoNoMaestro = l.CostObject is not null && serviceId is null && !esInternoSig;
 
                         nuevas.Add(new StagingTravelPerkLinea
                         {

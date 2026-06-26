@@ -43,6 +43,22 @@ public static class TravelPerkCecoResolver
         return null;
     }
 
+    /// <summary>
+    /// True si la línea es gasto INTERNO de SIG (no de cliente): no trae Cost object (suscripción → 0423), o su
+    /// código/prefijo casa con un CECO estructural del maestro (departamento de SIG, sin Servicio de cliente:
+    /// Dirección, Comercial, Finanzas…). Misma cascada de matching que <see cref="ResolverServiceId"/>.
+    /// </summary>
+    public static bool EsCecoInternoSig(string? costObject, IReadOnlyCollection<string> codigosInternos)
+    {
+        if (string.IsNullOrWhiteSpace(costObject)) return true;
+        if (codigosInternos.Count == 0) return false;
+        var raw = costObject.Trim();
+        var prefijo = PrefijoNumerico(raw);
+        return codigosInternos.Any(c =>
+            string.Equals(c, raw, StringComparison.OrdinalIgnoreCase)
+            || (prefijo.Length > 0 && (PrefijoNumerico(c) == prefijo || c.StartsWith(prefijo, StringComparison.Ordinal))));
+    }
+
     private static List<int> ServiciosDe(IReadOnlyCollection<CecoServicio> mapa, Func<string, bool> pred)
         => mapa.Where(m => pred(m.Codigo)).Select(m => m.ServiceId).Distinct().ToList();
 

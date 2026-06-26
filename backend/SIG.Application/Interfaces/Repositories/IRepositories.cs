@@ -169,6 +169,10 @@ public interface ICostCenterRepository
     Task<IReadOnlyList<CostCenter>> ListAsync(CancellationToken ct);
     // Mapa de imputación CECO→Servicio (join ServiceCostCenter): cada par (Codigo de CECO, ServiceId).
     Task<IReadOnlyList<CecoServicio>> GetCecoToServiceMapAsync(CancellationToken ct);
+    // CECOs del maestro SIN Servicio de cliente asociado = estructura/interno de SIG (departamentos: Dirección,
+    // Comercial, Finanzas, RRHH…). Una línea de TravelPerk cuyo prefijo casa con uno de estos es gasto interno
+    // de SIG (como el 0423 de la suscripción), NO un CECO no-maestro.
+    Task<IReadOnlyList<string>> GetInternalSigCecoCodesAsync(CancellationToken ct);
     Task<CostCenter?> GetByIdAsync(int id, CancellationToken ct);
     Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId, CancellationToken ct);
     Task<bool> HasServicesAsync(int id, CancellationToken ct);
