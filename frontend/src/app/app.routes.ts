@@ -153,8 +153,8 @@ export const routes: Routes = [
       // Forecast (PPT slide 36)
       { path: 'forecast', loadComponent: () => import('./features/forecast/forecast-resumen.component').then((m) => m.ForecastResumenComponent), title: 'Forecast — SIG' },
 
-      // A3 INNUVA Nóminas (Testing & Integration)
-      { path: 'a3-innuva', loadComponent: () => import('./features/a3-innuva/a3-innuva.component').then((m) => m.A3InnuvaComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'A3 INNUVA Nóminas — SIG' },
+      // A3 INNUVA - Descarga de Plantilla Excel
+      { path: 'a3-innuva', loadComponent: () => import('./features/a3-innuva/a3-innuva.component').then((m) => m.A3InnuvaComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'A3 INNUVA (TEST) — SIG' },
 
       // Administración — CostCenters
       { path: 'cost-centers', loadComponent: () => import('./features/cost-centers/cost-centers-list.component').then((m) => m.CostCentersListComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'Centros de Coste — SIG' },

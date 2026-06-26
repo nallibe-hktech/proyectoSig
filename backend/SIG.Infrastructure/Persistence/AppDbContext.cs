@@ -57,8 +57,20 @@ public class AppDbContext : DbContext
     public DbSet<StagingA3InnuvaContrato> StagingA3InnuvaContratos => Set<StagingA3InnuvaContrato>();
     public DbSet<StagingA3InnuvaCompany> StagingA3InnuvaCompanies => Set<StagingA3InnuvaCompany>();
     public DbSet<StagingA3InnuvaPayroll> StagingA3InnuvaPayrolls => Set<StagingA3InnuvaPayroll>();
+    public DbSet<StagingA3InnuvaConcepto> StagingA3InnuvaConceptos => Set<StagingA3InnuvaConcepto>();
+    public DbSet<StagingA3InnuvaNominaCalculada> StagingA3InnuvaNominasCalculadas => Set<StagingA3InnuvaNominaCalculada>();
     public DbSet<StagingA3InnuvaCompanyTest> StagingA3InnuvaCompaniesTest => Set<StagingA3InnuvaCompanyTest>();
     public DbSet<StagingA3InnuvaPayrollTest> StagingA3InnuvaPayrollsTest => Set<StagingA3InnuvaPayrollTest>();
+
+    // PHASE 1 REDESIGNED: Real Wolters Kluwer API endpoints (salary, IRPF, remuneration, bankaccounts, agreements)
+    public DbSet<StagingA3InnuvaSalary> StagingA3InnuvaSalaries => Set<StagingA3InnuvaSalary>();
+    public DbSet<StagingA3InnuvaIRPF> StagingA3InnuvaIRPFs => Set<StagingA3InnuvaIRPF>();
+    public DbSet<StagingA3InnuvaRemuneration> StagingA3InnuvaRemunerations => Set<StagingA3InnuvaRemuneration>();
+    public DbSet<StagingA3InnuvaBankAccount> StagingA3InnuvaBankAccounts => Set<StagingA3InnuvaBankAccount>();
+    public DbSet<StagingA3InnuvaAgreement> StagingA3InnuvaAgreements => Set<StagingA3InnuvaAgreement>();
+    public DbSet<StagingA3InnuvaContractAgreement> StagingA3InnuvaContractAgreements => Set<StagingA3InnuvaContractAgreement>();
+    public DbSet<StagingA3InnuvaContractTimetable> StagingA3InnuvaContractTimetables => Set<StagingA3InnuvaContractTimetable>();
+
     public DbSet<StagingTravelPerkViaje> StagingTravelPerkViajes => Set<StagingTravelPerkViaje>();
     public DbSet<StagingTravelPerkLinea> StagingTravelPerkLineas => Set<StagingTravelPerkLinea>();
 
@@ -70,6 +82,12 @@ public class AppDbContext : DbContext
     // MEDIAPOST - Distribución
     public DbSet<StagingMediapostPedido> StagingMediapostPedidos => Set<StagingMediapostPedido>();
     public DbSet<StagingMediapostRecepcion> StagingMediapostRecepciones => Set<StagingMediapostRecepcion>();
+
+    // Payment Models Configuration
+    public DbSet<PaymentModel> PaymentModels => Set<PaymentModel>();
+    public DbSet<PaymentRatesConfiguration> PaymentRatesConfigurations => Set<PaymentRatesConfiguration>();
+    public DbSet<EmployeePaymentModelMapping> EmployeePaymentModelMappings => Set<EmployeePaymentModelMapping>();
+    public DbSet<ConceptValidationRule> ConceptValidationRules => Set<ConceptValidationRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

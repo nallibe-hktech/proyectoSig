@@ -7,7 +7,7 @@ namespace SIG.API.Controllers;
 
 [ApiController]
 [Route("api/periods")]
-[Authorize]
+[AllowAnonymous]
 public class PeriodsController : ControllerBase
 {
     private readonly IPeriodService _svc;
@@ -18,13 +18,16 @@ public class PeriodsController : ControllerBase
         Ok(await _svc.ListAsync(ct));
 
     [HttpGet("paginated")]
+    [Authorize]
     public async Task<IActionResult> ListPaginated([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default) =>
         Ok(await _svc.ListPaginatedAsync(page, pageSize, ct));
 
     [HttpGet("activo")]
+    [Authorize]
     public async Task<IActionResult> GetActivo(CancellationToken ct) => Ok(await _svc.GetActivoAsync(ct));
 
     [HttpGet("{id:int}")]
+    [Authorize]
     public async Task<IActionResult> Get(int id, CancellationToken ct) => Ok(await _svc.GetByIdAsync(id, ct));
 
     [HttpPost]

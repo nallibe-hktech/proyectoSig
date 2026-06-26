@@ -444,7 +444,7 @@ public class StagingA3InnuvaCompany : IAuditable, ISoftDeletable
     public DateTime? DeletedAt { get; set; }
 }
 
-public class StagingA3InnuvaPayroll : IAuditable, ISoftDeletable
+public class StagingA3InnuvaPayroll : IStagingRow, IAuditable, ISoftDeletable
 {
     public int Id { get; set; }
     public string IdExterno { get; set; } = null!;
@@ -455,6 +455,13 @@ public class StagingA3InnuvaPayroll : IAuditable, ISoftDeletable
     public decimal Deducciones { get; set; }
     public decimal SalarioNeto { get; set; }
     public DateTime FechaProcesamiento { get; set; }
+
+    // IStagingRow properties
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
 
     // Auditoría
     public DateTime CreatedAt { get; set; }
@@ -508,4 +515,259 @@ public class StagingA3InnuvaPayrollTest : IAuditable, ISoftDeletable
     // Soft-Delete
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
+}
+
+// A3 INNUVA NÓMINAS - Conceptos de empleados (salarios, bonificaciones, etc.)
+public class StagingA3InnuvaConcepto : IAuditable, ISoftDeletable
+{
+    public int Id { get; set; }
+    public string IdExterno { get; set; } = null!;
+    public string CodigoEmpleado { get; set; } = null!;
+    public string NombreEmpleado { get; set; } = null!;
+    public int CodigoConcepto { get; set; }
+    public string DescripcionConcepto { get; set; } = null!;
+    public string TipoConcepto { get; set; } = null!; // "E" (Earnings/Percepciones), "D" (Deductions/Descuentos), "I" (Información)
+    public decimal Importe { get; set; }
+    public string? Unidad { get; set; } // "U" (Unidades), "%" (Porcentaje), etc.
+    public bool EsManual { get; set; }
+    public bool EsEnEspecie { get; set; }
+    public DateTime FechaUltimaSincronizacion { get; set; }
+
+    // Auditoría
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Soft-Delete
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+}
+
+// A3 INNUVA NÓMINAS - Nóminas calculadas (resultado de PHASE 2)
+public class StagingA3InnuvaNominaCalculada : IAuditable, ISoftDeletable
+{
+    public int Id { get; set; }
+    public string IdExterno { get; set; } = null!; // "{EmpleadoCode}_{PeriodCode}"
+    public string CodigoEmpleado { get; set; } = null!;
+    public string NombreEmpleado { get; set; } = null!;
+    public string CodigoPeriodo { get; set; } = null!;
+    public DateTime FechaPeriodo { get; set; }
+
+    // Cálculos
+    public decimal TotalPercepciones { get; set; } // Suma de conceptos tipo "E"
+    public decimal TotalDescuentos { get; set; }   // Suma de conceptos tipo "D"
+    public decimal SalarioNeto { get; set; }       // TotalPercepciones - TotalDescuentos
+
+    // Control
+    public bool FueEnviadoAWK { get; set; }        // ¿Fue enviado a Wolters Kluwer (PHASE 3)?
+    public DateTime? FechaEnvio { get; set; }
+    public string? ResponseWK { get; set; }        // Respuesta de Wolters Kluwer
+
+    // Auditoría
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Soft-Delete
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+}
+
+// ====== PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ======
+
+/// <summary>
+/// PHASE 1.3a: Datos de salario del empleado
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/salary
+/// </summary>
+public class StagingA3InnuvaSalary : IStagingRow
+{
+    public int Id { get; set; }
+    public string SalaryIdExterno { get; set; } = null!;  // {EmployeeId}_{ContractId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public string ContratoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de salary desde API
+    public decimal ImporteBruto { get; set; }
+    public decimal ImporteNeto { get; set; }
+    public string? Moneda { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.3b: Retenciones de impuestos (IRPF en España)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/irpf
+/// </summary>
+public class StagingA3InnuvaIRPF : IStagingRow
+{
+    public int Id { get; set; }
+    public string IRPFIdExterno { get; set; } = null!;  // {EmployeeId}_{ImpuestoId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de IRPF
+    public string TipoImpuesto { get; set; } = null!;  // "IRPF", "SS", etc.
+    public decimal PercentajeTariacion { get; set; }
+    public decimal ImporteRetencion { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.3c: Remuneraciones (percepciones complementarias)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/remuneration
+/// </summary>
+public class StagingA3InnuvaRemuneration : IStagingRow
+{
+    public int Id { get; set; }
+    public string RemuneracionIdExterno { get; set; } = null!;  // {EmployeeId}_{RemuId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de remuneration
+    public string TipoRemuneracion { get; set; } = null!;  // "Bono", "Comisión", "Plus", etc.
+    public decimal Importe { get; set; }
+    public string? Concepto { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.3d: Cuentas bancarias del empleado
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/bankaccounts
+/// </summary>
+public class StagingA3InnuvaBankAccount : IStagingRow
+{
+    public int Id { get; set; }
+    public string CuentaIdExterno { get; set; } = null!;  // {EmployeeId}_{CuentaId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de cuenta bancaria
+    public string IBAN { get; set; } = null!;
+    public string? BIC { get; set; }
+    public string? NombreTitular { get; set; }
+    public string? TipoCuenta { get; set; }  // "Principal", "Adicional", etc.
+    public bool EsPrincipal { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.3e: Acuerdos / Colectivos (datos de negociación colectiva)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/agreements
+/// </summary>
+public class StagingA3InnuvaAgreement : IStagingRow
+{
+    public int Id { get; set; }
+    public string AcuerdoIdExterno { get; set; } = null!;  // {EmployeeId}_{AgreementId}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+    public string NIF { get; set; } = null!;
+
+    // Datos de agreement
+    public string CodigoAcuerdo { get; set; } = null!;
+    public string NombreAcuerdo { get; set; } = null!;
+    public string? TipoAcuerdo { get; set; }  // "Colectivo", "Empresa", "Individual", etc.
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+    public string? Descripcion { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.5: Acuerdo de Contrato (contractCode, labourPeriodStartDate, annualGrossAmount, etc.)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/contract-agreement
+/// </summary>
+public class StagingA3InnuvaContractAgreement : IStagingRow
+{
+    public int Id { get; set; }
+    public string ContratoIdExterno { get; set; } = null!;  // {EmployeeId}_{ContractCode}
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+
+    // Datos de contrato-acuerdo
+    public string? CodigoContrato { get; set; }
+    public string? DescripcionContrato { get; set; }
+    public DateTime? FechaInicioPeriodoLaboral { get; set; }
+    public DateTime? FechaFinPeriodoLaboral { get; set; }
+    public int? TipoAportacionID { get; set; }
+    public string? TipoAportacion { get; set; }
+    public string? ModalidadAportacion { get; set; }
+    public string? CodigoOcupacionCNO { get; set; }
+    public decimal? MontoAñualBruto { get; set; }
+    public int? TipoCobroID { get; set; }
+    public string? TipoCobro { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+/// <summary>
+/// PHASE 1.6: Horario de Trabajo (totalWeekHours, workDayType, etc.)
+/// Endpoint: GET /Laboral/api/companies/{companyId}/employees/{employeeId}/contract/timetable
+/// </summary>
+public class StagingA3InnuvaContractTimetable : IStagingRow
+{
+    public int Id { get; set; }
+    public string HorarioIdExterno { get; set; } = null!;  // {EmployeeId}_timetable
+    public string EmpleadoIdExterno { get; set; } = null!;
+    public int? UserId { get; set; }
+
+    // Datos de horario de trabajo
+    public string? TipoDiaLaboralID { get; set; }  // "Complete", "Partial", etc.
+    public decimal? TotalHorasSemanal { get; set; }
+    public string? DiaLaboralCompletoInicio { get; set; }  // "Monday", "Tuesday", etc.
+    public string? DiaLaboralCompletoFin { get; set; }     // "Friday", "Thursday", etc.
+    public bool? TieneHorasComplementarias { get; set; }
+    public string? TipoPeriodoPartial { get; set; }
+    public decimal? HorasPartial { get; set; }
+
+    // IStagingRow
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
 }

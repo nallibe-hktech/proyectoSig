@@ -12,9 +12,11 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ConceptService } from '../../core/api/concepts.service';
+import { ServiceService } from '../../core/api/services.service';
 import { NotifyService } from '../../core/notify.service';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
+import { ServiceListItemDto } from '../../models/dtos';
 
 @Component({
   selector: 'app-concept-form',
@@ -56,6 +58,17 @@ import { SkeletonComponent } from '../../shared/page-skeleton.component';
                 <mat-datepicker-toggle matIconSuffix [for]="dpHasta" /><mat-datepicker #dpHasta />
               </mat-form-field>
             </div>
+            <div class="sig-form-row">
+              <mat-form-field class="sig-form-field">
+                <mat-label>Servicio asociado (opcional)</mat-label>
+                <mat-select [value]="selectedServiceId()" (selectionChange)="onServiceChange($event.value)" data-testid="select-servicio">
+                  <mat-option [value]="null">-- Sin servicio --</mat-option>
+                  @for (svc of availableServices(); track svc.id) {
+                    <mat-option [value]="svc.id">{{ svc.nombre }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
             <p style="margin: 12px 0; font-size: 13px; color: var(--mat-sys-on-surface-variant);">
               <mat-icon style="vertical-align: middle; font-size: 16px; width: 16px; height: 16px;" aria-hidden="true">info</mat-icon>
               La fórmula se edita visualmente desde el botón <strong>Editor de Fórmula</strong> en el detalle del concept.
@@ -81,6 +94,7 @@ import { SkeletonComponent } from '../../shared/page-skeleton.component';
 export class ConceptFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly conceptSvc = inject(ConceptService);
+  private readonly serviceSvc = inject(ServiceService);
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -89,6 +103,8 @@ export class ConceptFormComponent implements OnInit {
   protected readonly isEdit = signal(false);
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
+  protected readonly availableServices = signal<ServiceListItemDto[]>([]);
+  protected readonly selectedServiceId = signal<number | null>(null);
 
   protected readonly form = this.fb.nonNullable.group({
     nombre: ['', [Validators.required]],
@@ -97,10 +113,21 @@ export class ConceptFormComponent implements OnInit {
     fechaHasta: [null as Date | null],
   });
   private formulaJson = '{}';
-  private serviceIds: number[] = [];
+  private serviceId: number | null = null;
   private userIds: number[] = [];
 
   ngOnInit(): void {
+    // Load available services
+    this.serviceSvc.list(1, 1000).subscribe({
+      next: (result) => {
+        this.availableServices.set(result.items);
+      },
+      error: () => {
+        this.notify.error('No se pudieron cargar los servicios');
+      },
+    });
+
+    // Load concept if editing
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       this.id.set(Number(idParam));
@@ -114,13 +141,19 @@ export class ConceptFormComponent implements OnInit {
             fechaHasta: c.fechaHasta ? new Date(c.fechaHasta) : null,
           });
           this.formulaJson = c.formulaJson;
-          this.serviceIds = c.serviceIds;
+          this.serviceId = c.serviceId ?? null;
+          this.selectedServiceId.set(c.serviceId ?? null);
           this.userIds = c.userIds;
           this.loading.set(false);
         },
         error: () => { this.loading.set(false); this.notify.error('No se pudo cargar el concept'); },
       });
     }
+  }
+
+  protected onServiceChange(value: number | null): void {
+    this.selectedServiceId.set(value);
+    this.serviceId = value;
   }
 
   protected submit(): void {
@@ -131,7 +164,7 @@ export class ConceptFormComponent implements OnInit {
       nombre: v.nombre, tipo: v.tipo,
       fechaDesde: v.fechaDesde.toISOString().slice(0, 10),
       fechaHasta: v.fechaHasta ? v.fechaHasta.toISOString().slice(0, 10) : null,
-      formulaJson: this.formulaJson, serviceIds: this.serviceIds, userIds: this.userIds,
+      formulaJson: this.formulaJson, serviceId: this.serviceId, userIds: this.userIds,
     };
     this.submitting.set(true);
     const obs = this.isEdit() ? this.conceptSvc.update(this.id()!, payload) : this.conceptSvc.create(payload);

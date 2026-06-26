@@ -55,8 +55,8 @@ public class SyncServiceTests
         _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
-                new CeleroVisitaDto("v1", "12345678A", "Proyecto1", "Acción1", new DateOnly(2026, 3, 1)),
-                new CeleroVisitaDto("v2", "23456789B", "Proyecto2", "Acción2", new DateOnly(2026, 3, 2)),
+                new CeleroVisitaDto("v1", "12345678A", "Proyecto1", "Acción1", new DateOnly(2026, 3, 1), 120, "Madrid", "Madrid", "done"),
+                new CeleroVisitaDto("v2", "23456789B", "Proyecto2", "Acción2", new DateOnly(2026, 3, 2), 90, "Barcelona", "Barcelona", "done"),
             });
         _celeroRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
 
@@ -77,8 +77,8 @@ public class SyncServiceTests
         _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
-                new CeleroVisitaDto("v1", "12345678A", "Proyecto1", "Acción1", new DateOnly(2026, 3, 1)),
-                new CeleroVisitaDto("v2", "23456789B", "Proyecto2", "Acción2", new DateOnly(2026, 3, 2)),
+                new CeleroVisitaDto("v1", "12345678A", "Proyecto1", "Acción1", new DateOnly(2026, 3, 1), 120, "Madrid", "Madrid", "done"),
+                new CeleroVisitaDto("v2", "23456789B", "Proyecto2", "Acción2", new DateOnly(2026, 3, 2), 90, "Barcelona", "Barcelona", "done"),
             });
         _celeroRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
@@ -249,7 +249,7 @@ public class SyncServiceTests
     public async Task SyncAsync_SyncResult_ContieneExitoYTimestamp()
     {
         _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { new CeleroVisitaDto("v1", "12345678A", "Proyecto1", "Acción1", new DateOnly(2026, 3, 1)) });
+            .Returns(new[] { new CeleroVisitaDto("v1", "12345678A", "Proyecto1", "Acción1", new DateOnly(2026, 3, 1), 120, "Madrid", "Madrid", "done") });
         _celeroRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
 
         var sut = CreateSut();

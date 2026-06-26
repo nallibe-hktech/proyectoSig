@@ -63,14 +63,14 @@ public class ValidatorTests
     [Fact]
     public void ConceptCreateRequestValidator_FechaDesdeMayorQueHasta_Invalido()
     {
-        var req = new ConceptCreateRequest("X", TipoConcepto.Pago, new DateOnly(2026, 6, 1), new DateOnly(2026, 1, 1), "{}", Array.Empty<int>(), Array.Empty<int>());
+        var req = new ConceptCreateRequest("X", TipoConcepto.Pago, new DateOnly(2026, 6, 1), new DateOnly(2026, 1, 1), "{}", null, Array.Empty<int>());
         new ConceptCreateRequestValidator().Validate(req).IsValid.Should().BeFalse();
     }
 
     [Fact]
     public void ConceptCreateRequestValidator_FechaDesdeMenorQueHasta_Valido()
     {
-        var req = new ConceptCreateRequest("Concept Demo", TipoConcepto.Pago, new DateOnly(2026, 1, 1), new DateOnly(2026, 6, 1), "{\"x\":1}", Array.Empty<int>(), Array.Empty<int>());
+        var req = new ConceptCreateRequest("Concept Demo", TipoConcepto.Pago, new DateOnly(2026, 1, 1), new DateOnly(2026, 6, 1), "{\"x\":1}", null, Array.Empty<int>());
         var r = new ConceptCreateRequestValidator().Validate(req);
         r.IsValid.Should().BeTrue($"errores: {string.Join("; ", r.Errors.Select(e => e.PropertyName + ":" + e.ErrorMessage))}");
     }
@@ -78,7 +78,7 @@ public class ValidatorTests
     [Fact]
     public void ConceptCreateRequestValidator_FormulaJsonVacio_Invalido()
     {
-        var req = new ConceptCreateRequest("X", TipoConcepto.Pago, new DateOnly(2026, 1, 1), null, "", Array.Empty<int>(), Array.Empty<int>());
+        var req = new ConceptCreateRequest("X", TipoConcepto.Pago, new DateOnly(2026, 1, 1), null, "", null, Array.Empty<int>());
         new ConceptCreateRequestValidator().Validate(req).IsValid.Should().BeFalse();
     }
 

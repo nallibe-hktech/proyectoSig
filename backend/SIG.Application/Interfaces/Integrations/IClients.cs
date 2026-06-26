@@ -65,6 +65,65 @@ public interface IA3InnuvaNominasClient
         DateTime? fromDate = null,
         DateTime? toDate = null,
         CancellationToken ct = default);
+
+    Task<IReadOnlyList<EmployeeDto>> GetEmployeesAsync(
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<ConceptoDto>> GetConceptosAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default);
+
+    Task<string> WritePayrollAsync(
+        string companyCode,
+        string employeeCode,
+        string periodCode,
+        decimal percepciones,
+        decimal descuentos,
+        decimal neto,
+        CancellationToken ct = default);
+
+    // PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints
+    Task<IReadOnlyList<SalaryDto>> GetSalaryAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<IRPFDto>> GetIRPFAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<RemunerationDto>> GetRemunerationAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<BankAccountDto>> GetBankAccountsAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<AgreementDto>> GetAgreementsAsync(
+        string companyCode,
+        string employeeCode,
+        CancellationToken ct = default);
+
+    // PHASE 1.5: Contract Data (agreement & timetable per employee)
+    Task<IReadOnlyList<ContractAgreementDto>> GetContractAgreementAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<ContractTimetableDto>> GetContractTimetableAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default);
 }
 
 public interface IGalanClient
@@ -78,4 +137,22 @@ public interface IMediapostClient
 {
     Task<IReadOnlyList<MediapostPedidoDto>> GetPedidosAsync(DateTime desde, DateTime hasta, CancellationToken ct);
     Task<IReadOnlyList<MediapostRecepcionDto>> GetRecepcionesAsync(DateTime desde, DateTime hasta, CancellationToken ct);
+}
+
+// A3 INNUVA ERP - Wolters Kluwer OINV API (Facturación)
+public interface IA3InnuvaERPClient
+{
+    // STUB: Endpoints a confirmar con Wolters Kluwer OINV API
+    Task<IReadOnlyList<A3ERPFacturaDto>> GetFacturasAsync(
+        string companyCode,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<A3ERPClienteDto>> GetClientesAsync(
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<A3ERPLineaFacturaDto>> GetLineasFacturaAsync(
+        string facturaId,
+        CancellationToken ct = default);
 }

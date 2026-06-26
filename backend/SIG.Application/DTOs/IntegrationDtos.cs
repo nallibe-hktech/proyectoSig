@@ -13,6 +13,7 @@ public record CeleroVisitaDto(
     int? DuracionMinutos = null,         // realDuration de Celero (unidad pendiente de confirmar, §4.2)
     string? Estado = null,               // visitStatus: done | failed | cancelled ...
     string? Provincia = null,            // addressState del centro/POA
+    string? Ciudad = null,               // addressCity de la visita (enriquecimiento CAMBIO 4)
     string? CancellationReason = null);  // cancellationReason cuando la visita no se realiza
 public record BizneoEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento);
 public record BizneoAbsenceDto(string RegistroIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Horas);
@@ -44,7 +45,14 @@ public record SgpvVisitaDto(
     string? ServiceName,
     DateOnly Fecha,
     decimal? HorasDuracion);
-public record A3InnuvaEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento, decimal? SueldoMensual);
+public record A3InnuvaEmpleadoDto(
+    string IdExterno,
+    string NIF,
+    string Nombre,
+    string? Departamento,
+    decimal? SueldoMensual,
+    DateTime FechaUltimaSincronizacion
+);
 public record A3InnuvaGenericoDto(string IdExterno, string Nombre, string Tipo, DateTime? FechaRegistro);
 public record TravelPerkViajeDto(string ViajeIdExterno, string Solicitante, DateOnly FechaInicio, DateOnly? FechaFin, decimal Presupuesto, string Estado);
 // TravelPerk se integra por descarga Excel (hoja "report"), a nivel LÍNEA — no a nivel viaje.
@@ -165,4 +173,189 @@ public record A3InnuvaNominasPayrollDto(
     decimal Deductions,
     decimal NetSalary,
     DateTime ProcessDate
+);
+
+public record EmployeeDto(
+    string EmployeeId,
+    string EmployeeCode,
+    string CompleteName,
+    string IdentifierNumber,
+    string? WorkplaceCode,
+    DateTime? EnrolmentDate
+);
+
+public record ConceptoDto(
+    int? ConceptCode,
+    string Description,
+    decimal Amount,
+    string ConceptType,
+    bool InKind,
+    bool Manual,
+    string ConceptCollectionTypeDesc,
+    string? CodigoEmpleado = null,
+    string? NombreEmpleado = null
+);
+
+public record A3InnuvaNominaCalculadaDto(
+    string IdExterno,
+    string CodigoEmpleado,
+    string NombreEmpleado,
+    string CodigoPeriodo,
+    decimal TotalPercepciones,
+    decimal TotalDescuentos,
+    decimal SalarioNeto,
+    bool FueEnviadoAWK,
+    DateTime? FechaEnvio,
+    string? ResponseWK
+);
+
+public record A3InnuvaConceptoDto(
+    string IdExterno,
+    string CodigoEmpleado,
+    string NombreEmpleado,
+    int CodigoConcepto,
+    string DescripcionConcepto,
+    string TipoConcepto,
+    decimal Importe,
+    string? Unidad,
+    bool EsManual,
+    bool EsEnEspecie,
+    DateTime FechaUltimaSincronizacion
+);
+
+// ====== PHASE 1 REDESIGNED: Real Wolters Kluwer Endpoints ======
+
+public record SalaryDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    decimal GrossSalary,
+    decimal NetSalary,
+    string? Currency,
+    DateTime StartDate,
+    DateTime? EndDate
+);
+
+public record IRPFDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    string TaxType,
+    decimal TaxRate,
+    decimal RetentionAmount,
+    DateTime StartDate,
+    DateTime? EndDate
+);
+
+public record RemunerationDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    string RemunerationType,
+    decimal Amount,
+    string? Concept,
+    DateTime StartDate,
+    DateTime? EndDate
+);
+
+public record BankAccountDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    string IBAN,
+    string? BIC,
+    string? AccountHolderName,
+    string? AccountType,
+    bool IsPrimary,
+    DateTime StartDate,
+    DateTime? EndDate
+);
+
+public record AgreementDto(
+    string IdExterno,
+    string EmployeeCode,
+    string NIF,
+    string AgreementCode,
+    string AgreementName,
+    string? AgreementType,
+    DateTime StartDate,
+    DateTime? EndDate,
+    string? Description
+);
+
+// CONTRACT AGREEMENT - Datos del contrato (contractCode, labourPeriodStartDate, etc.)
+public record ContractAgreementDto(
+    string IdExterno,
+    string EmployeeCode,
+    string? ContractCode,
+    string? ContractDescription,
+    DateTime? LabourPeriodStartDate,
+    DateTime? LabourPeriodEndDate,
+    int? ContributionTypeID,
+    string? ContributionType,
+    string? ContributionModalityType,
+    string? CnoOccupationID,
+    decimal? AnnualGrossAmount,
+    int? CollectionTypeID,
+    string? CollectionType
+);
+
+// CONTRACT TIMETABLE - Datos de horario de trabajo
+public record ContractTimetableDto(
+    string IdExterno,
+    string EmployeeCode,
+    string? WorkDayTypeID,
+    decimal? TotalWeekHours,
+    string? CompleteWorkDayStartID,
+    string? CompleteWorkDayEndID,
+    bool? IndComplementaryHours,
+    string? PartialPeriodTypeID,
+    decimal? PartialHours
+);
+
+// CONTRACT CLAUSES - Cláusulas del contrato (opcional, puede estar vacío)
+public record ContractClauseDto(
+    string IdExterno,
+    string EmployeeCode,
+    string? ClauseCode,
+    string? ClauseDescription,
+    DateTime? StartDate,
+    DateTime? EndDate
+);
+
+// A3 INNUVA ERP - Wolters Kluwer OINV API (Facturación)
+public record A3ERPFacturaDto(
+    string IdExterno,
+    string CodigoFactura,
+    string CodigoCliente,
+    string NombreCliente,
+    DateTime FechaFactura,
+    decimal ImporteBase,
+    decimal ImporteIVA,
+    decimal ImporteTotal,
+    string Estado,
+    DateTime? FechaVencimiento
+);
+
+public record A3ERPClienteDto(
+    string IdExterno,
+    string CodigoCliente,
+    string NombreCliente,
+    string? NIF,
+    string? Email,
+    string? Telefono,
+    string? Direccion,
+    string? Ciudad,
+    string? CodigoPostal
+);
+
+public record A3ERPLineaFacturaDto(
+    string IdExterno,
+    string FacturaId,
+    string CodigoProducto,
+    string DescripcionProducto,
+    int Cantidad,
+    decimal PrecioUnitario,
+    decimal ImporteLinea,
+    string? ConceptoFacturacion
 );

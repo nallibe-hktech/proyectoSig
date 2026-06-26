@@ -178,6 +178,6 @@ export class A3InnuvaOAuthCallbackComponent implements OnInit {
   }
 
   goToDashboard(): void {
-    this.router.navigate(['/a3-innuva']);
+    this.router.navigate(['/a3-innuva-nominas']);
   }
 }

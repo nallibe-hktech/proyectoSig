@@ -56,7 +56,9 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
   payrollsTotal = signal(0);
 
   selectedCompany: string | null = null;
+  selectedPeriod: string | null = null;
   lastSyncMessage = '';
+  downloadingExcel = signal(false);
 
   searchCompanies = '';
   searchPayrolls = '';
@@ -174,18 +176,11 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
     });
   }
 
-  syncPayrolls(): void {
-    if (!this.selectedCompany) {
-      this.notify.warning('Selecciona una empresa primero');
-      return;
-    }
-
+  syncEmployees(): void {
     this.loading.set(true);
-    this.lastSyncMessage = `Sincronizando nóminas para ${this.selectedCompany}...`;
+    this.lastSyncMessage = 'Sincronizando empleados desde A3 Innuva...';
 
-    const call = this.isTestMode()
-      ? this.a3Service.syncPayrollsTest(this.selectedCompany)
-      : this.a3Service.syncPayrolls(this.selectedCompany);
+    const call = this.a3Service.syncEmployees();
 
     call.subscribe({
       next: (res) => {
@@ -259,5 +254,38 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
     } else {
       this.loadPayrolls();
     }
+  }
+
+  getUniquePeriods(): string[] {
+    const periods = this.payrolls().map(p => p.periodCode);
+    return Array.from(new Set(periods)).sort().reverse();
+  }
+
+  downloadExcel(): void {
+    if (!this.selectedPeriod) {
+      this.notify.warning('Selecciona un período primero');
+      return;
+    }
+
+    this.downloadingExcel.set(true);
+    this.a3Service.generateExcel(this.selectedPeriod).subscribe({
+      next: (blob: Blob) => {
+        this.downloadingExcel.set(false);
+        // Crear un link y descargar el archivo
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `plantilla-a3-innuva-${this.selectedPeriod}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        this.notify.success('✅ Plantilla Excel descargada correctamente');
+      },
+      error: (err) => {
+        this.downloadingExcel.set(false);
+        this.notify.error('Error descargando Excel: ' + (err.error?.error || err.message));
+      }
+    });
   }
 }

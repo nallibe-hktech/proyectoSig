@@ -49,9 +49,10 @@ public class CeleroFakeClient : ICeleroClient
             "11234567L", "21234567M", "31234567N", "41234567P", "51234567Q"
         };
 
-        // Valores de ejemplo anónimos para los campos de origen Celero (duración/estado/provincia):
+        // Valores de ejemplo anónimos para los campos de origen Celero (duración/estado/provincia/ciudad):
         // alimentan la segmentación del motor por PayloadJson sin introducir PII en el repo.
         var provincias = new[] { "Madrid", "Barcelona", "Valencia", "Sevilla", "Vizcaya", "Zaragoza" };
+        var ciudades = new[] { "Madrid", "Barcelona", "Valencia", "Bilbao", "Sevilla", "Málaga", "Alicante", "Murcia", "Córdoba", "Palma" };
         var estados = new[] { "done", "done", "done", "done", "failed", "cancelled" };
 
         var faker = new Faker<CeleroVisitaDto>()
@@ -64,6 +65,7 @@ public class CeleroFakeClient : ICeleroClient
                 DuracionMinutos: f.Random.Int(5, 180),
                 Estado: f.PickRandom(estados),
                 Provincia: f.PickRandom(provincias),
+                Ciudad: f.PickRandom(ciudades),
                 CancellationReason: null
             ));
         // Semilla local fija: cada llamada produce el MISMO lote → la sincronización es idempotente
@@ -331,7 +333,8 @@ public class A3InnuvaFakeClient : IA3InnuvaClient
                 $"{f.Random.Long(10000000, 99999999)}A",
                 f.Name.FullName(),
                 f.PickRandom(departamentos),
-                Math.Round(f.Random.Decimal(20000, 80000), 2)
+                Math.Round(f.Random.Decimal(20000, 80000), 2),
+                DateTime.UtcNow
             ));
         var list = faker.Generate(20);
         return Task.FromResult<IReadOnlyList<A3InnuvaEmpleadoDto>>(list);
@@ -359,6 +362,141 @@ public class TravelPerkFakeClient : ITravelPerkClient
             });
         var list = faker.Generate(25);
         return Task.FromResult<IReadOnlyList<TravelPerkViajeDto>>(list);
+    }
+}
+
+public class A3InnuvaNominasFakeClient : IA3InnuvaNominasClient
+{
+    static A3InnuvaNominasFakeClient() { _ = FakeSeed.Seed; }
+
+    public Task<IReadOnlyList<A3InnuvaNominasCompanyDto>> GetCompaniesAsync(
+        int pageNumber = 1, int pageSize = 25, DateTime? lastUpdate = null, CancellationToken ct = default)
+    {
+        var companies = new List<A3InnuvaNominasCompanyDto>
+        {
+            new("1", "1", "SERVICE INNOVATIVO GROUP ESPAÑA", "2Q4YX", "Madrid", "Madrid", "España", "plataforma.sig@sigespana.es", "")
+        };
+        return Task.FromResult<IReadOnlyList<A3InnuvaNominasCompanyDto>>(companies);
+    }
+
+    public Task<IReadOnlyList<A3InnuvaNominasPayrollDto>> GetPayrollsAsync(
+        string companyCode, int pageNumber = 1, int pageSize = 25, DateTime? fromDate = null, DateTime? toDate = null, CancellationToken ct = default)
+    {
+        var nifs = new[] { "12345678A", "23456789B", "34567890C", "45678901D", "56789012E" };
+        var faker = new Faker<A3InnuvaNominasPayrollDto>()
+            .CustomInstantiator(f => new A3InnuvaNominasPayrollDto(
+                $"PAY-{f.Random.AlphaNumeric(6).ToUpper()}",
+                f.Random.AlphaNumeric(6),
+                f.Name.FullName(),
+                "2026-01",
+                Math.Round(f.Random.Decimal(2000, 3500), 2),
+                Math.Round(f.Random.Decimal(300, 600), 2),
+                Math.Round(f.Random.Decimal(1400, 3000), 2),
+                DateTime.UtcNow
+            ));
+        var list = faker.Generate(pageSize);
+        return Task.FromResult<IReadOnlyList<A3InnuvaNominasPayrollDto>>(list);
+    }
+
+    public Task<IReadOnlyList<EmployeeDto>> GetEmployeesAsync(
+        int pageNumber = 1, int pageSize = 25, CancellationToken ct = default)
+    {
+        var nifs = new[] { "12345678A", "23456789B", "34567890C", "45678901D", "56789012E" };
+        var faker = new Faker<EmployeeDto>()
+            .CustomInstantiator(f => new EmployeeDto(
+                f.Random.AlphaNumeric(6),
+                f.Random.AlphaNumeric(4),
+                f.Name.FullName(),
+                f.PickRandom(nifs),
+                f.Random.Int(1000, 9999).ToString(),
+                DateTime.Now.AddYears(-f.Random.Int(1, 10))
+            ));
+        var list = faker.Generate(pageSize);
+        return Task.FromResult<IReadOnlyList<EmployeeDto>>(list);
+    }
+
+    public Task<IReadOnlyList<ConceptoDto>> GetConceptosAsync(
+        string employeeCode, int pageNumber = 1, int pageSize = 25, CancellationToken ct = default)
+    {
+        var conceptos = new List<ConceptoDto>
+        {
+            new(001, "Salario Base", 2500m, "E", false, false, "Percepciones"),
+            new(002, "Complemento Antigüedad", 300m, "E", false, false, "Percepciones"),
+            new(003, "IRPF", -400m, "D", false, false, "Descuentos"),
+            new(004, "Seguridad Social", -250m, "D", false, false, "Descuentos"),
+            new(005, "Bono Desempeño", 500m, "E", false, false, "Percepciones"),
+        };
+        return Task.FromResult<IReadOnlyList<ConceptoDto>>(conceptos);
+    }
+
+    public Task<string> WritePayrollAsync(
+        string companyCode, string employeeCode, string periodCode, decimal percepciones, decimal descuentos, decimal neto, CancellationToken ct = default)
+    {
+        return Task.FromResult($"{{\"status\":\"success\",\"employeeCode\":\"{employeeCode}\",\"periodCode\":\"{periodCode}\",\"salaryProcessed\":true}}");
+    }
+
+    // PHASE 1 REDESIGNED: Fake implementations for real endpoints
+    public Task<IReadOnlyList<SalaryDto>> GetSalaryAsync(string companyCode, string employeeCode, CancellationToken ct = default)
+    {
+        var salaries = new List<SalaryDto>
+        {
+            new($"{employeeCode}_salary", employeeCode, "12345678A", 2500m, 2000m, "EUR", DateTime.Now.AddYears(-2), null)
+        };
+        return Task.FromResult<IReadOnlyList<SalaryDto>>(salaries);
+    }
+
+    public Task<IReadOnlyList<IRPFDto>> GetIRPFAsync(string companyCode, string employeeCode, CancellationToken ct = default)
+    {
+        var irpf = new List<IRPFDto>
+        {
+            new($"{employeeCode}_irpf", employeeCode, "12345678A", "IRPF", 21m, 500m, DateTime.Now.AddYears(-1), null)
+        };
+        return Task.FromResult<IReadOnlyList<IRPFDto>>(irpf);
+    }
+
+    public Task<IReadOnlyList<RemunerationDto>> GetRemunerationAsync(string companyCode, string employeeCode, CancellationToken ct = default)
+    {
+        var remunerations = new List<RemunerationDto>
+        {
+            new($"{employeeCode}_rem_bonus", employeeCode, "12345678A", "Bono", 500m, "Desempeño", DateTime.Now.AddMonths(-3), null)
+        };
+        return Task.FromResult<IReadOnlyList<RemunerationDto>>(remunerations);
+    }
+
+    public Task<IReadOnlyList<BankAccountDto>> GetBankAccountsAsync(string companyCode, string employeeCode, CancellationToken ct = default)
+    {
+        var bankAccounts = new List<BankAccountDto>
+        {
+            new($"{employeeCode}_bank", employeeCode, "12345678A", "ES9121000418450200051332", "BBVAESMM", "Juan García López", "Principal", true, DateTime.Now.AddYears(-3), null)
+        };
+        return Task.FromResult<IReadOnlyList<BankAccountDto>>(bankAccounts);
+    }
+
+    public Task<IReadOnlyList<AgreementDto>> GetAgreementsAsync(string companyCode, string employeeCode, CancellationToken ct = default)
+    {
+        var agreements = new List<AgreementDto>
+        {
+            new($"{employeeCode}_agree", employeeCode, "12345678A", "COL_2024", "Convenio Sector Servicios 2024", "Colectivo", DateTime.Parse("2024-01-01"), DateTime.Parse("2024-12-31"), "Acuerdo negociación colectiva sectorial")
+        };
+        return Task.FromResult<IReadOnlyList<AgreementDto>>(agreements);
+    }
+
+    public Task<IReadOnlyList<ContractAgreementDto>> GetContractAgreementAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default)
+    {
+        return Task.FromResult<IReadOnlyList<ContractAgreementDto>>(new List<ContractAgreementDto>());
+    }
+
+    public Task<IReadOnlyList<ContractTimetableDto>> GetContractTimetableAsync(
+        string employeeCode,
+        int pageNumber = 1,
+        int pageSize = 25,
+        CancellationToken ct = default)
+    {
+        return Task.FromResult<IReadOnlyList<ContractTimetableDto>>(new List<ContractTimetableDto>());
     }
 }
 

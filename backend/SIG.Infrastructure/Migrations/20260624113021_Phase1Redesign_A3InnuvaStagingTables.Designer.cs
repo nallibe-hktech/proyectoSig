@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SIG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SIG.Infrastructure.Persistence;
 namespace SIG.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260624113021_Phase1Redesign_A3InnuvaStagingTables")]
+    partial class Phase1Redesign_A3InnuvaStagingTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2305,180 +2308,6 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("staging_a3innuva_conceptos", (string)null);
                 });
 
-            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingA3InnuvaContractAgreement", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CodigoContrato")
-                        .HasColumnType("text")
-                        .HasColumnName("codigo_contrato");
-
-                    b.Property<string>("CodigoOcupacionCNO")
-                        .HasColumnType("text")
-                        .HasColumnName("codigo_ocupacion_cno");
-
-                    b.Property<string>("ContratoIdExterno")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("contrato_id_externo");
-
-                    b.Property<string>("DescripcionContrato")
-                        .HasColumnType("text")
-                        .HasColumnName("descripcion_contrato");
-
-                    b.Property<string>("EmpleadoIdExterno")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("empleado_id_externo");
-
-                    b.Property<string>("ErrorProcesamiento")
-                        .HasColumnType("text")
-                        .HasColumnName("error_procesamiento");
-
-                    b.Property<DateTime?>("FechaFinPeriodoLaboral")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fecha_fin_periodo_laboral");
-
-                    b.Property<DateTime?>("FechaInicioPeriodoLaboral")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fecha_inicio_periodo_laboral");
-
-                    b.Property<DateTime>("FechaUltimaSincronizacion")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fecha_ultima_sincronizacion");
-
-                    b.Property<bool>("FlagProcesado")
-                        .HasColumnType("boolean")
-                        .HasColumnName("flag_procesado");
-
-                    b.Property<string>("Hash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("hash");
-
-                    b.Property<string>("ModalidadAportacion")
-                        .HasColumnType("text")
-                        .HasColumnName("modalidad_aportacion");
-
-                    b.Property<decimal?>("MontoAñualBruto")
-                        .HasColumnType("numeric")
-                        .HasColumnName("monto_añual_bruto");
-
-                    b.Property<string>("PayloadJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("payload_json");
-
-                    b.Property<string>("TipoAportacion")
-                        .HasColumnType("text")
-                        .HasColumnName("tipo_aportacion");
-
-                    b.Property<int?>("TipoAportacionID")
-                        .HasColumnType("integer")
-                        .HasColumnName("tipo_aportacion_id");
-
-                    b.Property<string>("TipoCobro")
-                        .HasColumnType("text")
-                        .HasColumnName("tipo_cobro");
-
-                    b.Property<int?>("TipoCobroID")
-                        .HasColumnType("integer")
-                        .HasColumnName("tipo_cobro_id");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("integer")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_staging_a3innuva_contract_agreements");
-
-                    b.ToTable("staging_a3innuva_contract_agreements", (string)null);
-                });
-
-            modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingA3InnuvaContractTimetable", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("DiaLaboralCompletoFin")
-                        .HasColumnType("text")
-                        .HasColumnName("dia_laboral_completo_fin");
-
-                    b.Property<string>("DiaLaboralCompletoInicio")
-                        .HasColumnType("text")
-                        .HasColumnName("dia_laboral_completo_inicio");
-
-                    b.Property<string>("EmpleadoIdExterno")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("empleado_id_externo");
-
-                    b.Property<string>("ErrorProcesamiento")
-                        .HasColumnType("text")
-                        .HasColumnName("error_procesamiento");
-
-                    b.Property<DateTime>("FechaUltimaSincronizacion")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fecha_ultima_sincronizacion");
-
-                    b.Property<bool>("FlagProcesado")
-                        .HasColumnType("boolean")
-                        .HasColumnName("flag_procesado");
-
-                    b.Property<string>("Hash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("hash");
-
-                    b.Property<string>("HorarioIdExterno")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("horario_id_externo");
-
-                    b.Property<decimal?>("HorasPartial")
-                        .HasColumnType("numeric")
-                        .HasColumnName("horas_partial");
-
-                    b.Property<string>("PayloadJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("payload_json");
-
-                    b.Property<bool?>("TieneHorasComplementarias")
-                        .HasColumnType("boolean")
-                        .HasColumnName("tiene_horas_complementarias");
-
-                    b.Property<string>("TipoDiaLaboralID")
-                        .HasColumnType("text")
-                        .HasColumnName("tipo_dia_laboral_id");
-
-                    b.Property<string>("TipoPeriodoPartial")
-                        .HasColumnType("text")
-                        .HasColumnName("tipo_periodo_partial");
-
-                    b.Property<decimal?>("TotalHorasSemanal")
-                        .HasColumnType("numeric")
-                        .HasColumnName("total_horas_semanal");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("integer")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_staging_a3innuva_contract_timetables");
-
-                    b.ToTable("staging_a3innuva_contract_timetables", (string)null);
-                });
-
             modelBuilder.Entity("SIG.Domain.Entities.Staging.StagingA3InnuvaContrato", b =>
                 {
                     b.Property<int>("Id")
@@ -2817,26 +2646,9 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
-                    b.Property<string>("ErrorProcesamiento")
-                        .HasColumnType("text")
-                        .HasColumnName("error_procesamiento");
-
                     b.Property<DateTime>("FechaProcesamiento")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fecha_procesamiento");
-
-                    b.Property<DateTime>("FechaUltimaSincronizacion")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fecha_ultima_sincronizacion");
-
-                    b.Property<bool>("FlagProcesado")
-                        .HasColumnType("boolean")
-                        .HasColumnName("flag_procesado");
-
-                    b.Property<string>("Hash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("hash");
 
                     b.Property<string>("IdEmpleado")
                         .IsRequired()
@@ -2856,11 +2668,6 @@ namespace SIG.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("nombre_empleado");
-
-                    b.Property<string>("PayloadJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("payload_json");
 
                     b.Property<decimal>("SalarioBase")
                         .HasColumnType("numeric")

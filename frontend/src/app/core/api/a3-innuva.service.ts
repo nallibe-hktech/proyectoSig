@@ -51,6 +51,10 @@ export class A3InnuvaService {
     return this.http.post(`${this.apiUrl}/sync/payrolls`, {}, { params });
   }
 
+  syncEmployees(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/sync/employees`, {});
+  }
+
   getCompanies(page: number, pageSize: number, search?: string): Observable<PagedResult<A3InnuvaCompanyDto>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -108,5 +112,16 @@ export class A3InnuvaService {
    */
   refreshToken(): Observable<any> {
     return this.http.post(`${this.apiUrl}/oauth/refresh`, {});
+  }
+
+  /**
+   * Generar plantilla Excel A3 Innuva para descarga manual
+   */
+  generateExcel(periodCode: string): Observable<Blob> {
+    const params = new HttpParams().set('periodCode', periodCode);
+    return this.http.get(`${this.apiUrl}/generate-excel`, {
+      params,
+      responseType: 'blob'
+    });
   }
 }

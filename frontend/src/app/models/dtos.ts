@@ -314,7 +314,7 @@ export interface ConceptDetailDto {
   fechaDesde: string;
   fechaHasta?: string | null;
   formulaJson: string;
-  serviceIds: number[];
+  serviceId?: number | null;
   userIds: number[];
 }
 export interface ConceptCreateRequest {
@@ -323,7 +323,7 @@ export interface ConceptCreateRequest {
   fechaDesde: string;
   fechaHasta?: string | null;
   formulaJson: string;
-  serviceIds: number[];
+  serviceId?: number | null;
   userIds: number[];
 }
 export type ConceptUpdateRequest = ConceptCreateRequest;

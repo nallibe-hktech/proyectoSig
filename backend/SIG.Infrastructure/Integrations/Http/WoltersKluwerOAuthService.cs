@@ -168,8 +168,10 @@ public class WoltersKluwerOAuthService : IWoltersKluwerOAuthService
                 throw new InvalidOperationException("No access_token en la respuesta de OAuth");
             }
 
-            // Save tokens to database
-            var existingToken = _dbContext.A3InnuvaOAuthTokens.FirstOrDefault();
+            // Save tokens to database (update or create, always using the most recent)
+            var existingToken = _dbContext.A3InnuvaOAuthTokens
+                .OrderByDescending(t => t.UpdatedAt)
+                .FirstOrDefault();
             var now = DateTime.UtcNow;
 
             if (existingToken == null)
@@ -232,8 +234,10 @@ public class WoltersKluwerOAuthService : IWoltersKluwerOAuthService
 
         try
         {
-            // Try to get from database
-            var storedToken = _dbContext.A3InnuvaOAuthTokens.FirstOrDefault();
+            // Try to get from database (use the most recent one)
+            var storedToken = _dbContext.A3InnuvaOAuthTokens
+                .OrderByDescending(t => t.UpdatedAt)
+                .FirstOrDefault();
             if (storedToken == null)
             {
                 throw new InvalidOperationException(
@@ -281,7 +285,9 @@ public class WoltersKluwerOAuthService : IWoltersKluwerOAuthService
     {
         try
         {
-            var storedToken = _dbContext.A3InnuvaOAuthTokens.FirstOrDefault();
+            var storedToken = _dbContext.A3InnuvaOAuthTokens
+                .OrderByDescending(t => t.UpdatedAt)
+                .FirstOrDefault();
             if (storedToken == null || string.IsNullOrEmpty(storedToken.RefreshToken))
             {
                 throw new InvalidOperationException("No refresh token available");
