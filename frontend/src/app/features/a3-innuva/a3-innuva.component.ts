@@ -328,6 +328,21 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
     return this.periods();
   }
 
+  formatPeriodForDisplay(periodCode: string): string {
+    // Convertir "2026-06" a "junio 2026"
+    if (!periodCode || periodCode.length !== 7) return periodCode;
+
+    const [year, month] = periodCode.split('-');
+    const monthNum = parseInt(month, 10);
+
+    const monthNames = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+
+    return `${monthNames[monthNum - 1]} ${year}`;
+  }
+
   downloadExcel(): void {
     if (!this.selectedPeriod) {
       this.notify.warning('Selecciona un período primero');

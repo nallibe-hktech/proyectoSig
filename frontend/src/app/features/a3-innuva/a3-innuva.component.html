@@ -215,7 +215,7 @@
             <mat-label>Seleccionar período</mat-label>
             <select matNativeControl [(ngModel)]="selectedPeriod">
               <option value="" disabled>Elige un período</option>
-              <option *ngFor="let period of getUniquePeriods()" [value]="period">{{ period }}</option>
+              <option *ngFor="let period of getUniquePeriods()" [value]="period">{{ formatPeriodForDisplay(period) }}</option>
             </select>
           </mat-form-field>
           <button mat-raised-button color="accent" (click)="downloadExcel()" [disabled]="!selectedPeriod || downloadingExcel()">

@@ -810,31 +810,33 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
     public async Task<PagedResult<A3InnuvaNominasPayrollDto>> GetPayrollsAsync(int page, int pageSize, string? search, CancellationToken ct)
     {
-        var query = _db.StagingA3InnuvaPayrolls.AsQueryable();
+        var query = _db.StagingA3InnuvaNominasCalculadas
+            .Where(n => n.DeletedAt == null)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = $"%{search.Trim()}%";
             query = query.Where(p =>
-                EF.Functions.ILike(p.IdEmpleado, s) ||
+                EF.Functions.ILike(p.CodigoEmpleado, s) ||
                 EF.Functions.ILike(p.NombreEmpleado, s) ||
                 EF.Functions.ILike(p.CodigoPeriodo, s));
         }
 
         var total = await query.CountAsync(ct);
         var items = await query
-            .OrderByDescending(p => p.FechaProcesamiento)
+            .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(p => new A3InnuvaNominasPayrollDto(
                 p.IdExterno,
-                p.IdEmpleado,
+                p.CodigoEmpleado,
                 p.NombreEmpleado,
                 p.CodigoPeriodo,
-                p.SalarioBase,
-                p.Deducciones,
+                p.TotalPercepciones,
+                p.TotalDescuentos,
                 p.SalarioNeto,
-                p.FechaProcesamiento))
+                p.CreatedAt))
             .ToListAsync(ct);
 
         return new PagedResult<A3InnuvaNominasPayrollDto>(items, total, page, pageSize);
@@ -1204,31 +1206,33 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
     public async Task<PagedResult<A3InnuvaNominasPayrollDto>> GetPayrollsTestAsync(int page, int pageSize, string? search, CancellationToken ct)
     {
-        var query = _db.StagingA3InnuvaPayrollsTest.AsQueryable();
+        var query = _db.StagingA3InnuvaNominasCalculadas
+            .Where(n => n.DeletedAt == null)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = $"%{search.Trim()}%";
             query = query.Where(p =>
-                EF.Functions.ILike(p.IdEmpleado, s) ||
+                EF.Functions.ILike(p.CodigoEmpleado, s) ||
                 EF.Functions.ILike(p.NombreEmpleado, s) ||
                 EF.Functions.ILike(p.CodigoPeriodo, s));
         }
 
         var total = await query.CountAsync(ct);
         var items = await query
-            .OrderByDescending(p => p.FechaProcesamiento)
+            .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(p => new A3InnuvaNominasPayrollDto(
                 p.IdExterno,
-                p.IdEmpleado,
+                p.CodigoEmpleado,
                 p.NombreEmpleado,
                 p.CodigoPeriodo,
-                p.SalarioBase,
-                p.Deducciones,
+                p.TotalPercepciones,
+                p.TotalDescuentos,
                 p.SalarioNeto,
-                p.FechaProcesamiento))
+                p.CreatedAt))
             .ToListAsync(ct);
 
         return new PagedResult<A3InnuvaNominasPayrollDto>(items, total, page, pageSize);
