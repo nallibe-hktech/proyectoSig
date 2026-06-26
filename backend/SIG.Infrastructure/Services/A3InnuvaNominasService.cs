@@ -197,6 +197,28 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas] Período objetivo: {periodCode}");
 
+            // CHECK INCREMENTAL: Si hace <6 horas que sincronizamos, reutilizar datos
+            const int horasAntesDeReSincronizar = 6;
+            var ultimaSincEmpleados = await _db.StagingA3InnuvaEmpleados
+                .OrderByDescending(e => e.FechaUltimaSincronizacion)
+                .FirstOrDefaultAsync(ct);
+
+            if (ultimaSincEmpleados != null &&
+                (now - ultimaSincEmpleados.FechaUltimaSincronizacion).TotalHours < horasAntesDeReSincronizar)
+            {
+                _logger.LogInformation($"[A3InnuvaNominas] ⚡ Datos sincronizados hace {Math.Round((now - ultimaSincEmpleados.FechaUltimaSincronizacion).TotalMinutes)} min. Reutilizando sin re-sincronizar.");
+
+                // PASO 5 SOLO: Calcular nóminas con datos existentes
+                _logger.LogInformation("[A3InnuvaNominas] PASO 5: Calculando nóminas (datos reusados)...");
+                await CalculatePayrollsAsync(periodCode, ct);
+
+                _logger.LogInformation($"[A3InnuvaNominas] ✅ Cálculo completado (sin re-sincronización) para período {periodCode}");
+                return;
+            }
+
+            // Si NO hay datos recientes, hacer sync completo
+            _logger.LogInformation("[A3InnuvaNominas] 🔄 Datos antigüos o ausentes. Sincronizando de cero...");
+
             // PASO 1: Sincronizar empleados
             _logger.LogInformation("[A3InnuvaNominas] PASO 1: Sincronizando empleados...");
             await SyncEmployeesAsync(ct);
@@ -279,15 +301,59 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             var existingEmployeeDict = existingEmployees.ToDictionary(e => e.EmpleadoIdExterno, StringComparer.OrdinalIgnoreCase);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ Empleados existentes en memoria: {existingEmployeeDict.Count}");
 
+            // 🔗 NUEVO: Cargar empleados de Bizneo para mapear UserId
+            var bizneoEmployees = await _db.StagingBizneoEmpleados
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            // Crear dos índices: por NIF y por nombre (para fallback)
+            var bizneoByNif = bizneoEmployees
+                .Where(b => !string.IsNullOrEmpty(b.NIF))
+                .ToDictionary(b => b.NIF, StringComparer.OrdinalIgnoreCase);
+
+            var bizneoByNombre = bizneoEmployees
+                .Where(b => !string.IsNullOrEmpty(b.Nombre))
+                .GroupBy(b => b.Nombre, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            _logger.LogInformation($"[A3InnuvaNominas] 🔗 Mapeo Bizneo cargado: {bizneoByNif.Count} por NIF, {bizneoByNombre.Count} por nombre");
+
             // Insertar o actualizar (sin N+1 queries)
-            int inserted = 0, updated = 0;
+            int inserted = 0, updated = 0, resolvedByNif = 0, resolvedByNombre = 0;
             foreach (var employeeDto in uniqueEmployees)
             {
+                // 🔗 Resolver UserId desde Bizneo (primero por NIF, luego por nombre como fallback)
+                int? resolvedUserId = null;
+                string resolveMethod = "no resuelto";
+
+                // Intento 1: Por NIF
+                if (!string.IsNullOrEmpty(employeeDto.IdentifierNumber) &&
+                    bizneoByNif.TryGetValue(employeeDto.IdentifierNumber, out var bizneoEmpNif))
+                {
+                    resolvedUserId = bizneoEmpNif.UserId;
+                    resolveMethod = "NIF";
+                    resolvedByNif++;
+                }
+                // Intento 2: Por nombre (fallback si NIF no encontró)
+                else if (!string.IsNullOrEmpty(employeeDto.CompleteName) &&
+                         bizneoByNombre.TryGetValue(employeeDto.CompleteName, out var bizneoEmpNombre))
+                {
+                    resolvedUserId = bizneoEmpNombre.UserId;
+                    resolveMethod = "nombre";
+                    resolvedByNombre++;
+                }
+
+                if (resolvedUserId.HasValue)
+                {
+                    _logger.LogDebug($"[A3InnuvaNominas] ✅ UserId resuelto para {employeeDto.CompleteName} ({employeeDto.IdentifierNumber}) por {resolveMethod}: {resolvedUserId}");
+                }
+
                 if (existingEmployeeDict.TryGetValue(employeeDto.EmployeeCode ?? "", out var existing))
                 {
                     // Actualizar
                     existing.NIF = employeeDto.IdentifierNumber;
                     existing.Nombre = employeeDto.CompleteName;
+                    existing.UserId = resolvedUserId;  // 🔗 Asignar UserId resuelto
                     existing.FechaUltimaSincronizacion = DateTime.UtcNow;
                     existing.PayloadJson = System.Text.Json.JsonSerializer.Serialize(employeeDto);
                     existing.Hash = ComputeHash($"{employeeDto.EmployeeCode}_{employeeDto.IdentifierNumber}");
@@ -303,6 +369,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                         EmpleadoIdExterno = employeeDto.EmployeeCode ?? "",
                         NIF = employeeDto.IdentifierNumber,
                         Nombre = employeeDto.CompleteName,
+                        UserId = resolvedUserId,  // 🔗 Asignar UserId resuelto
                         FechaUltimaSincronizacion = DateTime.UtcNow,
                         PayloadJson = System.Text.Json.JsonSerializer.Serialize(employeeDto),
                         Hash = hash
@@ -313,6 +380,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             }
 
             _logger.LogInformation($"[A3InnuvaNominas] Empleados: {inserted} insertados, {updated} actualizados");
+            _logger.LogInformation($"[A3InnuvaNominas] 🔗 UserId mapeados: {resolvedByNif} por NIF, {resolvedByNombre} por nombre (total: {resolvedByNif + resolvedByNombre})");
 
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ Sincronización de empleados completada: {uniqueEmployees.Count} empleados procesados");
@@ -1737,45 +1805,57 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas] Cargados {empleados.Count} empleados A3");
 
-            // 3. Cargar gastos PayHawk del período (KM + SUPLIDOS)
-            // Resolver NIFs via Service→ServiceUsers→User (no usar UserId directo)
+            // 3. Cargar gastos PayHawk del período (KM + SUPLIDOS) por UserId
             var gastos = await _db.StagingPayHawkGastos
                 .AsNoTracking()
                 .ToListAsync(ct);
 
-            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastos.Count} gastos PayHawk raw");
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastos.Count} gastos PayHawk");
 
-            // Cargar Services con sus ServiceUsers para resolver NIFs
-            var servicesWithUsers = await _db.Services
-                .Include(s => s.ServiceUsers)
-                .ThenInclude(su => su.User)
-                .AsNoTracking()
-                .ToListAsync(ct);
-
-            // Map: NIF → List<gasto> (resolver via Service→ServiceUsers→User)
-            var gastosByNif = new Dictionary<string, List<StagingPayHawkGasto>>();
+            // Map: UserId → List<gasto> (mapeo directo, simplificado)
+            var gastosByUserId = new Dictionary<int?, List<StagingPayHawkGasto>>();
 
             foreach (var gasto in gastos)
             {
-                if (!gasto.ServiceId.HasValue) continue;
-
-                var service = servicesWithUsers.FirstOrDefault(s => s.Id == gasto.ServiceId.Value);
-                if (service?.ServiceUsers == null || service.ServiceUsers.Count == 0) continue;
-
-                // Para cada usuario en el servicio, agregar el gasto (puede distribuirse entre múltiples usuarios)
-                foreach (var su in service.ServiceUsers.Where(su => su.User != null && !string.IsNullOrEmpty(su.User.NIF)))
+                if (!gastosByUserId.ContainsKey(gasto.UserId))
                 {
-                    var nif = su.User.NIF;
-                    if (!gastosByNif.TryGetValue(nif, out var list))
-                    {
-                        list = new List<StagingPayHawkGasto>();
-                        gastosByNif[nif] = list;
-                    }
-                    list.Add(gasto);
+                    gastosByUserId[gasto.UserId] = new List<StagingPayHawkGasto>();
                 }
+                gastosByUserId[gasto.UserId].Add(gasto);
             }
 
-            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastosByNif.Count} NIFs únicos con gastos PayHawk");
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastosByUserId.Count} UserIds únicos con gastos PayHawk");
+
+            // 3b. Cargar ausencias Bizneo por UserId (para descuentos absentismo)
+            var ausenciasByUserId = new Dictionary<int?, decimal>();
+
+            if (empleados.Count > 0)
+            {
+                var empleadosConUserId = await _db.StagingA3InnuvaEmpleados
+                    .Where(e => e.UserId.HasValue)
+                    .AsNoTracking()
+                    .ToListAsync(ct);
+
+                _logger.LogInformation($"[A3InnuvaNominas] Cargados {empleadosConUserId.Count} empleados con UserId");
+
+                var ausencias = await _db.StagingBizneoAbsences
+                    .AsNoTracking()
+                    .ToListAsync(ct);
+
+                _logger.LogInformation($"[A3InnuvaNominas] Cargadas {ausencias.Count} ausencias Bizneo");
+
+                // Map: UserId → Horas totales de ausencias del período
+                foreach (var ausencia in ausencias)
+                {
+                    if (!ausenciasByUserId.ContainsKey(ausencia.UserId))
+                    {
+                        ausenciasByUserId[ausencia.UserId] = 0m;
+                    }
+                    ausenciasByUserId[ausencia.UserId] += ausencia.Horas;
+                }
+
+                _logger.LogInformation($"[A3InnuvaNominas] Cargadas {ausenciasByUserId.Count} UserIds únicos con ausencias");
+            }
 
             // 4. Crear workbook Excel
             using var workbook = new XLWorkbook();
@@ -1839,8 +1919,10 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                 ws.Cell(rowIndex, 11).Value = nomina.TotalPercepciones;
 
                 // Col T (20): KM (calculado desde PayHawk - Categoría "Kilometraje")
-                var nif = empleado?.NIF ?? "";
-                var gastosEmpleado = gastosByNif.TryGetValue(nif, out var listaGastos) ? listaGastos : new List<StagingPayHawkGasto>();
+                var usuarioId = empleado?.UserId;
+                var gastosEmpleado = usuarioId.HasValue && gastosByUserId.TryGetValue(usuarioId, out var listaGastos)
+                    ? listaGastos
+                    : new List<StagingPayHawkGasto>();
 
                 var kmGastos = gastosEmpleado
                     .Where(x => x.Categoria == "Kilometraje")
@@ -1853,8 +1935,11 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                     .Sum(x => x.Importe);
                 ws.Cell(rowIndex, 21).Value = suplidosGastos > 0 ? suplidosGastos : 0;
 
-                // Col Z (26): Descuento Absentismo (TotalDescuentos como fallback)
-                ws.Cell(rowIndex, 26).Value = nomina.TotalDescuentos;
+                // Col Z (26): Descuento Absentismo (desde Bizneo ausencias via UserId del empleado)
+                var horasAusencia = usuarioId.HasValue && ausenciasByUserId.TryGetValue(usuarioId, out var horas)
+                    ? horas
+                    : 0;
+                ws.Cell(rowIndex, 26).Value = horasAusencia > 0 ? horasAusencia : 0;
 
                 rowIndex++;
             }

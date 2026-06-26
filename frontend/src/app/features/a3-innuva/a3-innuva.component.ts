@@ -50,7 +50,7 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
   companies = signal<A3InnuvaCompanyDto[]>([]);
   employees = signal<any[]>([]);
   payrolls = signal<A3InnuvaPayrollDto[]>([]);
-  periods = signal<string[]>([]);
+  periods = signal<Array<{nombre: string; codigo: string}>>([]);  // Nombre + Código
 
   page = signal(1);
   pageSize = signal(25);
@@ -109,7 +109,7 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
 
         this.loadCompanies();
         this.loadEmployees();
-        this.loadPeriods();
+        this.loadAllPeriods();  // 🔄 NUEVO: Cargar todos los períodos una sola vez
       });
   }
 
@@ -224,7 +224,7 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
         this.notify.success('✅ ' + res.message);
         this.page.set(1);
         this.loadPayrolls();
-        this.loadPeriods();
+        // loadAllPeriods() ya proporciona la lista completa en ngOnInit
       },
       error: (err) => {
         this.loading.set(false);
@@ -268,8 +268,8 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
         this.payrolls.set(res.items);
         this.payrollsTotal.set(res.total);
         this.payrollsLoading.set(false);
-        // Cargar períodos únicos después de cargar nóminas
-        this.loadPeriods();
+        // Períodos ya se cargan en ngOnInit via loadAllPeriods()
+        // No sobrescribir aquí para mantener la lista completa de períodos
       },
       error: (err) => {
         this.payrollsLoading.set(false);
@@ -298,11 +298,53 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadAllPeriods(): void {
+    // 🔄 NUEVO: Cargar todos los períodos disponibles desde el backend
+    this.a3Service.getAllPeriods().subscribe({
+      next: (periodsData) => {
+        // Mapear nombre + código (ej: "Junio 2026" + "2026-06")
+        const periodMapped = periodsData.map(p => ({
+          nombre: p.nombre,
+          codigo: this.extractPeriodCode(p.fechaInicio)  // Extraer código de la fecha
+        }));
+        this.periods.set(periodMapped);
+      },
+      error: (err) => {
+        console.error('Error cargando períodos', err);
+        this.periods.set([]);
+      }
+    });
+  }
+
+  private extractPeriodCode(fechaInicio: string): string {
+    // Convertir fecha "2026-06-01" a código "2026-06"
+    if (!fechaInicio || fechaInicio.length < 7) return '';
+    return fechaInicio.substring(0, 7);  // "YYYY-MM"
+  }
+
   loadPeriods(): void {
-    // Extraer períodos únicos de las nóminas cargadas
+    // Extraer períodos únicos de las nóminas cargadas (fallback si no está en BD)
     const periodsSet = new Set(this.payrolls().map(p => p.periodCode));
-    const uniquePeriods = Array.from(periodsSet).sort().reverse();
+    const uniquePeriods = Array.from(periodsSet)
+      .sort()
+      .reverse()
+      .map(code => ({
+        nombre: this.formatPeriodFromCode(code),
+        codigo: code
+      }));
     this.periods.set(uniquePeriods);
+  }
+
+  private formatPeriodFromCode(periodCode: string): string {
+    // Convertir "2026-06" a "Junio 2026"
+    if (!periodCode || periodCode.length !== 7) return periodCode;
+    const [year, month] = periodCode.split('-');
+    const monthNum = parseInt(month, 10);
+    const monthNames = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    return `${monthNames[monthNum - 1]} ${year}`;
   }
 
   selectCompany(code: string): void {
@@ -324,23 +366,13 @@ export class A3InnuvaComponent implements OnInit, OnDestroy {
     }
   }
 
-  getUniquePeriods(): string[] {
+  getUniquePeriods(): Array<{nombre: string; codigo: string}> {
     return this.periods();
   }
 
-  formatPeriodForDisplay(periodCode: string): string {
-    // Convertir "2026-06" a "junio 2026"
-    if (!periodCode || periodCode.length !== 7) return periodCode;
-
-    const [year, month] = periodCode.split('-');
-    const monthNum = parseInt(month, 10);
-
-    const monthNames = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-    ];
-
-    return `${monthNames[monthNum - 1]} ${year}`;
+  formatPeriodForDisplay(periodName: string): string {
+    // Los períodos ya vienen formateados desde el backend (ej: "Junio 2026")
+    return periodName;
   }
 
   downloadExcel(): void {

@@ -3,8 +3,8 @@
 
   <!-- Authorization Status Card -->
   <mat-card style="margin-bottom: 20px; border: 2px solid #2196F3;">
-    <mat-card-header style="padding: 15px; background: #E3F2FD;">
-      <mat-card-title style="margin: 0;">🔐 Estado de Autorización</mat-card-title>
+    <mat-card-header style="padding: 15px; background: #37474F; border-radius: 4px 4px 0 0;">
+      <mat-card-title style="margin: 0; color: white; font-weight: 500;">🔐 Estado de Autorización</mat-card-title>
     </mat-card-header>
     <mat-card-content style="padding: 15px;">
       <div *ngIf="isTestMode()" style="display: flex; gap: 15px; align-items: center;">
@@ -35,6 +35,9 @@
   </mat-card>
 
   <mat-card style="margin-bottom: 20px;">
+    <mat-card-header style="padding: 15px; background: #37474F;">
+      <mat-card-title style="margin: 0; color: white; font-weight: 500;">⚙️ Sincronización de Nóminas</mat-card-title>
+    </mat-card-header>
     <mat-card-content>
       <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px;">
         <label style="display: flex; gap: 10px; align-items: center;">
@@ -195,9 +198,8 @@
     <!-- Tab: Nóminas -->
     <mat-tab label="💰 Nóminas">
       <div style="padding: 20px;">
-        <div style="margin-bottom: 20px; padding: 10px; background: #fff3e0; border-radius: 4px;">
-          <strong>Empresa seleccionada:</strong>
-          {{ selectedCompany || '(ninguna - selecciona una en la tab de Empresas)' }}
+        <div style="margin-bottom: 20px; padding: 12px; background: #37474F; border-radius: 4px; color: white;">
+          <strong>🏢 Empresa seleccionada:</strong> <span style="color: #FFC107;">{{ selectedCompany || '(ninguna - selecciona una en la tab de Empresas)' }}</span>
         </div>
 
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
@@ -215,7 +217,7 @@
             <mat-label>Seleccionar período</mat-label>
             <select matNativeControl [(ngModel)]="selectedPeriod">
               <option value="" disabled>Elige un período</option>
-              <option *ngFor="let period of getUniquePeriods()" [value]="period">{{ formatPeriodForDisplay(period) }}</option>
+              <option *ngFor="let period of getUniquePeriods()" [value]="period.codigo">{{ period.nombre }}</option>
             </select>
           </mat-form-field>
           <button mat-raised-button color="accent" (click)="downloadExcel()" [disabled]="!selectedPeriod || downloadingExcel()">
@@ -240,12 +242,12 @@
 
           <ng-container matColumnDef="baseSalary">
             <th mat-header-cell *matHeaderCellDef>Salario Base</th>
-            <td mat-cell *matCellDef="let payroll">{{ payroll.baseSalary | currency }}</td>
+            <td mat-cell *matCellDef="let payroll">{{ payroll.baseSalary | currency:'EUR':'symbol' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="netSalary">
             <th mat-header-cell *matHeaderCellDef>Salario Neto</th>
-            <td mat-cell *matCellDef="let payroll">{{ payroll.netSalary | currency }}</td>
+            <td mat-cell *matCellDef="let payroll">{{ payroll.netSalary | currency:'EUR':'symbol' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="processDate">

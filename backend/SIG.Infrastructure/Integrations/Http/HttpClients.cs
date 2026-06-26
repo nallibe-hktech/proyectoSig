@@ -1500,7 +1500,8 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
             }
 
             var token = await _oauthService.GetAccessTokenAsync(ct);
-            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/employees/{Uri.EscapeDataString(employeeCode)}/irpf";
+            var formattedCode = employeeCode.PadLeft(6, '0');
+            var url = $"Laboral/api/companies/{Uri.EscapeDataString(companyCode)}/employees/{Uri.EscapeDataString(formattedCode)}/irpfdata";
             _logger.LogInformation($"[A3InnuvaNominas] GET {_httpClient.BaseAddress}{url}");
 
             var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -1517,19 +1518,26 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
                 return Array.Empty<IRPFDto>();
             }
 
-            var data = await response.Content.ReadFromJsonAsync<List<IRPFResponse>>(cancellationToken: ct);
-            if (data == null) return Array.Empty<IRPFDto>();
+            var json = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogInformation($"[A3InnuvaNominas] IRPF Response JSON: {json}");
 
-            return data.Select(i => new IRPFDto(
-                $"{employeeCode}_irpf",
-                employeeCode,
-                i.NIF ?? "",
-                i.TaxType ?? "IRPF",
-                i.TaxRate ?? 0,
-                i.RetentionAmount ?? 0,
-                i.StartDate,
-                i.EndDate
-            )).ToList();
+            var irpfData = JsonSerializer.Deserialize<IRPFResponse>(json);
+            if (irpfData == null) return Array.Empty<IRPFDto>();
+
+            // WK devuelve un objeto IRPF único (no lista), mapeamos a IRPFDto
+            return new List<IRPFDto>
+            {
+                new IRPFDto(
+                    $"{employeeCode}_irpf",
+                    employeeCode,
+                    employeeCode,  // Usamos employeeCode como identificador (WK no proporciona NIF en irpfdata)
+                    irpfData.PerceptionTypeCode ?? "IRPF",
+                    irpfData.WithholdingPercentage,
+                    irpfData.IrpfBasePercentage,
+                    DateTime.Now,
+                    null
+                )
+            };
         }
         catch (Exception ex)
         {
@@ -1895,23 +1903,65 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
 
     private class IRPFResponse
     {
-        [JsonPropertyName("nif")]
-        public string? NIF { get; set; }
+        [JsonPropertyName("pensionPlan")]
+        public decimal PensionPlan { get; set; }
 
-        [JsonPropertyName("taxType")]
-        public string? TaxType { get; set; }
+        [JsonPropertyName("detractions")]
+        public decimal Detractions { get; set; }
 
-        [JsonPropertyName("taxRate")]
-        public decimal? TaxRate { get; set; }
+        [JsonPropertyName("spousePension")]
+        public decimal SpousePension { get; set; }
 
-        [JsonPropertyName("retentionAmount")]
-        public decimal? RetentionAmount { get; set; }
+        [JsonPropertyName("foodAnnualAllowance")]
+        public decimal FoodAnnualAllowance { get; set; }
 
-        [JsonPropertyName("startDate")]
-        public DateTime StartDate { get; set; }
+        [JsonPropertyName("perceptionTypeCode")]
+        public string? PerceptionTypeCode { get; set; }
 
-        [JsonPropertyName("endDate")]
-        public DateTime? EndDate { get; set; }
+        [JsonPropertyName("withholdingPercentage")]
+        public decimal WithholdingPercentage { get; set; }
+
+        [JsonPropertyName("disabilityLevel")]
+        public decimal DisabilityLevel { get; set; }
+
+        [JsonPropertyName("indHelp")]
+        public bool IndHelp { get; set; }
+
+        [JsonPropertyName("familySituationCode")]
+        public int FamilySituationCode { get; set; }
+
+        [JsonPropertyName("indAscendants")]
+        public bool IndAscendants { get; set; }
+
+        [JsonPropertyName("indDescendants")]
+        public bool IndDescendants { get; set; }
+
+        [JsonPropertyName("indNoResident")]
+        public int IndNoResident { get; set; }
+
+        [JsonPropertyName("indMobility")]
+        public bool IndMobility { get; set; }
+
+        [JsonPropertyName("indAutMan")]
+        public int IndAutMan { get; set; }
+
+        [JsonPropertyName("childrenNumber")]
+        public int ChildrenNumber { get; set; }
+
+        [JsonPropertyName("irpfBasePercentage")]
+        public decimal IrpfBasePercentage { get; set; }
+
+        [JsonPropertyName("indEconomicActivities")]
+        public bool IndEconomicActivities { get; set; }
+
+        [JsonPropertyName("indHomeInvestment")]
+        public bool IndHomeInvestment { get; set; }
+
+        [JsonPropertyName("homePreviousWithholdingPercentage")]
+        public decimal HomePreviousWithholdingPercentage { get; set; }
+
+        [JsonPropertyName("indBusinessAmountLessThan100000")]
+        public bool IndBusinessAmountLessThan100000 { get; set; }
     }
 
     private class RemunerationResponse

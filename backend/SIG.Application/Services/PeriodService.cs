@@ -17,7 +17,15 @@ public class PeriodService : IPeriodService
     public async Task<IReadOnlyList<PeriodDto>> ListAsync(CancellationToken ct)
     {
         var list = await _repo.ListAsync(ct);
-        return list.Select(Map).ToList();
+        // 🔄 FIX: Eliminar duplicados por fecha, mantener el nombre más largo (ej: "Junio 2026" vs "2026-06")
+        var unique = list
+            .OrderByDescending(p => p.Nombre!.Length)  // Nombres más largos primero (ej: "Junio 2026" antes de "2026-06")
+            .ThenByDescending(p => p.FechaInicio)
+            .DistinctBy(p => (p.FechaInicio, p.FechaFin))
+            .OrderByDescending(p => p.FechaInicio)
+            .Select(Map)
+            .ToList();
+        return unique;
     }
 
     public async Task<PagedResult<PeriodDto>> ListPaginatedAsync(int page, int pageSize, CancellationToken ct)

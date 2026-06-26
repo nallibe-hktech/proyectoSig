@@ -133,6 +133,10 @@ export class A3InnuvaService {
   /**
    * Generar plantilla Excel A3 Innuva para descarga manual
    */
+  getAllPeriods(): Observable<Array<{id: number; nombre: string; fechaInicio: string; fechaFin: string}>> {
+    return this.http.get<Array<{id: number; nombre: string; fechaInicio: string; fechaFin: string}>>(`${this.apiUrl}/periods`);
+  }
+
   generateExcel(periodCode: string): Observable<Blob> {
     const params = new HttpParams().set('periodCode', periodCode);
     return this.http.get(`${this.apiUrl}/generate-excel`, {

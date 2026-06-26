@@ -818,6 +818,36 @@ public class A3InnuvaNominasController : ControllerBase
     /// <summary>
     /// Generar y descargar plantilla Excel A3 Innuva para upload manual
     /// </summary>
+    [HttpGet("periods")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAllPeriods(CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("[A3InnuvaNominas] Cargando todos los períodos disponibles...");
+
+            // Devolver TODOS los períodos de la tabla principal (no solo los con nóminas)
+            var periods = await _db.Periods
+                .Where(p => p.Estado == SIG.Domain.Enums.EstadoPeriodo.Abierto)
+                .OrderByDescending(p => p.FechaInicio)
+                .Select(p => new {
+                    id = p.Id,
+                    nombre = p.Nombre,
+                    fechaInicio = p.FechaInicio,
+                    fechaFin = p.FechaFin
+                })
+                .ToListAsync(ct);
+
+            _logger.LogInformation($"[A3InnuvaNominas] ✅ Cargados {periods.Count} períodos");
+            return Ok(periods);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[A3InnuvaNominas] Error cargando períodos");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("generate-excel")]
     [AllowAnonymous]
     public async Task<IActionResult> GenerateExcel(
