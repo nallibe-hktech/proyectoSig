@@ -189,22 +189,39 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
     {
         try
         {
-            _logger.LogInformation("[A3InnuvaNominas] Iniciando sincronización y cálculo de nóminas...");
+            _logger.LogInformation("[A3InnuvaNominas] Iniciando cadena completa de sincronización y cálculo de nóminas...");
 
             // Determinar período actual (formato: YYYY-MM)
             var now = DateTime.UtcNow;
             var periodCode = $"{now.Year}-{now.Month:D2}";
 
-            _logger.LogInformation($"[A3InnuvaNominas] Usando período: {periodCode}");
+            _logger.LogInformation($"[A3InnuvaNominas] Período objetivo: {periodCode}");
 
-            // Calcular nóminas usando datos de PayHawk + A3 Innuva
+            // PASO 1: Sincronizar empleados
+            _logger.LogInformation("[A3InnuvaNominas] PASO 1: Sincronizando empleados...");
+            await SyncEmployeesAsync(ct);
+
+            // PASO 2: Sincronizar conceptos
+            _logger.LogInformation("[A3InnuvaNominas] PASO 2: Sincronizando conceptos...");
+            await SyncConceptosAsync(ct);
+
+            // PASO 3: Sincronizar IRPF (descuentos fiscales)
+            _logger.LogInformation("[A3InnuvaNominas] PASO 3: Sincronizando IRPF...");
+            await SyncIRPFAsync(ct);
+
+            // PASO 4: Sincronizar remuneration (salarios, pagas extra)
+            _logger.LogInformation("[A3InnuvaNominas] PASO 4: Sincronizando remuneración...");
+            await SyncRemunerationAsync(ct);
+
+            // PASO 5: Calcular nóminas usando todos los datos sincronizados
+            _logger.LogInformation("[A3InnuvaNominas] PASO 5: Calculando nóminas...");
             await CalculatePayrollsAsync(periodCode, ct);
 
-            _logger.LogInformation($"[A3InnuvaNominas] ✅ Sincronización de nóminas completada para período {periodCode}");
+            _logger.LogInformation($"[A3InnuvaNominas] ✅ Cadena completa completada para período {periodCode}");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[A3InnuvaNominas] 💥 Error sincronizando nóminas");
+            _logger.LogError(ex, "[A3InnuvaNominas] 💥 Error en cadena de sincronización");
             throw;
         }
     }
@@ -1713,10 +1730,10 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas] Cargadas {nominasCalculadas.Count} nóminas calculadas");
 
-            // 2. Cargar empleados A3 por código
+            // 2. Cargar empleados A3 por código (case-insensitive)
             var empleados = await _db.StagingA3InnuvaEmpleados
                 .AsNoTracking()
-                .ToDictionaryAsync(e => e.EmpleadoIdExterno, ct);
+                .ToDictionaryAsync(e => (e.EmpleadoIdExterno ?? "").ToUpperInvariant(), ct);
 
             _logger.LogInformation($"[A3InnuvaNominas] Cargados {empleados.Count} empleados A3");
 
@@ -1806,7 +1823,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             int rowIndex = 9;
             foreach (var nomina in nominasCalculadas)
             {
-                empleados.TryGetValue(nomina.CodigoEmpleado, out var empleado);
+                empleados.TryGetValue((nomina.CodigoEmpleado ?? "").ToUpperInvariant(), out var empleado);
 
                 // Cols A-H: Datos del empleado
                 ws.Cell(rowIndex, 1).Value = empleado?.NIF ?? "";  // A: NIF
