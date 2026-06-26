@@ -1,0 +1,88 @@
+# ============================================================================
+# Azure DevOps Pipeline — Plataforma Digital SIG (SIG ES)
+# Entorno: DEV  |  Despliega al pulsar push sobre la rama 'dev'
+#
+# MODO SIN SERVICE CONNECTION (no requiere permisos de Microsoft Entra):
+#   - API .NET 10      -> App Service  app-siges-api-dev   (via publish profile)
+#   - Frontend Angular -> Static Web App swa-siges-front-dev (via deployment token)
+#
+# Las MIGRACIONES EF Core NO se aplican aqui: se ejecutan a mano cuando haya
+# cambios de esquema, para mantener el control (coordinacion con Nallibe).
+#
+# VARIABLES SECRETAS A CREAR EN EL PIPELINE (Edit > Variables, marcar "secret"):
+#   1. AZURE_WEBAPP_PUBLISH_PROFILE -> contenido COMPLETO del publish-profile.xml
+#   2. SWA_DEPLOYMENT_TOKEN         -> token de la Static Web App
+# ============================================================================
+
+trigger:
+  branches:
+    include:
+      - dev            # el pipeline se dispara SOLO con push a la rama dev
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  appServiceName: 'app-siges-api-dev'
+  dotnetVersion: '10.0.x'
+  nodeVersion: '20.x'
+  buildConfiguration: 'Release'
+
+stages:
+# ===========================================================================
+# STAGE 1 — BACKEND (.NET 10 API)  — despliegue por publish profile
+# ===========================================================================
+- stage: Backend
+  displayName: 'Build & Deploy API (.NET 10)'
+  jobs:
+  - job: BuildDeployApi
+    displayName: 'Compilar y desplegar SIG.API'
+    steps:
+      - task: UseDotNet@2
+        displayName: 'Instalar .NET SDK 10'
+        inputs:
+          packageType: 'sdk'
+          version: '$(dotnetVersion)'
+
+      - script: dotnet restore backend/SIG.API/SIG.API.csproj
+        displayName: 'Restore'
+
+      - script: dotnet publish backend/SIG.API/SIG.API.csproj -c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/api
+        displayName: 'Publish API'
+
+      # Despliegue al App Service usando el publish profile (sin Service Connection)
+      - task: AzureRmWebAppDeployment@4
+        displayName: 'Desplegar al App Service (publish profile)'
+        inputs:
+          ConnectionType: 'PublishProfile'
+          PublishProfile: '$(AZURE_WEBAPP_PUBLISH_PROFILE)'
+          WebAppKind: 'webAppLinux'
+          Package: '$(Build.ArtifactStagingDirectory)/api'
+
+# ===========================================================================
+# STAGE 2 — FRONTEND (Angular)  — despliegue por deployment token
+# ===========================================================================
+- stage: Frontend
+  displayName: 'Build & Deploy Front (Angular)'
+  dependsOn: Backend
+  jobs:
+  - job: BuildDeployFront
+    displayName: 'Compilar y desplegar Angular'
+    steps:
+      - task: NodeTool@0
+        displayName: 'Instalar Node'
+        inputs:
+          versionSpec: '$(nodeVersion)'
+
+      - script: |
+          cd frontend
+          npm ci
+          npm run build -- --configuration production
+        displayName: 'Build Angular (produccion)'
+
+      - task: AzureStaticWebApp@0
+        displayName: 'Desplegar a Static Web App'
+        inputs:
+          app_location: 'frontend/dist/frontend/browser'
+          skip_app_build: true
+          azure_static_web_apps_api_token: $(SWA_DEPLOYMENT_TOKEN)
