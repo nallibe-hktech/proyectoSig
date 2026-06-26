@@ -12,7 +12,7 @@ public record TravelPerkLineaListDto(
     DateOnly? FechaGasto,
     string? TravelerEmail,
     string? Currency,
-    bool EsGastoInternoSig,   // sin "Cost object" → gasto propio de SIG (CECO 0423)
+    bool EsGastoInternoSig,   // gasto propio de SIG: sin "Cost object" (0423) o CECO estructural de SIG (departamento)
     bool CecoNoMaestro,       // CECO de cliente que no casa con la tabla maestra → sin imputar (alerta)
     DateTime FechaUltimaSincronizacion);
 

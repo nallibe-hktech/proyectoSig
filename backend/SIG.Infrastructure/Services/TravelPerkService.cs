@@ -53,7 +53,7 @@ public class TravelPerkService : ITravelPerkService
                 l.FechaGasto,
                 l.TravelerEmail,
                 l.Currency,
-                l.CostObject == null,
+                l.ServiceId == null && l.ErrorProcesamiento == null,
                 l.ErrorProcesamiento == AlertaCodigos.CecoNoMaestro,
                 l.FechaUltimaSincronizacion))
             .ToListAsync(ct);
@@ -72,9 +72,10 @@ public class TravelPerkService : ITravelPerkService
         var costeImputado = await q.Where(l => l.ServiceId != null)
             .SumAsync(l => (decimal?)l.CosteSinIVA, ct) ?? 0m;
 
-        // Gasto interno de SIG: la línea no trae "Cost object" (suscripción, etc.) → CECO 0423.
-        var lineasInternas = await q.CountAsync(l => l.CostObject == null, ct);
-        var costeInterno = await q.Where(l => l.CostObject == null)
+        // Gasto interno de SIG: sin "Cost object" (suscripción → 0423) o CECO estructural de SIG (departamento).
+        // En ambos casos no se imputa a cliente (ServiceId null) y no es error de calidad (ErrorProcesamiento null).
+        var lineasInternas = await q.CountAsync(l => l.ServiceId == null && l.ErrorProcesamiento == null, ct);
+        var costeInterno = await q.Where(l => l.ServiceId == null && l.ErrorProcesamiento == null)
             .SumAsync(l => (decimal?)l.CosteSinIVA, ct) ?? 0m;
 
         var lineasNoMaestro = await q.CountAsync(l => l.ErrorProcesamiento == AlertaCodigos.CecoNoMaestro, ct);

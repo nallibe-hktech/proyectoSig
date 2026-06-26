@@ -188,12 +188,17 @@ public class DataSeeder : ISeedService
         // Aquí cada CECO usa un proyecto distinto (sin prefijos compartidos) para no introducir ambigüedad.
         // Los CECOs y clientes REALES (010301 GRANINI, etc.) NO se versionan: se cargan en dev con el
         // script local backend/seed-cecos-reales.local.sql (gitignored, gobierno del dato del cliente).
+        // Los CECOs de cliente (6 díg) se vinculan a un Servicio (impután coste). Los CECOs ESTRUCTURALES de SIG
+        // (departamentos: 4 díg, sin subcuenta) NO se vinculan a ningún Servicio: una línea de TravelPerk con uno
+        // de ellos es gasto interno de SIG (como el 0423), no un CECO no-maestro. Ficticios; los reales en el seed local.
         var costCenters = new List<CostCenter>
         {
             new() { Codigo = "010101", Nombre = "Operaciones campo" },
             new() { Codigo = "020201", Nombre = "GPV España" },
             new() { Codigo = "030301", Nombre = "GPV Portugal" },
-            new() { Codigo = "040401", Nombre = "Formación" }
+            new() { Codigo = "040401", Nombre = "Formación" },
+            new() { Codigo = "0315", Nombre = "Dirección (interno SIG)" },
+            new() { Codigo = "0316", Nombre = "Comercial (interno SIG)" }
         };
         _db.CostCenters.AddRange(costCenters);
         await _db.SaveChangesAsync(ct);
@@ -294,9 +299,10 @@ public class DataSeeder : ISeedService
                 source = new { type = "Source", entity = "GastosPayHawk", filters = new object[0] }
             }) },
             // Viajes Travel Perk: coste sin IVA de los viajes imputados al Servicio/CECO del cliente (los
-            // "Refund for train" vienen en negativo → netean al sumar). Se asigna a los servicios cuyos viajes
-            // se refacturan/imputan; NO se hardcodea por cliente, se cuelga del Servicio vía ServiceConcept.
-            new() { Nombre = "Viajes Travel Perk", Tipo = TipoConcepto.Pago, ColumnaA3 = "ImporteBruto", FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
+            // "Refund for train" vienen en negativo → netean al sumar). Concepto de FACTURACIÓN (refactura al
+            // cliente): la hoja "Conceptos x Proyecto" del libro de cierres lo marca como Facturación (Granini/JDE).
+            // NO se hardcodea por cliente, se cuelga del Servicio vía ServiceConcept.
+            new() { Nombre = "Viajes Travel Perk", Tipo = TipoConcepto.Factura, FechaDesde = fechaDesde, FormulaJson = JsonSerializer.Serialize(new {
                 type = "Aggregate", op = "Sum", field = "Importe",
                 source = new { type = "Source", entity = "ViajesTravelPerk", filters = new object[0] }
             }) },

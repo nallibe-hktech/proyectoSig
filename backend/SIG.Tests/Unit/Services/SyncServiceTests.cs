@@ -217,6 +217,35 @@ public class SyncServiceTests
     }
 
     [Fact]
+    public async Task SyncAsync_TravelPerk_CecoEstructuralDeSig_EsGastoInterno_NoEsError()
+    {
+        _travelPerkExcel.GetLineasAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            new TravelPerkLineaDto("T1", "Hotels", "0316_COMERCIAL", 80m, null, "EUR", new DateOnly(2026, 5, 10)),
+            new TravelPerkLineaDto("T2", "Flights", "9999_DESCONOCIDO", 50m, null, "EUR", new DateOnly(2026, 5, 11)),
+        });
+        _costCenterRepo.GetCecoToServiceMapAsync(Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<CecoServicio>());
+        _costCenterRepo.GetInternalSigCecoCodesAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { "0315", "0316" });
+        _travelPerkLineaRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        List<StagingTravelPerkLinea>? capturadas = null;
+        await _travelPerkLineaRepo.AddRangeAsync(
+            Arg.Do<IEnumerable<StagingTravelPerkLinea>>(x => capturadas = x.ToList()), Arg.Any<CancellationToken>());
+
+        var sut = CreateSut();
+        await sut.SyncAsync("travelperk", CancellationToken.None);
+
+        var estructural = capturadas!.Single(l => l.TripId == "T1");
+        estructural.ServiceId.Should().BeNull();            // no es de cliente
+        estructural.ErrorProcesamiento.Should().BeNull();   // gasto interno SIG, NO es CECO no-maestro
+
+        var desconocido = capturadas!.Single(l => l.TripId == "T2");
+        desconocido.ErrorProcesamiento.Should().Be(AlertaCodigos.CecoNoMaestro);  // sigue siendo error
+    }
+
+    [Fact]
     public async Task SyncAsync_SyncResult_ContieneExitoYTimestamp()
     {
         _celero.GetVisitasAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())

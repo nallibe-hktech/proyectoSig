@@ -1,7 +1,17 @@
 # Reconciliación CECO ↔ TravelPerk — hallazgos
 
-**Fecha:** 2026-06-23
+**Fecha:** 2026-06-23 · **Actualizado:** 2026-06-25 (SIG confirma la regla + entrega el maestro completo)
 **Origen:** revisión de la documentación del cliente + repo, tras detectar que casi ningún `Cost object` de TravelPerk casaba con el maestro de CECOs.
+
+## ✅ CONFIRMADO POR SIG (2026-06-25)
+
+Las tres preguntas abiertas quedan resueltas por el cliente:
+
+1. **Las 4 cifras de TravelPerk son los 4 primeros dígitos del CECO de 6**, y vale para **todos** los proyectos (ya no solo el caso cruzado). Ej: `0103` → `010301`/`010302`.
+2. **Todas las subcuentas que comparten prefijo son del mismo cliente/proyecto.** Convención de subcuenta: **`01` = PERS. CAMPO**, **`02` = OPERACIONES**. Un mismo prefijo de 4 NUNCA corresponde a clientes distintos ⇒ el prefijo de 4 es suficiente para imputar.
+3. **SIG entregó el listado maestro completo** (6 díg + nombre). Cargado en `backend/seed-cecos-reales.local.sql` (local, no versionado).
+
+Las "inferencias" de la sección de abajo quedan **validadas**; se conservan como histórico. Detalles operativos pendientes (no bloquean la regla) en "Acciones pendientes".
 
 > **Gobierno del dato:** este documento está **anonimizado**. Los nombres reales de cliente y los CECOs reales NO se versionan; viven solo en `backend/seed-cecos-reales.local.sql` (gitignored vía `*.local.sql`). Aquí se usan placeholders (Cliente A, B…) y códigos de ejemplo con el formato real.
 
@@ -44,8 +54,11 @@ El maestro de CECOs del repo (seed) solo tiene códigos de ejemplo, ninguno corr
 
 ## Acciones pendientes
 
-1. **Confirmar con SIG** la regla y la ambigüedad de subcuentas (ver pregunta abajo) y obtener el **listado maestro de CECOs activos (6 díg + cliente)**.
-2. Tras la confirmación: **cargar los CECOs reales ↔ Servicio**. Fuente "viva" definitiva = A3 Innuva (cada contrato trae su Ceco), hoy bloqueado por el 403 de permisos WK y, además, el DTO de nóminas actual **no mapea el campo Ceco**.
+1. ~~Confirmar con SIG la regla y la ambigüedad de subcuentas y obtener el listado maestro.~~ ✅ **HECHO (2026-06-25).**
+2. **Cargar los CECOs reales ↔ Servicio.** ✅ en dev local vía `seed-cecos-reales.local.sql` (catálogo completo). Para prod, la fuente "viva" definitiva = A3 Innuva (cada contrato trae su Ceco), hoy bloqueado por el 403 de permisos WK y porque el DTO de nóminas actual **no mapea el campo Ceco**.
+3. ~~Decidir el trato de los CECOs estructurales/internos de SIG.~~ ✅ **IMPLEMENTADO (2026-06-25).** Los CECOs estructurales (departamentos de SIG, sin Servicio de cliente: Dirección, Comercial, Finanzas, RRHH, BI, Marketing, Admin Temporal) se reconocen como **gasto interno SIG** (igual que el `0423`), no como `CECO_NO_MAESTRO`. Mecánica: el maestro contiene esos CECOs sin vincular a Servicio; `TravelPerkCecoResolver.EsCecoInternoSig` casa por código/prefijo contra ellos (`ICostCenterRepository.GetInternalSigCecoCodesAsync` = CECOs sin Servicio). El dashboard clasifica "Gasto SIG" = `ServiceId == null && ErrorProcesamiento == null`. Suite 468/468 verde.
+4. **Aclarar conflicto de plantillas vs maestro:** las plantillas de Pagos por Proyecto asignaban `010401→JDE`, `010901→MOLINS`, `023301→DAIKIN`, mientras el maestro SIG dice `SALES FORCE`, `SALES TACTICAL`, `NEW BUSINESS SALES SERVICES`. Solo Granini (`010301`) coincide en ambas. ¿Códigos antiguos / otra numeración / clientes movidos?
+5. **Typos en el listado recibido** (a confirmar): la 2ª línea de COTY figura como `010201` (debería ser `010202`) y la 2ª de SALES SERVICES como `023101` (debería ser `023102`); el resto de pares respeta `01`/`02`. El seed local asume la corrección.
 
 ## Pregunta a SIG (solo hechos + lo que pedimos confirmar)
 
