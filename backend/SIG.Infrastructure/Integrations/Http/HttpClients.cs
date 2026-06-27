@@ -1116,15 +1116,34 @@ public class A3InnuvaNominasClient : IA3InnuvaNominasClient
 
                 if (data == null) return Array.Empty<ConceptoDto>();
 
-                return data.Select(c => new ConceptoDto(
-                    c.ConceptCode,
-                    c.Description ?? "",
-                    c.Amount ?? 0m,
-                    c.ConceptType ?? "E",
-                    c.InKind ?? false,
-                    c.Manual ?? false,
-                    c.ConceptCollectionTypeDesc ?? ""
-                )).ToList();
+                return data.Select(c => {
+                    // Mapear tipos Wolters Kluwer a tipos esperados por motor
+                    // API devuelve: "fijo"/"Fijo" (fixed), "variable"/"Variable", "E", "D", etc.
+                    var normalized = c.ConceptType?.ToUpperInvariant() ?? "";
+                    var mappedType = normalized switch
+                    {
+                        // Español (case-insensitive): "FIJO"/"fijo" → percepciones básicas
+                        "FIJO" => "CONCEPTS",
+                        // Español (case-insensitive): "VARIABLE"/"variable" → incentivos
+                        "VARIABLE" => "INCENTIVES",
+                        // Códigos: "E" (earnings/percepciones), "D" (descuentos/deductions)
+                        "E" when c.Description?.Contains("SALARIO", StringComparison.OrdinalIgnoreCase) == true
+                            => "THEORETICAL-GROSS",
+                        "E" => "CONCEPTS",
+                        "D" => "SANCTIONS",
+                        _ => c.ConceptType ?? "CONCEPTS"
+                    };
+
+                    return new ConceptoDto(
+                        c.ConceptCode,
+                        c.Description ?? "",
+                        c.Amount ?? 0m,
+                        mappedType,
+                        c.InKind ?? false,
+                        c.Manual ?? false,
+                        c.ConceptCollectionTypeDesc ?? ""
+                    );
+                }).ToList();
             }
             catch (TaskCanceledException ex) when (attempt < maxRetries)
             {

@@ -108,6 +108,9 @@ public class AppDbContext : DbContext
             }
         }
 
+        // FIX: Explicitly map IRPF entity to correct table name (migration uses 'irp_fs' not 'irpfs')
+        modelBuilder.Entity<StagingA3InnuvaIRPF>().ToTable("staging_a3innuva_irp_fs");
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }

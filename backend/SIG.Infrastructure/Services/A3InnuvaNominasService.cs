@@ -692,6 +692,18 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Carguados {remuneracionData.Count} registros de remuneration para {remuneracionByEmpleado.Count} empleados");
 
+            // Diagnóstico: tipos de remuneración disponibles
+            var tiposRemunUnicos = remuneracionData.Select(r => r.TipoRemuneracion).Distinct().ToList();
+            _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Tipos de remuneration encontrados: {string.Join(", ", tiposRemunUnicos)}");
+
+            // Mostrar primeros 3 empleados en el diccionario para diagnóstico
+            var primeros3 = remuneracionByEmpleado.Take(3).ToList();
+            foreach (var kvp in primeros3)
+            {
+                var suma = kvp.Value.Sum(r => r.Importe);
+                _logger.LogInformation($"[A3InnuvaNominas-PHASE2] DIAG: Empleado {kvp.Key} tiene {kvp.Value.Count} registros, suma={suma:F2}");
+            }
+
             _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Calculando nóminas para {empleados.Count} empleados...");
 
             int nominasCalculadas = 0;
@@ -713,13 +725,22 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                     _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Empleado={codigoEmpleado} ({empleado.Nombre}): Remuneración registros={remuneracionEmpleado.Count}");
 
                     // Percepciones: THEORETICAL-GROSS + EXTRAPAYMENTS + INCENTIVES (desde remuneration)
-                    var percepciones = remuneracionEmpleado
+                    var percepcionesDetails = remuneracionEmpleado
                         .Where(r => r.TipoRemuneracion == "THEORETICAL-GROSS" ||
                                    r.TipoRemuneracion == "EXTRAPAYMENTS" ||
                                    r.TipoRemuneracion == "INCENTIVES" ||
                                    r.TipoRemuneracion == "CONCEPTS" ||
                                    r.TipoRemuneracion?.Contains("EXTRA", StringComparison.OrdinalIgnoreCase) == true)
-                        .Sum(r => r.Importe);
+                        .ToList();
+
+                    var percepciones = percepcionesDetails.Sum(r => r.Importe);
+
+                    if (percepcionesDetails.Count > 0)
+                    {
+                        var detailsStr = string.Join(" | ", percepcionesDetails.Select(r =>
+                            $"{r.TipoRemuneracion}({r.Concepto})={r.Importe:F2}"));
+                        _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Empleado {codigoEmpleado}: Percepciones detalles: {detailsStr}");
+                    }
 
                     // Reembolsos PayHawk (percepciones extrasalariales) - por NIF del empleado
                     var reembolsosPayhawk = !string.IsNullOrEmpty(nif) && gastosByNif.ContainsKey(nif)
