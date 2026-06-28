@@ -86,7 +86,6 @@ export class ShellComponent implements OnInit {
     { label: 'Conceptos', route: '/concepts', icon: 'calculate', testId: 'nav-concepts' },
     { label: 'Periodos', route: '/periods', icon: 'calendar_month', testId: 'nav-periods' },
     { label: 'Aprobaciones', route: '/approvals', icon: 'approval', testId: 'nav-approvals' },
-    { label: 'Contabilidad', route: '/a3-erp', icon: 'account_balance', testId: 'nav-contabilidad', roles: ['Administrator', 'Fico'] },
   ];
 
   private readonly allAdminNav: NavItem[] = [
@@ -94,6 +93,7 @@ export class ShellComponent implements OnInit {
     { label: 'Roles', route: '/roles', icon: 'verified_user', testId: 'nav-roles', roles: ['Administrator', 'Auditor'] },
     { label: 'CECOs', route: '/cost-centers', icon: 'account_tree', testId: 'nav-cost-centers', roles: ['Administrator'] },
     { label: 'Departamentos', route: '/departments', icon: 'corporate_fare', testId: 'nav-departments', roles: ['Administrator'] },
+    { label: 'Contabilidad', route: '/a3-erp', icon: 'account_balance', testId: 'nav-contabilidad', roles: ['Administrator', 'Fico'] },
     { label: 'Auditoría', route: '/audit', icon: 'history', testId: 'nav-audit', roles: ['Administrator', 'Auditor'] },
   ];
 
@@ -119,8 +119,8 @@ export class ShellComponent implements OnInit {
     { label: 'Bizneo', route: '/bizneo', icon: 'people', testId: 'nav-bizneo', roles: ['Administrator'] },
     { label: 'Intratime', route: '/intratime', icon: 'schedule', testId: 'nav-intratime', roles: ['Administrator'] },
     { label: 'PayHawk', route: '/payhawk', icon: 'receipt_long', testId: 'nav-payhawk', roles: ['Administrator', 'Fico'] },
+    { label: 'SGPV', route: '/sgpv', icon: 'location_on', testId: 'nav-sgpv', roles: ['Administrator'] },
     { label: 'Travel Perk', route: '/travelperk', icon: 'flight_takeoff', testId: 'nav-travelperk', roles: ['Administrator', 'Fico'] },
-    { label: 'A3 ERP', route: '/a3-erp', icon: 'account_balance', testId: 'nav-a3-erp', roles: ['Administrator', 'Fico'] },
     { label: 'A3 INNUVA Nóminas', route: '/a3-innuva', icon: 'download', testId: 'nav-a3-innuva', roles: ['Administrator'] },
   ];
 

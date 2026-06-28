@@ -144,6 +144,9 @@ export const routes: Routes = [
       // PayHawk — Gestión de Gastos
       { path: 'payhawk', loadComponent: () => import('./features/payhawk/components/payhawk-dashboard.component').then((m) => m.PayHawkDashboardComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Fico'] }, title: 'PayHawk Gastos — SIG' },
 
+      // SGPV — Visitas en campo
+      { path: 'sgpv', loadComponent: () => import('./features/sgpv/components/sgpv-dashboard.component').then((m) => m.SgpvDashboardComponent), canActivate: [roleGuard], data: { roles: ['Administrator'] }, title: 'SGPV — SIG' },
+
       // Travel Perk — Costes de viaje (imputación al cierre)
       { path: 'travelperk', loadComponent: () => import('./features/travelperk/components/travelperk-dashboard.component').then((m) => m.TravelPerkDashboardComponent), canActivate: [roleGuard], data: { roles: ['Administrator', 'Fico'] }, title: 'Viajes Travel Perk — SIG' },
 

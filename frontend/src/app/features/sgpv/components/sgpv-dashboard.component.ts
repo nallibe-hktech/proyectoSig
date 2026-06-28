@@ -335,6 +335,9 @@ export class SgpvDashboardComponent implements OnInit {
     this.activeTab.set(index);
   }
 
+  // NOTE: Visitas tab is ready for data. Currently returns empty from API,
+  // but tab structure is complete. When new SGPV endpoint is available,
+  // update HttpClients.cs GetVisitasAsync() and this will automatically work.
   protected onSearchVisitas(event: Event): void {
     const target = event.target as HTMLInputElement;
     this.visitasSearchSubject.next(target.value);

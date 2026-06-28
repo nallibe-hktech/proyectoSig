@@ -12,7 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialogModule } from '@angular/material/dialog';
 import { ConceptService } from '../../core/api/concepts.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ConceptListItemDto } from '../../models/dtos';
@@ -20,7 +20,6 @@ import { TipoConcepto } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
-import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { NotifyService } from '../../core/notify.service';
 import { exportCSV } from '../../core/api/api.helpers';
 
@@ -30,7 +29,7 @@ import { exportCSV } from '../../core/api/api.helpers';
   imports: [
     CommonModule, DatePipe, RouterLink, ReactiveFormsModule,
     MatCardModule, MatTableModule, MatButtonModule, MatIconModule, MatChipsModule,
-    MatFormFieldModule, MatInputModule, MatPaginatorModule, MatSelectModule, MatDialogModule,
+    MatFormFieldModule, MatInputModule, MatPaginatorModule, MatSelectModule,
     BreadcrumbsComponent, SkeletonComponent, EmptyStateComponent,
   ],
   template: `
@@ -38,10 +37,16 @@ import { exportCSV } from '../../core/api/api.helpers';
       <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Conceptos' }]" />
       <div class="sig-page__header">
         <h1 class="sig-page__title">Conceptos</h1>
-        @if (isAdmin()) {
-          <a mat-flat-button color="primary" routerLink="/concepts/nuevo" data-testid="btn-nuevo"><mat-icon>add</mat-icon> Nuevo Concepto</a>
-        }
+        <!-- Edición de conceptos ahora centralizada en Config Factura y Config Presupuesto -->
       </div>
+      <mat-card style="margin-bottom: 16px;"><mat-card-content>
+        <mat-icon style="vertical-align: middle; margin-right: 6px; color: var(--sig-warn);">info</mat-icon>
+        <span style="color: var(--sig-text-muted);">
+          <strong>Panel de lectura.</strong> Para crear, editar o eliminar conceptos, utiliza:
+          <strong>Configuración de Factura</strong> (para conceptos tipo Factura) o
+          <strong>Configuración de Presupuesto</strong> (para conceptos tipo Pago).
+        </span>
+      </mat-card-content></mat-card>
       <mat-card>
         <mat-card-content>
           <div class="sig-table-toolbar">
@@ -79,10 +84,8 @@ import { exportCSV } from '../../core/api/api.helpers';
                       <th mat-header-cell *matHeaderCellDef style="text-align: right;">ACCIONES</th>
                       <td mat-cell *matCellDef="let row">
                         <div class="sig-table-actions">
-                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Editar fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
-                          <a mat-icon-button [routerLink]="['/concepts', row.id]" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>visibility</mat-icon></a>
-                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'editar']" [attr.data-testid]="'btn-editar-' + row.id" aria-label="Editar"><mat-icon>edit</mat-icon></a>
-                          <button mat-icon-button (click)="onDelete(row)" [attr.data-testid]="'btn-eliminar-' + row.id" aria-label="Eliminar"><mat-icon>delete</mat-icon></button>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Ver fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id]" matTooltip="Ver detalles" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>visibility</mat-icon></a>
                         </div>
                       </td>
                     </ng-container>
@@ -107,10 +110,8 @@ import { exportCSV } from '../../core/api/api.helpers';
                       <th mat-header-cell *matHeaderCellDef style="text-align: right;">ACCIONES</th>
                       <td mat-cell *matCellDef="let row">
                         <div class="sig-table-actions">
-                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Editar fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
-                          <a mat-icon-button [routerLink]="['/concepts', row.id]" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>visibility</mat-icon></a>
-                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'editar']" [attr.data-testid]="'btn-editar-' + row.id" aria-label="Editar"><mat-icon>edit</mat-icon></a>
-                          <button mat-icon-button (click)="onDelete(row)" [attr.data-testid]="'btn-eliminar-' + row.id" aria-label="Eliminar"><mat-icon>delete</mat-icon></button>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Ver fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id]" matTooltip="Ver detalles" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>visibility</mat-icon></a>
                         </div>
                       </td>
                     </ng-container>
@@ -146,10 +147,7 @@ import { exportCSV } from '../../core/api/api.helpers';
 })
 export class ConceptsListComponent implements OnInit {
   private readonly conceptSvc = inject(ConceptService);
-  private readonly auth = inject(AuthService);
-  private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotifyService);
-  private readonly router = inject(Router);
 
   protected readonly items = signal<ConceptListItemDto[]>([]);
   protected readonly total = signal(0);
@@ -160,9 +158,6 @@ export class ConceptsListComponent implements OnInit {
   protected readonly tipoFilter = new FormControl<TipoConcepto | null>(null);
   protected readonly tipoFilterValue = signal<TipoConcepto | null>(null);
   protected readonly cols = ['nombre', 'tipo', 'desde', 'hasta', 'acciones'];
-
-  // Alta de conceptos solo para Administrator (alineado con el backend ConceptsController).
-  protected readonly isAdmin = signal(this.auth.hasRole('Administrator'));
 
   protected readonly pagos = computed(() => this.items().filter((c) => c.tipo === 'Pago'));
   protected readonly facturas = computed(() => this.items().filter((c) => c.tipo === 'Factura'));
@@ -177,15 +172,6 @@ export class ConceptsListComponent implements OnInit {
   protected onPage(e: PageEvent): void { this.pageSize.set(e.pageSize); this.page.set(e.pageIndex + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); this.load(); }
   protected onEmptyCta(): void {
     if (this.search.value || this.tipoFilter.value) { this.search.setValue(''); this.tipoFilter.setValue(null); }
-    else { void this.router.navigate(['/concepts/nuevo']); }
-  }
-  protected onDelete(row: ConceptListItemDto): void {
-    this.dialog.open(ConfirmDialogComponent, {
-      data: { title: 'Eliminar Concept', message: 'Acción irreversible.', entityName: row.nombre, destructive: true }, minWidth: 480,
-    }).afterClosed().subscribe((ok) => {
-      if (!ok) return;
-      this.conceptSvc.delete(row.id).subscribe({ next: () => { this.notify.success('Concept eliminado'); this.load(); }, error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo eliminar') });
-    });
   }
   protected onExportCSV(): void { exportCSV('concepts.csv', this.items().map((c) => ({ Id: c.id, Nombre: c.nombre, Tipo: c.tipo, Desde: c.fechaDesde, Hasta: c.fechaHasta ?? '' }))); }
   private load(): void {

@@ -669,8 +669,17 @@ public class SgpvClient : ISgpvClient
     {
         try
         {
+            // NOTE: SGPV API ExportData.php currently only returns ET_Referencias (products).
+            // Currently returns empty. When SGPV provides visitas endpoint, change here:
+            // - Update endpoint URL (line below)
+            // - Update response parsing to extract visita array from JSON
+            // - No frontend/sync code changes needed — just update this method
+
             _logger?.LogInformation($"[SGPV] GET visitas desde {desde:yyyy-MM-dd} hasta {hasta:yyyy-MM-dd}");
             var auth = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{_username}:{_password}"));
+
+            // TODO: Replace "ExportData.php?start={depuis:yyyy-MM-dd}&end={hasta:yyyy-MM-dd}"
+            // with correct visitas endpoint when available (e.g., "ExportVisitas.php" or parameter)
             var request = new HttpRequestMessage(HttpMethod.Get, $"ExportData.php?start={desde:yyyy-MM-dd}&end={hasta:yyyy-MM-dd}");
             request.Headers.Add("Authorization", $"Basic {auth}");
 
