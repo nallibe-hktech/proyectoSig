@@ -540,10 +540,9 @@ public class PayHawkClient : IPayHawkClient
                 })
                 .Select(g =>
                 {
-                    // ExternalId puede ser "44175805G" (NIF) — extraer solo números
-                    var externalIdStr = g.CreatedBy?.ExternalId ?? "";
-                    var numericExternalId = new string(externalIdStr.Where(char.IsDigit).ToArray());
-                    var uid = int.TryParse(numericExternalId, out var uidVal) ? uidVal : 0;
+                    // ExternalId en PayHawk es el NIF/NIE del empleado (ej: "44175805G", "X9208934X").
+                    // NO se stripea: se usa directamente para cruzar contra el master de NIFs.
+                    var nif = g.CreatedBy?.ExternalId ?? "";
 
                     var pid = int.TryParse(g.Reconciliation?.CustomFields
                         ?.FirstOrDefault(cf => cf.Id == "proyecto_37e79a")
@@ -551,14 +550,14 @@ public class PayHawkClient : IPayHawkClient
 
                     return new PayHawkGastoDto(
                         g.Id,
-                        uid,
+                        nif,
                         pid,
                         DateOnly.FromDateTime(DateTime.Parse(g.CreatedAt)),
                         g.Reconciliation?.TotalAmount ?? 0,
                         g.Category?.Name ?? "Otros"
                     );
                 })
-                .Where(g => g.UserId > 0 && g.ServiceId > 0)
+                .Where(g => !string.IsNullOrEmpty(g.NIF))   // solo gastos con empleado identificable
                 .ToList();
 
             _logger.LogInformation($"[PayHawk] Después de filtrar: {gastos.Count} gastos válidos (de {count})");

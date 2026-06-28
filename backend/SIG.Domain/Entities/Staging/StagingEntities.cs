@@ -84,7 +84,10 @@ public class StagingPayHawkGasto : IStagingRow
 {
     public int Id { get; set; }
     public string GastoIdExterno { get; set; } = null!;
-    public int UserId { get; set; }
+    /// <summary>NIF/NIE del empleado tal como lo devuelve PayHawk en ExternalId (ej: "44175805G", "X9208934X").</summary>
+    public string? NIF { get; set; }
+    /// <summary>Id interno SIG-ES — nullable; se resuelve via NIF si está disponible.</summary>
+    public int? UserId { get; set; }
     public int? ServiceId { get; set; }
     public DateOnly Fecha { get; set; }
     public decimal Importe { get; set; }

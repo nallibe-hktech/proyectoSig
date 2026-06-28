@@ -493,7 +493,10 @@ public class SyncService : ISyncService
                     if (await _gastoRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
                     await _gastoRepo.AddRangeAsync(new[] { new StagingPayHawkGasto
                     {
-                        GastoIdExterno = g.GastoIdExterno, UserId = g.UserId, ServiceId = g.ServiceId,
+                        GastoIdExterno = g.GastoIdExterno,
+                        NIF = string.IsNullOrEmpty(g.NIF) ? null : g.NIF.Trim().ToUpperInvariant(),
+                        UserId = null,          // se resuelve a posteriori via NIF si es necesario
+                        ServiceId = g.ServiceId == 0 ? null : g.ServiceId,
                         Fecha = g.Fecha, Importe = g.Importe, Categoria = g.Categoria,
                         PayloadJson = json, Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false

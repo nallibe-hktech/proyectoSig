@@ -493,6 +493,8 @@ public class StagingPayHawkGastoConfiguration : IEntityTypeConfiguration<Staging
         b.HasIndex(s => s.Hash).IsUnique();
         b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
         b.Property(s => s.GastoIdExterno).HasMaxLength(255).IsRequired();
+        b.Property(s => s.NIF).HasMaxLength(20);
+        b.HasIndex(s => s.NIF).HasDatabaseName("ix_staging_pay_hawk_gastos_nif");
         b.Property(s => s.Importe).HasPrecision(18, 4);
         b.Property(s => s.Categoria).HasMaxLength(100).IsRequired();
         b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();

@@ -95,7 +95,7 @@ public class SyncServiceTests
         _payhawk.GetGastosAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
-                new PayHawkGastoDto("g1", 1, 100, new DateOnly(2026, 3, 1), 50m, "viaje"),
+                new PayHawkGastoDto("g1", "44175805G", 100, new DateOnly(2026, 3, 1), 50m, "viaje"),
             });
         _gastoRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
 

@@ -151,10 +151,10 @@ public class ClosureValidationService : IClosureValidationService
             });
         }
 
-        // PayHawk: gastos con UserId == null
+        // PayHawk: gastos sin NIF identificable (empleado no identificado)
         var payhawkSinMapeo = await _db.StagingPayHawkGastos.AsNoTracking()
-            .Where(g => g.ServiceId == serviceId && g.Fecha >= DateOnly.FromDateTime(desde) && g.Fecha <= DateOnly.FromDateTime(hasta) && g.UserId == null)
-            .Select(g => g.UserId) // no hay NIF directo en PayHawk, usamos User lookup
+            .Where(g => g.ServiceId == serviceId && g.Fecha >= DateOnly.FromDateTime(desde) && g.Fecha <= DateOnly.FromDateTime(hasta) && string.IsNullOrEmpty(g.NIF))
+            .Select(g => g.GastoIdExterno)
             .ToListAsync(ct);
 
         return alertas;

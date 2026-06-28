@@ -602,25 +602,20 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             var tiposUnicos = conceptos.Select(c => c.TipoConcepto).Distinct().ToList();
             _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Tipos de concepto encontrados: {string.Join(", ", tiposUnicos)}");
 
-            // 4. Cargar gastos PayHawk del período + join con User para obtener NIF
+            // 4. Cargar gastos PayHawk del período — NIF ya viene en la entidad (ExternalId de PayHawk)
             var payhawkGastos = await _db.StagingPayHawkGastos
-                .Where(g => g.Fecha >= period.FechaInicio && g.Fecha <= period.FechaFin)
-                .Join(
-                    _db.Users.AsNoTracking(),
-                    g => g.UserId,
-                    u => u.Id,
-                    (g, u) => new { Gasto = g, NIF = u.NIF })
+                .Where(g => g.Fecha >= period.FechaInicio && g.Fecha <= period.FechaFin && !string.IsNullOrEmpty(g.NIF))
                 .AsNoTracking()
                 .ToListAsync(ct);
 
-            _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Carguados {payhawkGastos.Count} gastos PayHawk");
+            _logger.LogInformation($"[A3InnuvaNominas-PHASE2] Cargados {payhawkGastos.Count} gastos PayHawk con NIF");
 
             // 5. Preparar gastos PayHawk por NIF
             var gastosByNif = payhawkGastos
-                .GroupBy(x => x.NIF ?? "")
+                .GroupBy(g => g.NIF!, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(
-                    g => g.Key,
-                    g => g.Sum(x => x.Gasto.Importe),
+                    grp => grp.Key,
+                    grp => grp.Sum(x => x.Importe),
                     StringComparer.OrdinalIgnoreCase);
 
             // 5b. Cargar IRPF (descuentos fiscales)
@@ -1837,54 +1832,48 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             _logger.LogInformation($"[A3InnuvaNominas] Rango período: {fechaInicio} a {fechaFin}");
 
             // 3. Cargar gastos PayHawk del período (KM + SUPLIDOS)
-            // Cargar empleados de Intratime para resolver NIF de PayHawk (que tiene UserId, no NIF directo)
-            var intratimeEmpleados = await _db.StagingIntratimeEmpleados
-                .AsNoTracking()
-                .ToListAsync(ct);
-
-            var intratimeByUserId = intratimeEmpleados
-                .Where(i => i.UserId.HasValue && !string.IsNullOrEmpty(i.NIF))
-                .ToDictionary(i => i.UserId!.Value, i => i.NIF);
-
+            // PayHawk almacena el NIF directamente en StagingPayHawkGasto.NIF — no se necesita Intratime
             var gastos = await _db.StagingPayHawkGastos
-                .Where(g => g.Fecha >= fechaInicio && g.Fecha <= fechaFin)
+                .Where(g => g.Fecha >= fechaInicio && g.Fecha <= fechaFin && !string.IsNullOrEmpty(g.NIF))
                 .AsNoTracking()
                 .ToListAsync(ct);
 
-            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastos.Count} gastos PayHawk");
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastos.Count} gastos PayHawk con NIF");
 
-            // Map: NIF → List<gasto> (mapeo por NIF, no UserId)
-            var gastosByNif = new Dictionary<string, List<StagingPayHawkGasto>>(StringComparer.OrdinalIgnoreCase);
+            // Map: NIF → List<gasto> (NIF ya viene normalizado en mayúsculas desde el sync)
+            var gastosByNif = gastos
+                .GroupBy(g => g.NIF!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(grp => grp.Key, grp => grp.ToList(), StringComparer.OrdinalIgnoreCase);
 
-            foreach (var gasto in gastos)
-            {
-                // Resolver NIF desde PayHawk.UserId via Intratime
-                if (intratimeByUserId.TryGetValue(gasto.UserId, out var nif))
-                {
-                    if (!gastosByNif.ContainsKey(nif))
-                    {
-                        gastosByNif[nif] = new List<StagingPayHawkGasto>();
-                    }
-                    gastosByNif[nif].Add(gasto);
-                }
-            }
+            _logger.LogInformation($"[A3InnuvaNominas] {gastosByNif.Count} NIFs únicos con gastos PayHawk");
 
-            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastosByNif.Count} NIFs únicos con gastos PayHawk");
-
-            // 3b. Cargar ausencias Bizneo por NIF (para descuentos absentismo)
+            // 3b. Cargar ausencias Bizneo por NIF
+            // Bizneo API no expone NIF directamente. El chain de resolución es:
+            //   ausencia.UserId (Bizneo user ID int)
+            //   → bizneoEmpleado where EmpleadoIdExterno == userId.ToString() → Email
+            //   → Users where Email == bizneoEmpleado.Email → NIF
             var ausenciasByNif = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
 
             if (empleados.Count > 0)
             {
-                // Cargar empleados Bizneo para resolver NIF desde UserId
                 var bizneoEmpleados = await _db.StagingBizneoEmpleados
                     .AsNoTracking()
                     .ToListAsync(ct);
 
-                // Crear diccionario por EmpleadoIdExterno (más eficiente que FirstOrDefault en el loop)
-                var bizneoByEmpleadoId = bizneoEmpleados
-                    .Where(b => !string.IsNullOrEmpty(b.NIF))
-                    .ToDictionary(b => b.EmpleadoIdExterno, b => b.NIF, StringComparer.OrdinalIgnoreCase);
+                // Paso 1: bizneoUserId (int) → email
+                var bizneoEmailByUserId = bizneoEmpleados
+                    .Where(b => !string.IsNullOrEmpty(b.EmpleadoIdExterno) && !string.IsNullOrEmpty(b.Email)
+                                && int.TryParse(b.EmpleadoIdExterno, out _))
+                    .ToDictionary(
+                        b => int.Parse(b.EmpleadoIdExterno),
+                        b => b.Email!.Trim().ToLowerInvariant(),
+                        EqualityComparer<int>.Default);
+
+                // Paso 2: email → NIF (desde tabla principal Users)
+                var emails = bizneoEmailByUserId.Values.Distinct().ToList();
+                var userNifByEmail = await _db.Users.AsNoTracking()
+                    .Where(u => !u.IsDeleted && emails.Contains(u.Email.ToLower()))
+                    .ToDictionaryAsync(u => u.Email.Trim().ToLowerInvariant(), u => u.NIF, StringComparer.OrdinalIgnoreCase, ct);
 
                 var ausencias = await _db.StagingBizneoAbsences
                     .Where(a => a.Fecha >= fechaInicio && a.Fecha <= fechaFin)
@@ -1893,22 +1882,22 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
                 _logger.LogInformation($"[A3InnuvaNominas] Cargadas {ausencias.Count} ausencias Bizneo del período");
 
-                // Map: NIF → Horas totales de ausencias del período
+                // Map: NIF → Horas totales del período
                 foreach (var ausencia in ausencias)
                 {
-                    // Resolver NIF desde diccionario (O(1) en lugar de O(n))
-                    if (bizneoByEmpleadoId.TryGetValue(ausencia.RegistroIdExterno, out var nif) && !string.IsNullOrEmpty(nif))
-                    {
-                        if (!ausenciasByNif.ContainsKey(nif))
-                        {
-                            ausenciasByNif[nif] = 0m;
-                        }
-                        ausenciasByNif[nif] += ausencia.Horas;
-                    }
+                    if (!bizneoEmailByUserId.TryGetValue(ausencia.UserId, out var email)) continue;
+                    if (!userNifByEmail.TryGetValue(email, out var nif) || string.IsNullOrEmpty(nif)) continue;
+                    ausenciasByNif.TryAdd(nif, 0m);
+                    ausenciasByNif[nif] += ausencia.Horas;
                 }
 
-                _logger.LogInformation($"[A3InnuvaNominas] Cargadas {ausenciasByNif.Count} NIFs únicos con ausencias");
+                _logger.LogInformation($"[A3InnuvaNominas] {ausenciasByNif.Count} NIFs únicos con ausencias");
             }
+
+            // 3c — carga empleados Intratime para mapear fichajes (UserIdExterno → NIF)
+            var intratimeEmpleados = await _db.StagingIntratimeEmpleados
+                .AsNoTracking()
+                .ToListAsync(ct);
 
             // 3c. Cargar fichajes Intratime del período por NIF
             // Necesitamos resolver NIF desde UserIdExterno

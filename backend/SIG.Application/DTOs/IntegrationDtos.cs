@@ -38,7 +38,9 @@ public record IntratimeClockingRequestDto(
     string? HoraDesde,              // REQUESTED_TIME_FROM
     string? HoraHasta               // REQUESTED_TIME_TO
 );
-public record PayHawkGastoDto(string GastoIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Importe, string Categoria);
+/// <param name="NIF">NIF/NIE del empleado tal como viene de PayHawk (ExternalId). Nunca se stripea ni convierte.</param>
+/// <param name="ServiceId">Id interno SIG-ES del servicio/proyecto. Puede ser 0 si no resuelve.</param>
+public record PayHawkGastoDto(string GastoIdExterno, string NIF, int ServiceId, DateOnly Fecha, decimal Importe, string Categoria);
 public record SgpvVisitaDto(
     string VisitaIdExterno,
     string ResourceNif,

@@ -4279,11 +4279,16 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("payload_json");
 
+                    b.Property<string>("NIF")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("nif");
+
                     b.Property<int?>("ServiceId")
                         .HasColumnType("integer")
                         .HasColumnName("service_id");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("integer")
                         .HasColumnName("user_id");
 
@@ -4293,6 +4298,9 @@ namespace SIG.Infrastructure.Migrations
                     b.HasIndex("Hash")
                         .IsUnique()
                         .HasDatabaseName("ix_staging_pay_hawk_gastos_hash");
+
+                    b.HasIndex("NIF")
+                        .HasDatabaseName("ix_staging_pay_hawk_gastos_nif");
 
                     b.ToTable("staging_pay_hawk_gastos", (string)null);
                 });

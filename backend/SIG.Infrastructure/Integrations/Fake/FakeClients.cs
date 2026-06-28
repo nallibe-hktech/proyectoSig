@@ -237,15 +237,22 @@ public class PayHawkFakeClient : IPayHawkClient
 {
     public Task<IReadOnlyList<PayHawkGastoDto>> GetGastosAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
+        // NIF sintético para datos fake: letra inicial + 8 dígitos + letra final
+        var nifLetras = "TRWAGMYFPDXBNJZSQVHLCKET";
         var faker = new Faker<PayHawkGastoDto>()
-            .CustomInstantiator(f => new PayHawkGastoDto(
-                $"GH-{f.Random.AlphaNumeric(8).ToUpper()}",
-                f.Random.Int(1, 15),
-                f.Random.Int(1, 8),
-                DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue))),
-                Math.Round(f.Random.Decimal(10, 500), 2),
-                f.PickRandom("Viajes", "Material", "Restauración", "Combustible", "Alojamiento")
-            ));
+            .CustomInstantiator(f =>
+            {
+                var num = f.Random.Int(10000000, 99999999);
+                var nif = $"{num}{nifLetras[num % 23]}";
+                return new PayHawkGastoDto(
+                    $"GH-{f.Random.AlphaNumeric(8).ToUpper()}",
+                    nif,
+                    f.Random.Int(1, 8),
+                    DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue))),
+                    Math.Round(f.Random.Decimal(10, 500), 2),
+                    f.PickRandom("Viajes", "Material", "Restauración", "Combustible", "Alojamiento")
+                );
+            });
         var list = faker.Generate(40);
         return Task.FromResult<IReadOnlyList<PayHawkGastoDto>>(list);
     }

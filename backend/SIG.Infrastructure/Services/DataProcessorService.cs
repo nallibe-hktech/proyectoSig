@@ -263,9 +263,9 @@ public class DataProcessorService : IDataProcessorService
             a.FlagProcesado = true;
         }
 
-        // Procesar gastos PayHawk
+        // Procesar gastos PayHawk — UserId ahora nullable; se filtra por NIF disponible
         var gastosPendientes = await _db.StagingPayHawkGastos
-            .Where(x => !x.FlagProcesado && x.UserId > 0 && x.ServiceId > 0)
+            .Where(x => !x.FlagProcesado && !string.IsNullOrEmpty(x.NIF) && x.ServiceId > 0)
             .ToListAsync(ct);
 
         foreach (var g in gastosPendientes)
