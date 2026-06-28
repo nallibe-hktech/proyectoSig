@@ -35,8 +35,11 @@ import { NotifyService } from '../../core/notify.service';
       <div class="sig-page__header">
         <h1 class="sig-page__title">{{ client()?.nombre ?? 'Cargando...' }}</h1>
         @if (client()) {
-          <div style="display: flex; gap: 8px;">
-            <a mat-flat-button color="primary" [routerLink]="['/clients', client()!.id, 'editar']" data-testid="btn-editar">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a mat-flat-button color="primary" [routerLink]="['/clients', client()!.id, 'plantillas']" data-testid="btn-customizacion">
+              <mat-icon>tune</mat-icon> Customización
+            </a>
+            <a mat-stroked-button [routerLink]="['/clients', client()!.id, 'editar']" data-testid="btn-editar">
               <mat-icon>edit</mat-icon> Editar
             </a>
             <button mat-stroked-button color="warn" (click)="onDelete()" data-testid="btn-eliminar">

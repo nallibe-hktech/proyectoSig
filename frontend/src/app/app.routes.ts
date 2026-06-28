@@ -46,6 +46,7 @@ export const routes: Routes = [
       { path: 'clients/nuevo', loadComponent: () => import('./features/clients/client-form.component').then((m) => m.ClientFormComponent), title: 'Nuevo Client — SIG' },
       { path: 'clients/:id', loadComponent: () => import('./features/clients/client-detail.component').then((m) => m.ClientDetailComponent), title: 'Detalle Client — SIG' },
       { path: 'clients/:id/editar', loadComponent: () => import('./features/clients/client-form.component').then((m) => m.ClientFormComponent), title: 'Editar Client — SIG' },
+      { path: 'clients/:clientId/plantillas', loadComponent: () => import('./features/clients/plantilla-cliente-editor.component').then((m) => m.PlantillaClienteEditorComponent), title: 'Customización de Cliente — SIG' },
 
       // Incidencias (prototipo: pantalla de 1er nivel — listado global + alta + histórico)
       { path: 'incidencias', loadComponent: () => import('./features/incidencias/incidencias-list.component').then((m) => m.IncidenciasListComponent), title: 'Incidencias — SIG' },
