@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IServiceRepository, ServiceRepository>();
         services.AddScoped<IConceptRepository, ConceptRepository>();
         services.AddScoped<IVariableRepository, VariableRepository>();
+        services.AddScoped<IPlantillaClienteConceptoRepository, PlantillaClienteConceptoRepository>();
         services.AddScoped<IPeriodRepository, PeriodRepository>();
         services.AddScoped<ICierreCostesRepository, CierreCostesRepository>();
         services.AddScoped<ICierreFacturacionRepository, CierreFacturacionRepository>();
@@ -64,6 +65,8 @@ public static class DependencyInjection
         services.AddScoped<ICeleroMappingRepository, CeleroMappingRepository>();
         services.AddScoped<ITarifaServicioRepository, TarifaServicioRepository>();
         services.AddScoped<IPresupuestoServicioRepository, PresupuestoServicioRepository>();
+        services.AddScoped<ITarifaConceptoRepository, TarifaConceptoRepository>();
+        services.AddScoped<IPresupuestoConceptoRepository, PresupuestoConceptoRepository>();
         services.AddScoped<IClienteIncidenciaRepository, ClienteIncidenciaRepository>();
         services.AddScoped<ICategoriaFacturaRepository, CategoriaFacturaRepository>();
         services.AddScoped<IPartidaPresupuestoRepository, PartidaPresupuestoRepository>();
@@ -81,6 +84,7 @@ public static class DependencyInjection
         services.AddScoped<IServiceService, ServiceService>();
         services.AddScoped<IConceptService, ConceptService>();
         services.AddScoped<IVariableService, VariableService>();
+        services.AddScoped<IPlantillaClienteConceptoService, PlantillaClienteConceptoService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IDepartmentService, DepartmentService>();
@@ -88,6 +92,8 @@ public static class DependencyInjection
         services.AddScoped<IPeriodService, PeriodService>();
         services.AddScoped<ITarifaServicioService, TarifaServicioService>();
         services.AddScoped<IPresupuestoServicioService, PresupuestoServicioService>();
+        services.AddScoped<ITarifaConceptoService, TarifaConceptoService>();
+        services.AddScoped<IPresupuestoConceptoService, PresupuestoConceptoService>();
         services.AddScoped<IClienteIncidenciaService, ClienteIncidenciaService>();
         services.AddScoped<ICategoriaFacturaService, CategoriaFacturaService>();
         services.AddScoped<IConfigPresupuestoService, ConfigPresupuestoService>();

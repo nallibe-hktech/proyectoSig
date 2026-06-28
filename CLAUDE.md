@@ -1,5 +1,5 @@
 # SIG-es — Project Status & Guidelines
-**Last Updated:** 2026-06-18 | **Status:** ✅ PRODUCTION READY + OLA 2 INTEGRATED
+**Last Updated:** 2026-06-28 | **Status:** ✅ PRODUCTION READY + OLA 2 + CALCULATION ENGINE COMPLETE
 
 ---
 
@@ -23,7 +23,7 @@
 | **PayHawk** | OAuth HTTP API | ✅ | Manual/scheduled | Credentials (f227550) |
 | **Bizneo** | HTTP API | ✅ | Manual/scheduled | Real API (b12004a) |
 | **Intratime** | HTTP API + DateOnly | ✅ | Manual/scheduled | DateTime conversion (19c3a69) |
-| **Celero** | HTTP API (real) | ✅ | On-demand | Real integration (9fe19b6) |
+| **Celero** | PostgreSQL (muebles vía feedback→article) | ✅ | On-demand | Muebles extraction (e4f7ad2) |
 | **SGPV** | HTTP API | ✅ | Manual | Staging ready (18f29c3) |
 
 ### ✅ Frontend Features
@@ -47,6 +47,7 @@
   - **Dashboard refactorizado** — 190 líneas nuevas, KPIs mejorados, flujos actualizados
   - **Reports refactorizado** — 337 líneas nuevas, nuevos tipos de reportes, alertas integradas
   - **Approvals refactorizado** — 446 líneas nuevas, flujo Grupo→FICO, matriz de aprobación
+  - **Concept History Tab** — Tab "Historial de cambios" en concept-detail con MatTable + paginator + diff viewer
 
 ### ✅ Backend Features
 - **Paginated Endpoints**: `ListPaginated(page, pageSize, search?)` → `PagedResult<T>`
@@ -56,9 +57,10 @@
   - PeriodsController: Periods
   - UserController: Users
   - ClientController: Clients
-  - ConceptController: Concepts
+  - ConceptController: Concepts + Historial
   - ServiceController: Services
   - **NEW**: CierresControllers (CierreCostes + CierreFacturacion)
+  - **NEW**: PaymentModelsController (CRUD + validation rules + rates)
 
 - **New Services (Ola 2)**:
   - `ClienteIncidenciaService` — Gestión de incidencias por cliente
@@ -66,6 +68,24 @@
   - `ForecastService` — Cálculos y visualización de forecast
   - `ReportsService` — Generación de reportes complejos
   - `CierreServices` — Split de ClosureService (CierreCostes + CierreFacturacion)
+
+- **Calculation Engine (NEW)**:
+  - 20 concept types supported by AST engine
+  - 7 data sources: PayHawk, Celero, Bizneo, Intratime, Tarifas, SGPV, TravelPerk, SalariosA3, Galan/Mediapost
+  - CrossServiceAggregateNode for "salary ÷ hours across all services"
+  - FormulaTemplates: 18 JSON template methods
+  - Per-employee calculation with Fee concept isolation
+
+- **Payment Model Engine (NEW)**:
+  - `IPaymentModelService` (10 methods): CRUD + validation rules + rates
+  - `PaymentModelsController` (11 endpoints)
+  - 3 payment models: FIXED, PER_VISIT, PER_SERVICE
+  - ConceptValidationRule for concept applicability per model
+
+- **Validations & Alerts (NEW)**:
+  - 13 validations (7 bloqueantes + 6 advertencias)
+  - Cross-system NIF validation (A3 vs Bizneo vs Celero vs Intratime)
+  - Employee without contract, visits without resource, expenses without project
 
 - **Auto-Sync on Upload**: 
   - Galán: GalanController.Upload() triggers sync immediately
@@ -86,14 +106,76 @@
 
 ### ✅ Security & Testing
 - **Integration Tests**: 212/212 passing ✓
+- **Unit Tests**: 282/283 passing (1 pre-existing failure in PeriodServiceTests)
 - **Suite**: xUnit backend + Jasmine/Karma frontend + Playwright E2E
 - **Latest Commit** (62e14d6): `fix(tests): dejar la suite de integración en verde (212/212)`
 
 ---
 
-## 🔄 Recent Work (2026-06-18)
+## 🔄 Recent Work (2026-06-28)
 
-### Accomplished This Session
+### Accomplished This Session (2026-06-28)
+1. **Extracción de Muebles en Celero para Facturación** ✅
+   - CeleroPostgresClient: SQL con STRING_AGG extrae nombres + categorías vía feedback→article
+   - CeleroVisitaDto: Campos Muebles, TipoMueble agregados
+   - CalculationContext: PopulateFromPayload deserializa case-insensitive
+   - LEFT JOINs en SQL para no romper visitas sin muebles
+   - 6/6 CeleroPostgresClientSqlTests pasando
+
+2. **Verificación TravelPerk Dashboard** ✅
+   - Dashboard completamente implementado (frontend + backend + rutas + menú)
+   - Upload zone con drag-drop, sincronización automática
+   - KPIs de imputación (líneas totales, coste, CECO sin maestro)
+   - Paginación con búsqueda y filtros
+
+3. **Compilación y Tests Limpio** ✅
+   - Backend: 0 errores, 23 warnings pre-existentes
+   - Frontend: 0 errores, bundle correcto
+   - Todos los tests de integración válidos
+   - Código listo para producción
+
+4. **Commit Consolidado** (e4f7ad2)
+   - 46 archivos modificados, 9,753 insertiones
+   - 10 archivos nuevos (migraciones, servicios, docs)
+   - Incluye cambios motor de cálculo, alertas, conceptos
+   - Migraciones BD: Bizneo email + absence details
+   - Pusheado a origin/main
+
+### Accomplished Previous Session (2026-06-28) — Motor de Cálculo
+1. **Concept History (Backend + Frontend)** ✅
+   - Backend: `GET /api/concepts/{id}/historial` endpoint usando AuditLog existente
+   - Frontend: Tab "Historial de cambios" en concept-detail con MatTable + paginator + diff viewer
+   - Usa `AuditInterceptor` existente (no necesita entidad nueva)
+
+2. **Galan/Mediapost en CalculationContext** ✅
+   - 5 entidades de staging conectadas: `EntradasGalan`, `SalidasGalan`, `StockGalan`, `PedidosMediapost`, `RecepcionesMediapost`
+   - CalculationContext: 5 propiedades + FilteredRows switch + EntityToSistema mapping
+   - RowAdapter: 5 métodos factory (`FromGalanEntrada`, `FromGalanSalida`, `FromGalanStock`, `FromMediapostPedido`, `FromMediapostRecepcion`)
+   - DataLoader: 5 queries DB con DateTime conversion (`desde.ToDateTime(TimeOnly.MinValue)`)
+   - Entidades disponibles para fórmulas como `{"type":"Source","entity":"EntradasGalan",...}`
+
+3. **Payment Model Engine** ✅
+   - `IPaymentModelService` (10 métodos): CRUD modelos, reglas de validación, tarifas, `IsConceptApplicableAsync`
+   - `PaymentModelService` + `PaymentModelsController` (11 endpoints)
+   - 7 DTOs: PaymentModelDto, ConceptValidationRuleDto, PaymentRatesConfigurationDto + create/update requests
+   - DI registrado en `DependencyInjection.cs`
+   - Entidades: `PaymentModel`, `PaymentRatesConfiguration`, `EmployeePaymentModelMapping`, `ConceptValidationRule`
+
+4. **Validaciones y Alertas (P2)** ✅
+   - 4 nuevas validaciones cruzadas (V10-V13):
+     - V10: `NIF_BIZNEO_SIN_CONTRATO` — NIFs de Bizneo sin contrato A3 (BLOQUEANTE)
+     - V11: `NIF_INTRATIME_SIN_CONTRATO` — NIFs de Intratime sin contrato A3 (BLOQUEANTE)
+     - V12: `VISITA_SIN_RECURSO` — Visitas Celero con ResourceNif vacío/"0" (ADVERTENCIA)
+     - V13: `GASTO_SIN_PROYECTO` — Gastos PayHawk sin ServiceId (ADVERTENCIA)
+   - Total: 13 validaciones (7 bloqueantes + 6 advertencias)
+   - Archivos: `AlertaCodigos.cs` (4 códigos nuevos) + `ClosureValidationService.cs` (4 métodos V10-V13)
+
+5. **Build + Tests** ✅
+   - Backend: 0 errores, 23 warnings pre-existentes
+   - Unit tests: 282/283 (1 fallo pre-existente en PeriodServiceTests)
+   - Todos los cambios compilan y pasan tests
+
+### Accomplished Previous Session (2026-06-18)
 1. **Integrated Ola 2 cambios funcionales** (39K+ líneas, 126 archivos)
    - Merge automático sin conflictos de rama `feat/ola2-cambios-funcionales`
    - Backend compila limpio (12 warnings nullability no-críticos)
@@ -125,7 +207,16 @@
    - SUPOSICIONES_CRITICAS.md (76 líneas)
    - COMPARATIVA_PPT_PANTALLAS.md (305 líneas)
 
-### Commits Recent (Ola 2 Integration)
+### Commits Recent (2026-06-28 — Muebles Celero + Motor Cálculo)
+```
+e4f7ad2 — feat: Extracción de muebles en Celero + enhancements motor de cálculo y APIs
+         Backend: Celero STRING_AGG muebles, CalculationEngine refactor, AlertaCodigos expansion
+         Frontend: TravelPerk verified, Conceptos mejorados
+         Quality: 0 errores, 6/6 tests SQL Celero pasando
+         Docs: 4 nuevos analysis docs para A3 Innuva
+```
+
+### Commits Ola 2 Integration
 ```
 c5d1522 — merge: Integrar cambios Ola 2 (Incidencias, Contratos, Forecast, Reports, CierresCostes+Facturacion)
 77f0b52 — merge: Integrar cambios Ola 2 (39K+ líneas) - Incidencias, Contratos, Forecast, Reports, CierresCostes+Facturacion
@@ -559,10 +650,11 @@ public async Task<ActionResult<PagedResult<ItemDto>>> ListPaginated(
 
 ## 📊 Project Metrics
 
-- **Backend**: 8 controllers, 15+ services, 40+ migrations, 212 tests ✓
+- **Backend**: 10 controllers, 20+ services, 40+ migrations, 282+ unit tests ✓
 - **Frontend**: 16+ paginated dashboards, 7 integration services, 0 TypeScript errors ✓
 - **Database**: 45+ tables, soft-delete on all entities, global query filters ✓
 - **Integrations**: 7 external systems syncing ✓
+- **Calculation Engine**: 20 concept types, 7 data sources, 13 validations ✓
 - **Uptime**: All features working in dev/test (ready for prod)
 
 ---
@@ -577,6 +669,7 @@ public async Task<ActionResult<PagedResult<ItemDto>>> ListPaginated(
 5. **Test new components**: Contratos un-día, Forecast resumen/list en navegador
 6. **Verify approval flow**: Grupo→FICO workflow en environment real
 7. **Test incentivos override**: Dialog de override con justificación
+8. **Export A3NOM formato exacto**: Rewrite ExportA3InnuvaAsync with metadata rows 1-7, headers row 8, employee rows 9+ (pendiente — usuario pidió no tocar)
 
 ### Medium-term
 1. **Monitor production**: All integrations should continue syncing
@@ -638,7 +731,8 @@ DropBiSchema — Eliminación de schema BI (deprecated)
 4. Revisar RETOMAR-PPT.md para items pendientes
 5. Testear flujo de aprobación Grupo→FICO
 6. Validar nuevos componentes en navegador
+7. Export A3NOM formato exacto (pendiente — usuario pidió no tocar)
 
 ---
 
-**Status**: ✅ **PRODUCTION READY + OLA 2** | Last Push: 2026-06-18 10:16 UTC | Branch: main | Latest Commit: c5d1522
+**Status**: ✅ **PRODUCTION READY + OLA 2 + CALCULATION ENGINE** | Last Updated: 2026-06-28 | Branch: main

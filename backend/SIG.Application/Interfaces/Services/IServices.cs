@@ -99,6 +99,17 @@ public interface IVariableService
     Task DeleteAsync(int id, CancellationToken ct);
 }
 
+// FASE 1: Client-specific concept customizations (plantillas personalizadas por cliente)
+public interface IPlantillaClienteConceptoService
+{
+    Task<IReadOnlyList<PlantillaClienteConceptoDto>> ListByClientAsync(int clientId, int usuarioId, CancellationToken ct);
+    Task<PagedResult<PlantillaClienteConceptoDto>> ListPaginatedByClientAsync(int clientId, int usuarioId, int page, int pageSize, string? search, CancellationToken ct);
+    Task<PlantillaClienteConceptoDto> GetByIdAsync(int id, int usuarioId, CancellationToken ct);
+    Task<PlantillaClienteConceptoDto> CreateAsync(int clientId, PlantillaClienteConceptoCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<PlantillaClienteConceptoDto> UpdateAsync(int id, int clientId, PlantillaClienteConceptoUpdateRequest req, int usuarioId, CancellationToken ct);
+    Task DeleteAsync(int id, int clientId, int usuarioId, CancellationToken ct);
+}
+
 public interface IUserService
 {
     Task<PagedResult<UserListItemDto>> ListAsync(int page, int pageSize, string? search, CancellationToken ct);
@@ -161,6 +172,30 @@ public interface IPresupuestoServicioService
     Task<PresupuestoServicioDto> CreateAsync(int serviceId, PresupuestoServicioCreateRequest req, CancellationToken ct);
     Task<PresupuestoServicioDto> UpdateAsync(int id, int serviceId, PresupuestoServicioUpdateRequest req, CancellationToken ct);
     Task DeleteAsync(int id, int serviceId, CancellationToken ct);
+}
+
+// FASE 2: TarifaConcepto service interface (tariffs by concept, finer granularity)
+public interface ITarifaConceptoService
+{
+    Task<IReadOnlyList<TarifaConceptoDto>> ListByConceptAsync(int conceptId, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<TarifaConceptoDto>> ListByConceptAndClientAsync(int conceptId, int clientId, int usuarioId, CancellationToken ct);
+    Task<PagedResult<TarifaConceptoDto>> ListPaginatedByConceptAsync(int conceptId, int usuarioId, int page, int pageSize, string? search, CancellationToken ct);
+    Task<TarifaConceptoDto> GetByIdAsync(int id, int usuarioId, CancellationToken ct);
+    Task<TarifaConceptoDto> CreateAsync(int conceptId, TarifaConceptoCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<TarifaConceptoDto> UpdateAsync(int id, int conceptId, TarifaConceptoUpdateRequest req, int usuarioId, CancellationToken ct);
+    Task DeleteAsync(int id, int conceptId, int usuarioId, CancellationToken ct);
+}
+
+// FASE 2: PresupuestoConcepto service interface (budget by concept, finer granularity)
+public interface IPresupuestoConceptoService
+{
+    Task<IReadOnlyList<PresupuestoConceptoDto>> ListByConceptAsync(int conceptId, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<PresupuestoConceptoDto>> ListByConceptAndClientAsync(int conceptId, int clientId, int usuarioId, CancellationToken ct);
+    Task<PagedResult<PresupuestoConceptoDto>> ListPaginatedByConceptAsync(int conceptId, int usuarioId, int page, int pageSize, string? search, CancellationToken ct);
+    Task<PresupuestoConceptoDto> GetByIdAsync(int id, int usuarioId, CancellationToken ct);
+    Task<PresupuestoConceptoDto> CreateAsync(int conceptId, PresupuestoConceptoCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<PresupuestoConceptoDto> UpdateAsync(int id, int conceptId, PresupuestoConceptoUpdateRequest req, int usuarioId, CancellationToken ct);
+    Task DeleteAsync(int id, int conceptId, int usuarioId, CancellationToken ct);
 }
 
 // Forecast (PPT slide 36): previsión mensual por servicio + resumen pivote con filtros.

@@ -316,6 +316,70 @@ public class Variable : ISoftDeletable, IAuditable
     public DateTime UpdatedAt { get; set; }
 }
 
+// FASE 2: Tarifas por Concepto (granularidad más fina que TarifaServicio)
+// Permite configurar tariffs específicamente para cada concepto, con validez por período de tiempo.
+public class TarifaConcepto : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ConceptId { get; set; }
+    public Concept Concept { get; set; } = null!;
+    public int? ClientId { get; set; }      // null = tarifa global para el concepto; otherwise = tarifa por cliente
+    public Client? Client { get; set; }
+    public int? ServiceId { get; set; }     // null = aplica a todos los servicios del cliente; otherwise = específica del servicio
+    public Service? Service { get; set; }
+    public decimal Valor { get; set; }      // Tariff value in EUR
+    public string? Unidad { get; set; }     // "visita" | "hora" | "km" | "dia" | "mes" etc. (informational)
+    public DateOnly FechaDesde { get; set; }
+    public DateOnly? FechaHasta { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// FASE 2: Presupuestos por Concepto (granularidad más fina que PresupuestoServicio)
+// Permite configurar budget items específicamente para cada concepto, por período.
+public class PresupuestoConcepto : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ConceptId { get; set; }
+    public Concept Concept { get; set; } = null!;
+    public int? ClientId { get; set; }      // null = presupuesto global; otherwise = presupuesto por cliente
+    public Client? Client { get; set; }
+    public int? ServiceId { get; set; }     // null = aplica a todos los servicios del cliente
+    public Service? Service { get; set; }
+    public int? PeriodId { get; set; }      // null = aplica a todos los períodos
+    public Period? Period { get; set; }
+    public TipoConcepto Tipo { get; set; }  // Pago | Factura
+    public decimal Importe { get; set; }    // Budgeted amount in EUR
+    public string? Descripcion { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// FASE 1: Plantilla de Configuración de Concepto por Cliente
+// Cada cliente puede personalizar conceptos: fórmula, tarifas, excepciones, reglas específicas.
+// Si FormulaJsonOverride es null, se usa Concept.FormulaJson global.
+public class PlantillaClienteConcepto : ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public int ClientId { get; set; }
+    public Client Client { get; set; } = null!;
+    public int ConceptId { get; set; }
+    public Concept Concept { get; set; } = null!;
+    public string? FormulaJsonOverride { get; set; }   // null = usa Concept.FormulaJson (global)
+    public string? ConfiguracionJson { get; set; }     // JSON con tarifas, excepciones, reglas personalizadas
+    public bool Activo { get; set; } = true;           // si el concepto está activo para este cliente
+    public DateOnly FechaDesde { get; set; }
+    public DateOnly? FechaHasta { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 public class Period : IAuditable
 {
     public int Id { get; set; }

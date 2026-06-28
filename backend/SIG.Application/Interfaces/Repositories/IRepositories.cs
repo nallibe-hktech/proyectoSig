@@ -71,6 +71,16 @@ public interface IVariableRepository
     Task SaveChangesAsync(CancellationToken ct);
 }
 
+public interface IPlantillaClienteConceptoRepository
+{
+    Task<PlantillaClienteConcepto?> GetByIdAsync(int id, CancellationToken ct);
+    Task<IReadOnlyList<PlantillaClienteConcepto>> ListByClientAsync(int clientId, CancellationToken ct);
+    Task<PlantillaClienteConcepto?> GetByClientAndConceptAsync(int clientId, int conceptId, CancellationToken ct);
+    Task<PagedResult<PlantillaClienteConcepto>> ListPaginatedByClientAsync(int clientId, int page, int pageSize, string? search, CancellationToken ct);
+    Task AddAsync(PlantillaClienteConcepto plantilla, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
 public interface IPeriodRepository
 {
     Task<Period?> GetByIdAsync(int id, CancellationToken ct);
@@ -188,11 +198,33 @@ public interface ITarifaServicioRepository
     Task SaveChangesAsync(CancellationToken ct);
 }
 
+// FASE 2: TarifaConcepto repository interface
+public interface ITarifaConceptoRepository
+{
+    Task<TarifaConcepto?> GetByIdAsync(int id, CancellationToken ct);
+    Task<IReadOnlyList<TarifaConcepto>> ListByConceptAsync(int conceptId, CancellationToken ct);
+    Task<IReadOnlyList<TarifaConcepto>> ListByConceptAndClientAsync(int conceptId, int clientId, CancellationToken ct);
+    Task<PagedResult<TarifaConcepto>> ListPaginatedByConceptAsync(int conceptId, int page, int pageSize, string? search, CancellationToken ct);
+    Task AddAsync(TarifaConcepto entity, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
 public interface IPresupuestoServicioRepository
 {
     Task<IReadOnlyList<PresupuestoServicio>> ListByServiceAsync(int serviceId, CancellationToken ct);
     Task<PresupuestoServicio?> GetByIdAsync(int id, CancellationToken ct);
     Task AddAsync(PresupuestoServicio entity, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
+// FASE 2: PresupuestoConcepto repository interface
+public interface IPresupuestoConceptoRepository
+{
+    Task<PresupuestoConcepto?> GetByIdAsync(int id, CancellationToken ct);
+    Task<IReadOnlyList<PresupuestoConcepto>> ListByConceptAsync(int conceptId, CancellationToken ct);
+    Task<IReadOnlyList<PresupuestoConcepto>> ListByConceptAndClientAsync(int conceptId, int clientId, CancellationToken ct);
+    Task<PagedResult<PresupuestoConcepto>> ListPaginatedByConceptAsync(int conceptId, int page, int pageSize, string? search, CancellationToken ct);
+    Task AddAsync(PresupuestoConcepto entity, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 

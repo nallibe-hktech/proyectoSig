@@ -74,6 +74,11 @@ public record VariableDto(int Id, string Nombre, string QuestionIdExterno, strin
 public record VariableCreateRequest(string Nombre, string QuestionIdExterno, string MapeoValoresJson);
 public record VariableUpdateRequest(string Nombre, string QuestionIdExterno, string MapeoValoresJson);
 
+// PlantillaClienteConcepto (FASE 1: Client-specific concept customizations)
+public record PlantillaClienteConceptoDto(int Id, int ClientId, int ConceptId, string? ConceptNombre, string? FormulaJsonOverride, string? ConfiguracionJson, bool Activo, DateOnly FechaDesde, DateOnly? FechaHasta);
+public record PlantillaClienteConceptoCreateRequest(int ConceptId, string? FormulaJsonOverride, string? ConfiguracionJson, bool Activo, DateOnly FechaDesde, DateOnly? FechaHasta);
+public record PlantillaClienteConceptoUpdateRequest(string? FormulaJsonOverride, string? ConfiguracionJson, bool Activo, DateOnly FechaDesde, DateOnly? FechaHasta);
+
 // User
 public record UserListItemDto(int Id, string NIF, string Nombre, string Apellidos, string Email, EstadoUsuario Estado, string[] Roles);
 public record UserDetailDto(int Id, string NIF, string Nombre, string Apellidos, string Email, EstadoUsuario Estado, int? DepartmentId, int[] RoleIds);
@@ -100,10 +105,20 @@ public record TarifaServicioDto(int Id, int ServiceId, string Nombre, decimal Va
 public record TarifaServicioCreateRequest(string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
 public record TarifaServicioUpdateRequest(string Nombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
 
+// FASE 2: TarifaConcepto (Tariffs by Concept - finer granularity than TarifaServicio)
+public record TarifaConceptoDto(int Id, int ConceptId, string ConceptNombre, int? ClientId, string? ClientNombre, int? ServiceId, string? ServiceNombre, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
+public record TarifaConceptoCreateRequest(int? ClientId, int? ServiceId, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
+public record TarifaConceptoUpdateRequest(int? ClientId, int? ServiceId, decimal Valor, string? Unidad, DateOnly FechaDesde, DateOnly? FechaHasta);
+
 // PresupuestoServicio
 public record PresupuestoServicioDto(int Id, int ServiceId, int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
 public record PresupuestoServicioCreateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
 public record PresupuestoServicioUpdateRequest(int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
+
+// FASE 2: PresupuestoConcepto (Budget by Concept - finer granularity than PresupuestoServicio)
+public record PresupuestoConceptoDto(int Id, int ConceptId, string ConceptNombre, int? ClientId, string? ClientNombre, int? ServiceId, string? ServiceNombre, int? PeriodId, string? PeriodNombre, TipoConcepto Tipo, decimal Importe, string? Descripcion);
+public record PresupuestoConceptoCreateRequest(int? ClientId, int? ServiceId, int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
+public record PresupuestoConceptoUpdateRequest(int? ClientId, int? ServiceId, int? PeriodId, TipoConcepto Tipo, decimal Importe, string? Descripcion);
 
 // Forecast (PPT slide 36): previsión mensual de ventas/margen/GPP por servicio.
 public record ForecastDto(int Id, int ServiceId, int Anio, int Mes, decimal VentasPrevistas, decimal? MargenPrevisto, int? PersonasCampo);

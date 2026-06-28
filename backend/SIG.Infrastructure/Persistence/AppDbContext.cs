@@ -23,12 +23,15 @@ public class AppDbContext : DbContext
     public DbSet<Concept> Concepts => Set<Concept>();
     public DbSet<ConceptUser> ConceptUsers => Set<ConceptUser>();
     public DbSet<TarifaServicio> TarifasServicio => Set<TarifaServicio>();
+    public DbSet<TarifaConcepto> TarifasConcepto => Set<TarifaConcepto>();
     public DbSet<PresupuestoServicio> PresupuestosServicio => Set<PresupuestoServicio>();
+    public DbSet<PresupuestoConcepto> PresupuestosConcepto => Set<PresupuestoConcepto>();
     public DbSet<PartidaPresupuesto> PartidasPresupuesto => Set<PartidaPresupuesto>();
     public DbSet<CategoriaFactura> CategoriasFactura => Set<CategoriaFactura>();
     public DbSet<CategoriaFacturaConcepto> CategoriaFacturaConceptos => Set<CategoriaFacturaConcepto>();
     public DbSet<Forecast> Forecasts => Set<Forecast>();
     public DbSet<Variable> Variables => Set<Variable>();
+    public DbSet<PlantillaClienteConcepto> PlantillasClienteConcepto => Set<PlantillaClienteConcepto>();
     public DbSet<Period> Periods => Set<Period>();
     public DbSet<CierreCostes> CierresCostes => Set<CierreCostes>();
     public DbSet<CierreFacturacion> CierresFacturacion => Set<CierreFacturacion>();

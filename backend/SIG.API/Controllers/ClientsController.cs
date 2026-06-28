@@ -141,6 +141,52 @@ public class CategoriasFacturaController : ControllerBase
     }
 }
 
+// FASE 1: Plantillas de configuración de conceptos por cliente (personalizaciones/excepciones).
+// Lectura para autenticados; escritura solo Administrator.
+[ApiController]
+[Route("api/clients/{clientId:int}/plantillas-concepto")]
+[Authorize]
+public class PlantillaClienteConceptoController : ControllerBase
+{
+    private readonly IPlantillaClienteConceptoService _svc;
+    public PlantillaClienteConceptoController(IPlantillaClienteConceptoService svc) { _svc = svc; }
+
+    private int UserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new InvalidOperationException("NameIdentifier claim not found"));
+
+    [HttpGet]
+    public async Task<IActionResult> List(int clientId, CancellationToken ct) =>
+        Ok(await _svc.ListByClientAsync(clientId, UserId, ct));
+
+    [HttpGet("paginated")]
+    public async Task<IActionResult> ListPaginated(int clientId, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] string? search = null, CancellationToken ct = default) =>
+        Ok(await _svc.ListPaginatedByClientAsync(clientId, UserId, page, pageSize, search, ct));
+
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> Get(int clientId, int id, CancellationToken ct) =>
+        Ok(await _svc.GetByIdAsync(id, UserId, ct));
+
+    [HttpPost]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> Create(int clientId, PlantillaClienteConceptoCreateRequest req, CancellationToken ct)
+    {
+        var r = await _svc.CreateAsync(clientId, req, UserId, ct);
+        return CreatedAtAction(nameof(Get), new { clientId, id = r.Id }, r);
+    }
+
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> Update(int clientId, int id, PlantillaClienteConceptoUpdateRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpdateAsync(id, clientId, req, UserId, ct));
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> Delete(int clientId, int id, CancellationToken ct)
+    {
+        await _svc.DeleteAsync(id, clientId, UserId, ct);
+        return NoContent();
+    }
+}
+
 // Incidencias — pantalla de 1er nivel (prototipo): listado global de incidencias de todos los clientes
 // accesibles por el usuario, con filtros cliente/tipo/estado y búsqueda. El alta/edición sigue siendo
 // anidada bajo el cliente (ClienteIncidenciasController).

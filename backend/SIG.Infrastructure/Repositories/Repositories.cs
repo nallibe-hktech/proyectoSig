@@ -251,6 +251,51 @@ public class VariableRepository : IVariableRepository
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
+public class PlantillaClienteConceptoRepository : IPlantillaClienteConceptoRepository
+{
+    private readonly AppDbContext _db;
+    public PlantillaClienteConceptoRepository(AppDbContext db) { _db = db; }
+
+    public Task<PlantillaClienteConcepto?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.PlantillasClienteConcepto.Include(p => p.Client).Include(p => p.Concept)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+    public async Task<IReadOnlyList<PlantillaClienteConcepto>> ListByClientAsync(int clientId, CancellationToken ct) =>
+        await _db.PlantillasClienteConcepto.AsNoTracking().Include(p => p.Concept)
+            .Where(p => p.ClientId == clientId && !p.IsDeleted)
+            .OrderBy(p => p.Concept.Nombre).ToListAsync(ct);
+
+    public Task<PlantillaClienteConcepto?> GetByClientAndConceptAsync(int clientId, int conceptId, CancellationToken ct) =>
+        _db.PlantillasClienteConcepto.Include(p => p.Concept)
+            .FirstOrDefaultAsync(p => p.ClientId == clientId && p.ConceptId == conceptId && !p.IsDeleted, ct);
+
+    public async Task<PagedResult<PlantillaClienteConcepto>> ListPaginatedByClientAsync(int clientId, int page, int pageSize, string? search, CancellationToken ct)
+    {
+        var q = _db.PlantillasClienteConcepto.AsNoTracking().Include(p => p.Concept)
+            .Where(p => p.ClientId == clientId && !p.IsDeleted).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = $"%{search.Trim()}%";
+            q = q.Where(p => EF.Functions.ILike(p.Concept.Nombre, searchTerm));
+        }
+
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderBy(p => p.Concept.Nombre)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+        return new PagedResult<PlantillaClienteConcepto>(items, total, page, pageSize);
+    }
+
+    public Task AddAsync(PlantillaClienteConcepto plantilla, CancellationToken ct)
+    {
+        _db.PlantillasClienteConcepto.Add(plantilla);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
 public class PeriodRepository : IPeriodRepository
 {
     private readonly AppDbContext _db;
@@ -605,6 +650,109 @@ public class PresupuestoServicioRepository : IPresupuestoServicioRepository
     public Task AddAsync(PresupuestoServicio entity, CancellationToken ct)
     {
         _db.PresupuestosServicio.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+// FASE 2: TarifaConcepto repository
+public class TarifaConceptoRepository : ITarifaConceptoRepository
+{
+    private readonly AppDbContext _db;
+    public TarifaConceptoRepository(AppDbContext db) { _db = db; }
+
+    public Task<TarifaConcepto?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.TarifasConcepto.Include(t => t.Concept).Include(t => t.Client).Include(t => t.Service)
+            .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, ct);
+
+    public async Task<IReadOnlyList<TarifaConcepto>> ListByConceptAsync(int conceptId, CancellationToken ct) =>
+        await _db.TarifasConcepto.AsNoTracking().Include(t => t.Client).Include(t => t.Service)
+            .Where(t => t.ConceptId == conceptId && !t.IsDeleted)
+            .OrderByDescending(t => t.FechaDesde)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<TarifaConcepto>> ListByConceptAndClientAsync(int conceptId, int clientId, CancellationToken ct) =>
+        await _db.TarifasConcepto.AsNoTracking().Include(t => t.Service)
+            .Where(t => t.ConceptId == conceptId && (t.ClientId == clientId || t.ClientId == null) && !t.IsDeleted)
+            .OrderByDescending(t => t.FechaDesde)
+            .ToListAsync(ct);
+
+    public async Task<PagedResult<TarifaConcepto>> ListPaginatedByConceptAsync(int conceptId, int page, int pageSize, string? search, CancellationToken ct)
+    {
+        var q = _db.TarifasConcepto.AsNoTracking().Include(t => t.Client).Include(t => t.Service)
+            .Where(t => t.ConceptId == conceptId && !t.IsDeleted).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = $"%{search.Trim()}%";
+            q = q.Where(t => (t.Client != null && EF.Functions.ILike(t.Client.Nombre, searchTerm)) ||
+                            (t.Service != null && EF.Functions.ILike(t.Service.Nombre, searchTerm)) ||
+                            EF.Functions.ILike(t.Unidad, searchTerm));
+        }
+
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderByDescending(t => t.FechaDesde)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+        return new PagedResult<TarifaConcepto>(items, total, page, pageSize);
+    }
+
+    public Task AddAsync(TarifaConcepto entity, CancellationToken ct)
+    {
+        _db.TarifasConcepto.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
+// FASE 2: PresupuestoConcepto repository
+public class PresupuestoConceptoRepository : IPresupuestoConceptoRepository
+{
+    private readonly AppDbContext _db;
+    public PresupuestoConceptoRepository(AppDbContext db) { _db = db; }
+
+    public Task<PresupuestoConcepto?> GetByIdAsync(int id, CancellationToken ct) =>
+        _db.PresupuestosConcepto.Include(p => p.Concept).Include(p => p.Client).Include(p => p.Service).Include(p => p.Period)
+            .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+
+    public async Task<IReadOnlyList<PresupuestoConcepto>> ListByConceptAsync(int conceptId, CancellationToken ct) =>
+        await _db.PresupuestosConcepto.AsNoTracking().Include(p => p.Client).Include(p => p.Service).Include(p => p.Period)
+            .Where(p => p.ConceptId == conceptId && !p.IsDeleted)
+            .OrderByDescending(p => p.Id)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<PresupuestoConcepto>> ListByConceptAndClientAsync(int conceptId, int clientId, CancellationToken ct) =>
+        await _db.PresupuestosConcepto.AsNoTracking().Include(p => p.Service).Include(p => p.Period)
+            .Where(p => p.ConceptId == conceptId && (p.ClientId == clientId || p.ClientId == null) && !p.IsDeleted)
+            .OrderByDescending(p => p.Id)
+            .ToListAsync(ct);
+
+    public async Task<PagedResult<PresupuestoConcepto>> ListPaginatedByConceptAsync(int conceptId, int page, int pageSize, string? search, CancellationToken ct)
+    {
+        var q = _db.PresupuestosConcepto.AsNoTracking().Include(p => p.Client).Include(p => p.Service).Include(p => p.Period)
+            .Where(p => p.ConceptId == conceptId && !p.IsDeleted).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = $"%{search.Trim()}%";
+            q = q.Where(p => (p.Client != null && EF.Functions.ILike(p.Client.Nombre, searchTerm)) ||
+                            (p.Service != null && EF.Functions.ILike(p.Service.Nombre, searchTerm)) ||
+                            (p.Period != null && EF.Functions.ILike(p.Period.Nombre, searchTerm)) ||
+                            (p.Descripcion != null && EF.Functions.ILike(p.Descripcion, searchTerm)));
+        }
+
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderByDescending(p => p.Id)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+        return new PagedResult<PresupuestoConcepto>(items, total, page, pageSize);
+    }
+
+    public Task AddAsync(PresupuestoConcepto entity, CancellationToken ct)
+    {
+        _db.PresupuestosConcepto.Add(entity);
         return Task.CompletedTask;
     }
 

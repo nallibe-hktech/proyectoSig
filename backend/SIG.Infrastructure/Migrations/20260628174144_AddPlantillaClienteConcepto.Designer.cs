@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SIG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SIG.Infrastructure.Persistence;
 namespace SIG.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260628174144_AddPlantillaClienteConcepto")]
+    partial class AddPlantillaClienteConcepto
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1553,77 +1556,6 @@ namespace SIG.Infrastructure.Migrations
                         .HasDatabaseName("ix_plantillas_cliente_concepto_concept_id");
 
                     b.ToTable("plantillas_cliente_concepto", (string)null);
-                });
-
-            modelBuilder.Entity("SIG.Domain.Entities.PresupuestoConcepto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("ClientId")
-                        .HasColumnType("integer")
-                        .HasColumnName("client_id");
-
-                    b.Property<int>("ConceptId")
-                        .HasColumnType("integer")
-                        .HasColumnName("concept_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<string>("Descripcion")
-                        .HasColumnType("text")
-                        .HasColumnName("descripcion");
-
-                    b.Property<decimal>("Importe")
-                        .HasColumnType("numeric")
-                        .HasColumnName("importe");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<int?>("PeriodId")
-                        .HasColumnType("integer")
-                        .HasColumnName("period_id");
-
-                    b.Property<int?>("ServiceId")
-                        .HasColumnType("integer")
-                        .HasColumnName("service_id");
-
-                    b.Property<int>("Tipo")
-                        .HasColumnType("integer")
-                        .HasColumnName("tipo");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_presupuestos_concepto");
-
-                    b.HasIndex("ClientId")
-                        .HasDatabaseName("ix_presupuestos_concepto_client_id");
-
-                    b.HasIndex("ConceptId")
-                        .HasDatabaseName("ix_presupuestos_concepto_concept_id");
-
-                    b.HasIndex("PeriodId")
-                        .HasDatabaseName("ix_presupuestos_concepto_period_id");
-
-                    b.HasIndex("ServiceId")
-                        .HasDatabaseName("ix_presupuestos_concepto_service_id");
-
-                    b.ToTable("presupuestos_concepto", (string)null);
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.PresupuestoServicio", b =>
@@ -4623,74 +4555,6 @@ namespace SIG.Infrastructure.Migrations
                     b.ToTable("staging_travel_perk_viajes", (string)null);
                 });
 
-            modelBuilder.Entity("SIG.Domain.Entities.TarifaConcepto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("ClientId")
-                        .HasColumnType("integer")
-                        .HasColumnName("client_id");
-
-                    b.Property<int>("ConceptId")
-                        .HasColumnType("integer")
-                        .HasColumnName("concept_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<DateOnly>("FechaDesde")
-                        .HasColumnType("date")
-                        .HasColumnName("fecha_desde");
-
-                    b.Property<DateOnly?>("FechaHasta")
-                        .HasColumnType("date")
-                        .HasColumnName("fecha_hasta");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<int?>("ServiceId")
-                        .HasColumnType("integer")
-                        .HasColumnName("service_id");
-
-                    b.Property<string>("Unidad")
-                        .HasColumnType("text")
-                        .HasColumnName("unidad");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<decimal>("Valor")
-                        .HasColumnType("numeric")
-                        .HasColumnName("valor");
-
-                    b.HasKey("Id")
-                        .HasName("pk_tarifas_concepto");
-
-                    b.HasIndex("ClientId")
-                        .HasDatabaseName("ix_tarifas_concepto_client_id");
-
-                    b.HasIndex("ConceptId")
-                        .HasDatabaseName("ix_tarifas_concepto_concept_id");
-
-                    b.HasIndex("ServiceId")
-                        .HasDatabaseName("ix_tarifas_concepto_service_id");
-
-                    b.ToTable("tarifas_concepto", (string)null);
-                });
-
             modelBuilder.Entity("SIG.Domain.Entities.TarifaServicio", b =>
                 {
                     b.Property<int>("Id")
@@ -5305,39 +5169,6 @@ namespace SIG.Infrastructure.Migrations
                     b.Navigation("Concept");
                 });
 
-            modelBuilder.Entity("SIG.Domain.Entities.PresupuestoConcepto", b =>
-                {
-                    b.HasOne("SIG.Domain.Entities.Client", "Client")
-                        .WithMany()
-                        .HasForeignKey("ClientId")
-                        .HasConstraintName("fk_presupuestos_concepto_clients_client_id");
-
-                    b.HasOne("SIG.Domain.Entities.Concept", "Concept")
-                        .WithMany()
-                        .HasForeignKey("ConceptId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_presupuestos_concepto_concepts_concept_id");
-
-                    b.HasOne("SIG.Domain.Entities.Period", "Period")
-                        .WithMany()
-                        .HasForeignKey("PeriodId")
-                        .HasConstraintName("fk_presupuestos_concepto_periods_period_id");
-
-                    b.HasOne("SIG.Domain.Entities.Service", "Service")
-                        .WithMany()
-                        .HasForeignKey("ServiceId")
-                        .HasConstraintName("fk_presupuestos_concepto_services_service_id");
-
-                    b.Navigation("Client");
-
-                    b.Navigation("Concept");
-
-                    b.Navigation("Period");
-
-                    b.Navigation("Service");
-                });
-
             modelBuilder.Entity("SIG.Domain.Entities.PresupuestoServicio", b =>
                 {
                     b.HasOne("SIG.Domain.Entities.Period", "Period")
@@ -5498,32 +5329,6 @@ namespace SIG.Infrastructure.Migrations
                         .HasConstraintName("fk_staging_a3innuva_contratos_users_user_id");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("SIG.Domain.Entities.TarifaConcepto", b =>
-                {
-                    b.HasOne("SIG.Domain.Entities.Client", "Client")
-                        .WithMany()
-                        .HasForeignKey("ClientId")
-                        .HasConstraintName("fk_tarifas_concepto_clients_client_id");
-
-                    b.HasOne("SIG.Domain.Entities.Concept", "Concept")
-                        .WithMany()
-                        .HasForeignKey("ConceptId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_tarifas_concepto_concepts_concept_id");
-
-                    b.HasOne("SIG.Domain.Entities.Service", "Service")
-                        .WithMany()
-                        .HasForeignKey("ServiceId")
-                        .HasConstraintName("fk_tarifas_concepto_services_service_id");
-
-                    b.Navigation("Client");
-
-                    b.Navigation("Concept");
-
-                    b.Navigation("Service");
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.TarifaServicio", b =>
