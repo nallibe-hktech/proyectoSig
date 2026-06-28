@@ -1,19 +1,16 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace SIG.Infrastructure.Migrations
 {
-    /// <summary>
-    /// Añade columna NIF a staging_pay_hawk_gastos y hace UserId nullable.
-    /// PayHawk usa el ExternalId del empleado como NIF/NIE — se almacena directamente
-    /// sin conversión numérica para permitir cruce correcto contra el master de empleados.
-    /// </summary>
+    /// <inheritdoc />
     public partial class AddNIFToPayHawkGasto : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // 1. Añadir columna NIF (nullable varchar)
+            // Añadir columna NIF: PayHawk ExternalId ES el NIF/NIE del empleado
             migrationBuilder.AddColumn<string>(
                 name: "nif",
                 table: "staging_pay_hawk_gastos",
@@ -21,7 +18,7 @@ namespace SIG.Infrastructure.Migrations
                 maxLength: 20,
                 nullable: true);
 
-            // 2. Hacer UserId nullable (era int NOT NULL con valores basura)
+            // Hacer UserId nullable: ya no se usa como identificador primario
             migrationBuilder.AlterColumn<int>(
                 name: "user_id",
                 table: "staging_pay_hawk_gastos",
@@ -31,13 +28,14 @@ namespace SIG.Infrastructure.Migrations
                 oldType: "integer",
                 oldNullable: false);
 
-            // 3. Índice para acelerar búsquedas por NIF
+            // Índice para búsquedas por NIF
             migrationBuilder.CreateIndex(
                 name: "ix_staging_pay_hawk_gastos_nif",
                 table: "staging_pay_hawk_gastos",
                 column: "nif");
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
