@@ -1,5 +1,5 @@
 # SIG-es — Project Status & Guidelines
-**Last Updated:** 2026-06-28 | **Status:** ✅ PRODUCTION READY + OLA 2 + CALCULATION ENGINE COMPLETE
+**Last Updated:** 2026-06-28 | **Status:** ✅ PRODUCTION READY + OLA 2 + CALCULATION ENGINE (FASE 5 COMPLETE)
 
 ---
 
@@ -48,6 +48,20 @@
   - **Reports refactorizado** — 337 líneas nuevas, nuevos tipos de reportes, alertas integradas
   - **Approvals refactorizado** — 446 líneas nuevas, flujo Grupo→FICO, matriz de aprobación
   - **Concept History Tab** — Tab "Historial de cambios" en concept-detail con MatTable + paginator + diff viewer
+
+- **NUEVA (FASE 5 - UI Amigable para Cliente)**:
+  - `plantilla-cliente-editor.component` — **Reescrito sin JSON**: UI visual para crear/editar plantillas
+  - **Selector de Fórmula**: "Usar global" vs "Personalizar para este cliente"
+  - **Tipo de Cálculo Visual**: Dropdown con 4 opciones (Número fijo, Variable, Tarifa, Agregado)
+  - **Campos Condicionales**: Se muestran según tipo seleccionado
+    - Número: Input para valor numérico
+    - Variable: Dropdown poblado desde `/api/variables`
+    - Tarifa: Dropdown para nivel (Global / Por cliente / Por servicio)
+    - Agregado: Dropdown para operación (Suma, Cuenta, Mínimo, Máximo)
+  - **Configuración Visual**: Checkboxes + inputs para margen mínimo y descuento máximo
+  - **Auto-generación de JSON**: Los métodos `generarFormulaJson()` y `generarConfiguracionJson()` convierten selecciones UI a JSON backend-compatible
+  - **Compatibilidad Signals**: Bindings `[ngModel]/(ngModelChange)` para trabajar con Angular signals
+  - **Validación en Tiempo Real**: Preview visual de la fórmula siendo construida
 
 ### ✅ Backend Features
 - **Paginated Endpoints**: `ListPaginated(page, pageSize, search?)` → `PagedResult<T>`
@@ -114,8 +128,22 @@
 
 ## 🔄 Recent Work (2026-06-28)
 
-### Accomplished This Session (2026-06-28)
-1. **Extracción de Muebles en Celero para Facturación** ✅
+### Accomplished This Session (2026-06-28) — FASE 5 Complete!
+1. **FASE 5: UI Amigable para Cliente (Sin JSON)** ✅
+   - Problema: Cliente no-técnico no puede escribir JSON para fórmulas
+   - Solución: Visual form builder que auto-genera JSON backend-compatible
+   - Reescrito: `plantilla-cliente-editor.component.ts` (448 líneas, completamente nuevo flujo)
+   - Selectores visuales: Fórmula (usar-global/personalizar) → Tipo (Número/Variable/Tarifa/Agregado)
+   - Campos condicionales: Se muestran según el tipo seleccionado
+   - Configuración: Checkboxes + inputs para margen mínimo y descuento máximo
+   - Auto-generación: Métodos `generarFormulaJson()` y `generarConfiguracionJson()` crean JSON válido
+   - Signals: Corrección de bindings [ngModel]/(ngModelChange) para compatibilidad con signals
+   - ConceptService: Nuevo método `getVariables()` para cargar lista de variables
+   - Variables: Nueva signal + método `loadVariables()` en componente
+   - Build: ✅ Frontend compila 0 errores, 2 warnings NG8102 (no-críticos)
+   - Commit: f9fbe49 pusheado a origin/main
+
+2. **Extracción de Muebles en Celero para Facturación** ✅
    - CeleroPostgresClient: SQL con STRING_AGG extrae nombres + categorías vía feedback→article
    - CeleroVisitaDto: Campos Muebles, TipoMueble agregados
    - CalculationContext: PopulateFromPayload deserializa case-insensitive
