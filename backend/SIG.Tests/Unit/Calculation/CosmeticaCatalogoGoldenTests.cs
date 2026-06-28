@@ -119,5 +119,7 @@ public class CosmeticaCatalogoGoldenTests
         public List<StagingBizneoAbsence> HorasBizneo { get; } = new();
         public Task<CalculationContext> LoadAsync(CalculationTarget target, CancellationToken ct)
             => Task.FromResult(new CalculationContext { Variables = Variables, HorasBizneo = HorasBizneo });
+        public Task<List<RowAdapter>> LoadCrossServiceAsync(int userId, DateOnly desde, DateOnly hasta, string entity, string field, CancellationToken ct)
+            => Task.FromResult(new List<RowAdapter>());
     }
 }

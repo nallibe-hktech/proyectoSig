@@ -109,5 +109,7 @@ public class FacturaInpostEndToEndGoldenTest
         public List<StagingCeleroVisita> Visitas { get; } = new();
         public Task<CalculationContext> LoadAsync(CalculationTarget target, CancellationToken ct)
             => Task.FromResult(new CalculationContext { Visitas = Visitas });
+        public Task<List<RowAdapter>> LoadCrossServiceAsync(int userId, DateOnly desde, DateOnly hasta, string entity, string field, CancellationToken ct)
+            => Task.FromResult(new List<RowAdapter>());
     }
 }

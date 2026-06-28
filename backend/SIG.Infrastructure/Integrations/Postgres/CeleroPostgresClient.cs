@@ -63,6 +63,8 @@ public class CeleroPostgresClient : ICeleroClient
                 var cancellationReason = reader.IsDBNull(7) ? null : reader.GetString(7);
                 var provincia = reader.IsDBNull(8) ? null : reader.GetString(8);
                 var ciudad = reader.IsDBNull(9) ? null : reader.GetString(9);
+                var muebles = reader.IsDBNull(10) ? null : reader.GetString(10);
+                var tipoMueble = reader.IsDBNull(11) ? null : reader.GetString(11);
 
                 visitas.Add(new CeleroVisitaDto(
                     visitaId, resourceNif, serviceName, missionName, fecha,
@@ -70,7 +72,9 @@ public class CeleroPostgresClient : ICeleroClient
                     Estado: estado,
                     Provincia: provincia,
                     Ciudad: ciudad,
-                    CancellationReason: cancellationReason));
+                    CancellationReason: cancellationReason,
+                    Muebles: muebles,
+                    TipoMueble: tipoMueble));
             }
         }
         catch (Exception ex)
@@ -94,6 +98,8 @@ public class CeleroPostgresClient : ICeleroClient
     public static readonly IReadOnlyList<string> ColumnasOpcionalesVisit = new[]
     {
         "realDuration", "cancellationReason", "addressState", "addressCity"
+        // Nota: furniture data (Muebles/TipoMueble/CantidadMuebles) se extrae via JOIN a feedback→article,
+        // no como columnas opcionales en visit. Ver BuildVisitasSql.
     };
 
     /// <summary>
@@ -125,12 +131,19 @@ public class CeleroPostgresClient : ICeleroClient
                    COALESCE(v.status,'')               AS estado,
                    {cancellation}                      AS cancellation_reason,
                    {provincia}                         AS provincia,
-                   {ciudad}                            AS ciudad
+                   {ciudad}                            AS ciudad,
+                   -- Muebles extraídos via feedback→article (string concatenado, NULL si no existen)
+                   STRING_AGG(DISTINCT COALESCE(a.name, ''), ' | ') FILTER (WHERE a.id IS NOT NULL) AS muebles,
+                   STRING_AGG(DISTINCT COALESCE(a."categoryId"::text, ''), ' | ') FILTER (WHERE a.id IS NOT NULL) AS tipo_mueble
             FROM public.visit v
+            LEFT JOIN public.feedback f ON f."visitId" = v.id
+            LEFT JOIN public.article a ON a.id = f."articleId"
             JOIN public.analytics_mission_list_view m ON m."missionId" = v."missionId"
             JOIN public.resource_list_view r          ON r."resourceId" = v."resourceId"
             WHERE v."planDate" BETWEEN @desde AND @hasta
               {statusFilter}
+            GROUP BY v.id, v."planDate", v.status, r."resourceExternalId", m."serviceName", m."missionType",
+                     {duracion}, {cancellation}, {provincia}, {ciudad}
             ORDER BY v.id
             """;
     }

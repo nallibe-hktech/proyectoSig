@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using SIG.Application.Calculation;
 using SIG.Application.Common;
 using SIG.Application.DTOs;
@@ -312,59 +313,19 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             var existingEmployeeDict = existingEmployees.ToDictionary(e => e.EmpleadoIdExterno, StringComparer.OrdinalIgnoreCase);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ Empleados existentes en memoria: {existingEmployeeDict.Count}");
 
-            // 🔗 NUEVO: Cargar empleados de Bizneo para mapear UserId
-            var bizneoEmployees = await _db.StagingBizneoEmpleados
-                .AsNoTracking()
-                .ToListAsync(ct);
-
-            // Crear dos índices: por NIF y por nombre (para fallback)
-            var bizneoByNif = bizneoEmployees
-                .Where(b => !string.IsNullOrEmpty(b.NIF))
-                .ToDictionary(b => b.NIF, StringComparer.OrdinalIgnoreCase);
-
-            var bizneoByNombre = bizneoEmployees
-                .Where(b => !string.IsNullOrEmpty(b.Nombre))
-                .GroupBy(b => b.Nombre, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
-            _logger.LogInformation($"[A3InnuvaNominas] 🔗 Mapeo Bizneo cargado: {bizneoByNif.Count} por NIF, {bizneoByNombre.Count} por nombre");
+            // NOTE: No resolvemos UserId contra Bizneo. A3 es la fuente de verdad (3,832 empleados).
+            // Las otras APIs (Intratime, Celero, PayHawk, TravelPerk) se mapean directamente por NIF
+            // en GenerateExcelAsync, sin necesidad de UserId.
 
             // Insertar o actualizar (sin N+1 queries)
-            int inserted = 0, updated = 0, resolvedByNif = 0, resolvedByNombre = 0;
+            int inserted = 0, updated = 0;
             foreach (var employeeDto in uniqueEmployees)
             {
-                // 🔗 Resolver UserId desde Bizneo (primero por NIF, luego por nombre como fallback)
-                int? resolvedUserId = null;
-                string resolveMethod = "no resuelto";
-
-                // Intento 1: Por NIF
-                if (!string.IsNullOrEmpty(employeeDto.IdentifierNumber) &&
-                    bizneoByNif.TryGetValue(employeeDto.IdentifierNumber, out var bizneoEmpNif))
-                {
-                    resolvedUserId = bizneoEmpNif.UserId;
-                    resolveMethod = "NIF";
-                    resolvedByNif++;
-                }
-                // Intento 2: Por nombre (fallback si NIF no encontró)
-                else if (!string.IsNullOrEmpty(employeeDto.CompleteName) &&
-                         bizneoByNombre.TryGetValue(employeeDto.CompleteName, out var bizneoEmpNombre))
-                {
-                    resolvedUserId = bizneoEmpNombre.UserId;
-                    resolveMethod = "nombre";
-                    resolvedByNombre++;
-                }
-
-                if (resolvedUserId.HasValue)
-                {
-                    _logger.LogDebug($"[A3InnuvaNominas] ✅ UserId resuelto para {employeeDto.CompleteName} ({employeeDto.IdentifierNumber}) por {resolveMethod}: {resolvedUserId}");
-                }
-
                 if (existingEmployeeDict.TryGetValue(employeeDto.EmployeeCode ?? "", out var existing))
                 {
                     // Actualizar
                     existing.NIF = employeeDto.IdentifierNumber;
                     existing.Nombre = employeeDto.CompleteName;
-                    existing.UserId = resolvedUserId;  // 🔗 Asignar UserId resuelto
                     existing.FechaUltimaSincronizacion = DateTime.UtcNow;
                     existing.PayloadJson = System.Text.Json.JsonSerializer.Serialize(employeeDto);
                     existing.Hash = ComputeHash($"{employeeDto.EmployeeCode}_{employeeDto.IdentifierNumber}");
@@ -380,7 +341,6 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                         EmpleadoIdExterno = employeeDto.EmployeeCode ?? "",
                         NIF = employeeDto.IdentifierNumber,
                         Nombre = employeeDto.CompleteName,
-                        UserId = resolvedUserId,  // 🔗 Asignar UserId resuelto
                         FechaUltimaSincronizacion = DateTime.UtcNow,
                         PayloadJson = System.Text.Json.JsonSerializer.Serialize(employeeDto),
                         Hash = hash
@@ -391,7 +351,6 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             }
 
             _logger.LogInformation($"[A3InnuvaNominas] Empleados: {inserted} insertados, {updated} actualizados");
-            _logger.LogInformation($"[A3InnuvaNominas] 🔗 UserId mapeados: {resolvedByNif} por NIF, {resolvedByNombre} por nombre (total: {resolvedByNif + resolvedByNombre})");
 
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation($"[A3InnuvaNominas] ✅ Sincronización de empleados completada: {uniqueEmployees.Count} empleados procesados");
@@ -1862,63 +1821,7 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas] Cargados {empleados.Count} empleados A3");
 
-            // 3. Cargar gastos PayHawk del período (KM + SUPLIDOS) por UserId
-            var gastos = await _db.StagingPayHawkGastos
-                .AsNoTracking()
-                .ToListAsync(ct);
-
-            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastos.Count} gastos PayHawk");
-
-            // Map: UserId → List<gasto> (mapeo directo, simplificado)
-            var gastosByUserId = new Dictionary<int?, List<StagingPayHawkGasto>>();
-
-            foreach (var gasto in gastos)
-            {
-                if (!gastosByUserId.ContainsKey(gasto.UserId))
-                {
-                    gastosByUserId[gasto.UserId] = new List<StagingPayHawkGasto>();
-                }
-                gastosByUserId[gasto.UserId].Add(gasto);
-            }
-
-            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastosByUserId.Count} UserIds únicos con gastos PayHawk");
-
-            // 3b. Cargar ausencias Bizneo por UserId (para descuentos absentismo)
-            var ausenciasByUserId = new Dictionary<int?, decimal>();
-
-            if (empleados.Count > 0)
-            {
-                var empleadosConUserId = await _db.StagingA3InnuvaEmpleados
-                    .Where(e => e.UserId.HasValue)
-                    .AsNoTracking()
-                    .ToListAsync(ct);
-
-                _logger.LogInformation($"[A3InnuvaNominas] Cargados {empleadosConUserId.Count} empleados con UserId");
-
-                var ausencias = await _db.StagingBizneoAbsences
-                    .AsNoTracking()
-                    .ToListAsync(ct);
-
-                _logger.LogInformation($"[A3InnuvaNominas] Cargadas {ausencias.Count} ausencias Bizneo");
-
-                // Map: UserId → Horas totales de ausencias del período
-                foreach (var ausencia in ausencias)
-                {
-                    if (!ausenciasByUserId.ContainsKey(ausencia.UserId))
-                    {
-                        ausenciasByUserId[ausencia.UserId] = 0m;
-                    }
-                    ausenciasByUserId[ausencia.UserId] += ausencia.Horas;
-                }
-
-                _logger.LogInformation($"[A3InnuvaNominas] Cargadas {ausenciasByUserId.Count} UserIds únicos con ausencias");
-            }
-
-            // 4. Crear workbook Excel
-            using var workbook = new XLWorkbook();
-            var ws = workbook.Worksheets.Add("Nómina");
-
-            // Parsear período (formato: "2026-06" o "202606")
+            // Parsear período para derivar fechaInicio y fechaFin (necesario para filtros)
             var periodParts = periodCode.Replace("-", "");
             var periodDate = DateTime.TryParseExact(
                 periodCode.Contains("-") ? periodCode : $"{periodCode.Substring(0, 4)}-{periodCode.Substring(4)}",
@@ -1926,6 +1829,182 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                 System.Globalization.CultureInfo.InvariantCulture,
                 System.Globalization.DateTimeStyles.None,
                 out var parsed) ? parsed : DateTime.Now;
+
+            var fechaInicio = new DateOnly(periodDate.Year, periodDate.Month, 1);
+            var fechaFin = new DateOnly(periodDate.Year, periodDate.Month,
+                DateTime.DaysInMonth(periodDate.Year, periodDate.Month));
+
+            _logger.LogInformation($"[A3InnuvaNominas] Rango período: {fechaInicio} a {fechaFin}");
+
+            // 3. Cargar gastos PayHawk del período (KM + SUPLIDOS)
+            // Cargar empleados de Intratime para resolver NIF de PayHawk (que tiene UserId, no NIF directo)
+            var intratimeEmpleados = await _db.StagingIntratimeEmpleados
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            var intratimeByUserId = intratimeEmpleados
+                .Where(i => i.UserId.HasValue && !string.IsNullOrEmpty(i.NIF))
+                .ToDictionary(i => i.UserId!.Value, i => i.NIF);
+
+            var gastos = await _db.StagingPayHawkGastos
+                .Where(g => g.Fecha >= fechaInicio && g.Fecha <= fechaFin)
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastos.Count} gastos PayHawk");
+
+            // Map: NIF → List<gasto> (mapeo por NIF, no UserId)
+            var gastosByNif = new Dictionary<string, List<StagingPayHawkGasto>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var gasto in gastos)
+            {
+                // Resolver NIF desde PayHawk.UserId via Intratime
+                if (intratimeByUserId.TryGetValue(gasto.UserId, out var nif))
+                {
+                    if (!gastosByNif.ContainsKey(nif))
+                    {
+                        gastosByNif[nif] = new List<StagingPayHawkGasto>();
+                    }
+                    gastosByNif[nif].Add(gasto);
+                }
+            }
+
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {gastosByNif.Count} NIFs únicos con gastos PayHawk");
+
+            // 3b. Cargar ausencias Bizneo por NIF (para descuentos absentismo)
+            var ausenciasByNif = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+            if (empleados.Count > 0)
+            {
+                // Cargar empleados Bizneo para resolver NIF desde UserId
+                var bizneoEmpleados = await _db.StagingBizneoEmpleados
+                    .AsNoTracking()
+                    .ToListAsync(ct);
+
+                // Crear diccionario por EmpleadoIdExterno (más eficiente que FirstOrDefault en el loop)
+                var bizneoByEmpleadoId = bizneoEmpleados
+                    .Where(b => !string.IsNullOrEmpty(b.NIF))
+                    .ToDictionary(b => b.EmpleadoIdExterno, b => b.NIF, StringComparer.OrdinalIgnoreCase);
+
+                var ausencias = await _db.StagingBizneoAbsences
+                    .Where(a => a.Fecha >= fechaInicio && a.Fecha <= fechaFin)
+                    .AsNoTracking()
+                    .ToListAsync(ct);
+
+                _logger.LogInformation($"[A3InnuvaNominas] Cargadas {ausencias.Count} ausencias Bizneo del período");
+
+                // Map: NIF → Horas totales de ausencias del período
+                foreach (var ausencia in ausencias)
+                {
+                    // Resolver NIF desde diccionario (O(1) en lugar de O(n))
+                    if (bizneoByEmpleadoId.TryGetValue(ausencia.RegistroIdExterno, out var nif) && !string.IsNullOrEmpty(nif))
+                    {
+                        if (!ausenciasByNif.ContainsKey(nif))
+                        {
+                            ausenciasByNif[nif] = 0m;
+                        }
+                        ausenciasByNif[nif] += ausencia.Horas;
+                    }
+                }
+
+                _logger.LogInformation($"[A3InnuvaNominas] Cargadas {ausenciasByNif.Count} NIFs únicos con ausencias");
+            }
+
+            // 3c. Cargar fichajes Intratime del período por NIF
+            // Necesitamos resolver NIF desde UserIdExterno
+            var fichajesIntratime = await _db.StagingIntratimeFichajes
+                .Where(f => f.Entrada >= fechaInicio.ToDateTime(TimeOnly.MinValue)
+                         && f.Entrada <= fechaFin.ToDateTime(TimeOnly.MaxValue)
+                         && f.HorasCalculadas.HasValue)
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            // Cargar empleados Intratime para resolver NIF desde UserIdExterno
+            var intratimeByUserIdExterno = intratimeEmpleados
+                .Where(i => !string.IsNullOrEmpty(i.UserIdExterno) && !string.IsNullOrEmpty(i.NIF))
+                .ToDictionary(i => i.UserIdExterno, i => i.NIF);
+
+            var horasIntratimeByNif = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            foreach (var fichaje in fichajesIntratime)
+            {
+                if (intratimeByUserIdExterno.TryGetValue(fichaje.UserIdExterno, out var nif))
+                {
+                    if (!horasIntratimeByNif.ContainsKey(nif))
+                    {
+                        horasIntratimeByNif[nif] = 0m;
+                    }
+                    horasIntratimeByNif[nif] += fichaje.HorasCalculadas!.Value;
+                }
+            }
+
+            _logger.LogInformation($"[A3InnuvaNominas] Cargadas {horasIntratimeByNif.Count} NIFs únicos con fichajes Intratime");
+
+            // 3d. Cargar visitas Celero del período por NIF
+            var visitasCelero = await _db.StagingCeleroVisitas
+                .Where(v => v.Fecha >= fechaInicio
+                         && v.Fecha <= fechaFin
+                         && !string.IsNullOrEmpty(v.ResourceNif))
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            // Extraer datos del PayloadJson (contiene DuracionMinutos, Provincia, Estado)
+            var celeroPorNif = new Dictionary<string, (int numVisitas, int duracionTotal, string provinciaPrincipal)>(StringComparer.OrdinalIgnoreCase);
+
+            var visitasGroupByNif = visitasCelero.GroupBy(v => v.ResourceNif, StringComparer.OrdinalIgnoreCase);
+            foreach (var grupo in visitasGroupByNif)
+            {
+                var nif = grupo.Key;
+                var payloads = grupo
+                    .Select(v => string.IsNullOrEmpty(v.PayloadJson) ? null
+                        : JsonSerializer.Deserialize<CeleroVisitaDto>(v.PayloadJson,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }))
+                    .Where(p => p != null)
+                    .ToList();
+
+                var numVisitas = grupo.Count();
+                var duracionTotal = payloads.Sum(p => p!.DuracionMinutos ?? 0);
+                var provinciaPrincipal = payloads
+                    .Where(p => !string.IsNullOrEmpty(p!.Provincia))
+                    .GroupBy(p => p!.Provincia!)
+                    .OrderByDescending(grp => grp.Count())
+                    .FirstOrDefault()?.Key ?? "";
+
+                celeroPorNif[nif] = (numVisitas: numVisitas, duracionTotal: duracionTotal, provinciaPrincipal: provinciaPrincipal);
+            }
+
+            _logger.LogInformation($"[A3InnuvaNominas] Cargadas {celeroPorNif.Count} NIFs únicos con visitas Celero");
+
+            // 3e. Cargar viajes TravelPerk del período → join por TravelerEmail con User.Email → User.NIF
+            var emailToNif = await _db.Users
+                .Where(u => !u.IsDeleted && !string.IsNullOrEmpty(u.Email) && !string.IsNullOrEmpty(u.NIF))
+                .AsNoTracking()
+                .ToDictionaryAsync(u => u.Email.ToLowerInvariant(), u => u.NIF, ct);
+
+            var viajesTravelPerk = await _db.StagingTravelPerkLineas
+                .Where(t => t.FechaGasto >= fechaInicio
+                         && t.FechaGasto <= fechaFin
+                         && !string.IsNullOrEmpty(t.TravelerEmail))
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            var travelPerkByNif = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            foreach (var viaje in viajesTravelPerk)
+            {
+                if (emailToNif.TryGetValue(viaje.TravelerEmail!.ToLowerInvariant(), out var nif))
+                {
+                    if (!travelPerkByNif.ContainsKey(nif))
+                    {
+                        travelPerkByNif[nif] = 0m;
+                    }
+                    travelPerkByNif[nif] += viaje.CosteSinIVA;
+                }
+            }
+
+            _logger.LogInformation($"[A3InnuvaNominas] Cargados {travelPerkByNif.Count} NIFs únicos con viajes TravelPerk");
+
+            // 4. Crear workbook Excel
+            using var workbook = new XLWorkbook();
+            var ws = workbook.Worksheets.Add("Nómina");
 
             var diasMes = DateTime.DaysInMonth(periodDate.Year, periodDate.Month);
             var fechaCierre = new DateTime(periodDate.Year, periodDate.Month, diasMes);
@@ -1946,7 +2025,9 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             // Encabezados (Fila 8)
             var headers = new[] { "NIF", "Apellidos", "Nombre", "Centro", "Categoría", "Empresa", "Almacén", "Departamento",
-                "", "", "Importe Bruto", "", "", "", "", "", "", "", "", "km", "SUPLIDOS", "", "", "", "", "", "Descuentos Absentismo" };
+                "", "", "Importe Bruto", "", "", "", "", "", "", "", "", "km", "SUPLIDOS", "", "", "", "", "Desc. Absentismo (h)",
+                // NUEVAS (AA–AE):
+                "Horas Intratime", "Visitas Celero", "Duración Celero (min)", "Provincia Celero", "Viajes TravelPerk €" };
 
             for (int col = 1; col <= headers.Length; col++)
             {
@@ -1975,9 +2056,11 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                 // Col K (11): Importe Bruto (TotalPercepciones)
                 ws.Cell(rowIndex, 11).Value = nomina.TotalPercepciones;
 
+                // Usar NIF para mapeo con todas las APIs (A3 es la fuente de verdad)
+                var nif = empleado?.NIF ?? "";
+
                 // Col T (20): KM (calculado desde PayHawk - Categoría "Kilometraje")
-                var usuarioId = empleado?.UserId;
-                var gastosEmpleado = usuarioId.HasValue && gastosByUserId.TryGetValue(usuarioId, out var listaGastos)
+                var gastosEmpleado = !string.IsNullOrEmpty(nif) && gastosByNif.TryGetValue(nif, out var listaGastos)
                     ? listaGastos
                     : new List<StagingPayHawkGasto>();
 
@@ -1992,11 +2075,32 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                     .Sum(x => x.Importe);
                 ws.Cell(rowIndex, 21).Value = suplidosGastos > 0 ? suplidosGastos : 0;
 
-                // Col Z (26): Descuento Absentismo (desde Bizneo ausencias via UserId del empleado)
-                var horasAusencia = usuarioId.HasValue && ausenciasByUserId.TryGetValue(usuarioId, out var horas)
+                // Col Z (26): Descuento Absentismo (desde Bizneo ausencias via NIF del empleado)
+                var horasAusencia = !string.IsNullOrEmpty(nif) && ausenciasByNif.TryGetValue(nif, out var horas)
                     ? horas
-                    : 0;
+                    : 0m;
                 ws.Cell(rowIndex, 26).Value = horasAusencia > 0 ? horasAusencia : 0;
+
+                // Col AA (27): Horas trabajadas Intratime
+                var horasIntratime = !string.IsNullOrEmpty(nif) && horasIntratimeByNif.TryGetValue(nif, out var hIntr)
+                    ? hIntr : 0m;
+                ws.Cell(rowIndex, 27).Value = horasIntratime;
+
+                // Col AB (28): Nº visitas Celero
+                var celeroData = !string.IsNullOrEmpty(nif) && celeroPorNif.TryGetValue(nif, out var cDat)
+                    ? cDat : (numVisitas: 0, duracionTotal: 0, provinciaPrincipal: "");
+                ws.Cell(rowIndex, 28).Value = celeroData.numVisitas;
+
+                // Col AC (29): Duración total Celero (minutos)
+                ws.Cell(rowIndex, 29).Value = celeroData.duracionTotal;
+
+                // Col AD (30): Provincia principal Celero
+                ws.Cell(rowIndex, 30).Value = celeroData.provinciaPrincipal;
+
+                // Col AE (31): Coste viajes TravelPerk €
+                var costeTravelPerk = !string.IsNullOrEmpty(nif) && travelPerkByNif.TryGetValue(nif, out var tpCost)
+                    ? tpCost : 0m;
+                ws.Cell(rowIndex, 31).Value = costeTravelPerk;
 
                 rowIndex++;
             }
@@ -2006,6 +2110,11 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
             ws.Column(20).Width = 10; // KM
             ws.Column(21).Width = 14; // SUPLIDOS
             ws.Column(26).Width = 14; // Descuentos
+            ws.Column(27).Width = 14; // Horas Intratime
+            ws.Column(28).Width = 13; // Visitas Celero
+            ws.Column(29).Width = 16; // Duración Celero
+            ws.Column(30).Width = 18; // Provincia Celero
+            ws.Column(31).Width = 18; // Viajes TravelPerk
 
             // Convertir a bytes y retornar
             using var stream = new MemoryStream();

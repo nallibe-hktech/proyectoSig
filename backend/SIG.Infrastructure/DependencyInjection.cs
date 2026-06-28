@@ -112,8 +112,7 @@ public static class DependencyInjection
         services.AddScoped<GalanSyncService>();
         services.AddScoped<MediapostSyncService>();
         services.AddScoped<IA3InnuvaNominasService, A3InnuvaNominasService>();
-        // TODO: PHASE 2 - Descomentar IPaymentModelService para validación de modelos de pago
-        // services.AddScoped<IPaymentModelService, PaymentModelService>();
+        services.AddScoped<IPaymentModelService, PaymentModelService>();
 
         // Calculation
         services.AddScoped<IFormulaParser, FormulaParser>();
@@ -211,7 +210,8 @@ public static class DependencyInjection
             {
                 var factory = sp.GetRequiredService<IHttpClientFactory>();
                 var client = factory.CreateClient("sgpv");
-                return new SgpvClient(client, sgpvUsername, sgpvPassword);
+                var logger = sp.GetService<ILogger<SgpvClient>>();
+                return new SgpvClient(client, sgpvUsername, sgpvPassword, logger);
             });
 
             // A3 Innuva

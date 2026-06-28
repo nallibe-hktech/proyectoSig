@@ -144,9 +144,9 @@ public class SyncServiceTests
     public async Task SyncAsync_Bizneo_SincronizaEmpleadosYHoras()
     {
         _bizneo.GetEmpleadosAsync(Arg.Any<CancellationToken>())
-            .Returns(new[] { new BizneoEmpleadoDto("e1", "12345678A", "Pepe", "Operaciones") });
+            .Returns(new[] { new BizneoEmpleadoDto("e1", "pepe@test.com", "Pepe", "Operaciones") });
         _bizneo.GetAbsencesAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { new BizneoAbsenceDto("h1", 1, 100, new DateOnly(2026, 3, 1), 8m) });
+            .Returns(new[] { new BizneoAbsenceDto("h1", 1, 100, new DateOnly(2026, 3, 1), new DateOnly(2026, 3, 1), 8m, "Aprobada") });
         _empRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
         _absenceRepo.ExistsByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
 

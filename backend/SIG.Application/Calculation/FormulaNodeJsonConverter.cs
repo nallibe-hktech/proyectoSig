@@ -31,6 +31,7 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
                 "Modifier" => DeserializeModifierNode(root),
                 "Tramos" => DeserializeTramosNode(root),
                 "ConceptRef" => DeserializeConceptRefNode(root),
+                "CrossService" => DeserializeCrossServiceNode(root),
                 _ => throw new JsonException($"Unknown FormulaNode type: {typeValue}")
             };
         }
@@ -53,6 +54,7 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
             "ModifierNode" => "Modifier",
             "TramosNode" => "Tramos",
             "ConceptRefNode" => "ConceptRef",
+            "CrossServiceAggregateNode" => "CrossService",
             _ => throw new JsonException($"Unknown FormulaNode type: {value.GetType().Name}")
         });
 
@@ -115,6 +117,13 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
         {
             writer.WritePropertyName("conceptIds");
             JsonSerializer.Serialize(writer, conceptRef.ConceptIds, options);
+        }
+        else if (value is CrossServiceAggregateNode cross)
+        {
+            writer.WriteString("entity", cross.Entity);
+            writer.WriteString("field", cross.Field);
+            writer.WritePropertyName("baseSalary");
+            JsonSerializer.Serialize(writer, cross.BaseSalary, typeof(FormulaNode), options);
         }
 
         writer.WriteEndObject();
@@ -240,6 +249,23 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
         return node;
     }
 
+    private static CrossServiceAggregateNode DeserializeCrossServiceNode(JsonElement root)
+    {
+        if (!root.TryGetProperty("entity", out var entityProperty))
+            throw new JsonException("CrossServiceAggregateNode requires 'entity' property");
+        if (!root.TryGetProperty("field", out var fieldProperty))
+            throw new JsonException("CrossServiceAggregateNode requires 'field' property");
+        if (!root.TryGetProperty("baseSalary", out var baseSalaryProperty))
+            throw new JsonException("CrossServiceAggregateNode requires 'baseSalary' property");
+
+        return new CrossServiceAggregateNode
+        {
+            Entity = entityProperty.GetString() ?? "",
+            Field = fieldProperty.GetString() ?? "",
+            BaseSalary = InferAndDeserializeNode(baseSalaryProperty)
+        };
+    }
+
     private static BinaryOpNode DeserializeBinaryOpNode(JsonElement root)
     {
         if (!root.TryGetProperty("op", out var opProperty))
@@ -272,6 +298,7 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
                 "Modifier" => DeserializeModifierNode(root),
                 "Tramos" => DeserializeTramosNode(root),
                 "ConceptRef" => DeserializeConceptRefNode(root),
+                "CrossService" => DeserializeCrossServiceNode(root),
                 _ => throw new JsonException($"Unknown FormulaNode type: {typeProperty.GetString()}")
             };
         }
@@ -291,10 +318,16 @@ public class FormulaNodeJsonConverter : JsonConverter<FormulaNode>
             return new VariableNode { VariableId = variableIdProperty.GetInt32() };
         }
 
-        // Check for SourceNode: has "entity" property
-        if (root.TryGetProperty("entity", out var entityProperty))
+        // Check for SourceNode: has "entity" property (but NOT "baseSalary", which distinguishes CrossService)
+        if (root.TryGetProperty("entity", out var entityProperty) && !root.TryGetProperty("baseSalary", out _))
         {
             return DeserializeSourceNode(root);
+        }
+
+        // Check for CrossServiceAggregateNode: has "entity" + "baseSalary"
+        if (root.TryGetProperty("entity", out _) && root.TryGetProperty("baseSalary", out _))
+        {
+            return DeserializeCrossServiceNode(root);
         }
 
         // Check for AggregateNode: has "op" and "source" properties

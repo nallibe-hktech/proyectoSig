@@ -397,7 +397,7 @@ public class SyncService : ISyncService
                     if (await _empRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
                     await _empRepo.AddRangeAsync(new[] { new StagingBizneoEmpleado
                     {
-                        EmpleadoIdExterno = e.EmpleadoIdExterno, NIF = e.NIF, Nombre = e.Nombre, Departamento = e.Departamento,
+                        EmpleadoIdExterno = e.EmpleadoIdExterno, Email = e.Email, NIF = null, Nombre = e.Nombre, Departamento = e.Departamento,
                         PayloadJson = json, Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
                     } }, ct);
@@ -413,7 +413,7 @@ public class SyncService : ISyncService
                     await _absenceRepo.AddRangeAsync(new[] { new StagingBizneoAbsence
                     {
                         RegistroIdExterno = a.RegistroIdExterno, UserId = a.UserId, ServiceId = a.ServiceId,
-                        Fecha = a.Fecha, Horas = a.Horas,
+                        Fecha = a.Fecha, FechaFin = a.FechaFin, Horas = a.Horas, Estado = a.Estado,
                         PayloadJson = json, Hash = hash,
                         FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
                     } }, ct);

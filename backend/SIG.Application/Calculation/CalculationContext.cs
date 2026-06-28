@@ -15,6 +15,16 @@ public class CalculationContext
     public List<Variable> Variables { get; set; } = new();
     public List<StagingSgpvVisita> VisitasSgpv { get; set; } = new();
     public List<StagingTravelPerkLinea> ViajesTravelPerk { get; set; } = new();
+    public List<StagingA3InnuvaSalary> SalariosA3 { get; set; } = new();
+    // Logística Galán
+    public List<StagingGalanEntrada> GalanEntradas { get; set; } = new();
+    public List<StagingGalanSalida> GalanSalidas { get; set; } = new();
+    public List<StagingGalanStock> GalanStock { get; set; } = new();
+    // Logística Mediapost
+    public List<StagingMediapostPedido> MediapostPedidos { get; set; } = new();
+    public List<StagingMediapostRecepcion> MediapostRecepciones { get; set; } = new();
+    // Datos cross-service: horas de TODOS los servicios del empleado (para "salario ÷ horas dedicadas")
+    public Dictionary<string, List<RowAdapter>> CrossServiceRows { get; } = new();
     public HashSet<string> SistemasUsados { get; } = new();
     public Dictionary<string, object> UsedInputs { get; } = new();
 
@@ -31,6 +41,12 @@ public class CalculationContext
             "TarifasServicio" or "TarifasProyecto" => Tarifas.Select(t => RowAdapter.FromTarifa(t)),
             "VisitasSgpv" => VisitasSgpv.Select(s => RowAdapter.FromSgpvVisita(s)),
             "ViajesTravelPerk" => ViajesTravelPerk.Select(t => RowAdapter.FromTravelPerkLinea(t)),
+            "SalariosA3" => SalariosA3.Select(s => RowAdapter.FromSalarioA3(s)),
+            "EntradasGalan" => GalanEntradas.Select(e => RowAdapter.FromGalanEntrada(e)),
+            "SalidasGalan" => GalanSalidas.Select(s => RowAdapter.FromGalanSalida(s)),
+            "StockGalan" => GalanStock.Select(s => RowAdapter.FromGalanStock(s)),
+            "PedidosMediapost" => MediapostPedidos.Select(p => RowAdapter.FromMediapostPedido(p)),
+            "RecepcionesMediapost" => MediapostRecepciones.Select(r => RowAdapter.FromMediapostRecepcion(r)),
             _ => throw new FormulaInvalidException($"Entidad desconocida: {source.Entity}")
         };
 
@@ -40,6 +56,8 @@ public class CalculationContext
 
         var rows = baseRows.Where(r =>
         {
+            // SalariosA3 requiere fecha válida; si no tiene, se excluye
+            if (source.Entity == "SalariosA3" && !r.Fecha.HasValue) return false;
             if (r.Fecha.HasValue && (r.Fecha.Value < desde || r.Fecha.Value > hasta)) return false;
             if (r.ServiceId.HasValue && r.ServiceId.Value != target.ServiceId) return false;
             if (recursoId.HasValue && r.UserId.HasValue && r.UserId.Value != recursoId.Value) return false;
@@ -129,6 +147,12 @@ public class CalculationContext
         "TarifasProyecto" => "Tarifas",
         "VisitasSgpv" => "SGPV",
         "ViajesTravelPerk" => "TravelPerk",
+        "SalariosA3" => "A3Innuva",
+        "EntradasGalan" => "Galan",
+        "SalidasGalan" => "Galan",
+        "StockGalan" => "Galan",
+        "PedidosMediapost" => "Mediapost",
+        "RecepcionesMediapost" => "Mediapost",
         _ => "Desconocido"
     };
 
@@ -159,6 +183,10 @@ public class RowAdapter
     public int? NumeroVisita { get; set; }   // 1 = primera, 2 = segunda, 3 = tercera ...
     public bool Nocturnidad { get; set; }
     public bool Pernocta { get; set; }
+    // Campos de muebles para facturación (no todas las visitas los traen)
+    public string? Muebles { get; set; }      // tipo de mueble: "Expositor", "Gondola", "Cabecera", etc.
+    public string? TipoMueble { get; set; }   // subtipo o categoría de mueble
+    public int? CantidadMuebles { get; set; } // cantidad de unidades instaladas
     public DateTime? Entrada { get; set; }
     public DateTime? Salida { get; set; }
     // Atributos arbitrarios extraídos del PayloadJson (respuestas Celero/idQuestion, etc.) para filtrar/segmentar.
@@ -174,6 +202,7 @@ public class RowAdapter
         "NumeroVisita" => NumeroVisita ?? 0,
         "Nocturnidad" => Nocturnidad ? 1 : 0,
         "Pernocta" => Pernocta ? 1 : 0,
+        "CantidadMuebles" => CantidadMuebles ?? 0,
         _ => Extra.TryGetValue(field, out var v) ? ToDecimal(v) : 0
     };
 
@@ -198,6 +227,9 @@ public class RowAdapter
         "NumeroVisita" => NumeroVisita,
         "Nocturnidad" => Nocturnidad,
         "Pernocta" => Pernocta,
+        "Muebles" => Muebles,
+        "TipoMueble" => TipoMueble,
+        "CantidadMuebles" => CantidadMuebles,
         _ => Extra.TryGetValue(field, out var v) ? v : null
     };
 
@@ -256,6 +288,16 @@ public class RowAdapter
                     case "nocturnidad":
                     case "nocturna": Nocturnidad = ToBool(val); break;
                     case "pernocta": Pernocta = ToBool(val); break;
+                    // Campos de muebles para facturación
+                    case "muebles":
+                    case "mueble": Muebles = val?.ToString(); break;
+                    case "tipomueble":
+                    case "tipo_mueble":
+                    case "tipomuebles": TipoMueble = val?.ToString(); break;
+                    case "cantidadmuebles":
+                    case "cantidad_muebles":
+                    case "numuebles":
+                    case "n_muebles": CantidadMuebles = (int)ToDecimal(val); break;
                 }
             }
         }
@@ -290,12 +332,114 @@ public class RowAdapter
     };
     public static RowAdapter FromTravelPerkLinea(StagingTravelPerkLinea t)
     {
-        // Importe = coste sin IVA (los "Refund for train" vienen en negativo → netean al sumar).
-        // Categoria = Service (Hotels/Flights/…); CECO accesible para filtros/segmentación vía Extra.
         var r = new RowAdapter { Fecha = t.FechaGasto, ServiceId = t.ServiceId, Importe = t.CosteSinIVA, Categoria = t.Service };
         r.Extra["Service"] = t.Service;
         r.Extra["Ceco"] = t.Ceco;
         r.Extra["CostObject"] = t.CostObject;
+        return r;
+    }
+    public static RowAdapter FromSalarioA3(StagingA3InnuvaSalary s) => new()
+    {
+        UserId = s.UserId,
+        Importe = s.ImporteBruto,
+        Fecha = s.FechaInicio != default ? DateOnly.FromDateTime(s.FechaInicio) : null,
+        Entrada = s.FechaInicio,
+        Salida = s.FechaFin,
+    };
+    public static RowAdapter FromGalanEntrada(StagingGalanEntrada e)
+    {
+        var r = new RowAdapter
+        {
+            Fecha = DateOnly.FromDateTime(e.Fecha),
+            Nombre = e.Descripcion,
+            Categoria = e.CodigoFamilia,
+        };
+        r.Extra["CodigoArticulo"] = e.CodigoArticulo;
+        r.Extra["CodigoDepartamento"] = e.CodigoDepartamento;
+        r.Extra["CodigoFamilia"] = e.CodigoFamilia;
+        r.Extra["Unidades"] = e.Unidades;
+        r.Extra["Empresa"] = e.Empresa;
+        r.Extra["Almacen"] = e.Almacen;
+        r.Extra["Celda"] = e.Celda;
+        return r;
+    }
+    public static RowAdapter FromGalanSalida(StagingGalanSalida s)
+    {
+        var r = new RowAdapter
+        {
+            Fecha = DateOnly.FromDateTime(s.Fecha),
+            Nombre = s.Descripcion,
+            Categoria = s.CodigoFamilia,
+        };
+        r.Extra["Albaran"] = s.Albaran;
+        r.Extra["NumeroPedidoTercero"] = s.NumeroPedidoTercero;
+        r.Extra["CodigoArticulo"] = s.CodigoArticulo;
+        r.Extra["CodigoDepartamento"] = s.CodigoDepartamento;
+        r.Extra["CodigoFamilia"] = s.CodigoFamilia;
+        r.Extra["Unidades"] = s.Unidades;
+        r.Extra["CodigoTransporte"] = s.CodigoTransporte;
+        r.Extra["Matricula"] = s.Matricula;
+        r.Extra["Destinatario"] = s.Destinatario;
+        r.Extra["Almacen"] = s.Almacen;
+        r.Extra["Celda"] = s.Celda;
+        return r;
+    }
+    public static RowAdapter FromGalanStock(StagingGalanStock s)
+    {
+        var r = new RowAdapter
+        {
+            Nombre = s.Descripcion,
+            Categoria = s.Familia,
+            Importe = s.Stock,
+        };
+        r.Extra["CodigoArticulo"] = s.CodigoArticulo;
+        r.Extra["CodigoDepartamento"] = s.CodigoDepartamento;
+        r.Extra["CodigoFamilia"] = s.CodigoFamilia;
+        r.Extra["CodigoCelda"] = s.CodigoCelda;
+        r.Extra["StockB"] = s.StockB;
+        r.Extra["StockA"] = s.StockA;
+        r.Extra["Stock"] = s.Stock;
+        r.Extra["Almacen"] = s.Almacen;
+        r.Extra["Familia"] = s.Familia;
+        r.Extra["SubFamilia"] = s.SubFamilia;
+        return r;
+    }
+    public static RowAdapter FromMediapostPedido(StagingMediapostPedido p)
+    {
+        var r = new RowAdapter
+        {
+            Fecha = DateOnly.FromDateTime(p.FechaPedido),
+            Nombre = p.ReferenciaPedido,
+            Estado = p.Estado,
+            Importe = p.Cantidad,
+        };
+        r.Extra["PedidoId"] = p.PedidoId;
+        r.Extra["ReferenciaPedido"] = p.ReferenciaPedido;
+        r.Extra["CodigoArticulo"] = p.CodigoArticulo;
+        r.Extra["Cantidad"] = p.Cantidad;
+        r.Extra["DestinatarioNombre"] = p.DestinatarioNombre;
+        r.Extra["DireccionEntrega"] = p.DireccionEntrega;
+        r.Extra["CodigoPostal"] = p.CodigoPostal;
+        r.Extra["Ciudad"] = p.Ciudad;
+        r.Extra["Provincia"] = p.Provincia;
+        return r;
+    }
+    public static RowAdapter FromMediapostRecepcion(StagingMediapostRecepcion recep)
+    {
+        var r = new RowAdapter
+        {
+            Fecha = DateOnly.FromDateTime(recep.FechaRecepcion),
+            Nombre = recep.ReferenciaRecepcion,
+            Estado = recep.Estado,
+            Importe = recep.Cantidad,
+        };
+        r.Extra["RecepcionId"] = recep.RecepcionId;
+        r.Extra["ReferenciaRecepcion"] = recep.ReferenciaRecepcion;
+        r.Extra["CodigoArticulo"] = recep.CodigoArticulo;
+        r.Extra["Cantidad"] = recep.Cantidad;
+        r.Extra["CantidadDanada"] = recep.CantidadDañada;
+        r.Extra["Almacen"] = recep.Almacen;
+        r.Extra["Observaciones"] = recep.Observaciones;
         return r;
     }
 }

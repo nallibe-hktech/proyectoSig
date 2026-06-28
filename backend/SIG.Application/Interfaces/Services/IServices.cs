@@ -285,3 +285,17 @@ public interface IClosureValidationService
     /// </summary>
     Task ConfirmarAdvertenciaAsync(int alertaId, int usuarioId, CancellationToken ct);
 }
+
+public interface IPaymentModelService
+{
+    Task<IReadOnlyList<PaymentModelDto>> ListByClientAsync(int clientId, CancellationToken ct);
+    Task<PaymentModelDto> GetByIdAsync(int id, CancellationToken ct);
+    Task<PaymentModelDto> CreateAsync(PaymentModelCreateRequest req, int usuarioId, CancellationToken ct);
+    Task<PaymentModelDto> UpdateAsync(int id, PaymentModelUpdateRequest req, int usuarioId, CancellationToken ct);
+    Task DeleteAsync(int id, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<ConceptValidationRuleDto>> GetValidationRulesAsync(int paymentModelId, CancellationToken ct);
+    Task<ConceptValidationRuleDto> UpsertValidationRuleAsync(ConceptValidationRuleUpsertRequest req, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<PaymentRatesConfigurationDto>> GetRatesAsync(int paymentModelId, CancellationToken ct);
+    Task<PaymentRatesConfigurationDto> UpsertRateAsync(PaymentRatesConfigurationUpsertRequest req, int usuarioId, CancellationToken ct);
+    Task<bool> IsConceptApplicableAsync(int conceptId, string paymentModelType, CancellationToken ct);
+}

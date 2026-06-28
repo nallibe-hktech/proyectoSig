@@ -452,7 +452,8 @@ public class StagingBizneoEmpleadoConfiguration : IEntityTypeConfiguration<Stagi
         b.HasIndex(s => s.Hash).IsUnique();
         b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
         b.Property(s => s.EmpleadoIdExterno).HasMaxLength(100).IsRequired();
-        b.Property(s => s.NIF).HasMaxLength(50).IsRequired();
+        b.Property(s => s.Email).HasMaxLength(200).IsRequired();
+        b.Property(s => s.NIF).HasMaxLength(50).IsRequired(false);
         b.Property(s => s.Nombre).HasMaxLength(200).IsRequired();
         b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();
         b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
@@ -467,6 +468,7 @@ public class StagingBizneoAbsenceConfiguration : IEntityTypeConfiguration<Stagin
         b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
         b.Property(s => s.RegistroIdExterno).HasMaxLength(255).IsRequired();
         b.Property(s => s.Horas).HasPrecision(18, 4);
+        b.Property(s => s.Estado).HasMaxLength(50);
         b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();
         b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
     }

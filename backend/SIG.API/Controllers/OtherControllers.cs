@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Services;
 using SIG.Infrastructure.Persistence;
 
@@ -418,4 +419,65 @@ public class A3ErpController : ControllerBase
             detail: "Sincronización desde A3 ERP pendiente de especificación de la API.",
             statusCode: 501,
             title: "No implementado");
+}
+
+[ApiController]
+[Route("api/payment-models")]
+[Authorize]
+public class PaymentModelsController : ControllerBase
+{
+    private readonly IPaymentModelService _svc;
+    public PaymentModelsController(IPaymentModelService svc) { _svc = svc; }
+    private int UserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new InvalidOperationException("NameIdentifier claim not found"));
+
+    [HttpGet("client/{clientId:int}")]
+    public async Task<IActionResult> ListByClient(int clientId, CancellationToken ct) =>
+        Ok(await _svc.ListByClientAsync(clientId, ct));
+
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id, CancellationToken ct) =>
+        Ok(await _svc.GetByIdAsync(id, ct));
+
+    [HttpPost]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> Create(PaymentModelCreateRequest req, CancellationToken ct)
+    {
+        var r = await _svc.CreateAsync(req, UserId, ct);
+        return CreatedAtAction(nameof(GetById), new { id = r.Id }, r);
+    }
+
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> Update(int id, PaymentModelUpdateRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpdateAsync(id, req, UserId, ct));
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        await _svc.DeleteAsync(id, UserId, ct);
+        return NoContent();
+    }
+
+    [HttpGet("{id:int}/validation-rules")]
+    public async Task<IActionResult> GetValidationRules(int id, CancellationToken ct) =>
+        Ok(await _svc.GetValidationRulesAsync(id, ct));
+
+    [HttpPost("validation-rules")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> UpsertValidationRule(ConceptValidationRuleUpsertRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpsertValidationRuleAsync(req, UserId, ct));
+
+    [HttpGet("{id:int}/rates")]
+    public async Task<IActionResult> GetRates(int id, CancellationToken ct) =>
+        Ok(await _svc.GetRatesAsync(id, ct));
+
+    [HttpPost("rates")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> UpsertRate(PaymentRatesConfigurationUpsertRequest req, CancellationToken ct) =>
+        Ok(await _svc.UpsertRateAsync(req, UserId, ct));
+
+    [HttpGet("check-concept")]
+    public async Task<IActionResult> CheckConcept([FromQuery] int conceptId, [FromQuery] string paymentModelType, CancellationToken ct) =>
+        Ok(new { applicable = await _svc.IsConceptApplicableAsync(conceptId, paymentModelType, ct) });
 }

@@ -23,7 +23,7 @@ public class CalculationEngine : ICalculationEngine
         var ast = _parser.Parse(concept.FormulaJson);
         var ctx = await _loader.LoadAsync(target, ct);
         var incidencias = new List<CalculationIncidencia>();
-        var resultado = EvaluateNode(ast, ctx, target, concept, recursoId, incidencias);
+        var resultado = await EvaluateNodeAsync(ast, ctx, target, concept, recursoId, ct, incidencias);
         ctx.UsedInputs["concepto"] = concept.Nombre;
         ctx.UsedInputs["periodo"] = target.Period?.Nombre ?? string.Empty;
         ctx.UsedInputs["serviceId"] = target.ServiceId;
@@ -38,19 +38,20 @@ public class CalculationEngine : ICalculationEngine
         return new CalculationResult(Math.Round(resultado, 2), inputsJson, concept.FormulaJson, sistemaOrigen, incidencias);
     }
 
-    private decimal EvaluateNode(FormulaNode node, CalculationContext ctx, CalculationTarget target, Concept concept, int? recursoId, List<CalculationIncidencia> inc) =>
+    private async Task<decimal> EvaluateNodeAsync(FormulaNode node, CalculationContext ctx, CalculationTarget target, Concept concept, int? recursoId, CancellationToken ct, List<CalculationIncidencia> inc) =>
         node switch
         {
             NumberNode n => (decimal)n.Value,
             VariableNode v => _varResolver.Resolve(v.VariableId, ctx),
             AggregateNode a => Aggregate(a, ctx, target, recursoId, inc),
             BinaryOpNode b => ApplyBinary(b.Op,
-                EvaluateNode(b.Left, ctx, target, concept, recursoId, inc),
-                EvaluateNode(b.Right, ctx, target, concept, recursoId, inc),
+                await EvaluateNodeAsync(b.Left, ctx, target, concept, recursoId, ct, inc),
+                await EvaluateNodeAsync(b.Right, ctx, target, concept, recursoId, ct, inc),
                 inc),
-            ModifierNode m => ApplyModifier(m.Kind, EvaluateNode(m.Inner, ctx, target, concept, recursoId, inc), m.Threshold),
-            TramosNode t => ApplyTramos(t, EvaluateNode(t.Cantidad, ctx, target, concept, recursoId, inc)),
+            ModifierNode m => ApplyModifier(m.Kind, await EvaluateNodeAsync(m.Inner, ctx, target, concept, recursoId, ct, inc), m.Threshold),
+            TramosNode t => ApplyTramos(t, await EvaluateNodeAsync(t.Cantidad, ctx, target, concept, recursoId, ct, inc)),
             ConceptRefNode cr => ResolveConceptRef(cr, target, concept, inc),
+            CrossServiceAggregateNode cs => await EvaluateCrossServiceAsync(cs, ctx, target, concept, recursoId, ct, inc),
             SourceNode => throw new FormulaInvalidException("SourceNode no puede evaluarse directamente. Debe envolverse en Aggregate."),
             _ => throw new FormulaInvalidException($"Tipo de nodo desconocido: {node.GetType().Name}")
         };
@@ -130,5 +131,42 @@ public class CalculationEngine : ICalculationEngine
     {
         inc.Add(new CalculationIncidencia(tipo, detalle));
         return 0;
+    }
+
+    private async Task<decimal> EvaluateCrossServiceAsync(CrossServiceAggregateNode cs, CalculationContext ctx, CalculationTarget target, Concept concept, int? recursoId, CancellationToken ct, List<CalculationIncidencia> inc)
+    {
+        if (!recursoId.HasValue)
+        {
+            inc.Add(new CalculationIncidencia("CrossServiceSinRecurso", "CrossServiceAggregate requiere recursoId (empleado)."));
+            return 0m;
+        }
+
+        var baseSalary = await EvaluateNodeAsync(cs.BaseSalary, ctx, target, concept, recursoId, ct, inc);
+
+        var cacheKey = $"{recursoId.Value}_{cs.Entity}_{target.Period.FechaInicio}_{target.Period.FechaFin}";
+        if (!ctx.CrossServiceRows.TryGetValue(cacheKey, out var allRows))
+        {
+            allRows = await _loader.LoadCrossServiceAsync(recursoId.Value, target.Period.FechaInicio, target.Period.FechaFin, cs.Entity, cs.Field, ct);
+            ctx.CrossServiceRows[cacheKey] = allRows;
+        }
+
+        if (allRows.Count == 0)
+        {
+            inc.Add(new CalculationIncidencia("CrossServiceSinDatos", $"Sin datos cross-service para {cs.Entity}."));
+            return baseSalary;
+        }
+
+        var totalHoras = allRows.Sum(r => r.GetDecimal(cs.Field));
+        if (totalHoras == 0m)
+        {
+            inc.Add(new CalculationIncidencia("CrossServiceHorasCero", "Horas totales = 0, no se puede redistribuir salario."));
+            return baseSalary;
+        }
+
+        var serviceRows = ctx.FilteredRows(new SourceNode { Entity = cs.Entity, Filters = new List<FilterSpec>() }, target, recursoId);
+        var serviceHoras = serviceRows.Sum(r => r.GetDecimal(cs.Field));
+
+        var porcentaje = serviceHoras / totalHoras;
+        return Math.Round(baseSalary * porcentaje, 2);
     }
 }

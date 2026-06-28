@@ -693,5 +693,7 @@ public class CalculationEngineTests
             };
             return Task.FromResult(ctx);
         }
+        public Task<List<RowAdapter>> LoadCrossServiceAsync(int userId, DateOnly desde, DateOnly hasta, string entity, string field, CancellationToken ct)
+            => Task.FromResult(new List<RowAdapter>());
     }
 }

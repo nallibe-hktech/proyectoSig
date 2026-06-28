@@ -63,12 +63,16 @@ public class ClosureValidationService : IClosureValidationService
             alertas.AddRange(await CheckCamposClaveAsync(cierreId, serviceId, desde, hasta, ct));
             alertas.AddRange(await CheckActividadSinContratoAsync(cierreId, serviceId, desde, hasta, ct));
             alertas.AddRange(await CheckCecoNoMaestroAsync(cierreId, serviceId, ct));
+            alertas.AddRange(await CheckNifBizneoSinContratoAsync(cierreId, serviceId, desde, hasta, ct));
+            alertas.AddRange(await CheckNifIntratimeSinContratoAsync(cierreId, serviceId, desde, hasta, ct));
 
             // ADVERTENCIAS
             alertas.AddRange(await CheckContratoSinActividadAsync(cierreId, serviceId, desde, hasta, ct));
             alertas.AddRange(await CheckPagoPorKmExcesivoAsync(cierreId, serviceId, desde, hasta, ct));
             alertas.AddRange(await CheckGastoNegativoAsync(cierreId, serviceId, desde, hasta, ct));
             alertas.AddRange(await CheckPagoInferiorContratoAsync(cierreId, ct));
+            alertas.AddRange(await CheckVisitaSinRecursoAsync(cierreId, serviceId, desde, hasta, ct));
+            alertas.AddRange(await CheckGastoSinProyectoAsync(cierreId, serviceId, desde, hasta, ct));
         }
 
         if (alertas.Count > 0)
@@ -413,6 +417,113 @@ public class ClosureValidationService : IClosureValidationService
                     Detalle = $"{{\"closureLineId\":{line.Id},\"importeLinea\":{line.Importe},\"importeContrato\":{contrato.ImporteBruto},\"nif\":\"{user.NIF}\"}}"
                 });
             }
+        }
+
+        return alertas;
+    }
+
+    // ────────────────────── VALIDACIONES CRUZADAS (NIF cross-system) ──────────────────────
+
+    /// <summary>V10: NIF de Bizneo no coincide con ningún contrato de A3Innuva.</summary>
+    private async Task<IEnumerable<ClosureAlerta>> CheckNifBizneoSinContratoAsync(int closureId, int serviceId, DateTime desde, DateTime hasta, CancellationToken ct)
+    {
+        var alertas = new List<ClosureAlerta>();
+        var contratos = await _contratoRepo.GetActivosEnPeriodoAsync(desde, hasta, ct);
+        var nifsContrato = contratos.Select(c => c.NIF).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var nifsBizneo = await _db.StagingBizneoEmpleados.AsNoTracking()
+            .Where(e => e.NIF != null && e.NIF != "")
+            .Select(e => e.NIF!)
+            .Distinct()
+            .ToListAsync(ct);
+
+        foreach (var nif in nifsBizneo.Where(n => !nifsContrato.Contains(n)))
+        {
+            alertas.Add(new ClosureAlerta
+            {
+                Tipo = TipoAlerta.Bloqueante,
+                Codigo = AlertaCodigos.NifBizneoSinContrato,
+                Descripcion = $"NIF '{nif}' de Bizneo no coincide con ningún contrato de A3Innuva",
+                Detalle = $"{{\"nif\":\"{nif}\",\"fuente\":\"Bizneo\"}}"
+            });
+        }
+
+        return alertas;
+    }
+
+    /// <summary>V11: NIF de Intratime no coincide con ningún contrato de A3Innuva.</summary>
+    private async Task<IEnumerable<ClosureAlerta>> CheckNifIntratimeSinContratoAsync(int closureId, int serviceId, DateTime desde, DateTime hasta, CancellationToken ct)
+    {
+        var alertas = new List<ClosureAlerta>();
+        var contratos = await _contratoRepo.GetActivosEnPeriodoAsync(desde, hasta, ct);
+        var nifsContrato = contratos.Select(c => c.NIF).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var nifsIntratime = await _db.StagingIntratimeEmpleados.AsNoTracking()
+            .Where(e => e.NIF != null && e.NIF != "")
+            .Select(e => e.NIF)
+            .Distinct()
+            .ToListAsync(ct);
+
+        foreach (var nif in nifsIntratime.Where(n => !nifsContrato.Contains(n)))
+        {
+            alertas.Add(new ClosureAlerta
+            {
+                Tipo = TipoAlerta.Bloqueante,
+                Codigo = AlertaCodigos.NifIntratimeSinContrato,
+                Descripcion = $"NIF '{nif}' de Intratime no coincide con ningún contrato de A3Innuva",
+                Detalle = $"{{\"nif\":\"{nif}\",\"fuente\":\"Intratime\"}}"
+            });
+        }
+
+        return alertas;
+    }
+
+    /// <summary>V12: Visita Celero sin recurso asignado (ResourceNif vacío).</summary>
+    private async Task<IEnumerable<ClosureAlerta>> CheckVisitaSinRecursoAsync(int closureId, int serviceId, DateTime desde, DateTime hasta, CancellationToken ct)
+    {
+        var alertas = new List<ClosureAlerta>();
+        var fechaDesdeDO = DateOnly.FromDateTime(desde);
+        var fechaHastaDO = DateOnly.FromDateTime(hasta);
+
+        var sinRecurso = await _db.StagingCeleroVisitas.AsNoTracking()
+            .Where(v => v.ServiceId == serviceId && v.Fecha >= fechaDesdeDO && v.Fecha <= fechaHastaDO
+                && (string.IsNullOrEmpty(v.ResourceNif) || v.ResourceNif == "0"))
+            .CountAsync(ct);
+
+        if (sinRecurso > 0)
+        {
+            alertas.Add(new ClosureAlerta
+            {
+                Tipo = TipoAlerta.Advertencia,
+                Codigo = AlertaCodigos.VisitaSinRecurso,
+                Descripcion = $"{sinRecurso} visita(s) Celero sin recurso asignado (ResourceNif vacío o '0')",
+                Detalle = $"{{\"count\":{sinRecurso},\"fuente\":\"Celero\"}}"
+            });
+        }
+
+        return alertas;
+    }
+
+    /// <summary>V13: Gasto PayHawk sin proyecto/servicio asociado (ServiceId null).</summary>
+    private async Task<IEnumerable<ClosureAlerta>> CheckGastoSinProyectoAsync(int closureId, int serviceId, DateTime desde, DateTime hasta, CancellationToken ct)
+    {
+        var alertas = new List<ClosureAlerta>();
+        var fechaDesdeDO = DateOnly.FromDateTime(desde);
+        var fechaHastaDO = DateOnly.FromDateTime(hasta);
+
+        var sinProyecto = await _db.StagingPayHawkGastos.AsNoTracking()
+            .Where(g => g.ServiceId == null && g.Fecha >= fechaDesdeDO && g.Fecha <= fechaHastaDO)
+            .CountAsync(ct);
+
+        if (sinProyecto > 0)
+        {
+            alertas.Add(new ClosureAlerta
+            {
+                Tipo = TipoAlerta.Advertencia,
+                Codigo = AlertaCodigos.GastoSinProyecto,
+                Descripcion = $"{sinProyecto} gasto(s) PayHawk sin proyecto/servicio asociado",
+                Detalle = $"{{\"count\":{sinProyecto},\"fuente\":\"PayHawk\"}}"
+            });
         }
 
         return alertas;

@@ -5,10 +5,13 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatTableModule } from '@angular/material/table';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ConceptService } from '../../core/api/concepts.service';
 import { ServiceService } from '../../core/api/services.service';
-import { ConceptDetailDto, ServiceListItemDto } from '../../models/dtos';
+import { ConceptDetailDto, ServiceListItemDto, AuditLogDto } from '../../models/dtos';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
@@ -17,7 +20,11 @@ import { NotifyService } from '../../core/notify.service';
 @Component({
   selector: 'app-concept-detail',
   standalone: true,
-  imports: [CommonModule, DatePipe, RouterLink, MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatDialogModule, BreadcrumbsComponent, SkeletonComponent],
+  imports: [
+    CommonModule, DatePipe, RouterLink, MatCardModule, MatButtonModule, MatIconModule,
+    MatChipsModule, MatTabsModule, MatTableModule, MatPaginatorModule, MatDialogModule,
+    BreadcrumbsComponent, SkeletonComponent,
+  ],
   template: `
     <div class="sig-page">
       <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Concepts', route: '/concepts' }, { label: concept()?.nombre ?? 'Detalle' }]" />
@@ -55,12 +62,66 @@ import { NotifyService } from '../../core/notify.service';
             </dl>
           </mat-card-content>
         </mat-card>
-        <mat-card>
-          <mat-card-header><mat-card-title>Fórmula (JSON)</mat-card-title></mat-card-header>
-          <mat-card-content>
-            <pre class="sig-json mono-num" data-testid="formula-json">{{ formattedJson() }}</pre>
-          </mat-card-content>
-        </mat-card>
+
+        <mat-tab-group>
+          <mat-tab label="Fórmula (JSON)">
+            <mat-card style="margin-top: 16px;">
+              <mat-card-content>
+                <pre class="sig-json mono-num" data-testid="formula-json">{{ formattedJson() }}</pre>
+              </mat-card-content>
+            </mat-card>
+          </mat-tab>
+          <mat-tab label="Historial de cambios">
+            <mat-card style="margin-top: 16px;">
+              <mat-card-content>
+                @if (historialLoading()) {
+                  <sig-skeleton [count]="3" />
+                } @else if (historial().length === 0) {
+                  <p style="color: var(--mat-sys-on-surface-variant); padding: 16px 0;">No hay cambios registrados para este concepto.</p>
+                } @else {
+                  <table mat-table [dataSource]="historial()" class="sig-table">
+                    <ng-container matColumnDef="fecha">
+                      <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                      <td mat-cell *matCellDef="let log">{{ log.timestamp | date:'dd/MM/yyyy HH:mm' }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="usuario">
+                      <th mat-header-cell *matHeaderCellDef>Usuario</th>
+                      <td mat-cell *matCellDef="let log">{{ log.userNombre ?? 'Sistema' }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="accion">
+                      <th mat-header-cell *matHeaderCellDef>Acción</th>
+                      <td mat-cell *matCellDef="let log">
+                        <mat-chip [class]="'chip-' + log.action.toLowerCase()">{{ log.action }}</mat-chip>
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="cambios">
+                      <th mat-header-cell *matHeaderCellDef>Cambios</th>
+                      <td mat-cell *matCellDef="let log">
+                        @if (log.oldValueJson || log.newValueJson) {
+                          <button mat-stroked-button (click)="showDiff(log)" data-testid="btn-diff">
+                            <mat-icon>compare_arrows</mat-icon> Ver cambios
+                          </button>
+                        } @else {
+                          <span style="color: var(--mat-sys-on-surface-variant);">—</span>
+                        }
+                      </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="historialColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: historialColumns;"></tr>
+                  </table>
+                  <mat-paginator
+                    [length]="historialTotal()"
+                    [pageSize]="historialPageSize()"
+                    [pageIndex]="historialPage() - 1"
+                    [pageSizeOptions]="[10, 20, 50]"
+                    showFirstLastButtons
+                    (page)="onHistorialPageChange($event)"
+                  />
+                }
+              </mat-card-content>
+            </mat-card>
+          </mat-tab>
+        </mat-tab-group>
       }
     </div>
   `,
@@ -69,6 +130,10 @@ import { NotifyService } from '../../core/notify.service';
     .sig-dl dt { color: var(--mat-sys-on-surface-variant); font-weight: 500; }
     .sig-dl dd { margin: 0; }
     .sig-json { background: var(--mat-sys-surface-variant); padding: 16px; border-radius: 8px; font-size: 12px; overflow: auto; max-height: 400px; white-space: pre-wrap; }
+    .sig-table { width: 100%; }
+    .chip-create { background: #e8f5e9 !important; color: #2e7d32 !important; }
+    .chip-update { background: #fff3e0 !important; color: #e65100 !important; }
+    .chip-delete { background: #ffebee !important; color: #c62828 !important; }
   `],
 })
 export class ConceptDetailComponent implements OnInit {
@@ -82,6 +147,12 @@ export class ConceptDetailComponent implements OnInit {
   protected readonly concept = signal<ConceptDetailDto | null>(null);
   protected readonly loading = signal(true);
   protected readonly relatedServices = signal<ServiceListItemDto[]>([]);
+  protected readonly historial = signal<AuditLogDto[]>([]);
+  protected readonly historialLoading = signal(false);
+  protected readonly historialPage = signal(1);
+  protected readonly historialPageSize = signal(20);
+  protected readonly historialTotal = signal(0);
+  protected readonly historialColumns = ['fecha', 'usuario', 'accion', 'cambios'];
 
   protected formattedJson(): string {
     const c = this.concept(); if (!c) return '';
@@ -93,7 +164,6 @@ export class ConceptDetailComponent implements OnInit {
     this.conceptSvc.getById(id).subscribe({
       next: (c) => {
         this.concept.set(c);
-        // Load service details for associated service
         if (c.serviceId) {
           this.serviceSvc.list(1, 1000).subscribe({
             next: (result) => {
@@ -101,17 +171,52 @@ export class ConceptDetailComponent implements OnInit {
               this.relatedServices.set(associatedSvcs);
               this.loading.set(false);
             },
-            error: () => {
-              this.loading.set(false);
-            },
+            error: () => { this.loading.set(false); },
           });
         } else {
           this.loading.set(false);
         }
+        this.loadHistorial();
       },
       error: () => { this.loading.set(false); this.notify.error('No se pudo cargar el concept'); },
     });
   }
+
+  private loadHistorial(): void {
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+    this.historialLoading.set(true);
+    this.conceptSvc.getHistorial(id, this.historialPage(), this.historialPageSize()).subscribe({
+      next: (result) => {
+        this.historial.set(result.items);
+        this.historialTotal.set(result.total);
+        this.historialLoading.set(false);
+      },
+      error: () => { this.historialLoading.set(false); },
+    });
+  }
+
+  protected onHistorialPageChange(event: PageEvent): void {
+    this.historialPage.set(event.pageIndex + 1);
+    this.historialPageSize.set(event.pageSize);
+    this.loadHistorial();
+  }
+
+  protected showDiff(log: AuditLogDto): void {
+    const oldVal = log.oldValueJson ? JSON.parse(log.oldValueJson) : null;
+    const newVal = log.newValueJson ? JSON.parse(log.newValueJson) : null;
+    const changes: string[] = [];
+    if (oldVal && newVal) {
+      for (const key of Object.keys(newVal)) {
+        if (JSON.stringify(oldVal[key]) !== JSON.stringify(newVal[key])) {
+          changes.push(`${key}: ${oldVal[key]} → ${newVal[key]}`);
+        }
+      }
+    } else if (newVal) {
+      changes.push(...Object.entries(newVal).map(([k, v]) => `${k}: ${v}`));
+    }
+    alert(changes.length > 0 ? changes.join('\n') : 'Sin cambios detectados');
+  }
+
   protected onDelete(): void {
     const c = this.concept(); if (!c) return;
     this.dialog.open(ConfirmDialogComponent, {

@@ -62,13 +62,24 @@ public class BizneoClient : IBizneoClient
             var count = data?.Absences?.Count ?? 0;
             _logger?.LogInformation($"[Bizneo] Respuesta: {count} ausencias");
             if (data?.Absences == null) return Array.Empty<BizneoAbsenceDto>();
-            return data.Absences.Select(a => new BizneoAbsenceDto(
-                a.Id?.ToString() ?? "",
-                a.UserId,
-                0,
-                DateOnly.FromDateTime(a.StartAt),
-                0
-            )).ToList();
+            return data.Absences
+                .Where(a => DateOnly.FromDateTime(a.StartAt) <= hasta && DateOnly.FromDateTime(a.EndAt) >= desde)
+                .Select(a =>
+            {
+                var start = DateOnly.FromDateTime(a.StartAt);
+                var end = DateOnly.FromDateTime(a.EndAt);
+                var dias = Math.Max(1, (end.DayNumber - start.DayNumber + 1));
+                var horas = dias * 8m;
+                return new BizneoAbsenceDto(
+                    a.Id?.ToString() ?? "",
+                    a.UserId,
+                    0,
+                    start,
+                    end > start ? end : null,
+                    horas,
+                    a.State
+                );
+            }).ToList();
         }
         catch (Exception ex)
         {
@@ -514,17 +525,19 @@ public class PayHawkClient : IPayHawkClient
                 var uid = g.CreatedBy?.ExternalId ?? "EMPTY";
                 var projectField = g.Reconciliation?.CustomFields?.FirstOrDefault(cf => cf.Id == "proyecto_37e79a");
                 var pid = projectField?.SelectedValues?.FirstOrDefault()?.ExternalId ?? "EMPTY";
-                var gastoDate = DateOnly.FromDateTime(DateTime.Parse(g.CreatedAt));
+                var gastoDate = !string.IsNullOrEmpty(g.CreatedAt) && DateTime.TryParse(g.CreatedAt, out var dt) ? DateOnly.FromDateTime(dt) : default;
                 var isInRange = gastoDate >= desde && gastoDate <= hasta;
                 _logger.LogWarning($"[PayHawk DEBUG] Gasto {g.Id}: Fecha={gastoDate} (en rango={isInRange}), Empleado={g.CreatedBy?.Email} ExternalId={uid}, Proyecto={pid}, Importe={g.Reconciliation?.TotalAmount}");
             }
 
             var gastos = data.Items
-                // .Where(g =>
-                // {
-                //     var gastoDate = DateOnly.FromDateTime(DateTime.Parse(g.CreatedAt));
-                //     return gastoDate >= desde && gastoDate <= hasta;
-                // })
+                .Where(g =>
+                {
+                    if (string.IsNullOrEmpty(g.CreatedAt)) return false;
+                    if (!DateTime.TryParse(g.CreatedAt, out var dt)) return false;
+                    var gastoDate = DateOnly.FromDateTime(dt);
+                    return gastoDate >= desde && gastoDate <= hasta;
+                })
                 .Select(g =>
                 {
                     // ExternalId puede ser "44175805G" (NIF) — extraer solo números
@@ -642,43 +655,102 @@ public class SgpvClient : ISgpvClient
     private readonly HttpClient _httpClient;
     private readonly string _username;
     private readonly string _password;
+    private readonly ILogger<SgpvClient>? _logger;
 
-    public SgpvClient(HttpClient httpClient, string username, string password)
+    public SgpvClient(HttpClient httpClient, string username, string password, ILogger<SgpvClient>? logger = null)
     {
         _httpClient = httpClient;
         _username = username;
         _password = password;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<SgpvVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
         try
         {
+            _logger?.LogInformation($"[SGPV] GET visitas desde {desde:yyyy-MM-dd} hasta {hasta:yyyy-MM-dd}");
             var auth = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{_username}:{_password}"));
             var request = new HttpRequestMessage(HttpMethod.Get, $"ExportData.php?start={desde:yyyy-MM-dd}&end={hasta:yyyy-MM-dd}");
             request.Headers.Add("Authorization", $"Basic {auth}");
 
-            // Timeout de 240 segundos para SGPV (servidor puede tardar 3-4 minutos)
             _httpClient.Timeout = TimeSpan.FromSeconds(240);
 
             var response = await _httpClient.SendAsync(request, ct);
+            _logger?.LogInformation($"[SGPV] Status: {response.StatusCode}");
             if (!response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(ct);
+                _logger?.LogWarning($"[SGPV] Error {response.StatusCode}: {content}");
                 return Array.Empty<SgpvVisitaDto>();
+            }
 
-            var data = await response.Content.ReadFromJsonAsync<SgpvVisitasResponse>(ct);
-            if (data?.Visitas == null) return Array.Empty<SgpvVisitaDto>();
-            return data.Visitas.Select(v => new SgpvVisitaDto(
-                v.Id,
-                v.ResourceNif,
-                v.CentroId,
-                v.CentroNombre,
-                v.ServiceName,
-                DateOnly.Parse(v.Fecha),
-                v.HorasDuracion
-            )).ToList();
+            var json = await response.Content.ReadAsStringAsync(ct);
+            _logger?.LogInformation($"[SGPV] Response length: {json.Length} chars");
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                _logger?.LogWarning("[SGPV] Empty response");
+                return Array.Empty<SgpvVisitaDto>();
+            }
+
+            // SGPV wraps everything in {"export": {...}}. Check if this response contains visits or products.
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("export", out var export))
+            {
+                // If it has ET_Referencias, this is a products response, not visits
+                if (export.TryGetProperty("ET_Referencias", out _))
+                {
+                    _logger?.LogInformation("[SGPV] Response contains ET_Referencias (products), not visits. Returning empty.");
+                    return Array.Empty<SgpvVisitaDto>();
+                }
+
+                // Try ET_Visitas or similar visit arrays
+                foreach (var prop in export.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.Array &&
+                        (prop.Name.Contains("Visita", StringComparison.OrdinalIgnoreCase) ||
+                         prop.Name.Contains("Visita", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var visitas = System.Text.Json.JsonSerializer.Deserialize<List<SgpvVisitaResponse>>(prop.Value.GetRawText());
+                        if (visitas != null && visitas.Count > 0)
+                        {
+                            _logger?.LogInformation($"[SGPV] {visitas.Count} visitas received from {prop.Name}");
+                            return visitas.Select(v => new SgpvVisitaDto(
+                                v.Id,
+                                v.ResourceNif,
+                                v.CentroId,
+                                v.CentroNombre,
+                                v.ServiceName,
+                                DateOnly.Parse(v.Fecha),
+                                v.HorasDuracion
+                            )).ToList();
+                        }
+                    }
+                }
+            }
+
+            // Fallback: try direct deserialization (old format)
+            var data = System.Text.Json.JsonSerializer.Deserialize<SgpvVisitasResponse>(json);
+            if (data?.Visitas != null && data.Visitas.Count > 0)
+            {
+                _logger?.LogInformation($"[SGPV] {data.Visitas.Count} visitas received (fallback)");
+                return data.Visitas.Select(v => new SgpvVisitaDto(
+                    v.Id,
+                    v.ResourceNif,
+                    v.CentroId,
+                    v.CentroNombre,
+                    v.ServiceName,
+                    DateOnly.Parse(v.Fecha),
+                    v.HorasDuracion
+                )).ToList();
+            }
+
+            _logger?.LogWarning("[SGPV] No visitas found in response");
+            return Array.Empty<SgpvVisitaDto>();
         }
-        catch
+        catch (Exception ex)
         {
+            _logger?.LogError($"[SGPV] Exception: {ex.Message}");
             return Array.Empty<SgpvVisitaDto>();
         }
     }
@@ -689,6 +761,8 @@ public class SgpvClient : ISgpvClient
         public List<SgpvVisitaResponse>? Visitas { get; set; }
     }
 
+    // NOTE: SGPV API only exports products (ET_Referencias), not visits.
+    // These classes are kept for reference but GetVisitasAsync returns empty.
     private class SgpvVisitaResponse
     {
         [JsonPropertyName("id")]

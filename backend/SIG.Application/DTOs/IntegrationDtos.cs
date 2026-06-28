@@ -14,9 +14,11 @@ public record CeleroVisitaDto(
     string? Estado = null,               // visitStatus: done | failed | cancelled ...
     string? Provincia = null,            // addressState del centro/POA
     string? Ciudad = null,               // addressCity de la visita (enriquecimiento CAMBIO 4)
-    string? CancellationReason = null);  // cancellationReason cuando la visita no se realiza
-public record BizneoEmpleadoDto(string EmpleadoIdExterno, string NIF, string Nombre, string? Departamento);
-public record BizneoAbsenceDto(string RegistroIdExterno, int UserId, int ServiceId, DateOnly Fecha, decimal Horas);
+    string? CancellationReason = null,   // cancellationReason cuando la visita no se realiza
+    string? Muebles = null,              // nombres de artículos extraídos de feedback→article (concatenados con |)
+    string? TipoMueble = null);          // categorías de artículos extraídos de feedback→article (concatenadas con |)
+public record BizneoEmpleadoDto(string EmpleadoIdExterno, string Email, string Nombre, string? Departamento);
+public record BizneoAbsenceDto(string RegistroIdExterno, int UserId, int ServiceId, DateOnly Fecha, DateOnly? FechaFin, decimal Horas, string? Estado);
 public record IntratimeEmpleadoDto(
     string UserIdExterno,   // USER_ID (ej: "20875")
     string Nombre,          // USER_NAME

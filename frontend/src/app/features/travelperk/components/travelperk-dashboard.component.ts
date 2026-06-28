@@ -17,7 +17,7 @@ import { BreadcrumbsComponent } from '../../../shared/breadcrumbs.component';
 import { NotifyService } from '../../../core/notify.service';
 import { SyncService } from '../../../core/api/misc.service';
 import { ServiceService } from '../../../core/api/services.service';
-import { TravelPerkService, TravelPerkLineaDto, TravelPerkKpisDto } from '../../../core/api/travelperk.service';
+import { TravelPerkService, TravelPerkLineaDto, TravelPerkKpisDto, TravelPerkUploadResultDto, PagedResult } from '../../../core/api/travelperk.service';
 
 @Component({
   selector: 'app-travelperk-dashboard',
@@ -306,7 +306,7 @@ export class TravelPerkDashboardComponent implements OnInit {
 
   private cargarKpis() {
     this.travelPerk.getDashboard().subscribe({
-      next: k => this.kpis.set(k),
+      next: (k: TravelPerkKpisDto) => this.kpis.set(k),
       error: () => { /* degradar silenciosamente: KPIs a cero */ },
     });
   }
@@ -314,7 +314,7 @@ export class TravelPerkDashboardComponent implements OnInit {
   protected cargarLineas() {
     this.loading.set(true);
     this.travelPerk.getLineas(this.page(), this.pageSize(), this.searchValue, this.soloNoMaestro).subscribe({
-      next: res => {
+      next: (res: PagedResult<TravelPerkLineaDto>) => {
         this.lineas.set(res.items || []);
         this.total.set(res.total || 0);
         this.loading.set(false);
@@ -383,7 +383,7 @@ export class TravelPerkDashboardComponent implements OnInit {
     }
     this.uploading.set(true);
     this.travelPerk.upload(file).subscribe({
-      next: r => {
+      next: (r: TravelPerkUploadResultDto) => {
         this.uploading.set(false);
         this.uploadStatus.set(`✓ Cargado: ${file.name}`);
         setTimeout(() => this.uploadStatus.set(null), 5000);
@@ -395,7 +395,7 @@ export class TravelPerkDashboardComponent implements OnInit {
           this.cargarLineas();
         });
       },
-      error: err => {
+      error: (err: any) => {
         this.uploading.set(false);
         this.notify.error('Error al cargar archivo: ' + (err?.error?.error || err?.message || 'desconocido'));
       },

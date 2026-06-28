@@ -121,3 +121,32 @@ public record DiscrepanciaIntratimeDto(
     decimal HorasEsperadas,
     decimal Diferencia,
     bool TieneDiscrepancia);
+
+// Payment Model DTOs
+public record PaymentModelDto(
+    int Id, int ClientId, string ClientNombre, string ModelType,
+    DateOnly EffectiveFrom, DateOnly? EffectiveUntil);
+
+public record PaymentModelCreateRequest(
+    int ClientId, string ModelType, DateOnly EffectiveFrom, DateOnly? EffectiveUntil);
+
+public record PaymentModelUpdateRequest(
+    string ModelType, DateOnly EffectiveFrom, DateOnly? EffectiveUntil);
+
+public record ConceptValidationRuleDto(
+    int Id, int ConceptId, string ConceptNombre, string PaymentModelType,
+    bool IsApplicable, bool IsMandatory, string? CalculationMethod, string? AggregationLevel);
+
+public record ConceptValidationRuleUpsertRequest(
+    int ConceptId, string PaymentModelType, bool IsApplicable, bool IsMandatory,
+    string? CalculationMethod, string? AggregationLevel);
+
+public record PaymentRatesConfigurationDto(
+    int Id, int ClientId, int? ConceptId, string? ConceptNombre,
+    int Year, int? Month, decimal BaseRate, string RateType,
+    string? RateFormula, decimal? MinValue, decimal? MaxValue);
+
+public record PaymentRatesConfigurationUpsertRequest(
+    int ClientId, int? ConceptId, int Year, int? Month,
+    decimal BaseRate, string RateType, string? RateFormula,
+    decimal? MinValue, decimal? MaxValue);

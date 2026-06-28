@@ -36,7 +36,8 @@ public class StagingBizneoEmpleado : IStagingRow
     public int Id { get; set; }
     public string EmpleadoIdExterno { get; set; } = null!;
     public int? UserId { get; set; }
-    public string NIF { get; set; } = null!;
+    public string Email { get; set; } = null!;
+    public string? NIF { get; set; }
     public string Nombre { get; set; } = null!;
     public string? Departamento { get; set; }
     public string PayloadJson { get; set; } = null!;
@@ -53,7 +54,9 @@ public class StagingBizneoAbsence : IStagingRow
     public int UserId { get; set; }
     public int ServiceId { get; set; }
     public DateOnly Fecha { get; set; }
+    public DateOnly? FechaFin { get; set; }
     public decimal Horas { get; set; }
+    public string? Estado { get; set; }
     public string PayloadJson { get; set; } = null!;
     public string Hash { get; set; } = null!;
     public DateTime FechaUltimaSincronizacion { get; set; }

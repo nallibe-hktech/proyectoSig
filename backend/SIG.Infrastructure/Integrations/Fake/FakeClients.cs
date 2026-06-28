@@ -82,7 +82,7 @@ public class BizneoFakeClient : IBizneoClient
         var faker = new Faker<BizneoEmpleadoDto>()
             .CustomInstantiator(f => new BizneoEmpleadoDto(
                 $"EMP-{f.Random.AlphaNumeric(6).ToUpper()}",
-                $"{f.Random.Long(10000000, 99999999)}A",
+                f.Internet.Email(),
                 f.Name.FullName(),
                 f.PickRandom("Operaciones", "Backoffice", "Finanzas", "Dirección")
             ));
@@ -93,13 +93,21 @@ public class BizneoFakeClient : IBizneoClient
     public Task<IReadOnlyList<BizneoAbsenceDto>> GetAbsencesAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
         var faker = new Faker<BizneoAbsenceDto>()
-            .CustomInstantiator(f => new BizneoAbsenceDto(
-                $"BA-{f.Random.AlphaNumeric(8).ToUpper()}",
-                f.Random.Int(1, 15),
-                f.Random.Int(1, 8),
-                DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue))),
-                Math.Round(f.Random.Decimal(1, 10), 2)
-            ));
+            .CustomInstantiator(f =>
+            {
+                var start = DateOnly.FromDateTime(f.Date.Between(desde.ToDateTime(TimeOnly.MinValue), hasta.ToDateTime(TimeOnly.MaxValue)));
+                var durationDays = f.Random.Int(1, 5);
+                var end = start.AddDays(durationDays);
+                return new BizneoAbsenceDto(
+                    $"BA-{f.Random.AlphaNumeric(8).ToUpper()}",
+                    f.Random.Int(1, 15),
+                    f.Random.Int(1, 8),
+                    start,
+                    end,
+                    durationDays * 8m,
+                    f.PickRandom("Aprobada", "Pendiente", "Rechazada")
+                );
+            });
         var list = faker.Generate(80);
         return Task.FromResult<IReadOnlyList<BizneoAbsenceDto>>(list);
     }

@@ -76,3 +76,16 @@ public sealed class ConceptRefNode : FormulaNode
 {
     public List<int> ConceptIds { get; set; } = new();
 }
+
+// Excel "Salario fijo dividido entre horas dedicadas a cada proyecto": calcula el porcentaje de tiempo
+// que un empleado dedicó a un servicio respecto al total de TODOS sus servicios, y aplica ese porcentaje
+// al salario base. Se usa en Inpost para redistribuir el salario fijo entre proyectos.
+public sealed class CrossServiceAggregateNode : FormulaNode
+{
+    // Entidad de origen para las horas (VisitasCelero, VisitasSgpv, HorasIntratime)
+    public string Entity { get; set; } = null!;
+    // Campo que contiene las horas/minutos (Horas, MinutosTrabajados, etc.)
+    public string Field { get; set; } = null!;
+    // Nodo que proporciona el salario base a redistribuir (típicamente un Aggregate sobre SalariosA3)
+    public FormulaNode BaseSalary { get; set; } = null!;
+}

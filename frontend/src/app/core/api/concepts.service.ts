@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import {
   ConceptListItemDto, ConceptDetailDto, ConceptCreateRequest, ConceptUpdateRequest,
-  PagedResult,
+  PagedResult, AuditLogDto,
 } from '../../models/dtos';
 import { TipoConcepto } from '../../models/enums';
 import { toHttpParams } from './api.helpers';
@@ -29,5 +29,10 @@ export class ConceptService {
   delete(id: number) { return this.http.delete<void>(`${this.base}/${id}`); }
   validateFormula(id: number, formulaJson: string) {
     return this.http.post<{ ok: boolean; errores: string[] }>(`${this.base}/${id}/validar-formula`, { formulaJson });
+  }
+  getHistorial(id: number, page = 1, pageSize = 20) {
+    return this.http.get<PagedResult<AuditLogDto>>(`${this.base}/${id}/historial`, {
+      params: toHttpParams({ page, pageSize }),
+    });
   }
 }

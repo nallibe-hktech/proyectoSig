@@ -12,10 +12,14 @@ public static class AlertaCodigos
     public const string CamposClave = "CAMPOS_CLAVE_INVALIDOS";
     public const string ActividadSinContrato = "ACTIVIDAD_SIN_CONTRATO";
     public const string CecoNoMaestro = "CECO_NO_MAESTRO";
+    public const string NifBizneoSinContrato = "NIF_BIZNEO_SIN_CONTRATO";
+    public const string NifIntratimeSinContrato = "NIF_INTRATIME_SIN_CONTRATO";
 
     // ADVERTENCIAS — requieren confirmación para permitir el cierre
     public const string ContratoSinActividad = "CONTRATO_SIN_ACTIVIDAD";
     public const string PagoPorKmExcesivo = "PAGO_KM_EXCESIVO";
     public const string GastoNegativo = "GASTO_NEGATIVO";
     public const string PagoInferiorContrato = "PAGO_INFERIOR_CONTRATO";
+    public const string VisitaSinRecurso = "VISITA_SIN_RECURSO";
+    public const string GastoSinProyecto = "GASTO_SIN_PROYECTO";
 }

@@ -361,37 +361,80 @@ public abstract class CierreServiceBase<TCierre> : ICierreService where TCierre 
 
         var target = Target(cierre);
 
-        // Dos pasadas: 1) conceptos base; 2) conceptos "fee sobre conceptos" (ConceptRef), que necesitan
-        // los importes base ya calculados. Cada concepto se evalúa UNA sola vez (línea + log del mismo resultado).
+        // Obtener empleados activos: usuarios con contrato vigente en el período
+        var allUsers = await _userRepo.ListAsync(ct);
+        var empleadosActivos = allUsers.Where(u => u.Id > 0).ToList();
+
+        // Dos pasadas: 1) conceptos base por empleado; 2) conceptos "fee sobre conceptos" (ConceptRef)
         var baseConcepts = aplicables.Where(c => !EsFeeSobreConceptos(c)).ToList();
         var feeConcepts = aplicables.Where(EsFeeSobreConceptos).ToList();
 
-        var resultados = new Dictionary<int, CalculationResult>();
-        foreach (var concept in baseConcepts)
+        // Resultado por (empleado, concepto)
+        var resultados = new Dictionary<(int userId, int conceptId), CalculationResult>();
+        // Acumulado por concepto (para fee sobre conceptos)
+        var importesPorConcepto = new Dictionary<int, decimal>();
+
+        foreach (var empleado in empleadosActivos)
         {
-            var result = await _engine.EvaluateAsync(concept, target, null, ct);
-            resultados[concept.Id] = result;
-            target.ImportesPrevios[concept.Id] = result.Resultado;
+            foreach (var concept in baseConcepts)
+            {
+                var result = await _engine.EvaluateAsync(concept, target, empleado.Id, ct);
+                resultados[(empleado.Id, concept.Id)] = result;
+                importesPorConcepto[concept.Id] = importesPorConcepto.GetValueOrDefault(concept.Id) + result.Resultado;
+            }
         }
+
+        // Fee sobre conceptos: se calculan una sola vez sobre el acumulado total
         foreach (var concept in feeConcepts)
         {
-            resultados[concept.Id] = await _engine.EvaluateAsync(concept, target, null, ct);
+            var feeTarget = new CalculationTarget { ServiceId = target.ServiceId, PeriodId = target.PeriodId, Period = target.Period };
+            foreach (var kvp in importesPorConcepto)
+                feeTarget.ImportesPrevios[kvp.Key] = kvp.Value;
+            resultados[(0, concept.Id)] = await _engine.EvaluateAsync(concept, feeTarget, null, ct);
         }
 
         var lines = new List<ClosureLine>();
-        foreach (var concept in aplicables)
+        foreach (var empleado in empleadosActivos)
         {
-            var result = resultados[concept.Id];
-            var line = new ClosureLine
+            foreach (var concept in baseConcepts)
             {
-                ConceptId = concept.Id,
-                Importe = result.Resultado,
-                DatosEntradaJson = result.InputsJson,
-                Tipo = concept.Tipo,
-                TieneIncidencia = result.Incidencias.Any()
-            };
-            SetOwner(line, cierre.Id);
-            lines.Add(line);
+                var result = resultados[(empleado.Id, concept.Id)];
+                // Solo crear línea si hay importe o es concepto de pago
+                if (result.Resultado != 0m || ConceptoTipo == TipoConcepto.Pago)
+                {
+                    var line = new ClosureLine
+                    {
+                        ConceptId = concept.Id,
+                        UserId = empleado.Id,
+                        Importe = result.Resultado,
+                        DatosEntradaJson = result.InputsJson,
+                        Tipo = concept.Tipo,
+                        TieneIncidencia = result.Incidencias.Any()
+                    };
+                    SetOwner(line, cierre.Id);
+                    lines.Add(line);
+                }
+            }
+        }
+
+        // Líneas de fee (sin empleado específico, agregadas)
+        foreach (var concept in feeConcepts)
+        {
+            var result = resultados[(0, concept.Id)];
+            if (result.Resultado != 0m)
+            {
+                var line = new ClosureLine
+                {
+                    ConceptId = concept.Id,
+                    UserId = null,
+                    Importe = result.Resultado,
+                    DatosEntradaJson = result.InputsJson,
+                    Tipo = concept.Tipo,
+                    TieneIncidencia = result.Incidencias.Any()
+                };
+                SetOwner(line, cierre.Id);
+                lines.Add(line);
+            }
         }
 
         await _lineRepo.AddRangeAsync(lines, ct);
@@ -400,7 +443,8 @@ public abstract class CierreServiceBase<TCierre> : ICierreService where TCierre 
         var logs = new List<CalculationLog>();
         foreach (var line in lines)
         {
-            var result = resultados[line.ConceptId];
+            var key = line.UserId.HasValue ? (line.UserId.Value, line.ConceptId) : (0, line.ConceptId);
+            var result = resultados[key];
             logs.Add(new CalculationLog
             {
                 ClosureLineId = line.Id,
