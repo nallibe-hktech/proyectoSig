@@ -99,6 +99,7 @@ import {
               <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createModifier())" data-testid="prim-modifier"><mat-icon>tune</mat-icon> Modificador</button>
               <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createTramos())" data-testid="prim-tramos"><mat-icon>stairs</mat-icon> Tramos</button>
               <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createConceptRef())" data-testid="prim-conceptref"><mat-icon>percent</mat-icon> Fee s/conceptos</button>
+              <button mat-stroked-button class="sig-prim-btn" (click)="setRoot(createTarifaRef())" data-testid="prim-tarifaref"><mat-icon>local_offer</mat-icon> Tarifa</button>
             </mat-card-content>
           </mat-card>
 
@@ -356,6 +357,22 @@ import {
                 </mat-form-field>
               </div>
             }
+            <!-- TarifaRef -->
+            @if (node.type === 'TarifaRef') {
+              <div class="sig-source">
+                <p style="margin: 0; font-size: 13px; color: var(--mat-sys-on-surface-variant);">
+                  Usar una tarifa definida. Especifica el nivel de aplicación (Global/Cliente/Servicio).
+                </p>
+                <mat-form-field appearance="outline" class="sig-op-field">
+                  <mat-label>Nivel de tarifa</mat-label>
+                  <mat-select [(ngModel)]="node.nivel" data-testid="select-tarifa-nivel">
+                    <mat-option value="Global">Global (para todos)</mat-option>
+                    <mat-option value="Cliente">Por cliente</mat-option>
+                    <mat-option value="Servicio">Por servicio</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            }
           </div>
         </div>
       </ng-template>
@@ -379,6 +396,8 @@ import {
     .sig-node--BinaryOp { border-color: #f59e0b; }
     .sig-node--Source { border-color: var(--sig-success); }
     .sig-node--Aggregate { border-color: var(--sig-warning); }
+    .sig-node--TarifaRef { border-color: #8b5cf6; }
+    .sig-node--ConceptRef { border-color: #06b6d4; }
     .sig-node-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .sig-node-title { font-weight: 600; font-size: 14px; color: var(--mat-sys-on-surface); }
     .sig-node-icon { color: inherit; }
@@ -465,6 +484,7 @@ export class FormulaEditorComponent implements OnInit {
   protected createModifier(): FormulaNode { return { type: 'Modifier', kind: 'Min', threshold: 0, inner: this.createAggregate() }; }
   protected createTramos(): FormulaNode { return { type: 'Tramos', cantidad: this.createAggregate(), tramos: [{ hasta: 1, precio: 0 }, { hasta: null, precio: 0 }] }; }
   protected createConceptRef(): FormulaNode { return { type: 'ConceptRef', conceptIds: [] }; }
+  protected createTarifaRef(): FormulaNode { return { type: 'TarifaRef', nivel: 'Global' }; }
 
   // ---------- Mutations ----------
   protected setRoot(node: FormulaNode): void { this.root.set(node); this.bump(); }
@@ -511,10 +531,10 @@ export class FormulaEditorComponent implements OnInit {
 
   // ---------- Visual helpers ----------
   protected iconFor(type: string): string {
-    return { Number: 'numbers', Variable: 'data_object', BinaryOp: 'functions', Aggregate: 'calculate', Source: 'storage', Modifier: 'tune', Tramos: 'stairs', ConceptRef: 'percent' }[type] ?? 'help';
+    return { Number: 'numbers', Variable: 'data_object', BinaryOp: 'functions', Aggregate: 'calculate', Source: 'storage', Modifier: 'tune', Tramos: 'stairs', ConceptRef: 'percent', TarifaRef: 'local_offer' }[type] ?? 'help';
   }
   protected labelFor(type: string): string {
-    return { Number: 'Número', Variable: 'Variable', BinaryOp: 'Operación', Aggregate: 'Agregado', Source: 'Entidad', Modifier: 'Modificador', Tramos: 'Tramos', ConceptRef: 'Fee s/conceptos' }[type] ?? type;
+    return { Number: 'Número', Variable: 'Variable', BinaryOp: 'Operación', Aggregate: 'Agregado', Source: 'Entidad', Modifier: 'Modificador', Tramos: 'Tramos', ConceptRef: 'Fee s/conceptos', TarifaRef: 'Tarifa' }[type] ?? type;
   }
 
   private serializeExpression(node: FormulaNode): string {
@@ -553,6 +573,8 @@ export class FormulaEditorComponent implements OnInit {
       }
       case 'ConceptRef':
         return node.conceptIds.length > 0 ? `Conceptos(${node.conceptIds.join(', ')})` : 'Conceptos(todos)';
+      case 'TarifaRef':
+        return `Tarifa(${node.nivel})`;
     }
   }
   private opStr(op: FilterOp): string {
@@ -588,6 +610,8 @@ export class FormulaEditorComponent implements OnInit {
       }
       case 'ConceptRef':
         return { ok: true, reason: '' };
+      case 'TarifaRef':
+        return node.nivel ? { ok: true, reason: '' } : { ok: false, reason: 'Nivel de tarifa sin seleccionar' };
     }
   }
 

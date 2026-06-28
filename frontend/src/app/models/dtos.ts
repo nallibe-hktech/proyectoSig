@@ -831,7 +831,8 @@ export type FormulaNode =
   | { type: 'BinaryOp'; op: BinaryOpKind; left: FormulaNode; right: FormulaNode }
   | { type: 'Modifier'; kind: ModifierKind; threshold: number; inner: FormulaNode }
   | { type: 'Tramos'; cantidad: FormulaNode; tramos: Tramo[] }
-  | { type: 'ConceptRef'; conceptIds: number[] };
+  | { type: 'ConceptRef'; conceptIds: number[] }
+  | { type: 'TarifaRef'; nivel: 'Global' | 'Cliente' | 'Servicio' };
 
 export type SourceEntity = 'GastosPayHawk' | 'VisitasCelero' | 'HorasBizneo' | 'HorasIntratime' | 'VisitasSgpv' | 'TarifasServicio';
 export type AggregateOp = 'Sum' | 'Count' | 'Min' | 'Max';
