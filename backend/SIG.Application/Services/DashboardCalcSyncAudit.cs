@@ -505,8 +505,9 @@ public class SyncService : ISyncService
             }
             case "sgpv":
             {
-                var data = await _sgpv.GetVisitasAsync(desde, hasta, ct);
-                var nuevas = new List<StagingSgpvVisita>();
+                // Sincronizar visitas (generalmente vacío, pero necesario para compatibilidad)
+                var visitas = await _sgpv.GetVisitasAsync(desde, hasta, ct);
+                var nuevasVisitas = new List<StagingSgpvVisita>();
 
                 // Cargar mapeos explícitos (alta prioridad)
                 var resourceMappings = await _mappingRepo.GetResourceMappingsAsync(ct);
@@ -522,7 +523,7 @@ public class SyncService : ISyncService
                 var nifToUserId = users.Where(u => !u.IsDeleted).ToDictionary(u => u.NIF, u => u.Id);
                 var serviceNameToServiceId = services.Where(a => !a.IsDeleted).ToDictionary(a => a.Nombre, a => a.Id);
 
-                foreach (var d in data)
+                foreach (var d in visitas)
                 {
                     var json = JsonSerializer.Serialize(d);
                     var hash = Sha256(json);
@@ -543,7 +544,7 @@ public class SyncService : ISyncService
                         else if (serviceNameToServiceId.TryGetValue(d.ServiceName, out sid)) serviceId = sid;
                     }
 
-                    nuevas.Add(new StagingSgpvVisita
+                    nuevasVisitas.Add(new StagingSgpvVisita
                     {
                         VisitaIdExterno = d.VisitaIdExterno,
                         ResourceNif = d.ResourceNif,
@@ -561,8 +562,40 @@ public class SyncService : ISyncService
                     });
                     ins++;
                 }
-                await _sgpvRepo.AddRangeAsync(nuevas, ct);
+                await _sgpvRepo.AddRangeAsync(nuevasVisitas, ct);
                 await _sgpvRepo.SaveChangesAsync(ct);
+
+                // Sincronizar también productos automáticamente
+                var productos = await _sgpv.GetProductosAsync(ct);
+                var nuevasProductos = new List<StagingSgpvProducto>();
+                foreach (var p in productos)
+                {
+                    var json = JsonSerializer.Serialize(p);
+                    var hash = Sha256(json);
+                    if (await _sgpvProductoRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+                    nuevasProductos.Add(new StagingSgpvProducto
+                    {
+                        IdProducto = p.IdProducto,
+                        IdCliente = p.IdCliente,
+                        Cliente = p.Cliente,
+                        Categoria = p.Categoria,
+                        Subcategoria = p.Subcategoria,
+                        CodigoReferencia = p.CodigoReferencia,
+                        Referencia = p.Referencia,
+                        EAN = p.EAN,
+                        Marca = p.Marca,
+                        PVPRecomendado = p.PVPRecomendado,
+                        Competencia = p.Competencia,
+                        Activo = p.Activo,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    });
+                    ins++;
+                }
+                await _sgpvProductoRepo.AddRangeAsync(nuevasProductos, ct);
+                await _sgpvProductoRepo.SaveChangesAsync(ct);
                 break;
             }
             case "sgpv-productos":
