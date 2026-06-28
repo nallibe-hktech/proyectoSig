@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,13 +10,17 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatTableModule } from '@angular/material/table';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { ForecastResumenComponent } from '../forecast/forecast-resumen.component';
 import { ConfigPresupuestoService } from '../../core/api/config-presupuesto.service';
 import { ServiceService } from '../../core/api/services.service';
 import { ClientService } from '../../core/api/clients.service';
+import { ConceptService } from '../../core/api/concepts.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotifyService } from '../../core/notify.service';
-import { ClientListItemDto, ConfigPresupuestoDto, PartidaPresupuestoDto, ServiceListItemDto } from '../../models/dtos';
+import { ClientListItemDto, ConfigPresupuestoDto, ConceptListItemDto, PartidaPresupuestoDto, ServiceListItemDto } from '../../models/dtos';
 import { TipoPartidaPresupuesto } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
@@ -24,6 +29,7 @@ interface EditorState {
   id?: number; nombre: string; tipo: TipoPartidaPresupuesto; anio: number | null;
   presupuesto: number; consumido: number; descripcion: string;
 }
+interface EditorConceptoState { id?: number; nombre: string; fechaDesde: string; fechaHasta?: string | null; }
 
 // Configuración de Presupuesto (prototipo 24/28, PPT slide 35): partidas de presupuesto por acción/servicio.
 // ENTRADA MANUAL (el prototipo lo dice). Barra de filtros + KPIs + tabla con barras de avance + márgenes.
@@ -31,9 +37,10 @@ interface EditorState {
   selector: 'app-config-presupuesto',
   standalone: true,
   imports: [
-    CommonModule, FormsModule,
+    CommonModule, FormsModule, RouterLink,
     MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatTooltipModule, MatButtonToggleModule,
+    MatSelectModule, MatTooltipModule, MatButtonToggleModule, MatTableModule,
+    MatDatepickerModule, MatNativeDateModule,
     BreadcrumbsComponent, SkeletonComponent, ForecastResumenComponent,
   ],
   template: `
@@ -47,16 +54,102 @@ interface EditorState {
             <mat-icon>add</mat-icon> Añadir partida
           </button>
         }
+        @if (vista() === 'conceptos-pago' && canManage()) {
+          <button mat-flat-button color="primary" (click)="nuevoConcepto()" data-testid="btn-nuevo-concepto-pago">
+            <mat-icon>add</mat-icon> Nuevo concepto
+          </button>
+        }
       </div>
 
-      <!-- Pestañas (penpot): Presupuesto confirmado | Forecast ventas / GPP -->
-      <mat-button-toggle-group class="vista-toggle" [value]="vista()" (change)="vista.set($event.value)" data-testid="vista-toggle">
+      <!-- Pestañas (penpot): Presupuesto confirmado | Forecast ventas / GPP | Conceptos de pago -->
+      <mat-button-toggle-group class="vista-toggle" [value]="vista()" (change)="onCambioVista($event.value)" data-testid="vista-toggle">
         <mat-button-toggle value="presupuesto" data-testid="tab-presupuesto">Presupuesto confirmado</mat-button-toggle>
         <mat-button-toggle value="forecast" data-testid="tab-forecast">Forecast ventas / GPP</mat-button-toggle>
+        <mat-button-toggle value="conceptos-pago" data-testid="tab-conceptos-pago">Conceptos de pago</mat-button-toggle>
       </mat-button-toggle-group>
 
       @if (vista() === 'forecast') {
         <app-forecast-resumen [embedded]="true" />
+      } @else if (vista() === 'conceptos-pago') {
+
+        <!-- TAB: Conceptos de pago -->
+        @if (loadingConceptos()) {
+          <sig-skeleton [count]="3" />
+        } @else if (conceptosPago().length === 0) {
+          <mat-card><mat-card-content><p class="empty">No hay conceptos de pago. Crea el primero.</p></mat-card-content></mat-card>
+        } @else {
+          <mat-card>
+            <mat-card-content>
+              <div class="section-head"><span class="dot"></span><h2>Conceptos de pago</h2></div>
+              <table class="sig-table" [dataSource]="conceptosPago()" mat-table>
+                <ng-container matColumnDef="nombre">
+                  <th mat-header-cell *matHeaderCellDef>Nombre</th>
+                  <td mat-cell *matCellDef="let c" class="cell-title">{{ c.nombre }}</td>
+                </ng-container>
+                <ng-container matColumnDef="desde">
+                  <th mat-header-cell *matHeaderCellDef>Desde</th>
+                  <td mat-cell *matCellDef="let c" class="mono-num">{{ c.fechaDesde | date:'dd/MM/yyyy' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="hasta">
+                  <th mat-header-cell *matHeaderCellDef>Hasta</th>
+                  <td mat-cell *matCellDef="let c" class="mono-num">{{ c.fechaHasta ? (c.fechaHasta | date:'dd/MM/yyyy') : '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="acciones">
+                  <th mat-header-cell *matHeaderCellDef style="text-align: right;">Acciones</th>
+                  <td mat-cell *matCellDef="let c">
+                    <div class="sig-table-actions" style="justify-content: flex-end;">
+                      <a mat-icon-button [routerLink]="['/concepts', c.id, 'formula']" matTooltip="Editar fórmula" data-testid="btn-formula-pago"><mat-icon>functions</mat-icon></a>
+                      @if (canManage()) {
+                        <button mat-icon-button (click)="editarConcepto(c)" matTooltip="Editar" data-testid="btn-editar-pago"><mat-icon>edit</mat-icon></button>
+                        <button mat-icon-button (click)="eliminarConcepto(c)" matTooltip="Eliminar" data-testid="btn-eliminar-pago"><mat-icon>delete_outline</mat-icon></button>
+                      }
+                    </div>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="['nombre', 'desde', 'hasta', 'acciones']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['nombre', 'desde', 'hasta', 'acciones']; trackBy: (_, i) => i"></tr>
+              </table>
+            </mat-card-content>
+          </mat-card>
+        }
+
+        <!-- Editor de concepto de pago -->
+        @if (editorConcepto(); as ed) {
+          <mat-card class="editor-card">
+            <mat-card-content>
+              <div class="section-head"><span class="dot dot-blue"></span><h2>{{ ed.id ? 'Editar concepto' : 'Nuevo concepto' }}</h2></div>
+              <div class="sig-form-row">
+                <mat-form-field appearance="outline" class="full">
+                  <mat-label>Nombre del concepto</mat-label>
+                  <input matInput [(ngModel)]="ed.nombre" placeholder="Ej. Incentivo por visita" data-testid="input-nombre-concepto-pago" />
+                </mat-form-field>
+              </div>
+              <div class="sig-form-row">
+                <mat-form-field appearance="outline" class="full">
+                  <mat-label>Desde *</mat-label>
+                  <input matInput [matDatepicker]="dpDesde" [(ngModel)]="ed.fechaDesde" data-testid="input-desde-pago" />
+                  <mat-datepicker-toggle matIconSuffix [for]="dpDesde" /><mat-datepicker #dpDesde />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full">
+                  <mat-label>Hasta</mat-label>
+                  <input matInput [matDatepicker]="dpHasta" [(ngModel)]="ed.fechaHasta" data-testid="input-hasta-pago" />
+                  <mat-datepicker-toggle matIconSuffix [for]="dpHasta" /><mat-datepicker #dpHasta />
+                </mat-form-field>
+              </div>
+              <p style="color: var(--sig-text-muted); font-size: 12px; margin: 8px 0;">
+                <mat-icon style="vertical-align: middle; font-size: 16px; width: 16px; height: 16px; margin-right: 4px;">info</mat-icon>
+                La fórmula se edita desde el botón <strong>Editar fórmula</strong>.
+              </p>
+              <div class="editor-actions">
+                <button mat-flat-button color="primary" [disabled]="!ed.nombre.trim() || !ed.fechaDesde || savingConcepto()" (click)="guardarConcepto()" data-testid="btn-guardar-concepto-pago">
+                  <mat-icon>save</mat-icon> Guardar concepto
+                </button>
+                <button mat-stroked-button (click)="cancelarConcepto()" data-testid="btn-cancelar-concepto-pago">Cancelar</button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
       } @else {
 
       <!-- Barra de filtros (prototipo) -->
@@ -295,17 +388,24 @@ interface EditorState {
     .kv span { color: var(--sig-text-muted); } .kv strong { color: var(--sig-text-primary); }
     .kv .neg { color: var(--sig-danger); } .kv .pos { color: var(--sig-success); }
     .empty { color: var(--sig-text-muted); padding: 16px 0; text-align: center; }
+    .editor-card { margin-top: 16px; }
+    .sig-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+    @media (max-width: 599px) { .sig-form-row { grid-template-columns: 1fr; } }
+    .mono-num { font-family: 'Roboto Mono', monospace; }
+    .sig-table-actions { display: flex; gap: 4px; align-items: center; }
+    .cell-title { font-weight: 600; color: var(--sig-text-primary); }
   `],
 })
 export class ConfigPresupuestoComponent implements OnInit {
   private readonly svc = inject(ConfigPresupuestoService);
   private readonly serviceSvc = inject(ServiceService);
   private readonly clientSvc = inject(ClientService);
+  private readonly conceptSvc = inject(ConceptService);
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotifyService);
 
-  // Pestaña activa (penpot): 'presupuesto' (confirmado) | 'forecast' (ventas/GPP).
-  protected readonly vista = signal<'presupuesto' | 'forecast'>('presupuesto');
+  // Pestaña activa: 'presupuesto' | 'forecast' | 'conceptos-pago'
+  protected readonly vista = signal<'presupuesto' | 'forecast' | 'conceptos-pago'>('presupuesto');
 
   protected readonly servicios = signal<ServiceListItemDto[]>([]);
   protected readonly clientes = signal<ClientListItemDto[]>([]);
@@ -319,6 +419,15 @@ export class ConfigPresupuestoComponent implements OnInit {
   protected readonly saving = signal(false);
   protected readonly editor = signal<EditorState | null>(null);
   protected margenObjetivo: number | null = null;
+
+  // Conceptos de pago (3ª pestaña)
+  protected readonly conceptosPago = signal<ConceptListItemDto[]>([]);
+  protected readonly paginaConceptos = signal(1);
+  protected readonly tamañoPaginaConceptos = signal(25);
+  protected readonly totalConceptos = signal(0);
+  protected readonly loadingConceptos = signal(false);
+  protected readonly savingConcepto = signal(false);
+  protected readonly editorConcepto = signal<EditorConceptoState | null>(null);
 
   protected readonly canManage = computed(() => (this.auth.currentUser()?.roles ?? []).includes('Administrator'));
   protected readonly serviciosFiltrados = computed(() => {
@@ -410,6 +519,52 @@ export class ConfigPresupuestoComponent implements OnInit {
     this.svc.setMargenObjetivo(id, { margenObjetivoPct: val }).subscribe({
       next: (cfg) => { this.config.set(cfg); this.notify.success('Margen objetivo guardado'); },
       error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo guardar el margen objetivo'),
+    });
+  }
+
+  protected onCambioVista(v: 'presupuesto' | 'forecast' | 'conceptos-pago'): void {
+    this.vista.set(v);
+    if (v === 'conceptos-pago' && this.conceptosPago().length === 0) {
+      this.loadConceptosPago();
+    }
+  }
+
+  protected loadConceptosPago(): void {
+    this.loadingConceptos.set(true);
+    this.conceptSvc.list(this.paginaConceptos(), this.tamañoPaginaConceptos(), 'Pago', '').subscribe({
+      next: (r) => { this.conceptosPago.set(r.items); this.totalConceptos.set(r.total); this.loadingConceptos.set(false); },
+      error: () => { this.conceptosPago.set([]); this.totalConceptos.set(0); this.loadingConceptos.set(false); this.notify.error('No se pudieron cargar los conceptos de pago'); },
+    });
+  }
+
+  protected nuevoConcepto(): void {
+    const hoy = new Date().toISOString().split('T')[0];
+    this.editorConcepto.set({ nombre: '', fechaDesde: hoy, fechaHasta: null });
+  }
+
+  protected editarConcepto(concepto: ConceptListItemDto): void {
+    this.editorConcepto.set({ id: concepto.id, nombre: concepto.nombre, fechaDesde: concepto.fechaDesde, fechaHasta: concepto.fechaHasta });
+  }
+
+  protected cancelarConcepto(): void { this.editorConcepto.set(null); }
+
+  protected guardarConcepto(): void {
+    const ed = this.editorConcepto();
+    if (!ed || !ed.nombre.trim() || !ed.fechaDesde) return;
+    this.savingConcepto.set(true);
+    const req = { nombre: ed.nombre.trim(), tipo: 'Pago' as const, fechaDesde: ed.fechaDesde, fechaHasta: ed.fechaHasta ?? undefined, formulaJson: '{"type":"Number","value":0}', userIds: [] };
+    const op = ed.id ? this.conceptSvc.update(ed.id, req) : this.conceptSvc.create(req);
+    op.subscribe({
+      next: () => { this.notify.success(ed.id ? 'Concepto actualizado' : 'Concepto creado'); this.savingConcepto.set(false); this.editorConcepto.set(null); this.loadConceptosPago(); },
+      error: (err) => { this.savingConcepto.set(false); this.notify.error(err?.error?.detail ?? err?.error?.title ?? 'No se pudo guardar el concepto'); },
+    });
+  }
+
+  protected eliminarConcepto(concepto: ConceptListItemDto): void {
+    if (!confirm(`¿Eliminar concepto "${concepto.nombre}"?`)) return;
+    this.conceptSvc.delete(concepto.id).subscribe({
+      next: () => { this.notify.success('Concepto eliminado'); if (this.editorConcepto()?.id === concepto.id) this.editorConcepto.set(null); this.loadConceptosPago(); },
+      error: (err) => this.notify.error(err?.error?.title ?? 'No se pudo eliminar el concepto'),
     });
   }
 }
