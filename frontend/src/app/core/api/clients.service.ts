@@ -4,6 +4,7 @@ import { environment } from '../../../environments/environment';
 import {
   ClientListItemDto, ClientDetailDto, ClientCreateRequest, ClientUpdateRequest,
   ClienteIncidenciaDto, ClienteIncidenciaCreateRequest, ClienteIncidenciaUpdateRequest,
+  PlantillaClienteConceptoDto, PlantillaClienteConceptoCreateRequest, PlantillaClienteConceptoUpdateRequest,
   PagedResult,
 } from '../../models/dtos';
 import { toHttpParams } from './api.helpers';
@@ -40,5 +41,19 @@ export class ClientService {
   }
   deleteIncidencia(clientId: number, id: number) {
     return this.http.delete<void>(`${this.base}/${clientId}/incidencias/${id}`);
+  }
+
+  // FASE 3: Plantillas de Cliente-Concepto (customización por cliente)
+  getPlantillasClienteConcepto(clientId: number) {
+    return this.http.get<PlantillaClienteConceptoDto[]>(`${this.base}/${clientId}/plantillas-concepto`);
+  }
+  createPlantillaClienteConcepto(clientId: number, req: PlantillaClienteConceptoCreateRequest) {
+    return this.http.post<PlantillaClienteConceptoDto>(`${this.base}/${clientId}/plantillas-concepto`, req);
+  }
+  updatePlantillaClienteConcepto(clientId: number, id: number, req: PlantillaClienteConceptoUpdateRequest) {
+    return this.http.put<PlantillaClienteConceptoDto>(`${this.base}/${clientId}/plantillas-concepto/${id}`, req);
+  }
+  deletePlantillaClienteConcepto(clientId: number, id: number) {
+    return this.http.delete<void>(`${this.base}/${clientId}/plantillas-concepto/${id}`);
   }
 }

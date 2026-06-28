@@ -31,8 +31,10 @@ import { NotifyService } from '../../core/notify.service';
       <div class="sig-page__header">
         <h1 class="sig-page__title">{{ concept()?.nombre ?? 'Cargando...' }}</h1>
         @if (concept()) {
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <a mat-flat-button color="primary" [routerLink]="['/concepts', concept()!.id, 'formula']" data-testid="btn-formula"><mat-icon>functions</mat-icon> Editor de Fórmula</a>
+            <a mat-stroked-button [routerLink]="['/concepts', concept()!.id, 'tarifas']" data-testid="btn-tarifas"><mat-icon>local_offer</mat-icon> Tarifas</a>
+            <a mat-stroked-button [routerLink]="['/concepts', concept()!.id, 'presupuestos']" data-testid="btn-presupuestos"><mat-icon>budget</mat-icon> Presupuestos</a>
             <a mat-stroked-button [routerLink]="['/concepts', concept()!.id, 'editar']" data-testid="btn-editar"><mat-icon>edit</mat-icon> Editar</a>
             <button mat-stroked-button color="warn" (click)="onDelete()" data-testid="btn-eliminar"><mat-icon>delete</mat-icon> Eliminar</button>
           </div>

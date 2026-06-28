@@ -4,7 +4,7 @@
 import type {
   EstadoUsuario, EstadoCliente, EstadoServicio, TipoConcepto, EstadoPeriodo,
   EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta,
-  EstadoIncidencia, TipoPartidaPresupuesto
+  EstadoIncidencia, TipoPartidaPresupuesto, TipoPresupuesto
 } from './enums';
 
 export type { EstadoClosure, ApprovalStep, EstadoApproval, AuditAction, TipoCierre, TipoAlerta };
@@ -734,6 +734,30 @@ export interface TarifaServicioCreateRequest {
 }
 export type TarifaServicioUpdateRequest = TarifaServicioCreateRequest;
 
+// FASE 2: Tarifas por Concepto (finer granularity)
+export interface TarifaConceptoDto {
+  id: number;
+  conceptId: number;
+  conceptNombre: string;
+  clientId?: number | null;
+  clientNombre?: string | null;
+  serviceId?: number | null;
+  serviceNombre?: string | null;
+  valor: number;
+  unidad?: string | null;
+  fechaDesde: string; // DateOnly ISO yyyy-MM-dd
+  fechaHasta?: string | null; // DateOnly ISO yyyy-MM-dd
+}
+export interface TarifaConceptoCreateRequest {
+  clientId?: number | null;
+  serviceId?: number | null;
+  valor: number;
+  unidad?: string | null;
+  fechaDesde: string; // DateOnly ISO yyyy-MM-dd
+  fechaHasta?: string | null; // DateOnly ISO yyyy-MM-dd
+}
+export type TarifaConceptoUpdateRequest = TarifaConceptoCreateRequest;
+
 // ------------------ Presupuesto ------------------
 export interface PresupuestoServicioDto {
   id: number;
@@ -750,6 +774,53 @@ export interface PresupuestoServicioCreateRequest {
   descripcion?: string | null;
 }
 export type PresupuestoServicioUpdateRequest = PresupuestoServicioCreateRequest;
+
+// FASE 2: Presupuestos por Concepto (finer granularity)
+export interface PresupuestoConceptoDto {
+  id: number;
+  conceptId: number;
+  conceptNombre: string;
+  clientId?: number | null;
+  clientNombre?: string | null;
+  serviceId?: number | null;
+  serviceNombre?: string | null;
+  periodId?: number | null;
+  periodNombre?: string | null;
+  tipo: TipoPresupuesto;
+  importe: number;
+  descripcion?: string | null;
+}
+export interface PresupuestoConceptoCreateRequest {
+  clientId?: number | null;
+  serviceId?: number | null;
+  periodId?: number | null;
+  tipo: TipoPresupuesto;
+  importe: number;
+  descripcion?: string | null;
+}
+export type PresupuestoConceptoUpdateRequest = PresupuestoConceptoCreateRequest;
+
+// FASE 3: Plantillas Cliente-Concepto (customer-specific customization)
+export interface PlantillaClienteConceptoDto {
+  id: number;
+  clientId: number;
+  conceptId: number;
+  conceptNombre?: string | null;
+  formulaJsonOverride?: string | null;
+  configuracionJson?: string | null;
+  activo: boolean;
+  fechaDesde: string; // DateOnly ISO yyyy-MM-dd
+  fechaHasta?: string | null; // DateOnly ISO yyyy-MM-dd
+}
+export interface PlantillaClienteConceptoCreateRequest {
+  conceptId: number;
+  formulaJsonOverride?: string | null;
+  configuracionJson?: string | null;
+  activo: boolean;
+  fechaDesde: string; // DateOnly ISO yyyy-MM-dd
+  fechaHasta?: string | null; // DateOnly ISO yyyy-MM-dd
+}
+export type PlantillaClienteConceptoUpdateRequest = Omit<PlantillaClienteConceptoCreateRequest, 'conceptId'>;
 
 // ------------------ Formula AST ------------------
 export type FormulaNode =

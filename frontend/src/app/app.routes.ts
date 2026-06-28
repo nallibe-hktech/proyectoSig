@@ -79,6 +79,8 @@ export const routes: Routes = [
       { path: 'concepts/:id', loadComponent: () => import('./features/concepts/concept-detail.component').then((m) => m.ConceptDetailComponent), title: 'Detalle Concept — SIG' },
       { path: 'concepts/:id/editar', loadComponent: () => import('./features/concepts/concept-form.component').then((m) => m.ConceptFormComponent), title: 'Editar Concept — SIG' },
       { path: 'concepts/:id/formula', loadComponent: () => import('./features/concepts/formula-editor.component').then((m) => m.FormulaEditorComponent), title: 'Editor de Fórmula — SIG' },
+      { path: 'concepts/:conceptId/tarifas', loadComponent: () => import('./features/concepts/tarifas-list.component').then((m) => m.TarifasListComponent), title: 'Tarifas del Concepto — SIG' },
+      { path: 'concepts/:conceptId/presupuestos', loadComponent: () => import('./features/concepts/presupuestos-list.component').then((m) => m.PresupuestosListComponent), title: 'Presupuestos del Concepto — SIG' },
 
       // Variables
       { path: 'variables', loadComponent: () => import('./features/variables/variables-list.component').then((m) => m.VariablesListComponent), title: 'Variables — SIG' },
