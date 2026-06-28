@@ -13,6 +13,7 @@ import { toHttpParams } from './api.helpers';
 export class ConceptService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/concepts`;
+  private readonly variablesBase = `${environment.apiUrl}/variables`;
 
   list(page: number, pageSize: number, tipo?: TipoConcepto | null, search?: string) {
     return this.http.get<PagedResult<ConceptListItemDto>>(this.base, {
@@ -79,5 +80,12 @@ export class ConceptService {
   }
   deletePresupuesto(conceptId: number, presupuestoId: number) {
     return this.http.delete<void>(`${this.base}/${conceptId}/presupuestos/${presupuestoId}`);
+  }
+
+  // Variables for formula editor
+  getVariables() {
+    return this.http.get<PagedResult<any>>(`${this.variablesBase}/paginated`, {
+      params: toHttpParams({ page: 1, pageSize: 1000 }),
+    });
   }
 }

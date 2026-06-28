@@ -117,15 +117,99 @@ import { PlantillaClienteConceptoDto } from '../../models/dtos';
                     </mat-select>
                   </mat-form-field>
 
+                  <!-- FASE 5: UI Visual para Fórmula -->
                   <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Fórmula (JSON, opcional, dejar vacío para usar global)</mat-label>
-                    <textarea matInput [(ngModel)]="newForm.formulaJsonOverride" name="formula" rows="6" placeholder="{&#x0A;  &#x22;type&#x22;: &#x22;Number&#x22;,&#x0A;  &#x22;value&#x22;: 100&#x0A;}"></textarea>
+                    <mat-label>Fórmula</mat-label>
+                    <mat-select [ngModel]="formulaMode()" (ngModelChange)="formulaMode.set($event)" name="formulaMode">
+                      <mat-option value="usar-global">Usar fórmula global del concepto</mat-option>
+                      <mat-option value="personalizar">Personalizar para este cliente</mat-option>
+                    </mat-select>
                   </mat-form-field>
 
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Configuración (JSON, opcional)</mat-label>
-                    <textarea matInput [(ngModel)]="newForm.configuracionJson" name="config" rows="6" placeholder="{&#x0A;  &#x22;margenMinimo&#x22;: 10,&#x0A;  &#x22;descuentoMaximo&#x22;: 20&#x0A;}"></textarea>
-                  </mat-form-field>
+                  @if (formulaMode() === 'personalizar') {
+                    <div style="background: var(--mat-sys-surface-variant); padding: 16px; border-radius: 8px; margin-bottom: 12px;">
+                      <p style="margin: 0 0 12px 0; font-weight: 600; font-size: 13px;">Tipo de cálculo</p>
+
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Selecciona el tipo</mat-label>
+                        <mat-select [ngModel]="formulaTipo()" (ngModelChange)="formulaTipo.set($event)" name="formulaTipo">
+                          <mat-option [value]="null">— Ninguno —</mat-option>
+                          <mat-option value="number">Número fijo</mat-option>
+                          <mat-option value="variable">Variable</mat-option>
+                          <mat-option value="tarifa">Tarifa</mat-option>
+                          <mat-option value="agregado">Agregado (Suma)</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+
+                      @if (formulaTipo() === 'number') {
+                        <mat-form-field appearance="outline" class="full-width">
+                          <mat-label>Valor</mat-label>
+                          <input matInput type="number" [ngModel]="formulaNumber()" (ngModelChange)="formulaNumber.set($event)" name="formulaNumber" step="0.01" />
+                        </mat-form-field>
+                      }
+
+                      @if (formulaTipo() === 'variable') {
+                        <mat-form-field appearance="outline" class="full-width">
+                          <mat-label>Variable</mat-label>
+                          <mat-select [ngModel]="formulaVariable()" (ngModelChange)="formulaVariable.set($event)" name="formulaVariable">
+                            @for (v of variables(); track v.id) {
+                              <mat-option [value]="v.id">{{ v.nombre }}</mat-option>
+                            }
+                          </mat-select>
+                        </mat-form-field>
+                      }
+
+                      @if (formulaTipo() === 'tarifa') {
+                        <mat-form-field appearance="outline" class="full-width">
+                          <mat-label>Nivel de tarifa</mat-label>
+                          <mat-select [ngModel]="formulaTarifaNivel()" (ngModelChange)="formulaTarifaNivel.set($event)" name="formulaTarifaNivel">
+                            <mat-option value="Global">Global (para todos)</mat-option>
+                            <mat-option value="Cliente">Por cliente</mat-option>
+                            <mat-option value="Servicio">Por servicio</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                      }
+
+                      @if (formulaTipo() === 'agregado') {
+                        <mat-form-field appearance="outline" class="full-width">
+                          <mat-label>Tipo de agregado</mat-label>
+                          <mat-select [ngModel]="formulaAgregado()" (ngModelChange)="formulaAgregado.set($event)" name="formulaAgregado">
+                            <mat-option value="Sum">Suma</mat-option>
+                            <mat-option value="Count">Cuenta</mat-option>
+                            <mat-option value="Min">Mínimo</mat-option>
+                            <mat-option value="Max">Máximo</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                      }
+                    </div>
+                  }
+
+                  <!-- FASE 5: UI Visual para Configuración -->
+                  <div style="background: var(--mat-sys-surface-variant); padding: 16px; border-radius: 8px; margin-bottom: 12px;">
+                    <p style="margin: 0 0 12px 0; font-weight: 600; font-size: 13px;">Configuración (opcional)</p>
+
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                      <input type="checkbox" [checked]="configHabilitarMargen()" (change)="configHabilitarMargen.set($event.target.checked)" name="configHabilitarMargen" />
+                      <label>Margen mínimo (%)</label>
+                    </div>
+                    @if (configHabilitarMargen()) {
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Margen mínimo</mat-label>
+                        <input matInput type="number" [ngModel]="configMargenMinimo()" (ngModelChange)="configMargenMinimo.set($event)" name="configMargenMinimo" step="0.1" min="0" />
+                      </mat-form-field>
+                    }
+
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 12px; margin-bottom: 12px;">
+                      <input type="checkbox" [checked]="configHabilitarDescuento()" (change)="configHabilitarDescuento.set($event.target.checked)" name="configHabilitarDescuento" />
+                      <label>Descuento máximo (%)</label>
+                    </div>
+                    @if (configHabilitarDescuento()) {
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Descuento máximo</mat-label>
+                        <input matInput type="number" [ngModel]="configDescuentoMaximo()" (ngModelChange)="configDescuentoMaximo.set($event)" name="configDescuentoMaximo" step="0.1" min="0" />
+                      </mat-form-field>
+                    }
+                  </div>
 
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <mat-form-field appearance="outline">
@@ -190,6 +274,7 @@ export class PlantillaClienteEditorComponent implements OnInit {
   protected readonly clientNombre = signal('');
   protected readonly plantillas = signal<PlantillaClienteConceptoDto[]>([]);
   protected readonly conceptos = signal<any[]>([]);
+  protected readonly variables = signal<any[]>([]);
 
   protected newForm = {
     conceptId: 0,
@@ -200,12 +285,26 @@ export class PlantillaClienteEditorComponent implements OnInit {
     activo: true,
   };
 
+  // FASE 5: UI amigable - Configuración visual
+  protected formulaMode = signal<'usar-global' | 'personalizar'>('usar-global');
+  protected formulaTipo = signal<'number' | 'variable' | 'tarifa' | 'agregado' | null>(null);
+  protected formulaNumber = signal(0);
+  protected formulaVariable = signal(0);
+  protected formulaTarifaNivel = signal<'Global' | 'Cliente' | 'Servicio'>('Global');
+  protected formulaAgregado = signal<'Sum' | 'Count' | 'Min' | 'Max'>('Sum');
+
+  protected configMargenMinimo = signal(0);
+  protected configDescuentoMaximo = signal(0);
+  protected configHabilitarMargen = signal(false);
+  protected configHabilitarDescuento = signal(false);
+
   ngOnInit(): void {
     const clientId = Number(this.route.snapshot.paramMap.get('clientId'));
     this.clientId.set(clientId);
     this.loadClient();
     this.loadPlantillas();
     this.loadConceptos();
+    this.loadVariables();
   }
 
   private loadClient(): void {
@@ -239,16 +338,69 @@ export class PlantillaClienteEditorComponent implements OnInit {
     });
   }
 
+  private loadVariables(): void {
+    this.conceptSvc.getVariables().subscribe({
+      next: (result: any) => this.variables.set(result.items || []),
+      error: () => this.notify.error('No se pudieron cargar las variables'),
+    });
+  }
+
+  // FASE 5: Generar JSON automáticamente desde UI visual
+  private generarFormulaJson(): string | null {
+    if (this.formulaMode() === 'usar-global') return null;
+
+    const tipo = this.formulaTipo();
+    if (!tipo) return null;
+
+    let formula: any = {};
+
+    switch (tipo) {
+      case 'number':
+        formula = { type: 'Number', value: this.formulaNumber() };
+        break;
+      case 'variable':
+        formula = { type: 'Variable', variableId: this.formulaVariable() };
+        break;
+      case 'tarifa':
+        formula = { type: 'TarifaRef', nivel: this.formulaTarifaNivel() };
+        break;
+      case 'agregado':
+        formula = {
+          type: 'Aggregate',
+          op: this.formulaAgregado(),
+          source: { type: 'Source', entity: 'VisitasCelero', filters: [] },
+          field: null,
+          distinct: null
+        };
+        break;
+    }
+
+    return JSON.stringify(formula);
+  }
+
+  private generarConfiguracionJson(): string | null {
+    if (!this.configHabilitarMargen() && !this.configHabilitarDescuento()) {
+      return null;
+    }
+
+    const config: any = {};
+    if (this.configHabilitarMargen()) config.margenMinimo = this.configMargenMinimo();
+    if (this.configHabilitarDescuento()) config.descuentoMaximo = this.configDescuentoMaximo();
+
+    return Object.keys(config).length > 0 ? JSON.stringify(config) : null;
+  }
+
   protected savePlantilla(): void {
     if (!this.newForm.conceptId) {
       this.error.set('Debes seleccionar un concepto');
       return;
     }
     this.saving.set(true);
+
     const req = {
       conceptId: this.newForm.conceptId,
-      formulaJsonOverride: this.newForm.formulaJsonOverride || null,
-      configuracionJson: this.newForm.configuracionJson || null,
+      formulaJsonOverride: this.generarFormulaJson(),
+      configuracionJson: this.generarConfiguracionJson(),
       activo: this.newForm.activo,
       fechaDesde: this.newForm.fechaDesde,
       fechaHasta: this.newForm.fechaHasta,
