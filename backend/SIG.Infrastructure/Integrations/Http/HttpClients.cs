@@ -171,19 +171,66 @@ public class IntratimeClient : IIntratimeClient
     {
         try
         {
-            // GET /api/user/ — headers ya configurados en constructor
-            var data = await _httpClient.GetFromJsonAsync<List<IntratimeUsuarioResponse>>("user/", ct);
+            // FASE 1: GET /api/user/ — lista de usuarios con tokens individuales
+            var data = await _httpClient.GetFromJsonAsync<List<IntratimeUsuarioFullResponse>>("user/", ct);
             if (data == null) return Array.Empty<IntratimeEmpleadoDto>();
-            return data
-                .Where(u => !string.IsNullOrEmpty(u.UserNif))
-                .Select(u => new IntratimeEmpleadoDto(
+
+            var result = new List<IntratimeEmpleadoDto>();
+
+            // FASE 2: Para cada usuario, si NIF está vacío, usa su USER_TOKEN para obtener /api/user/my-profile
+            foreach (var u in data)
+            {
+                var nif = u.UserNif ?? "";
+
+                // Si no hay NIF en la lista general, intentar obtener usando el USER_TOKEN del usuario
+                if (string.IsNullOrEmpty(nif) && !string.IsNullOrEmpty(u.UserToken))
+                {
+                    try
+                    {
+                        // Crear request con token individual del usuario
+                        var profileRequest = new HttpRequestMessage(HttpMethod.Get, "user/my-profile");
+                        profileRequest.Headers.Add("Accept", "application/vnd.apiintratime.v1+json");
+                        profileRequest.Headers.Add("token", u.UserToken);
+
+                        var profileResponse = await _httpClient.SendAsync(profileRequest, ct);
+                        if (profileResponse.IsSuccessStatusCode)
+                        {
+                            var profileJson = await profileResponse.Content.ReadAsStringAsync(ct);
+                            var profile = JsonSerializer.Deserialize<IntratimeUsuarioDetalleResponse>(profileJson);
+                            if (profile != null && !string.IsNullOrEmpty(profile.USER_NIF))
+                            {
+                                nif = profile.USER_NIF;
+                                _logger.LogInformation($"[Intratime] Usuario {u.UserId} ({u.UserEmail}): NIF obtenido de my-profile = {nif}");
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"[Intratime] Usuario {u.UserId} ({u.UserEmail}): NIF vacío en my-profile");
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"[Intratime] No se pudo obtener my-profile para usuario {u.UserId}: {profileResponse.StatusCode}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"[Intratime] Error obteniendo my-profile para usuario {u.UserId}: {ex.Message}");
+                    }
+                }
+
+                // Agregar al resultado (incluso si NIF está vacío - no filtrar)
+                result.Add(new IntratimeEmpleadoDto(
                     u.UserId.ToString(),
                     u.UserName ?? "",
                     u.UserEmail ?? "",
-                    u.UserNif ?? "",
+                    nif,
                     u.UserAffiliation,
-                    int.TryParse(u.UserRole, out var role) ? role : 0
-                )).ToList();
+                    u.UserRole ?? 0
+                ));
+            }
+
+            _logger.LogInformation($"[Intratime] GetEmpleados: {result.Count} usuarios obtenidos (con/sin NIF)");
+            return result;
         }
         catch (Exception ex)
         {
@@ -420,7 +467,71 @@ public class IntratimeClient : IIntratimeClient
         [JsonPropertyName("USER_EMAIL")]       public string? UserEmail { get; set; }
         [JsonPropertyName("USER_NIF")]         public string? UserNif { get; set; }
         [JsonPropertyName("USER_AFFILIATION")] public string? UserAffiliation { get; set; }
-        [JsonPropertyName("USER_ROLE")]        public string? UserRole { get; set; }
+        [JsonPropertyName("USER_ROLE")]        public int? UserRole { get; set; }
+    }
+
+    /// <summary>
+    /// Respuesta completa de /api/user/ que incluye USER_TOKEN de cada usuario.
+    /// Se usa para obtener NIFs faltantes via /api/user/my-profile con cada token.
+    /// </summary>
+    private class IntratimeUsuarioFullResponse
+    {
+        [JsonPropertyName("USER_ID")]          public int UserId { get; set; }
+        [JsonPropertyName("USER_NAME")]        public string? UserName { get; set; }
+        [JsonPropertyName("USER_EMAIL")]       public string? UserEmail { get; set; }
+        [JsonPropertyName("USER_NIF")]         public string? UserNif { get; set; }
+        [JsonPropertyName("USER_TOKEN")]       public string? UserToken { get; set; }
+        [JsonPropertyName("USER_AFFILIATION")] public string? UserAffiliation { get; set; }
+        [JsonPropertyName("USER_ROLE")]        public int? UserRole { get; set; }
+    }
+
+    /// <summary>
+    /// Respuesta detallada de /api/user/{userId} — incluye proyectos, workcenters, y datos completos del usuario.
+    /// Este endpoint devuelve más información que la lista general /api/user/, incluyendo el NIF en algunos casos.
+    /// </summary>
+    private class IntratimeUsuarioDetalleResponse
+    {
+        [JsonPropertyName("USER_ID")]          public int? USER_ID { get; set; }
+        [JsonPropertyName("USER_COMPANY")]     public string? USER_COMPANY { get; set; }
+        [JsonPropertyName("USER_NAME")]        public string? USER_NAME { get; set; }
+        [JsonPropertyName("USER_EMAIL")]       public string? USER_EMAIL { get; set; }
+        [JsonPropertyName("USER_TOKEN")]       public string? USER_TOKEN { get; set; }
+        [JsonPropertyName("USER_IMAGE")]       public string? USER_IMAGE { get; set; }
+        [JsonPropertyName("USER_NIF")]         public string? USER_NIF { get; set; }
+        [JsonPropertyName("USER_AFFILIATION")] public string? USER_AFFILIATION { get; set; }
+        [JsonPropertyName("USER_WORKING_TIME")] public int? USER_WORKING_TIME { get; set; }
+        [JsonPropertyName("USER_USERNAME")]    public string? USER_USERNAME { get; set; }
+        [JsonPropertyName("projects")]         public List<IntratimeProyectoDetalle>? projects { get; set; }
+        [JsonPropertyName("workcenters")]      public List<IntratimeWorkcenterDetalle>? workcenters { get; set; }
+    }
+
+    private class IntratimeProyectoDetalle
+    {
+        [JsonPropertyName("PROJECT_ID")]       public int? PROJECT_ID { get; set; }
+        [JsonPropertyName("PROJECT_NAME")]     public string? PROJECT_NAME { get; set; }
+        [JsonPropertyName("PROJECT_COMPANY")]  public string? PROJECT_COMPANY { get; set; }
+        [JsonPropertyName("client")]           public IntratimeClientDetalle? client { get; set; }
+    }
+
+    private class IntratimeClientDetalle
+    {
+        [JsonPropertyName("CLIENT_ID")]        public int? CLIENT_ID { get; set; }
+        [JsonPropertyName("CLIENT_COMPANY")]   public string? CLIENT_COMPANY { get; set; }
+        [JsonPropertyName("CLIENT_NAME")]      public string? CLIENT_NAME { get; set; }
+        [JsonPropertyName("CLIENT_COUNTRY")]   public string? CLIENT_COUNTRY { get; set; }
+        [JsonPropertyName("CLIENT_REGION")]    public string? CLIENT_REGION { get; set; }
+        [JsonPropertyName("CLIENT_CITY")]      public string? CLIENT_CITY { get; set; }
+        [JsonPropertyName("CLIENT_ADDRESS")]   public string? CLIENT_ADDRESS { get; set; }
+    }
+
+    private class IntratimeWorkcenterDetalle
+    {
+        [JsonPropertyName("WORKCENTER_ID")]    public int? WORKCENTER_ID { get; set; }
+        [JsonPropertyName("WORKCENTER_NAME")]  public string? WORKCENTER_NAME { get; set; }
+        [JsonPropertyName("WORKCENTER_COMPANY")] public string? WORKCENTER_COMPANY { get; set; }
+        [JsonPropertyName("WORKCENTER_COUNTRY")] public string? WORKCENTER_COUNTRY { get; set; }
+        [JsonPropertyName("WORKCENTER_CITY")]  public string? WORKCENTER_CITY { get; set; }
+        [JsonPropertyName("WORKCENTER_ADDRESS")] public string? WORKCENTER_ADDRESS { get; set; }
     }
 
     private class IntratimeExpenseResponse

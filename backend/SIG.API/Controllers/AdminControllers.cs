@@ -487,13 +487,104 @@ public class IntratimeController : ControllerBase
         CancellationToken ct)
     {
         var q = _db.StagingIntratimeFichajes.AsNoTracking();
+
+        // Buscar por ID, Nombre o NIF usando GroupJoin
         if (!string.IsNullOrEmpty(search))
-            q = q.Where(f => f.UserIdExterno.Contains(search));
+        {
+            var searchLower = search.ToLower();
+            q = q.Where(f =>
+                f.UserIdExterno.Contains(search) ||
+                _db.StagingIntratimeEmpleados.Any(e =>
+                    e.UserIdExterno == f.UserIdExterno &&
+                    (e.Nombre.ToLower().Contains(searchLower) || e.NIF.ToLower().Contains(searchLower))
+                )
+            );
+        }
+
         if (desde.HasValue)
             q = q.Where(f => DateOnly.FromDateTime(f.Entrada) >= desde.Value);
+
         if (hasta.HasValue)
             q = q.Where(f => DateOnly.FromDateTime(f.Entrada) <= hasta.Value);
-        return Ok(await q.OrderByDescending(f => f.Entrada).ToListAsync(ct));
+
+        // JOIN con empleados para obtener Nombre y NIF
+        var result = await q
+            .GroupJoin(
+                _db.StagingIntratimeEmpleados.AsNoTracking(),
+                f => f.UserIdExterno,
+                e => e.UserIdExterno,
+                (f, emps) => new
+                {
+                    f.Id,
+                    f.FichajeIdExterno,
+                    f.UserIdExterno,
+                    Nombre = emps.FirstOrDefault() != null ? emps.First().Nombre : "Desconocido",
+                    NIF = emps.FirstOrDefault() != null ? emps.First().NIF : "",
+                    f.UserId,
+                    f.Entrada,
+                    f.Salida,
+                    f.HorasCalculadas,
+                    f.PayloadJson,
+                    f.Hash,
+                    f.FechaUltimaSincronizacion,
+                    f.FlagProcesado,
+                    f.ErrorProcesamiento
+                })
+            .OrderByDescending(x => x.Entrada)
+            .ToListAsync(ct);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Listar empleados sincronizados de Intratime con paginación y búsqueda.
+    /// Devuelve: ID externo, Nombre, Email, NIF, Afiliación.
+    /// </summary>
+    [HttpGet("empleados")]
+    public async Task<IActionResult> Empleados(
+        [FromQuery] string? search = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        CancellationToken ct = default)
+    {
+        var q = _db.StagingIntratimeEmpleados.AsNoTracking();
+
+        // Búsqueda por nombre, email o NIF
+        if (!string.IsNullOrEmpty(search))
+        {
+            var searchLower = search.ToLower();
+            q = q.Where(e =>
+                e.Nombre.ToLower().Contains(searchLower) ||
+                e.Email.ToLower().Contains(searchLower) ||
+                e.NIF.ToLower().Contains(searchLower));
+        }
+
+        var total = await q.CountAsync(ct);
+        var items = await q
+            .OrderBy(e => e.Nombre)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(e => new
+            {
+                e.UserIdExterno,
+                e.Nombre,
+                e.Email,
+                e.NIF,
+                e.Affiliation,
+                e.Role,
+                e.FechaUltimaSincronizacion,
+                e.FlagProcesado
+            })
+            .ToListAsync(ct);
+
+        return Ok(new
+        {
+            items,
+            total,
+            page,
+            pageSize,
+            pages = (total + pageSize - 1) / pageSize
+        });
     }
 }
 

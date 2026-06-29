@@ -515,6 +515,29 @@ public class SyncService : ISyncService
             }
             case "intratime":
             {
+                // ── FASE 0: Sincronizar empleados primero (con sus NIFs) ──
+                var empsData = await _intratime.GetEmpleadosAsync(ct);
+                foreach (var u in empsData)
+                {
+                    var json = JsonSerializer.Serialize(u);
+                    var hash = Sha256(json);
+                    if (await _intratimeEmpRepo.ExistsByHashAsync(hash, ct)) continue;
+                    await _intratimeEmpRepo.AddRangeAsync(new[] { new StagingIntratimeEmpleado
+                    {
+                        UserIdExterno = u.UserIdExterno,
+                        Nombre = u.Nombre,
+                        Email = u.Email,
+                        NIF = u.NIF,
+                        Affiliation = u.Affiliation,
+                        Role = u.Role,
+                        PayloadJson = json, Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow, FlagProcesado = false
+                    } }, ct);
+                    ins++;
+                }
+                await _intratimeEmpRepo.SaveChangesAsync(ct);
+
+                // ── FASE 1: Sincronizar fichajes ──
                 var data = await _intratime.GetFichajesAsync(desde, hasta, ct);
                 // Para resolver UserId interno, buscar en staging empleados
                 var empleados = await _intratimeEmpRepo.ListAsync(ct);

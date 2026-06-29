@@ -40,7 +40,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   template: `
     <div class="sig-page">
       <div class="page-header">
-        <h1>Intratime — Control de Fichajes</h1>
+        <h1>Intratime</h1>
       </div>
 
       <!-- KPI Cards -->
@@ -89,9 +89,19 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         </div>
       } @else {
         <table mat-table [dataSource]="fichajesPaginated()" class="data-table">
-          <ng-container matColumnDef="userIdExterno">
-            <th mat-header-cell>ID Empleado</th>
-            <td mat-cell *matCellDef="let row">{{ row.userIdExterno }}</td>
+          <ng-container matColumnDef="nombre">
+            <th mat-header-cell>Empleado</th>
+            <td mat-cell *matCellDef="let row">
+              <div style="font-weight: 500;">{{ row.nombre || 'Desconocido' }}</div>
+              <div style="font-size: 12px; color: var(--sig-text-muted);">{{ row.userIdExterno }}</div>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="nif">
+            <th mat-header-cell>NIF</th>
+            <td mat-cell *matCellDef="let row">
+              <span style="font-family: monospace; font-weight: 500;">{{ row.nif || '-' }}</span>
+            </td>
           </ng-container>
 
           <ng-container matColumnDef="entrada">
@@ -106,7 +116,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
           <ng-container matColumnDef="horasCalculadas">
             <th mat-header-cell>Horas</th>
-            <td mat-cell *matCellDef="let row">{{ row.horasCalculadas || '-' }}</td>
+            <td mat-cell *matCellDef="let row">
+              <span style="font-family: monospace; font-weight: 500;">{{ (row.horasCalculadas || 0) | number: '1.2-2' }}</span>
+            </td>
           </ng-container>
 
           <tr mat-header-row></tr>
@@ -226,7 +238,7 @@ export class IntratimedashboardComponent implements OnInit {
   // Dummy property for template type checking (actual row comes from *matRowDef)
   protected row: StagingIntratimeFichaje | any;
 
-  protected readonly fichajes = signal<StagingIntratimeFichaje[]>([]);
+  protected readonly fichajes = signal<any[]>([]);
   protected readonly fichajesTotal = signal(0);
   protected readonly fichajesPage = signal(1);
   protected readonly fichajesPageSize = signal(25);
@@ -240,7 +252,7 @@ export class IntratimedashboardComponent implements OnInit {
     return this.fichajes().slice(start, end);
   });
 
-  columns = ['userIdExterno', 'entrada', 'salida', 'horasCalculadas'];
+  columns = ['nombre', 'nif', 'entrada', 'salida', 'horasCalculadas'];
 
   fichajesCount = computed(() => this.fichajesTotal());
   empleadosUnicos = computed(() => this.empleadosUnicosTotal());
@@ -293,7 +305,12 @@ export class IntratimedashboardComponent implements OnInit {
         this.fichajes.set(data);
         this.fichajesTotal.set(data?.length ?? 0);
         this.empleadosUnicosTotal.set(new Set((data ?? []).map(f => f.userIdExterno)).size);
-        this.horasTotalValue.set((data ?? []).reduce((sum, f) => sum + (f.horasCalculadas || 0), 0));
+        this.horasTotalValue.set((data ?? []).reduce((sum, f) => {
+          const horas = typeof f.horasCalculadas === 'string'
+            ? parseFloat(f.horasCalculadas)
+            : (f.horasCalculadas || 0);
+          return sum + (isNaN(horas as number) ? 0 : horas);
+        }, 0));
         this.loading.set(false);
       },
       error: (err) => {
