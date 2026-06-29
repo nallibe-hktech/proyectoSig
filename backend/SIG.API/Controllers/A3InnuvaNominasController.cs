@@ -15,7 +15,7 @@ namespace SIG.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/a3-innuva-nominas")]
-[AllowAnonymous]
+[Authorize(Roles = "Administrator")]
 public class A3InnuvaNominasController : ControllerBase
 {
     private readonly IA3InnuvaNominasService _service;
@@ -84,7 +84,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Útil cuando la sincronización anterior falló en el paso de cálculo
     /// </summary>
     [HttpPost("recalcular")]
-    [AllowAnonymous]
     public async Task<IActionResult> Recalcular([FromQuery] string periodCode, CancellationToken ct)
     {
         try
@@ -166,7 +165,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// PHASE 1.3a: Sync IRPF (tax) data for all employees
     /// </summary>
     [HttpPost("sync-irpf")]
-    [AllowAnonymous]
     public async Task<IActionResult> SyncIRPF(CancellationToken ct)
     {
         try
@@ -186,7 +184,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// PHASE 1.3d: Sync bank account data for all employees
     /// </summary>
     [HttpPost("sync-bank-accounts")]
-    [AllowAnonymous]
     public async Task<IActionResult> SyncBankAccounts(CancellationToken ct)
     {
         try
@@ -206,7 +203,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// PHASE 1.3e: Sync agreement data for all employees
     /// </summary>
     [HttpPost("sync-agreements")]
-    [AllowAnonymous]
     public async Task<IActionResult> SyncAgreements(CancellationToken ct)
     {
         try
@@ -223,7 +219,6 @@ public class A3InnuvaNominasController : ControllerBase
     }
 
     [HttpPost("sync-contract-agreements")]
-    [AllowAnonymous]
     public async Task<IActionResult> SyncContractAgreements(CancellationToken ct)
     {
         try
@@ -240,7 +235,6 @@ public class A3InnuvaNominasController : ControllerBase
     }
 
     [HttpPost("sync-contract-timetables")]
-    [AllowAnonymous]
     public async Task<IActionResult> SyncContractTimetables(CancellationToken ct)
     {
         try
@@ -260,7 +254,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Obtener lista paginada de empresas sincronizadas
     /// </summary>
     [HttpGet("companies")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetCompanies(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -283,7 +276,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Obtener lista paginada de nóminas sincronizadas
     /// </summary>
     [HttpGet("payrolls")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetPayrolls(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -370,7 +362,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// DEBUG: Check current OAuth token status in database
     /// </summary>
     [HttpGet("oauth/status")]
-    [AllowAnonymous]
     public IActionResult GetOAuthStatus()
     {
         try
@@ -465,7 +456,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// ⚠️ TEST ONLY: Obtener lista paginada de empresas de tabla TEST
     /// </summary>
     [HttpGet("test/companies")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetCompaniesTest(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -488,7 +478,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// ⚠️ TEST ONLY: Obtener lista paginada de nóminas de tabla TEST
     /// </summary>
     [HttpGet("test/payrolls")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetPayrollsTest(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -511,7 +500,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Obtener lista paginada de empleados de tabla TEST
     /// </summary>
     [HttpGet("test/employees")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetEmployeesTest(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -534,7 +522,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Obtener lista paginada de empleados sincronizados desde Wolters Kluwer
     /// </summary>
     [HttpGet("employees")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetEmployees(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -557,7 +544,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Obtener lista paginada de conceptos sincronizados desde Wolters Kluwer
     /// </summary>
     [HttpGet("concepts")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetConceptos(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -580,7 +566,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// DIAGNOSTICS: Verificar estado de sincronización y datos para debugging
     /// </summary>
     [HttpGet("diagnose")]
-    [AllowAnonymous]
     public async Task<IActionResult> DiagnosticPayrollData(CancellationToken ct = default)
     {
         try
@@ -757,7 +742,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// DEBUG: Limpiar tablas staging (temporal - solo para desarrollo)
     /// </summary>
     [HttpPost("debug/clean")]
-    [AllowAnonymous]
     public async Task<IActionResult> CleanStagingTables(CancellationToken ct = default)
     {
         try
@@ -795,7 +779,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Obtener nóminas calculadas (resultado de PHASE 2)
     /// </summary>
     [HttpGet("calculated")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetNominasCalculadas(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -819,7 +802,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Obtener nóminas enviadas a Wolters Kluwer (PHASE 3 completada)
     /// </summary>
     [HttpGet("sent")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetNominasEnviadas(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -842,7 +824,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Generar y descargar plantilla Excel A3 Innuva para upload manual
     /// </summary>
     [HttpGet("periods")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetAllPeriods(CancellationToken ct = default)
     {
         try
@@ -872,7 +853,6 @@ public class A3InnuvaNominasController : ControllerBase
     }
 
     [HttpGet("generate-excel")]
-    [AllowAnonymous]
     public async Task<IActionResult> GenerateExcel(
         [FromQuery] string periodCode,
         CancellationToken ct = default)
@@ -901,7 +881,6 @@ public class A3InnuvaNominasController : ControllerBase
     /// Ayuda a identificar qué falta para completar el Excel
     /// </summary>
     [HttpGet("diagnostico")]
-    [AllowAnonymous]
     public async Task<IActionResult> Diagnostico([FromQuery] string periodCode, CancellationToken ct = default)
     {
         try

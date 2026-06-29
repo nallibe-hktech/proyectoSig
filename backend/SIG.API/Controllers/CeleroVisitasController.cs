@@ -46,21 +46,5 @@ public class CeleroVisitasController : ControllerBase
     public async Task<IActionResult> Update(int id, CeleroVisitaUpdateRequest req, CancellationToken ct) =>
         Ok(await _svc.UpdateAsync(id, req, UserId, ct));
 
-    /// <summary>
-    /// Diagnóstico: verificar datos sin autenticación (TEMPORAL - borrar después)
-    /// </summary>
-    [HttpGet("_diagnose")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Diagnose(CancellationToken ct)
-    {
-        try
-        {
-            var result = await _svc.ListAsync(1, 5, null, null, ct);
-            return Ok(new { status = "ok", total = result.Total, items = result.Items.Count });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
+
 }

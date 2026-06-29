@@ -7,7 +7,6 @@ namespace SIG.API.Controllers;
 
 [ApiController]
 [Route("api/periods")]
-[AllowAnonymous]
 public class PeriodsController : ControllerBase
 {
     private readonly IPeriodService _svc;
