@@ -35,8 +35,13 @@ public static class DependencyInjection
 
         services.AddDbContext<AppDbContext>((sp, options) =>
         {
-            options.UseNpgsql(connStr,
-                    npg => npg.MigrationsAssembly("SIG.Infrastructure"))
+            options.UseNpgsql(connStr, npg =>
+                    {
+                        npg.MigrationsAssembly("SIG.Infrastructure");
+                        // Consultas con varias colecciones (Include) se dividen en queries separadas en vez de
+                        // un JOIN gigante (evita el producto cartesiano y silencia el warning EF 20504).
+                        npg.UseQuerySplittingBehavior(Microsoft.EntityFrameworkCore.QuerySplittingBehavior.SplitQuery);
+                    })
                    .UseSnakeCaseNamingConvention()
                    .AddInterceptors(
                         sp.GetRequiredService<TimestampsInterceptor>(),
