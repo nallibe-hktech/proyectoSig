@@ -530,39 +530,38 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
                 throw new ArgumentNullException(nameof(periodCode));
 
             // 1. Obtener período
+            // Buscar período por año/mes de FechaInicio (no por nombre, que puede ser "Junio 2026" o "2026-06")
+            var parts2 = periodCode.Split('-');
+            if (parts2.Length != 2 || !int.TryParse(parts2[0], out int pYear) || !int.TryParse(parts2[1], out int pMonth))
+            {
+                _logger.LogError($"[A3InnuvaNominas-PHASE2] No se puede parsear código de período {periodCode} (formato esperado: YYYY-MM)");
+                return;
+            }
+
             var period = await _db.Periods
-                .FirstOrDefaultAsync(p => p.Nombre == periodCode, ct);
+                .FirstOrDefaultAsync(p => p.FechaInicio.Year == pYear && p.FechaInicio.Month == pMonth, ct);
 
             if (period == null)
             {
-                _logger.LogWarning($"[A3InnuvaNominas-PHASE2] Período {periodCode} no encontrado. Creando automáticamente para testing...");
+                _logger.LogWarning($"[A3InnuvaNominas-PHASE2] Período {periodCode} no encontrado. Creando automáticamente...");
 
                 try
                 {
-                    var parts = periodCode.Split('-');
-                    if (parts.Length == 2 && int.TryParse(parts[0], out int year) && int.TryParse(parts[1], out int month))
-                    {
-                        var fechaInicio = new DateOnly(year, month, 1);
-                        var fechaFin = fechaInicio.AddMonths(1).AddDays(-1);
+                    var fechaInicio = new DateOnly(pYear, pMonth, 1);
+                    var fechaFin = fechaInicio.AddMonths(1).AddDays(-1);
 
-                        period = new Period
-                        {
-                            Nombre = periodCode,
-                            FechaInicio = fechaInicio,
-                            FechaFin = fechaFin,
-                            DiaPago = 28,
-                            Estado = EstadoPeriodo.Abierto
-                        };
-
-                        _db.Periods.Add(period);
-                        await _db.SaveChangesAsync(ct);
-                        _logger.LogInformation($"[A3InnuvaNominas-PHASE2] ✅ Período {periodCode} creado automáticamente: {fechaInicio:yyyy-MM-dd} a {fechaFin:yyyy-MM-dd}");
-                    }
-                    else
+                    period = new Period
                     {
-                        _logger.LogError($"[A3InnuvaNominas-PHASE2] No se puede parsear código de período {periodCode} (formato esperado: YYYY-MM)");
-                        return;
-                    }
+                        Nombre = PeriodCodeToNombre(periodCode),
+                        FechaInicio = fechaInicio,
+                        FechaFin = fechaFin,
+                        DiaPago = 30,
+                        Estado = EstadoPeriodo.Abierto
+                    };
+
+                    _db.Periods.Add(period);
+                    await _db.SaveChangesAsync(ct);
+                    _logger.LogInformation($"[A3InnuvaNominas-PHASE2] ✅ Período '{period.Nombre}' creado automáticamente: {fechaInicio:yyyy-MM-dd} a {fechaFin:yyyy-MM-dd}");
                 }
                 catch (Exception ex)
                 {
@@ -1991,119 +1990,136 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
 
             _logger.LogInformation($"[A3InnuvaNominas] Cargados {travelPerkByNif.Count} NIFs únicos con viajes TravelPerk");
 
-            // 4. Crear workbook Excel
+            // 4. Crear workbook Excel — formato exacto A3NOM
+            // NOTA: SS, IRPF y demás retenciones (cols L, M, O-S) las calcula WK internamente.
+            // Nosotros solo aportamos los datos de las APIs externas (KM, Suplidos, Absentismo).
             using var workbook = new XLWorkbook();
-            var ws = workbook.Worksheets.Add("Nómina");
+            var ws = workbook.Worksheets.Add("Pág._1_");
 
             var diasMes = DateTime.DaysInMonth(periodDate.Year, periodDate.Month);
             var fechaCierre = new DateTime(periodDate.Year, periodDate.Month, diasMes);
 
-            // Metadatos (Filas 1-7)
-            ws.Cell(1, 1).Value = ""; // Fila vacía
-            ws.Cell(2, 1).Value = "";
+            // ── Metadatos (Filas 1-7) ─────────────────────────────────────────
+            // Filas 1-2: vacías
             ws.Cell(3, 2).Value = "Paga Mensual";
-            ws.Cell(3, 12).Value = "Asiento de nomina PRUEBA"; // Col L (12)
-
+            ws.Cell(3, 12).Value = "Asiento de nómina PRUEBA";                                                       // Col L
             ws.Cell(4, 2).Value = $"Del 01/{periodDate.Month:D2}/{periodDate.Year} al {diasMes:D2}/{periodDate.Month:D2}/{periodDate.Year}";
-            ws.Cell(4, 29).Value = fechaCierre.ToString("yyyy-MM-dd"); // Col AC (29)
+            ws.Cell(4, 29).Value = fechaCierre.ToString("dd/MM/yyyy");                                               // Col AC — fecha cierre
+            ws.Cell(5, 2).Value = "Empresa: 1 - SERVICE INNOVATION GROUP ESPAÑA SERVICIO";
+            // Filas 6-7: vacías
 
-            ws.Cell(5, 2).Value = "Empresa: 1 - SERVICE INNOVATION GROUP ESPANA SERVICIO";
+            // ── Encabezados (Fila 8) — idénticos al archivo A3NOM ejemplo ─────
+            // Cols A-H (1-8): SIN cabecera (identificadores de empleado — posición fija conocida por A3NOM)
+            ws.Cell(8,  9).Value = "Imputación";
+            ws.Cell(8, 10).Value = "Tipo de paga";
+            ws.Cell(8, 11).Value = "Importe bruto";
+            ws.Cell(8, 12).Value = "Seguridad Social trabajador";
+            ws.Cell(8, 13).Value = "Tributación IRPF total";
+            ws.Cell(8, 14).Value = "Importe líquido";
+            ws.Cell(8, 15).Value = "Total Seguridad Social de empresa";
+            ws.Cell(8, 16).Value = "Descuento embargo salarial";
+            ws.Cell(8, 17).Value = "Anticipo";
+            ws.Cell(8, 18).Value = "Descuento préstamo";
+            ws.Cell(8, 19).Value = "Prorrata pagas extras";
+            ws.Cell(8, 20).Value = "KM";
+            ws.Cell(8, 21).Value = "SUPLIDOS";
+            ws.Cell(8, 22).Value = "Exoneración líquida de Empresa Total";
+            ws.Cell(8, 23).Value = "Ajuste Nómina";
+            ws.Cell(8, 24).Value = "Salario en Especie";
+            ws.Cell(8, 25).Value = "Descuento conceptos en especie";
+            ws.Cell(8, 26).Value = "Descuento por absentismo";
+            ws.Cell(8, 27).Value = "Líquido sumar nómina anterior";
+            ws.Cell(8, 28).Value = "Líquido sumar nómina posterior";
+            ws.Cell(8, 29).Value = "Descuento nóminas negativas";
+            // ── Columnas suplementarias (AD-AH) — datos externos para referencia del gestor de nóminas
+            // WK no las importa; sirven para validación y auditoría antes del envío manual.
+            ws.Cell(8, 30).Value = "Horas Intratime";
+            ws.Cell(8, 31).Value = "Nº Visitas Celero";
+            ws.Cell(8, 32).Value = "Duración Celero (min)";
+            ws.Cell(8, 33).Value = "Provincia Celero";
+            ws.Cell(8, 34).Value = "Coste TravelPerk";
 
-            ws.Cell(6, 1).Value = "";
-            ws.Cell(7, 1).Value = "";
-
-            // Encabezados (Fila 8)
-            var headers = new[] { "NIF", "Apellidos", "Nombre", "Centro", "Categoría", "Empresa", "Almacén", "Departamento",
-                "", "", "Importe Bruto", "", "", "", "", "", "", "", "", "km", "SUPLIDOS", "", "", "", "", "Desc. Absentismo (h)",
-                // NUEVAS (AA–AE):
-                "Horas Intratime", "Visitas Celero", "Duración Celero (min)", "Provincia Celero", "Viajes TravelPerk €" };
-
-            for (int col = 1; col <= headers.Length; col++)
-            {
-                if (!string.IsNullOrEmpty(headers[col - 1]))
-                {
-                    ws.Cell(8, col).Value = headers[col - 1];
-                }
-            }
-
-            // Datos empleados (Filas 9+)
+            // ── Datos empleados (Filas 9+) ────────────────────────────────────
             int rowIndex = 9;
             foreach (var nomina in nominasCalculadas)
             {
                 empleados.TryGetValue((nomina.CodigoEmpleado ?? "").ToUpperInvariant(), out var empleado);
-
-                // Cols A-H: Datos del empleado
-                ws.Cell(rowIndex, 1).Value = empleado?.NIF ?? "";  // A: NIF
-                ws.Cell(rowIndex, 2).Value = empleado?.Nombre ?? ""; // B: Apellidos (usando Nombre como fallback)
-                ws.Cell(rowIndex, 3).Value = empleado?.Nombre ?? ""; // C: Nombre
-                ws.Cell(rowIndex, 4).Value = ""; // D: Centro
-                ws.Cell(rowIndex, 5).Value = ""; // E: Categoría
-                ws.Cell(rowIndex, 6).Value = "1"; // F: Empresa (hardcoded to 1)
-                ws.Cell(rowIndex, 7).Value = ""; // G: Almacén
-                ws.Cell(rowIndex, 8).Value = ""; // H: Departamento
-
-                // Col K (11): Importe Bruto (TotalPercepciones)
-                ws.Cell(rowIndex, 11).Value = nomina.TotalPercepciones;
-
-                // Usar NIF para mapeo con todas las APIs (A3 es la fuente de verdad)
+                var empCode = (nomina.CodigoEmpleado ?? "").ToUpperInvariant();
                 var nif = empleado?.NIF ?? "";
 
-                // Col T (20): KM (calculado desde PayHawk - Categoría "Kilometraje")
+                // Cols A-H (1-8): identificadores de empleado
+                ws.Cell(rowIndex, 1).Value = nif;                                          // A: NIF
+                ws.Cell(rowIndex, 2).Value = empleado?.Nombre ?? nomina.NombreEmpleado;    // B: Apellidos/Nombre
+                ws.Cell(rowIndex, 3).Value = empleado?.Nombre ?? nomina.NombreEmpleado;    // C: Nombre
+                ws.Cell(rowIndex, 4).Value = "";                                           // D: Centro
+                ws.Cell(rowIndex, 5).Value = "";                                           // E: Categoría
+                ws.Cell(rowIndex, 6).Value = "1";                                          // F: Empresa (código 1)
+                ws.Cell(rowIndex, 7).Value = "";                                           // G: Almacén
+                ws.Cell(rowIndex, 8).Value = empleado?.Departamento ?? "";                 // H: Departamento
+
+                // Col I  (9): Imputación — vacío (WK gestiona imputación por coste)
+                // Col J (10): Tipo de paga — "MEN" = mensual ordinaria
+                ws.Cell(rowIndex, 10).Value = "MEN";
+                // Col K (11): Importe bruto — percepciones brutas desde WK
+                ws.Cell(rowIndex, 11).Value = nomina.TotalPercepciones;
+                // Cols L(12) y M(13): SS trabajador e IRPF — los calcula WK internamente, dejamos en blanco
+                // Col N (14): Importe líquido — salario neto calculado
+                ws.Cell(rowIndex, 14).Value = nomina.SalarioNeto;
+                // Cols O-S (15-19): vacías — SS empresa, embargo, anticipo, préstamo, prorrata (WK los calcula)
+
+                // Col T (20): KM — desde PayHawk categoría "Kilometraje"
                 var gastosEmpleado = !string.IsNullOrEmpty(nif) && gastosByNif.TryGetValue(nif, out var listaGastos)
-                    ? listaGastos
-                    : new List<StagingPayHawkGasto>();
+                    ? listaGastos : new List<StagingPayHawkGasto>();
+                var kmGastos = gastosEmpleado.Where(x => x.Categoria == "Kilometraje").Sum(x => x.Importe);
+                if (kmGastos != 0) ws.Cell(rowIndex, 20).Value = kmGastos;
 
-                var kmGastos = gastosEmpleado
-                    .Where(x => x.Categoria == "Kilometraje")
-                    .Sum(x => x.Importe);
-                ws.Cell(rowIndex, 20).Value = kmGastos > 0 ? kmGastos : 0;
+                // Col U (21): SUPLIDOS — desde PayHawk, categorías distintas a Kilometraje
+                var suplidosGastos = gastosEmpleado.Where(x => x.Categoria != "Kilometraje").Sum(x => x.Importe);
+                if (suplidosGastos != 0) ws.Cell(rowIndex, 21).Value = suplidosGastos;
 
-                // Col U (21): SUPLIDOS (gastos reembolsables PayHawk - todas las categorías excepto Kilometraje)
-                var suplidosGastos = gastosEmpleado
-                    .Where(x => x.Categoria != "Kilometraje")
-                    .Sum(x => x.Importe);
-                ws.Cell(rowIndex, 21).Value = suplidosGastos > 0 ? suplidosGastos : 0;
+                // Cols V-Y (22-25): vacías — exoneración, ajuste nómina, especie (WK los calcula)
 
-                // Col Z (26): Descuento Absentismo (desde Bizneo ausencias via NIF del empleado)
+                // Col Z (26): Descuento por absentismo — horas ausentes desde Bizneo
                 var horasAusencia = !string.IsNullOrEmpty(nif) && ausenciasByNif.TryGetValue(nif, out var horas)
-                    ? horas
-                    : 0m;
-                ws.Cell(rowIndex, 26).Value = horasAusencia > 0 ? horasAusencia : 0;
+                    ? horas : 0m;
+                if (horasAusencia != 0) ws.Cell(rowIndex, 26).Value = horasAusencia;
 
-                // Col AA (27): Horas trabajadas Intratime
-                var horasIntratime = !string.IsNullOrEmpty(nif) && horasIntratimeByNif.TryGetValue(nif, out var hIntr)
-                    ? hIntr : 0m;
-                ws.Cell(rowIndex, 27).Value = horasIntratime;
+                // Cols AA-AC (27-29): vacías — líquido anterior/posterior, descuento nóminas negativas
 
-                // Col AB (28): Nº visitas Celero
-                var celeroData = !string.IsNullOrEmpty(nif) && celeroPorNif.TryGetValue(nif, out var cDat)
-                    ? cDat : (numVisitas: 0, duracionTotal: 0, provinciaPrincipal: "");
-                ws.Cell(rowIndex, 28).Value = celeroData.numVisitas;
+                // ── Columnas suplementarias AD-AH (30-34): datos externos de referencia ─────────
+                // Intratime: horas fichadas en el período
+                if (!string.IsNullOrEmpty(nif) && horasIntratimeByNif.TryGetValue(nif, out var horasIntra) && horasIntra != 0)
+                    ws.Cell(rowIndex, 30).Value = horasIntra;
 
-                // Col AC (29): Duración total Celero (minutos)
-                ws.Cell(rowIndex, 29).Value = celeroData.duracionTotal;
+                // Celero: visitas, duración total y provincia principal del período
+                if (!string.IsNullOrEmpty(nif) && celeroPorNif.TryGetValue(nif, out var celeroData))
+                {
+                    if (celeroData.numVisitas > 0)    ws.Cell(rowIndex, 31).Value = celeroData.numVisitas;
+                    if (celeroData.duracionTotal > 0) ws.Cell(rowIndex, 32).Value = celeroData.duracionTotal;
+                    if (!string.IsNullOrEmpty(celeroData.provinciaPrincipal))
+                        ws.Cell(rowIndex, 33).Value = celeroData.provinciaPrincipal;
+                }
 
-                // Col AD (30): Provincia principal Celero
-                ws.Cell(rowIndex, 30).Value = celeroData.provinciaPrincipal;
-
-                // Col AE (31): Coste viajes TravelPerk €
-                var costeTravelPerk = !string.IsNullOrEmpty(nif) && travelPerkByNif.TryGetValue(nif, out var tpCost)
-                    ? tpCost : 0m;
-                ws.Cell(rowIndex, 31).Value = costeTravelPerk;
+                // TravelPerk: coste de viajes del período
+                if (!string.IsNullOrEmpty(nif) && travelPerkByNif.TryGetValue(nif, out var costeTravelPerk) && costeTravelPerk != 0)
+                    ws.Cell(rowIndex, 34).Value = costeTravelPerk;
 
                 rowIndex++;
             }
 
-            // Ajustar ancho de columnas
-            ws.Column(11).Width = 14; // Importe Bruto
-            ws.Column(20).Width = 10; // KM
-            ws.Column(21).Width = 14; // SUPLIDOS
-            ws.Column(26).Width = 14; // Descuentos
-            ws.Column(27).Width = 14; // Horas Intratime
-            ws.Column(28).Width = 13; // Visitas Celero
-            ws.Column(29).Width = 16; // Duración Celero
-            ws.Column(30).Width = 18; // Provincia Celero
-            ws.Column(31).Width = 18; // Viajes TravelPerk
+            // ── Formato columnas ──────────────────────────────────────────────
+            ws.Column(2).Width = 28;   // Apellidos
+            ws.Column(4).Width = 12;   // Centro
+            ws.Column(11).Width = 14;  // Importe bruto
+            ws.Column(14).Width = 14;  // Importe líquido
+            ws.Column(20).Width = 10;  // KM
+            ws.Column(21).Width = 12;  // SUPLIDOS
+            ws.Column(26).Width = 22;  // Descuento absentismo
+            ws.Column(30).Width = 16;  // Horas Intratime
+            ws.Column(31).Width = 16;  // Nº Visitas Celero
+            ws.Column(32).Width = 22;  // Duración Celero
+            ws.Column(33).Width = 22;  // Provincia Celero
+            ws.Column(34).Width = 16;  // Coste TravelPerk
 
             // Convertir a bytes y retornar
             using var stream = new MemoryStream();
@@ -2128,5 +2144,18 @@ public class A3InnuvaNominasService : IA3InnuvaNominasService
         using var sha256 = SHA256.Create();
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hashBytes);
+    }
+
+    /// <summary>
+    /// Convierte código "YYYY-MM" a nombre legible "Mes Año" (ej: "2026-06" → "Junio 2026")
+    /// </summary>
+    private static string PeriodCodeToNombre(string periodCode)
+    {
+        if (periodCode.Length != 7) return periodCode;
+        var parts = periodCode.Split('-');
+        if (parts.Length != 2 || !int.TryParse(parts[1], out int month)) return periodCode;
+        string[] meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                          "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        return month >= 1 && month <= 12 ? $"{meses[month - 1]} {parts[0]}" : periodCode;
     }
 }

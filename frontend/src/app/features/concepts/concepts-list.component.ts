@@ -12,7 +12,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatDialogModule } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ConceptService } from '../../core/api/concepts.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ConceptListItemDto } from '../../models/dtos';
@@ -20,6 +21,7 @@ import { TipoConcepto } from '../../models/enums';
 import { BreadcrumbsComponent } from '../../shared/breadcrumbs.component';
 import { SkeletonComponent } from '../../shared/page-skeleton.component';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/confirm-dialog.component';
 import { NotifyService } from '../../core/notify.service';
 import { exportCSV } from '../../core/api/api.helpers';
 
@@ -30,6 +32,7 @@ import { exportCSV } from '../../core/api/api.helpers';
     CommonModule, DatePipe, RouterLink, ReactiveFormsModule,
     MatCardModule, MatTableModule, MatButtonModule, MatIconModule, MatChipsModule,
     MatFormFieldModule, MatInputModule, MatPaginatorModule, MatSelectModule,
+    MatDialogModule, MatTooltipModule,
     BreadcrumbsComponent, SkeletonComponent, EmptyStateComponent,
   ],
   template: `
@@ -37,16 +40,12 @@ import { exportCSV } from '../../core/api/api.helpers';
       <sig-breadcrumbs [crumbs]="[{ label: 'Inicio', route: '/dashboard' }, { label: 'Conceptos' }]" />
       <div class="sig-page__header">
         <h1 class="sig-page__title">Conceptos</h1>
-        <!-- Edición de conceptos ahora centralizada en Config Factura y Config Presupuesto -->
+        @if (isAdmin()) {
+          <a mat-flat-button color="primary" routerLink="/concepts/nuevo" data-testid="btn-nuevo-concepto">
+            <mat-icon>add</mat-icon> Nuevo Concepto
+          </a>
+        }
       </div>
-      <mat-card style="margin-bottom: 16px;"><mat-card-content>
-        <mat-icon style="vertical-align: middle; margin-right: 6px; color: var(--sig-warn);">info</mat-icon>
-        <span style="color: var(--sig-text-muted);">
-          <strong>Panel de lectura.</strong> Para crear, editar o eliminar conceptos, utiliza:
-          <strong>Configuración de Factura</strong> (para conceptos tipo Factura) o
-          <strong>Configuración de Presupuesto</strong> (para conceptos tipo Pago).
-        </span>
-      </mat-card-content></mat-card>
       <mat-card>
         <mat-card-content>
           <div class="sig-table-toolbar">
@@ -67,7 +66,7 @@ import { exportCSV } from '../../core/api/api.helpers';
           </div>
           @if (loading()) { <sig-skeleton [count]="5" /> }
           @else if (items().length === 0) {
-            <sig-empty-state icon="calculate" title="No hay conceptos" ctaLabel="Crear primer concept" [hasFilter]="!!search.value || !!tipoFilter.value" (ctaClick)="onEmptyCta()" />
+            <sig-empty-state icon="calculate" title="No hay conceptos" ctaLabel="Crear primer concepto" [hasFilter]="!!search.value || !!tipoFilter.value" (ctaClick)="onEmptyCta()" />
           } @else {
             @if (showPagos()) {
               <section class="sig-concept-group" data-testid="grupo-pagos">
@@ -84,8 +83,14 @@ import { exportCSV } from '../../core/api/api.helpers';
                       <th mat-header-cell *matHeaderCellDef style="text-align: right;">ACCIONES</th>
                       <td mat-cell *matCellDef="let row">
                         <div class="sig-table-actions">
-                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Ver fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Editor de fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'tarifas']" matTooltip="Tarifas" [attr.data-testid]="'btn-tarifas-' + row.id" aria-label="Tarifas"><mat-icon>local_offer</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'presupuestos']" matTooltip="Presupuestos" [attr.data-testid]="'btn-presupuestos-' + row.id" aria-label="Presupuestos"><mat-icon>savings</mat-icon></a>
                           <a mat-icon-button [routerLink]="['/concepts', row.id]" matTooltip="Ver detalles" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>visibility</mat-icon></a>
+                          @if (isAdmin()) {
+                            <a mat-icon-button [routerLink]="['/concepts', row.id, 'editar']" matTooltip="Editar" [attr.data-testid]="'btn-editar-' + row.id" aria-label="Editar"><mat-icon>edit</mat-icon></a>
+                            <button mat-icon-button color="warn" (click)="onDelete(row)" matTooltip="Eliminar" [attr.data-testid]="'btn-eliminar-' + row.id" aria-label="Eliminar"><mat-icon>delete</mat-icon></button>
+                          }
                         </div>
                       </td>
                     </ng-container>
@@ -110,8 +115,14 @@ import { exportCSV } from '../../core/api/api.helpers';
                       <th mat-header-cell *matHeaderCellDef style="text-align: right;">ACCIONES</th>
                       <td mat-cell *matCellDef="let row">
                         <div class="sig-table-actions">
-                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Ver fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'formula']" matTooltip="Editor de fórmula" [attr.data-testid]="'btn-formula-' + row.id" aria-label="Fórmula"><mat-icon>functions</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'tarifas']" matTooltip="Tarifas" [attr.data-testid]="'btn-tarifas-' + row.id" aria-label="Tarifas"><mat-icon>local_offer</mat-icon></a>
+                          <a mat-icon-button [routerLink]="['/concepts', row.id, 'presupuestos']" matTooltip="Presupuestos" [attr.data-testid]="'btn-presupuestos-' + row.id" aria-label="Presupuestos"><mat-icon>savings</mat-icon></a>
                           <a mat-icon-button [routerLink]="['/concepts', row.id]" matTooltip="Ver detalles" [attr.data-testid]="'btn-ver-' + row.id" aria-label="Ver"><mat-icon>visibility</mat-icon></a>
+                          @if (isAdmin()) {
+                            <a mat-icon-button [routerLink]="['/concepts', row.id, 'editar']" matTooltip="Editar" [attr.data-testid]="'btn-editar-' + row.id" aria-label="Editar"><mat-icon>edit</mat-icon></a>
+                            <button mat-icon-button color="warn" (click)="onDelete(row)" matTooltip="Eliminar" [attr.data-testid]="'btn-eliminar-' + row.id" aria-label="Eliminar"><mat-icon>delete</mat-icon></button>
+                          }
                         </div>
                       </td>
                     </ng-container>
@@ -147,7 +158,12 @@ import { exportCSV } from '../../core/api/api.helpers';
 })
 export class ConceptsListComponent implements OnInit {
   private readonly conceptSvc = inject(ConceptService);
+  private readonly authSvc = inject(AuthService);
+  private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
   private readonly notify = inject(NotifyService);
+
+  protected readonly isAdmin = computed(() => this.authSvc.hasRole('Administrator'));
 
   protected readonly items = signal<ConceptListItemDto[]>([]);
   protected readonly total = signal(0);
@@ -169,11 +185,42 @@ export class ConceptsListComponent implements OnInit {
     this.tipoFilter.valueChanges.subscribe((v) => { this.tipoFilterValue.set(v); this.page.set(1); this.load(); });
     this.load();
   }
+
   protected onPage(e: PageEvent): void { this.pageSize.set(e.pageSize); this.page.set(e.pageIndex + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); this.load(); }
+
   protected onEmptyCta(): void {
-    if (this.search.value || this.tipoFilter.value) { this.search.setValue(''); this.tipoFilter.setValue(null); }
+    if (this.search.value || this.tipoFilter.value) {
+      this.search.setValue('');
+      this.tipoFilter.setValue(null);
+    } else if (this.isAdmin()) {
+      this.router.navigate(['/concepts/nuevo']);
+    }
   }
-  protected onExportCSV(): void { exportCSV('concepts.csv', this.items().map((c) => ({ Id: c.id, Nombre: c.nombre, Tipo: c.tipo, Desde: c.fechaDesde, Hasta: c.fechaHasta ?? '' }))); }
+
+  protected onExportCSV(): void {
+    exportCSV('concepts.csv', this.items().map((c) => ({ Id: c.id, Nombre: c.nombre, Tipo: c.tipo, Desde: c.fechaDesde, Hasta: c.fechaHasta ?? '' })));
+  }
+
+  protected onDelete(row: ConceptListItemDto): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Eliminar concepto',
+        message: '¿Estás seguro de que quieres eliminar este concepto? Esta acción no se puede deshacer.',
+        entityName: row.nombre,
+        confirmLabel: 'Eliminar',
+        destructive: true,
+      } satisfies ConfirmDialogData,
+      width: '420px',
+    });
+    ref.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) return;
+      this.conceptSvc.delete(row.id).subscribe({
+        next: () => { this.notify.success(`Concepto "${row.nombre}" eliminado`); this.load(); },
+        error: () => this.notify.error('No se pudo eliminar el concepto'),
+      });
+    });
+  }
+
   private load(): void {
     this.loading.set(true);
     this.conceptSvc.list(this.page(), this.pageSize(), this.tipoFilter.value, this.search.value).subscribe({
