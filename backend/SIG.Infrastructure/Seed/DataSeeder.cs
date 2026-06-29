@@ -429,19 +429,35 @@ public class DataSeeder : ISeedService
     {
         var clients = await _db.Clients.ToListAsync(ct);
         Concept? Find(string nombre) => concepts.FirstOrDefault(c => c.Nombre == nombre);
+        // Buckets de facturación estándar (genéricos, anónimos). Reflejan cómo se trocea una factura real
+        // (p. ej. Mensual / Servicio de campo / Logística / Viajes / Fee de gestión), sin importes ni nombres
+        // de cliente reales. El mapeo concreto por cliente lo valida SIG.
         var porVisita = Find("Facturación por visita");
         var mensualidad = Find("Mensualidad fija servicio");
-        // "Refacturación gastos" se deja deliberadamente SIN asignar para que el KPI lo refleje.
+        var refacturacion = Find("Refacturación gastos");
+        var viajes = Find("Viajes Travel Perk");
+        var fee = Find("Fee 6,5% sobre conceptos (ConceptRef)");
+        // "Implantación por tramos (Tramos)" se deja deliberadamente SIN asignar para que el KPI "sin asignar" lo refleje.
+
+        // (nombre de categoría, concepto que agrupa) — null = sin concepto disponible, se omite.
+        var plantilla = new (string Nombre, Concept? Concepto)[]
+        {
+            ("Cuota mensual",      mensualidad),
+            ("Servicio de campo",  porVisita),
+            ("Logística",          refacturacion),
+            ("Viajes",             viajes),
+            ("Fee de gestión",     fee),
+        };
 
         var categorias = new List<CategoriaFactura>();
         foreach (var cli in clients)
         {
-            if (porVisita != null)
-                categorias.Add(new CategoriaFactura { ClientId = cli.Id, Nombre = "Servicio de campo",
-                    Conceptos = new List<CategoriaFacturaConcepto> { new() { ConceptId = porVisita.Id } } });
-            if (mensualidad != null)
-                categorias.Add(new CategoriaFactura { ClientId = cli.Id, Nombre = "Cuota mensual",
-                    Conceptos = new List<CategoriaFacturaConcepto> { new() { ConceptId = mensualidad.Id } } });
+            foreach (var (nombre, concepto) in plantilla)
+            {
+                if (concepto == null) continue;
+                categorias.Add(new CategoriaFactura { ClientId = cli.Id, Nombre = nombre,
+                    Conceptos = new List<CategoriaFacturaConcepto> { new() { ConceptId = concepto.Id } } });
+            }
         }
         _db.CategoriasFactura.AddRange(categorias);
         await _db.SaveChangesAsync(ct);
