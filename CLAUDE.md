@@ -126,6 +126,37 @@
 
 ---
 
+## ✅ SGPV Integration Fixed (2026-06-29 23:30 UTC)
+
+### Changes Applied
+
+1. **SgpvController Search Fix** (`GetVisitasPaginated`)
+   - Changed search from obsolete fields (ResourceNif, CentroNombre, ServiceName) 
+   - To actual data fields: IdCentro, Cliente, TipoVisita
+   - Ensures search works on populated data
+
+2. **Data Cleanup Migration** (`20260629230000_ClearInvalidSgpvVisitasData`)
+   - Removed 32 old SGPV visitas records with NULL in cliente/tipo_visita
+   - Only kept records with both fields populated
+   - Applied automatically via EF Core
+
+3. **Build Status**
+   - ✅ Backend: 0 errors, 0 warnings  
+   - ✅ Frontend: compiles clean
+   - ✅ All migrations applied
+
+### Next Step: Resync SGPV Data
+
+To populate the dashboard with complete data:
+1. Go to **Integraciones → SGPV** → Sync button (or API endpoint)
+2. System will fetch latest data from SGPV API
+3. All visitas will have `cliente` and `tipo_visita` populated
+4. Dashboard will display Centro and Servicio correctly
+
+**Data will now be**: COMPLETE (no more "—" placeholders)
+
+---
+
 ## 🔄 Recent Work (2026-06-28)
 
 ### Accomplished This Session (2026-06-28) — FASE 5 Complete!

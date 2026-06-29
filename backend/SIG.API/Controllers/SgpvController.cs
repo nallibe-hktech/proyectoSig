@@ -34,9 +34,9 @@ public class SgpvController : ControllerBase
             var searchLower = search.ToLower();
             query = query.Where(v =>
                 EF.Functions.ILike(v.VisitaIdExterno, $"%{searchLower}%") ||
-                EF.Functions.ILike(v.ResourceNif, $"%{searchLower}%") ||
-                EF.Functions.ILike(v.CentroNombre, $"%{searchLower}%") ||
-                EF.Functions.ILike(v.ServiceName, $"%{searchLower}%"));
+                EF.Functions.ILike(v.IdCentro, $"%{searchLower}%") ||
+                EF.Functions.ILike(v.Cliente, $"%{searchLower}%") ||
+                EF.Functions.ILike(v.TipoVisita, $"%{searchLower}%"));
         }
 
         var total = await query.CountAsync(ct);
