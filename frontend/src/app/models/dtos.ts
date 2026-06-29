@@ -543,6 +543,18 @@ export interface CierreHistoryDto {
   timestamp: string;
 }
 
+// ------------------ Notificaciones in-app (circuito de devolución de cierre) ------------------
+export interface NotificationDto {
+  id: number;
+  titulo: string;
+  mensaje: string;
+  tipo: string;
+  cierreId?: number | null;
+  tipoCierre?: TipoCierre | null;
+  leida: boolean;
+  createdAt: string;
+}
+
 // ------------------ Contratos A3 Innuva (Ola 2 #2 — contratos de un día) ------------------
 export interface ContratoUnDiaDto {
   id: number;

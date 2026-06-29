@@ -107,6 +107,34 @@
         matTooltipPosition="below" style="margin-left:4px;" data-testid="btn-theme-toggle">
         <mat-icon>{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
       </button>
+      <button mat-icon-button [matMenuTriggerFor]="menuNotificaciones" (menuOpened)="onAbrirNotificaciones()"
+        aria-label="Notificaciones" matTooltip="Notificaciones" matTooltipPosition="below"
+        style="margin-left:4px;" data-testid="btn-notificaciones">
+        <mat-icon [matBadge]="noLeidas()" [matBadgeHidden]="noLeidas() === 0" matBadgeColor="warn" matBadgeSize="small">notifications</mat-icon>
+      </button>
+      <mat-menu #menuNotificaciones="matMenu" class="sig-notif-menu">
+        <div class="sig-notif-header" (click)="$event.stopPropagation()">
+          <span class="sig-notif-title">Notificaciones</span>
+          @if (noLeidas() > 0) {
+            <button mat-button (click)="onMarcarTodasLeidas()" data-testid="notif-marcar-todas">Marcar todas como leídas</button>
+          }
+        </div>
+        <mat-divider />
+        @if (notificaciones().length === 0) {
+          <div class="sig-notif-empty">No tienes notificaciones</div>
+        } @else {
+          @for (n of notificaciones(); track n.id) {
+            <button mat-menu-item (click)="onNotificacionClick(n)" [attr.data-testid]="'notif-item-' + n.id"
+              [class.sig-notif-unread]="!n.leida">
+              <div class="sig-notif-item">
+                <span class="sig-notif-item-title">{{ n.titulo }}</span>
+                <span class="sig-notif-item-msg">{{ n.mensaje }}</span>
+                <span class="sig-notif-item-date">{{ n.createdAt | date: 'short' }}</span>
+              </div>
+            </button>
+          }
+        }
+      </mat-menu>
       <span class="sig-appbar-user" data-testid="user-display">{{ userDisplay() }}</span>
       <button mat-icon-button [matMenuTriggerFor]="menuUsuario" aria-label="Menu usuario" style="margin-left:8px;" data-testid="btn-menu-usuario">
         <mat-icon>account_circle</mat-icon>

@@ -39,6 +39,7 @@ public class AppDbContext : DbContext
     public DbSet<Approval> Approvals => Set<Approval>();
     public DbSet<ApprovalHistory> ApprovalHistory => Set<ApprovalHistory>();
     public DbSet<ClosureAlerta> ClosureAlertas => Set<ClosureAlerta>();
+    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CalculationLog> CalculationLogs => Set<CalculationLog>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();

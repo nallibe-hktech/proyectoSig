@@ -26,12 +26,13 @@ public class ClosureServiceOla2Tests
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly ICalculationEngine _engine = Substitute.For<ICalculationEngine>();
     private readonly IClosureValidationService _validationSvc = Substitute.For<IClosureValidationService>();
+    private readonly INotificationService _notificationSvc = Substitute.For<INotificationService>();
     private readonly CierreCostesService _sut;
 
     public ClosureServiceOla2Tests()
     {
         _repo.Tipo.Returns(TipoCierre.Costes);
-        _sut = new CierreCostesService(_repo, _lineRepo, _calcLogRepo, _serviceRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _userRepo, _engine, _validationSvc);
+        _sut = new CierreCostesService(_repo, _lineRepo, _calcLogRepo, _serviceRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _userRepo, _engine, _validationSvc, _notificationSvc);
     }
 
     private static Period MakePeriod() =>

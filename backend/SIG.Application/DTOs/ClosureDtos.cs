@@ -64,3 +64,6 @@ public record CierreHistoryDto(int Id, int CierreId, TipoCierre TipoCierre, int 
 
 // Dashboard: margen al vuelo emparejando costes+facturación por (ServiceId, PeriodId).
 public record MargenServicioPeriodoDto(int ServiceId, string ServiceNombre, int PeriodId, decimal CosteTotal, decimal FacturacionTotal, decimal Margen);
+
+// Notificación in-app (circuito de devolución de cierre): campana con contador de no leídas.
+public record NotificationDto(int Id, string Titulo, string Mensaje, string Tipo, int? CierreId, TipoCierre? TipoCierre, bool Leida, DateTime CreatedAt);

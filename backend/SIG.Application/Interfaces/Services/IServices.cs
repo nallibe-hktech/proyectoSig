@@ -240,6 +240,16 @@ public interface IApprovalService
     Task<PagedResult<CierrePanelItemDto>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct);
 }
 
+// Notificaciones in-app (circuito de devolución de cierre): campana en la barra superior.
+public interface INotificationService
+{
+    Task<NotificationDto> CreateAsync(int usuarioId, string titulo, string mensaje, string tipo, int? cierreId, TipoCierre? tipoCierre, CancellationToken ct);
+    Task<IReadOnlyList<NotificationDto>> ListForUserAsync(int usuarioId, bool soloNoLeidas, int take, CancellationToken ct);
+    Task<int> CountUnreadAsync(int usuarioId, CancellationToken ct);
+    Task MarkReadAsync(int id, int usuarioId, CancellationToken ct);
+    Task MarkAllReadAsync(int usuarioId, CancellationToken ct);
+}
+
 public interface IDashboardService
 {
     Task<DashboardKpisDto> GetKpisAsync(int? periodId, int usuarioId, CancellationToken ct, int? serviceId = null);

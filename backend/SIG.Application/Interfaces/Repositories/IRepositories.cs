@@ -286,6 +286,16 @@ public interface IClosureAlertaRepository
     Task SaveChangesAsync(CancellationToken ct);
 }
 
+public interface INotificationRepository
+{
+    Task<IReadOnlyList<Notification>> ListForUserAsync(int usuarioId, bool soloNoLeidas, int take, CancellationToken ct);
+    Task<int> CountUnreadAsync(int usuarioId, CancellationToken ct);
+    Task MarkReadAsync(int id, int usuarioId, CancellationToken ct);
+    Task MarkAllReadAsync(int usuarioId, CancellationToken ct);
+    Task AddAsync(Notification notification, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
 public interface IStagingA3InnuvaContratoRepository
 {
     Task<IReadOnlyList<StagingA3InnuvaContrato>> GetByNifAsync(string nif, CancellationToken ct);

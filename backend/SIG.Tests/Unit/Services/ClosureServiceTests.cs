@@ -26,12 +26,13 @@ public class ClosureServiceTests
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly ICalculationEngine _engine = Substitute.For<ICalculationEngine>();
     private readonly IClosureValidationService _validationSvc = Substitute.For<IClosureValidationService>();
+    private readonly INotificationService _notificationSvc = Substitute.For<INotificationService>();
     private readonly CierreCostesService _sut;
 
     public ClosureServiceTests()
     {
         _repo.Tipo.Returns(TipoCierre.Costes);
-        _sut = new CierreCostesService(_repo, _lineRepo, _calcLogRepo, _serviceRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _userRepo, _engine, _validationSvc);
+        _sut = new CierreCostesService(_repo, _lineRepo, _calcLogRepo, _serviceRepo, _periodRepo, _approvalRepo, _roleRepo, _conceptRepo, _userRepo, _engine, _validationSvc, _notificationSvc);
         // Por defecto el actor (usuarioId=99) es Administrator (autorizado en cualquier paso).
         _userRepo.ListRoleNamesForUserAsync(99, Arg.Any<CancellationToken>()).Returns(new List<string> { "Administrator" });
         _userRepo.ListServiceIdsForUserAsync(99, Arg.Any<CancellationToken>()).Returns(new List<int> { 100 });

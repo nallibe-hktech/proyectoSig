@@ -392,6 +392,19 @@ public class ApprovalHistoryConfiguration : IEntityTypeConfiguration<ApprovalHis
     }
 }
 
+public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
+{
+    public void Configure(EntityTypeBuilder<Notification> b)
+    {
+        b.Property(n => n.Titulo).HasMaxLength(200).IsRequired();
+        b.Property(n => n.Mensaje).HasMaxLength(2000).IsRequired();
+        b.Property(n => n.Tipo).HasMaxLength(50).IsRequired();
+        b.Property(n => n.TipoCierre).HasConversion<string>().HasMaxLength(20);
+        b.HasOne(n => n.Usuario).WithMany().HasForeignKey(n => n.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(n => new { n.UsuarioId, n.Leida });
+    }
+}
+
 public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
     public void Configure(EntityTypeBuilder<AuditLog> b)

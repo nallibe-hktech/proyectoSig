@@ -547,6 +547,24 @@ public class ClosureAlerta : IAuditable
     public DateTime UpdatedAt { get; set; }
 }
 
+// Notificación in-app (circuito de devolución de cierre): cuando un cierre se rechaza, se avisa al
+// usuario que lo había aprobado en el paso Grupo. Se muestra como campana en la barra superior.
+public class Notification : IAuditable
+{
+    public int Id { get; set; }
+    public int UsuarioId { get; set; }          // destinatario de la notificación
+    public User? Usuario { get; set; }
+    public string Titulo { get; set; } = null!;
+    public string Mensaje { get; set; } = null!;
+    public string Tipo { get; set; } = null!;    // p.ej. "CierreDevuelto"
+    public int? CierreId { get; set; }           // cierre relacionado (para navegar al detalle)
+    public TipoCierre? TipoCierre { get; set; }  // discrimina costes/facturación del cierre
+    public bool Leida { get; set; }
+    public DateTime? LeidaAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 public class AuditLog
 {
     public long Id { get; set; }

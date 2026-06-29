@@ -483,6 +483,44 @@ public class ApprovalRepository : IApprovalRepository
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
+public class NotificationRepository : INotificationRepository
+{
+    private readonly AppDbContext _db;
+    public NotificationRepository(AppDbContext db) { _db = db; }
+
+    public async Task<IReadOnlyList<Notification>> ListForUserAsync(int usuarioId, bool soloNoLeidas, int take, CancellationToken ct)
+    {
+        var q = _db.Notifications.AsNoTracking().Where(n => n.UsuarioId == usuarioId);
+        if (soloNoLeidas) q = q.Where(n => !n.Leida);
+        return await q.OrderByDescending(n => n.CreatedAt).Take(take).ToListAsync(ct);
+    }
+
+    public Task<int> CountUnreadAsync(int usuarioId, CancellationToken ct) =>
+        _db.Notifications.AsNoTracking().CountAsync(n => n.UsuarioId == usuarioId && !n.Leida, ct);
+
+    public async Task MarkReadAsync(int id, int usuarioId, CancellationToken ct)
+    {
+        var n = await _db.Notifications.FirstOrDefaultAsync(x => x.Id == id && x.UsuarioId == usuarioId, ct);
+        if (n is null || n.Leida) return;
+        n.Leida = true;
+        n.LeidaAt = DateTime.UtcNow;
+    }
+
+    public async Task MarkAllReadAsync(int usuarioId, CancellationToken ct)
+    {
+        var pendientes = await _db.Notifications.Where(n => n.UsuarioId == usuarioId && !n.Leida).ToListAsync(ct);
+        var ahora = DateTime.UtcNow;
+        foreach (var n in pendientes)
+        {
+            n.Leida = true;
+            n.LeidaAt = ahora;
+        }
+    }
+
+    public Task AddAsync(Notification notification, CancellationToken ct) { _db.Notifications.Add(notification); return Task.CompletedTask; }
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+}
+
 public class CalculationLogRepository : ICalculationLogRepository
 {
     private readonly AppDbContext _db;

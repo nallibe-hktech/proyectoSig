@@ -1,6 +1,6 @@
 import { Component, signal, inject, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -12,11 +12,13 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatBadgeModule } from '@angular/material/badge';
 import { map } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/auth/auth.service';
 import { PeriodService } from '../../core/api/periods.service';
-import { PeriodDto } from '../../models/dtos';
+import { NotificationsService } from '../../core/api/notifications.service';
+import { PeriodDto, NotificationDto } from '../../models/dtos';
 import { NotifyService } from '../../core/notify.service';
 import { ThemeService } from '../../core/theme.service';
 import { DashboardDesignComponent } from '../../shared/dashboard-design.component';
@@ -47,6 +49,7 @@ interface NavItem {
     MatSelectModule,
     MatFormFieldModule,
     MatTooltipModule,
+    MatBadgeModule,
     // Design SVG components
     DashboardDesignComponent,
   ],
@@ -57,6 +60,8 @@ export class ShellComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly periodSvc = inject(PeriodService);
   private readonly notify = inject(NotifyService);
+  private readonly notificationsSvc = inject(NotificationsService);
+  private readonly router = inject(Router);
   private readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly theme = inject(ThemeService);
 
@@ -133,6 +138,10 @@ export class ShellComponent implements OnInit {
   protected readonly periodos = signal<PeriodDto[]>([]);
   protected selectedPeriodo = signal<number | null>(this.periodSvc.activeId());
 
+  // Notificaciones in-app (campana del AppBar): contador de no leídas + últimas notificaciones.
+  protected readonly notificaciones = signal<NotificationDto[]>([]);
+  protected readonly noLeidas = signal(0);
+
   protected readonly isMobile: ReturnType<typeof toSignal<boolean>>;
 
   constructor() {
@@ -159,6 +168,43 @@ export class ShellComponent implements OnInit {
         // En backend ausente, dejar el selector vacío sin spam de errores
         this.periodos.set([]);
       },
+    });
+
+    this.cargarContadorNotificaciones();
+  }
+
+  private cargarContadorNotificaciones(): void {
+    this.notificationsSvc.unreadCount().subscribe({
+      next: (n) => this.noLeidas.set(n),
+      error: () => this.noLeidas.set(0),
+    });
+  }
+
+  protected onAbrirNotificaciones(): void {
+    this.notificationsSvc.list(false, 20).subscribe({
+      next: (items) => this.notificaciones.set(items),
+      error: () => this.notificaciones.set([]),
+    });
+  }
+
+  protected onNotificacionClick(n: NotificationDto): void {
+    this.notificationsSvc.markRead(n.id).subscribe({
+      next: () => this.cargarContadorNotificaciones(),
+      error: () => {},
+    });
+    if (n.cierreId) {
+      const ruta = n.tipoCierre === 'Facturacion' ? '/cierres-facturacion' : '/cierres-costes';
+      this.router.navigate([ruta, n.cierreId]);
+    }
+  }
+
+  protected onMarcarTodasLeidas(): void {
+    this.notificationsSvc.markAllRead().subscribe({
+      next: () => {
+        this.noLeidas.set(0);
+        this.notificaciones.update((items) => items.map((i) => ({ ...i, leida: true })));
+      },
+      error: () => {},
     });
   }
 

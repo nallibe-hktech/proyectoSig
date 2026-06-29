@@ -26,6 +26,7 @@ public abstract class CierreServiceBase<TCierre> : ICierreService where TCierre 
     private readonly IUserRepository _userRepo;
     private readonly ICalculationEngine _engine;
     private readonly IClosureValidationService _validationSvc;
+    private readonly INotificationService _notificationSvc;
 
     private static readonly string[] GrupoRoles = { "Facilitador", "Interlocutor", "Gestor" };
 
@@ -43,7 +44,8 @@ public abstract class CierreServiceBase<TCierre> : ICierreService where TCierre 
         IConceptRepository conceptRepo,
         IUserRepository userRepo,
         ICalculationEngine engine,
-        IClosureValidationService validationSvc)
+        IClosureValidationService validationSvc,
+        INotificationService notificationSvc)
     {
         _repo = repo;
         _lineRepo = lineRepo;
@@ -56,6 +58,7 @@ public abstract class CierreServiceBase<TCierre> : ICierreService where TCierre 
         _userRepo = userRepo;
         _engine = engine;
         _validationSvc = validationSvc;
+        _notificationSvc = notificationSvc;
     }
 
     // Asigna el dueño correcto (una de las dos FK nullable) en una entidad hija.
@@ -233,7 +236,41 @@ public abstract class CierreServiceBase<TCierre> : ICierreService where TCierre 
         await AddHistoryAsync(cierreId, usuarioId, pasoOrigen, destino, "Rechazar", req.Motivo, ct);
         await _repo.SaveChangesAsync(ct);
 
+        await NotificarDevolucionAsync(cierreId, usuarioId, req.Motivo, ct);
+
         return await BuildDetailAsync(cierre, ct);
+    }
+
+    // Circuito de devolución: al rechazar, avisar al aprobador anterior del paso Grupo (la entrada de
+    // ApprovalHistory más reciente con Accion == "Aprobar"). No notificar si no hay aprobador previo o
+    // coincide con quien rechaza. Un fallo de notificación NO debe romper el rechazo (ya persistido).
+    private async Task NotificarDevolucionAsync(int cierreId, int usuarioId, string motivo, CancellationToken ct)
+    {
+        try
+        {
+            var history = await _approvalRepo.ListHistoryByCierreAsync(Tipo, cierreId, ct);
+            var aprobadorAnteriorId = history
+                .Where(h => h.Accion == "Aprobar")
+                .OrderByDescending(h => h.Timestamp)
+                .Select(h => (int?)h.UserId)
+                .FirstOrDefault();
+
+            if (aprobadorAnteriorId is null || aprobadorAnteriorId == usuarioId)
+                return;
+
+            await _notificationSvc.CreateAsync(
+                aprobadorAnteriorId.Value,
+                "Cierre devuelto",
+                $"El cierre ha sido rechazado. Motivo: {motivo}",
+                "CierreDevuelto",
+                cierreId,
+                Tipo,
+                ct);
+        }
+        catch
+        {
+            // El rechazo ya está persistido; un fallo de notificación no debe propagarse.
+        }
     }
 
     public async Task<CierreDetailDto> OverrideLineAsync(int cierreId, int lineId, CierreLineOverrideRequest req, uint rowVersion, int usuarioId, CancellationToken ct)
@@ -527,8 +564,8 @@ public class CierreCostesService : CierreServiceBase<CierreCostes>, ICierreCoste
         ICierreCostesRepository repo, IClosureLineRepository lineRepo, ICalculationLogRepository calcLogRepo,
         IServiceRepository serviceRepo, IPeriodRepository periodRepo, IApprovalRepository approvalRepo,
         IRoleRepository roleRepo, IConceptRepository conceptRepo, IUserRepository userRepo,
-        ICalculationEngine engine, IClosureValidationService validationSvc)
-        : base(repo, lineRepo, calcLogRepo, serviceRepo, periodRepo, approvalRepo, roleRepo, conceptRepo, userRepo, engine, validationSvc) { }
+        ICalculationEngine engine, IClosureValidationService validationSvc, INotificationService notificationSvc)
+        : base(repo, lineRepo, calcLogRepo, serviceRepo, periodRepo, approvalRepo, roleRepo, conceptRepo, userRepo, engine, validationSvc, notificationSvc) { }
 }
 
 public class CierreFacturacionService : CierreServiceBase<CierreFacturacion>, ICierreFacturacionService
@@ -537,6 +574,6 @@ public class CierreFacturacionService : CierreServiceBase<CierreFacturacion>, IC
         ICierreFacturacionRepository repo, IClosureLineRepository lineRepo, ICalculationLogRepository calcLogRepo,
         IServiceRepository serviceRepo, IPeriodRepository periodRepo, IApprovalRepository approvalRepo,
         IRoleRepository roleRepo, IConceptRepository conceptRepo, IUserRepository userRepo,
-        ICalculationEngine engine, IClosureValidationService validationSvc)
-        : base(repo, lineRepo, calcLogRepo, serviceRepo, periodRepo, approvalRepo, roleRepo, conceptRepo, userRepo, engine, validationSvc) { }
+        ICalculationEngine engine, IClosureValidationService validationSvc, INotificationService notificationSvc)
+        : base(repo, lineRepo, calcLogRepo, serviceRepo, periodRepo, approvalRepo, roleRepo, conceptRepo, userRepo, engine, validationSvc, notificationSvc) { }
 }
