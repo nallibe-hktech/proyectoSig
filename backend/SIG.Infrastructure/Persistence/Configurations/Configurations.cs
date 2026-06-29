@@ -592,8 +592,15 @@ public class StagingSgpvVisitaConfiguration : IEntityTypeConfiguration<StagingSg
         b.HasIndex(s => s.Hash).IsUnique();
         b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
         b.Property(s => s.VisitaIdExterno).HasMaxLength(100).IsRequired();
+        b.Property(s => s.IdCentro).HasMaxLength(100).IsRequired();
+        b.Property(s => s.CodigoCentro).HasMaxLength(100);
+        b.Property(s => s.IdGPV).HasMaxLength(100);
+        b.Property(s => s.GPV).HasMaxLength(100);
+        b.Property(s => s.IdCliente).HasMaxLength(100);
+        b.Property(s => s.Cliente).HasMaxLength(500);
+        b.Property(s => s.TipoVisita).HasMaxLength(200);
+        // Deprecated fields configuration (kept for compatibility)
         b.Property(s => s.ResourceNif).HasMaxLength(20);
-        b.Property(s => s.CentroId).HasMaxLength(100).IsRequired();
         b.Property(s => s.CentroNombre).HasMaxLength(200);
         b.Property(s => s.ServiceName).HasMaxLength(200);
         b.Property(s => s.HorasDuracion).HasPrecision(18, 4);

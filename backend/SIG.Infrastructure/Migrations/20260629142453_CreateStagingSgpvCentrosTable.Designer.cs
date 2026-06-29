@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SIG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SIG.Infrastructure.Persistence;
 namespace SIG.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260629142453_CreateStagingSgpvCentrosTable")]
+    partial class CreateStagingSgpvCentrosTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4537,20 +4540,16 @@ namespace SIG.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CentroId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("centro_id");
+
                     b.Property<string>("CentroNombre")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("centro_nombre");
-
-                    b.Property<string>("Cliente")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("cliente");
-
-                    b.Property<string>("CodigoCentro")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("codigo_centro");
 
                     b.Property<string>("ErrorProcesamiento")
                         .HasMaxLength(2000)
@@ -4569,11 +4568,6 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("flag_procesado");
 
-                    b.Property<string>("GPV")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("gpv");
-
                     b.Property<string>("Hash")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -4585,28 +4579,13 @@ namespace SIG.Infrastructure.Migrations
                         .HasColumnType("numeric(18,4)")
                         .HasColumnName("horas_duracion");
 
-                    b.Property<string>("IdCentro")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("id_centro");
-
-                    b.Property<string>("IdCliente")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("id_cliente");
-
-                    b.Property<string>("IdGPV")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("id_gpv");
-
                     b.Property<string>("PayloadJson")
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("payload_json");
 
                     b.Property<string>("ResourceNif")
+                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("resource_nif");
@@ -4619,11 +4598,6 @@ namespace SIG.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("service_name");
-
-                    b.Property<string>("TipoVisita")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("tipo_visita");
 
                     b.Property<int?>("UserId")
                         .HasColumnType("integer")

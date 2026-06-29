@@ -57,6 +57,7 @@ public class AppDbContext : DbContext
     public DbSet<CeleroMissionMapping> CeleroMissionMappings => Set<CeleroMissionMapping>();
     public DbSet<StagingSgpvVisita> StagingSgpvVisitas => Set<StagingSgpvVisita>();
     public DbSet<StagingSgpvProducto> StagingSgpvProductos => Set<StagingSgpvProducto>();
+    public DbSet<StagingSgpvCentro> StagingSgpvCentros => Set<StagingSgpvCentro>();
     public DbSet<StagingA3InnuvaEmpleado> StagingA3InnuvaEmpleados => Set<StagingA3InnuvaEmpleado>();
     public DbSet<StagingA3InnuvaContrato> StagingA3InnuvaContratos => Set<StagingA3InnuvaContrato>();
     public DbSet<StagingA3InnuvaCompany> StagingA3InnuvaCompanies => Set<StagingA3InnuvaCompany>();

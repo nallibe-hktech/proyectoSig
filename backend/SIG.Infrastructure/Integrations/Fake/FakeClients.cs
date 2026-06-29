@@ -343,6 +343,24 @@ public class SgpvFakeClient : ISgpvClient
         return Task.FromResult<IReadOnlyList<SgpvVisitaDto>>(list);
     }
 
+    public Task<IReadOnlyList<SgpvCentroDto>> GetCentrosAsync(CancellationToken ct)
+    {
+        var centros = new (string Id, string Nombre, string Provincia, string Ciudad)[]
+        {
+            ("CENTRO001", "Centro Madrid Centro", "Madrid", "Madrid"),
+            ("CENTRO002", "Centro Madrid Norte", "Madrid", "Alcalá de Henares"),
+            ("CENTRO003", "Centro Barcelona", "Barcelona", "Barcelona"),
+            ("CENTRO004", "Centro Valencia", "Valencia", "Valencia"),
+            ("CENTRO005", "Centro Sevilla", "Sevilla", "Sevilla"),
+            ("CENTRO006", "Centro Bilbao", "Vizcaya", "Bilbao"),
+            ("CENTRO007", "Centro Zaragoza", "Zaragoza", "Zaragoza"),
+            ("CENTRO008", "Centro Málaga", "Málaga", "Málaga")
+        };
+
+        var result = centros.Select(c => new SgpvCentroDto(c.Id, c.Nombre, c.Provincia, c.Ciudad)).ToList();
+        return Task.FromResult<IReadOnlyList<SgpvCentroDto>>(result);
+    }
+
     public Task<IReadOnlyList<SgpvProductoDto>> GetProductosAsync(CancellationToken ct)
     {
         var clientes = new[] { "SPONTEX", "UNICS", "ROMMER" };

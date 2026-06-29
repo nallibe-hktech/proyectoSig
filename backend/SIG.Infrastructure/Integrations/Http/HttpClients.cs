@@ -778,6 +778,7 @@ public class SgpvClient : ISgpvClient
     public SgpvClient(HttpClient httpClient, string username, string password, ILogger<SgpvClient>? logger = null)
     {
         _httpClient = httpClient;
+        _httpClient.Timeout = TimeSpan.FromSeconds(240);
         _username = username;
         _password = password;
         _logger = logger;
@@ -801,8 +802,6 @@ public class SgpvClient : ISgpvClient
             var request = new HttpRequestMessage(HttpMethod.Get, $"ExportData.php?start={desde:yyyy-MM-dd}&end={hasta:yyyy-MM-dd}");
             request.Headers.Add("Authorization", $"Basic {auth}");
 
-            _httpClient.Timeout = TimeSpan.FromSeconds(240);
-
             var response = await _httpClient.SendAsync(request, ct);
             _logger?.LogInformation($"[SGPV] Status: {response.StatusCode}");
             if (!response.IsSuccessStatusCode)
@@ -820,36 +819,71 @@ public class SgpvClient : ISgpvClient
                 return Array.Empty<SgpvVisitaDto>();
             }
 
-            // SGPV wraps everything in {"export": {...}}. Check if this response contains visits or products.
+            // SGPV wraps everything in {"export": {...}}.
+            // ExportData.php returns centros, productos, visitas, etc. all in one response
+            var jsonOptions = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
             using var doc = System.Text.Json.JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("export", out var export))
             {
-                // If it has ET_Referencias, this is a products response, not visits
-                if (export.TryGetProperty("ET_Referencias", out _))
+                // Try ET_Visitas first (direct property)
+                if (export.TryGetProperty("ET_Visitas", out var visitasArray))
                 {
-                    _logger?.LogInformation("[SGPV] Response contains ET_Referencias (products), not visits. Returning empty.");
-                    return Array.Empty<SgpvVisitaDto>();
+                    var rawJson = visitasArray.GetRawText();
+                    _logger?.LogInformation($"[SGPV] ET_Visitas raw JSON (first 500 chars): {(rawJson.Length > 500 ? rawJson.Substring(0, 500) + "..." : rawJson)}");
+
+                    var visitas = System.Text.Json.JsonSerializer.Deserialize<List<SgpvVisitaResponse>>(rawJson, jsonOptions);
+                    if (visitas != null && visitas.Count > 0)
+                    {
+                        _logger?.LogInformation($"[SGPV] {visitas.Count} visitas received from ET_Visitas");
+                        if (visitas.Count > 0)
+                        {
+                            var first = visitas[0];
+                            _logger?.LogInformation($"[SGPV] First visita deserialized: IdVisita='{first.IdVisita}', IdCentro='{first.IdCentro}', Cliente='{first.Cliente}', Fecha='{first.Fecha}', TipoVisita='{first.TipoVisita}', GPV='{first.GPV}'");
+
+                            // Log stats on populated fields
+                            var withIdVisita = visitas.Count(v => !string.IsNullOrEmpty(v.IdVisita));
+                            var withIdCentro = visitas.Count(v => !string.IsNullOrEmpty(v.IdCentro));
+                            var withCliente = visitas.Count(v => !string.IsNullOrEmpty(v.Cliente));
+                            var withFecha = visitas.Count(v => !string.IsNullOrEmpty(v.Fecha));
+                            _logger?.LogInformation($"[SGPV] Field population stats: IdVisita={withIdVisita}, IdCentro={withIdCentro}, Cliente={withCliente}, Fecha={withFecha}");
+                        }
+                        return visitas.Select(v => new SgpvVisitaDto(
+                            v.IdVisita ?? "",
+                            "", // ResourceNif not in API
+                            v.IdCentro ?? "",
+                            v.Cliente, // Use Cliente as CentroNombre equivalent
+                            v.TipoVisita, // Use TipoVisita as ServiceName equivalent
+                            DateOnly.Parse(v.Fecha),
+                            null // HorasDuracion not in API
+                        )).ToList();
+                    }
                 }
 
-                // Try ET_Visitas or similar visit arrays
+                // Try other visita-like arrays
                 foreach (var prop in export.EnumerateObject())
                 {
                     if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.Array &&
-                        (prop.Name.Contains("Visita", StringComparison.OrdinalIgnoreCase) ||
-                         prop.Name.Contains("Visita", StringComparison.OrdinalIgnoreCase)))
+                        prop.Name.Contains("Visita", StringComparison.OrdinalIgnoreCase))
                     {
-                        var visitas = System.Text.Json.JsonSerializer.Deserialize<List<SgpvVisitaResponse>>(prop.Value.GetRawText());
+                        var rawJson = prop.Value.GetRawText();
+                        _logger?.LogInformation($"[SGPV] Found {prop.Name} array (first 500 chars): {(rawJson.Length > 500 ? rawJson.Substring(0, 500) + "..." : rawJson)}");
+
+                        var visitas = System.Text.Json.JsonSerializer.Deserialize<List<SgpvVisitaResponse>>(rawJson, jsonOptions);
                         if (visitas != null && visitas.Count > 0)
                         {
                             _logger?.LogInformation($"[SGPV] {visitas.Count} visitas received from {prop.Name}");
                             return visitas.Select(v => new SgpvVisitaDto(
-                                v.Id,
-                                v.ResourceNif,
-                                v.CentroId,
-                                v.CentroNombre,
-                                v.ServiceName,
+                                v.IdVisita ?? "",
+                                "", // ResourceNif not in API
+                                v.IdCentro ?? "",
+                                v.Cliente, // Use Cliente as CentroNombre equivalent
+                                v.TipoVisita, // Use TipoVisita as ServiceName equivalent
                                 DateOnly.Parse(v.Fecha),
-                                v.HorasDuracion
+                                null // HorasDuracion not in API
                             )).ToList();
                         }
                     }
@@ -857,18 +891,29 @@ public class SgpvClient : ISgpvClient
             }
 
             // Fallback: try direct deserialization (old format)
-            var data = System.Text.Json.JsonSerializer.Deserialize<SgpvVisitasResponse>(json);
+            _logger?.LogInformation($"[SGPV] Trying fallback deserialization (direct format)");
+            var data = System.Text.Json.JsonSerializer.Deserialize<SgpvVisitasResponse>(json, jsonOptions);
             if (data?.Visitas != null && data.Visitas.Count > 0)
             {
                 _logger?.LogInformation($"[SGPV] {data.Visitas.Count} visitas received (fallback)");
+                var first = data.Visitas[0];
+                _logger?.LogInformation($"[SGPV] First visita (fallback): IdVisita='{first.IdVisita}', IdCentro='{first.IdCentro}', Cliente='{first.Cliente}', Fecha='{first.Fecha}', TipoVisita='{first.TipoVisita}', GPV='{first.GPV}'");
+
+                // Log stats on populated fields
+                var withIdVisita = data.Visitas.Count(v => !string.IsNullOrEmpty(v.IdVisita));
+                var withIdCentro = data.Visitas.Count(v => !string.IsNullOrEmpty(v.IdCentro));
+                var withCliente = data.Visitas.Count(v => !string.IsNullOrEmpty(v.Cliente));
+                var withFecha = data.Visitas.Count(v => !string.IsNullOrEmpty(v.Fecha));
+                _logger?.LogInformation($"[SGPV] Field population stats (fallback): IdVisita={withIdVisita}, IdCentro={withIdCentro}, Cliente={withCliente}, Fecha={withFecha}");
+
                 return data.Visitas.Select(v => new SgpvVisitaDto(
-                    v.Id,
-                    v.ResourceNif,
-                    v.CentroId,
-                    v.CentroNombre,
-                    v.ServiceName,
+                    v.IdVisita ?? "",
+                    "", // ResourceNif not in API
+                    v.IdCentro ?? "",
+                    v.Cliente, // Use Cliente as CentroNombre equivalent
+                    v.TipoVisita, // Use TipoVisita as ServiceName equivalent
                     DateOnly.Parse(v.Fecha),
-                    v.HorasDuracion
+                    null // HorasDuracion not in API
                 )).ToList();
             }
 
@@ -882,30 +927,162 @@ public class SgpvClient : ISgpvClient
         }
     }
 
+    public async Task<IReadOnlyList<SgpvCentroDto>> GetCentrosAsync(CancellationToken ct)
+    {
+        try
+        {
+            _logger?.LogInformation("[SGPV] GET centros/tiendas");
+            var auth = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{_username}:{_password}"));
+            var request = new HttpRequestMessage(HttpMethod.Get, "ExportData.php");
+            request.Headers.Add("Authorization", $"Basic {auth}");
+
+            var response = await _httpClient.SendAsync(request, ct);
+            _logger?.LogInformation($"[SGPV] Status: {response.StatusCode}");
+            if (!response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(ct);
+                _logger?.LogWarning($"[SGPV] Error {response.StatusCode}: {content}");
+                return Array.Empty<SgpvCentroDto>();
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                _logger?.LogWarning("[SGPV] Empty response");
+                return Array.Empty<SgpvCentroDto>();
+            }
+
+            // SGPV wraps everything in {"export": {...}}. Extract centros from various possible locations.
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("export", out var export))
+            {
+                // Log available properties to help debug
+                var props = new System.Collections.Generic.List<string>();
+                foreach (var prop in export.EnumerateObject())
+                {
+                    props.Add(prop.Name);
+                }
+                _logger?.LogInformation($"[SGPV] Export properties: {string.Join(", ", props)}");
+
+                // Try to find centros in multiple possible locations
+                JsonElement centrosArray = default;
+                string foundIn = "";
+
+                // Try ET_Centros first
+                if (export.TryGetProperty("ET_Centros", out centrosArray))
+                {
+                    foundIn = "ET_Centros";
+                }
+                // Try ET_Tiendas (stores in Spanish)
+                else if (export.TryGetProperty("ET_Tiendas", out centrosArray))
+                {
+                    foundIn = "ET_Tiendas";
+                }
+                // Try ET_CENTROS (uppercase)
+                else if (export.TryGetProperty("ET_CENTROS", out centrosArray))
+                {
+                    foundIn = "ET_CENTROS";
+                }
+                // Try centros directly
+                else if (export.TryGetProperty("centros", out centrosArray))
+                {
+                    foundIn = "centros";
+                }
+
+                if (foundIn != "")
+                {
+                    // Log the raw JSON structure of the first item to debug property names
+                    if (centrosArray.ValueKind == JsonValueKind.Array && centrosArray.GetArrayLength() > 0)
+                    {
+                        var firstItemJson = centrosArray[0].GetRawText();
+                        _logger?.LogInformation($"[SGPV] First centro raw JSON: {firstItemJson}");
+                    }
+
+                    // Deserialize with case-insensitive property matching
+                    var options = new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                    };
+                    var centros = System.Text.Json.JsonSerializer.Deserialize<List<SgpvCentroResponse>>(centrosArray.GetRawText(), options);
+                    if (centros != null && centros.Count > 0)
+                    {
+                        _logger?.LogInformation($"[SGPV] {centros.Count} centros received from {foundIn}");
+                        // Log the first deserialized centro to see if data was populated
+                        var firstCentro = centros[0];
+                        _logger?.LogInformation($"[SGPV] First deserialized centro: ID='{firstCentro.CentroId}', Name='{firstCentro.CentroNombre}'");
+
+                        return centros
+                            .GroupBy(c => c.CentroId)  // Deduplicate by ID
+                            .Select(g => g.First())    // Take first occurrence
+                            .Select(c => new SgpvCentroDto(
+                                c.CentroId,
+                                c.CentroNombre,
+                                c.Provincia,
+                                c.Ciudad
+                            ))
+                            .ToList();
+                    }
+                }
+            }
+
+            _logger?.LogWarning("[SGPV] No centros found in response");
+            return Array.Empty<SgpvCentroDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[SGPV] Exception in GetCentrosAsync: {ex.Message}");
+            return Array.Empty<SgpvCentroDto>();
+        }
+    }
+
+    private class SgpvCentroResponse
+    {
+        [JsonPropertyName("idCentro")]
+        public string CentroId { get; set; } = "";
+        [JsonPropertyName("Centro")]
+        public string? CentroNombre { get; set; }
+        [JsonPropertyName("Provincia")]
+        public string? Provincia { get; set; }
+        [JsonPropertyName("Poblacion")]
+        public string? Ciudad { get; set; }
+    }
+
     private class SgpvVisitasResponse
     {
         [JsonPropertyName("visitas")]
         public List<SgpvVisitaResponse>? Visitas { get; set; }
     }
 
-    // NOTE: SGPV API only exports products (ET_Referencias), not visits.
-    // These classes are kept for reference but GetVisitasAsync returns empty.
+    // Real SGPV API structure for ET_Visitas (confirmed by PowerBI connection)
     private class SgpvVisitaResponse
     {
-        [JsonPropertyName("id")]
-        public string Id { get; set; } = "";
-        [JsonPropertyName("resource_nif")]
-        public string ResourceNif { get; set; } = "";
-        [JsonPropertyName("centro_id")]
-        public string CentroId { get; set; } = "";
-        [JsonPropertyName("centro_nombre")]
-        public string? CentroNombre { get; set; }
-        [JsonPropertyName("service_name")]
-        public string? ServiceName { get; set; }
-        [JsonPropertyName("fecha")]
+        [JsonPropertyName("idVisita")]
+        public string IdVisita { get; set; } = "";
+
+        [JsonPropertyName("idCentro")]
+        public string IdCentro { get; set; } = "";
+
+        [JsonPropertyName("codigoCentro")]
+        public string? CodigoCentro { get; set; }
+
+        [JsonPropertyName("idGPV")]
+        public string? IdGPV { get; set; }
+
+        [JsonPropertyName("GPV")]
+        public string? GPV { get; set; }
+
+        [JsonPropertyName("idCliente")]
+        public string? IdCliente { get; set; }
+
+        [JsonPropertyName("Tipo Visita")]
+        public string? TipoVisita { get; set; }
+
+        [JsonPropertyName("Cliente")]
+        public string? Cliente { get; set; }
+
+        [JsonPropertyName("Fecha")]
         public string Fecha { get; set; } = "";
-        [JsonPropertyName("horas_duracion")]
-        public decimal? HorasDuracion { get; set; }
     }
 
     public async Task<IReadOnlyList<SgpvProductoDto>> GetProductosAsync(CancellationToken ct)

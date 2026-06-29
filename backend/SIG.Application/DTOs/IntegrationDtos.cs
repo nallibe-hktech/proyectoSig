@@ -49,6 +49,11 @@ public record SgpvVisitaDto(
     string? ServiceName,
     DateOnly Fecha,
     decimal? HorasDuracion);
+public record SgpvCentroDto(
+    string CentroId,
+    string? CentroNombre,
+    string? Provincia = null,
+    string? Ciudad = null);
 public record A3InnuvaEmpleadoDto(
     string IdExterno,
     string NIF,

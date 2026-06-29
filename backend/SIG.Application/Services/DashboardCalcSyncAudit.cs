@@ -244,6 +244,7 @@ public class SyncService : ISyncService
     private readonly IStagingRepository<StagingPayHawkGasto> _gastoRepo;
     private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo;
     private readonly IStagingRepository<StagingSgpvProducto> _sgpvProductoRepo;
+    private readonly IStagingRepository<StagingSgpvCentro> _sgpvCentroRepo;
     private readonly IStagingRepository<StagingGalanEntrada> _galanEntradaRepo;
     private readonly IStagingRepository<StagingGalanSalida> _galanSalidaRepo;
     private readonly IStagingRepository<StagingGalanStock> _galanStockRepo;
@@ -275,6 +276,7 @@ public class SyncService : ISyncService
         IStagingRepository<StagingPayHawkGasto> gastoRepo,
         IStagingRepository<StagingSgpvVisita> sgpvRepo,
         IStagingRepository<StagingSgpvProducto> sgpvProductoRepo,
+        IStagingRepository<StagingSgpvCentro> sgpvCentroRepo,
         IStagingRepository<StagingGalanEntrada> galanEntradaRepo,
         IStagingRepository<StagingGalanSalida> galanSalidaRepo,
         IStagingRepository<StagingGalanStock> galanStockRepo,
@@ -305,6 +307,7 @@ public class SyncService : ISyncService
         _gastoRepo = gastoRepo;
         _sgpvRepo = sgpvRepo;
         _sgpvProductoRepo = sgpvProductoRepo;
+        _sgpvCentroRepo = sgpvCentroRepo;
         _galanEntradaRepo = galanEntradaRepo;
         _galanSalidaRepo = galanSalidaRepo;
         _galanStockRepo = galanStockRepo;
@@ -640,11 +643,17 @@ public class SyncService : ISyncService
                 var nifToUserId = users.Where(u => !u.IsDeleted).ToDictionary(u => u.NIF, u => u.Id);
                 var serviceNameToServiceId = services.Where(a => !a.IsDeleted).ToDictionary(a => a.Nombre, a => a.Id);
 
+                // Deduplicar visitas: contra BD + dentro de la lista (puede haber duplicados en el API)
+                var visitasHashesBD = new HashSet<string>(await _sgpvRepo.GetAllHashesAsync(ct));
+                var visitasHashesLocales = new HashSet<string>();
+
                 foreach (var d in visitas)
                 {
                     var json = JsonSerializer.Serialize(d);
                     var hash = Sha256(json);
-                    if (await _sgpvRepo.ExistsByHashAsync(hash, ct)) { dup++; continue; }
+
+                    // Deduplicar: si el hash ya existe en BD o en nuestra lista local, saltar
+                    if (visitasHashesBD.Contains(hash) || !visitasHashesLocales.Add(hash)) { dup++; continue; }
 
                     // Resolver IDs: primero mapeos explícitos, luego fallback a nombre/NIF
                     int? userId = null;
@@ -664,11 +673,14 @@ public class SyncService : ISyncService
                     nuevasVisitas.Add(new StagingSgpvVisita
                     {
                         VisitaIdExterno = d.VisitaIdExterno,
+                        IdCentro = d.CentroId, // Mapear CentroId (del DTO que contiene IdCentro del API)
+                        Cliente = d.CentroNombre, // Mapear Cliente (del DTO que contiene Cliente del API)
+                        TipoVisita = d.ServiceName, // Mapear TipoVisita (del DTO que contiene TipoVisita del API)
+                        Fecha = d.Fecha,
+                        // Deprecated fields - leave empty/null
                         ResourceNif = d.ResourceNif,
-                        CentroId = d.CentroId,
                         CentroNombre = d.CentroNombre,
                         ServiceName = d.ServiceName,
-                        Fecha = d.Fecha,
                         HorasDuracion = d.HorasDuracion,
                         UserId = userId,
                         ServiceId = serviceId,
@@ -679,8 +691,11 @@ public class SyncService : ISyncService
                     });
                     ins++;
                 }
-                await _sgpvRepo.AddRangeAsync(nuevasVisitas, ct);
-                await _sgpvRepo.SaveChangesAsync(ct);
+                if (nuevasVisitas.Count > 0)
+                {
+                    await _sgpvRepo.AddRangeAsync(nuevasVisitas, ct);
+                    await _sgpvRepo.SaveChangesAsync(ct);
+                }
 
                 // Sincronizar también productos automáticamente
                 var productos = await _sgpv.GetProductosAsync(ct);
@@ -713,6 +728,40 @@ public class SyncService : ISyncService
                 }
                 await _sgpvProductoRepo.AddRangeAsync(nuevasProductos, ct);
                 await _sgpvProductoRepo.SaveChangesAsync(ct);
+
+                // Sincronizar también centros
+                var centros = await _sgpv.GetCentrosAsync(ct);
+                var nuevosCentros = new List<StagingSgpvCentro>();
+
+                // Para centros, si ya existen, no agregar (idempotente)
+                // Esto evita duplicados pero si los datos cambiaron (como desserialización),
+                // solo se agregarán los nuevos
+                var centrosExistentes = await _sgpvCentroRepo.ListAsync(ct);
+                var centroIdsExistentes = new HashSet<string>(centrosExistentes.Select(c => c.CentroId));
+
+                foreach (var c in centros)
+                {
+                    // Si ya existe con este CentroId, no agregar nuevamente
+                    if (centroIdsExistentes.Contains(c.CentroId)) { dup++; continue; }
+
+                    var json = JsonSerializer.Serialize(c);
+                    var hash = Sha256(json);
+                    nuevosCentros.Add(new StagingSgpvCentro
+                    {
+                        CentroId = c.CentroId,
+                        CentroNombre = c.CentroNombre,
+                        Provincia = c.Provincia,
+                        Ciudad = c.Ciudad,
+                        PayloadJson = json,
+                        Hash = hash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    });
+                    ins++;
+                }
+
+                await _sgpvCentroRepo.AddRangeAsync(nuevosCentros, ct);
+                await _sgpvCentroRepo.SaveChangesAsync(ct);
                 break;
             }
             case "sgpv-productos":

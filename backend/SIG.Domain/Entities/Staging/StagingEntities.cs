@@ -137,13 +137,25 @@ public class StagingSgpvVisita : IStagingRow
 {
     public int Id { get; set; }
 
-    // Datos crudos de SGPV
-    public string VisitaIdExterno { get; set; } = null!;
-    public string ResourceNif { get; set; } = "";
-    public string CentroId { get; set; } = null!;
+    // Datos crudos de SGPV - campos reales del API
+    public string VisitaIdExterno { get; set; } = null!; // idVisita
+    public string IdCentro { get; set; } = null!; // idCentro
+    public string? CodigoCentro { get; set; } // codigoCentro
+    public string? IdGPV { get; set; } // idGPV
+    public string? GPV { get; set; } // GPV
+    public string? IdCliente { get; set; } // idCliente
+    public string? Cliente { get; set; } // Cliente (nombre/descripción)
+    public string? TipoVisita { get; set; } // Tipo Visita
+    public DateOnly Fecha { get; set; } // Fecha
+
+    // Campos heredados (deprecated pero mantenidos para compatibilidad)
+    [Obsolete("Use Cliente instead")]
     public string? CentroNombre { get; set; }
+    [Obsolete("Use TipoVisita instead")]
     public string? ServiceName { get; set; }
-    public DateOnly Fecha { get; set; }
+    [Obsolete("Not in SGPV API")]
+    public string? ResourceNif { get; set; }
+    [Obsolete("Not in SGPV API")]
     public decimal? HorasDuracion { get; set; }
 
     // IDs resueltos
@@ -229,6 +241,21 @@ public class StagingSgpvProducto : IStagingRow
     public string? PVPRecomendado { get; set; }
     public string? Competencia { get; set; }
     public bool Activo { get; set; }
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
+public class StagingSgpvCentro : IStagingRow
+{
+    public int Id { get; set; }
+    public string CentroId { get; set; } = null!;          // ID externo del centro/tienda
+    public string? CentroNombre { get; set; }              // Nombre del centro
+    public string? Provincia { get; set; }                 // Ubicación
+    public string? Ciudad { get; set; }                    // Ubicación
+    // IStagingRow
     public string PayloadJson { get; set; } = null!;
     public string Hash { get; set; } = null!;
     public DateTime FechaUltimaSincronizacion { get; set; }

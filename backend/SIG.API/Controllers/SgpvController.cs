@@ -19,6 +19,83 @@ public class SgpvController : ControllerBase
         _db = db;
     }
 
+    /// <summary>Obtiene visitas de SGPV paginadas</summary>
+    [HttpGet("visitas/paginated")]
+    public async Task<IActionResult> GetVisitasPaginated(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var query = _db.StagingSgpvVisitas.AsNoTracking();
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(v =>
+                EF.Functions.ILike(v.VisitaIdExterno, $"%{searchLower}%") ||
+                EF.Functions.ILike(v.ResourceNif, $"%{searchLower}%") ||
+                EF.Functions.ILike(v.CentroNombre, $"%{searchLower}%") ||
+                EF.Functions.ILike(v.ServiceName, $"%{searchLower}%"));
+        }
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderByDescending(v => v.Fecha)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(v => new SgpvVisitaDashboardDto
+            {
+                VisitaIdExterno = v.VisitaIdExterno,
+                ResourceNif = v.ResourceNif ?? "",
+                CentroId = v.IdCentro, // Use new field name
+                CentroNombre = v.Cliente, // Use new field name (Cliente instead of CentroNombre)
+                ServiceName = v.TipoVisita, // Use new field name (TipoVisita instead of ServiceName)
+                Fecha = v.Fecha,
+                HorasDuracion = v.HorasDuracion
+            })
+            .ToListAsync(ct);
+
+        return Ok(new PagedResult<SgpvVisitaDashboardDto>(items, total, page, pageSize));
+    }
+
+    /// <summary>Obtiene centros de SGPV paginados</summary>
+    [HttpGet("centros/paginated")]
+    public async Task<IActionResult> GetCentrosPaginated(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var query = _db.StagingSgpvCentros.AsNoTracking();
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(c =>
+                EF.Functions.ILike(c.CentroId, $"%{searchLower}%") ||
+                EF.Functions.ILike(c.CentroNombre, $"%{searchLower}%") ||
+                EF.Functions.ILike(c.Provincia, $"%{searchLower}%") ||
+                EF.Functions.ILike(c.Ciudad, $"%{searchLower}%"));
+        }
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(c => c.CentroNombre)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(c => new SgpvCentroDashboardDto
+            {
+                CentroId = c.CentroId,
+                CentroNombre = c.CentroNombre,
+                Provincia = c.Provincia,
+                Ciudad = c.Ciudad
+            })
+            .ToListAsync(ct);
+
+        return Ok(new PagedResult<SgpvCentroDashboardDto>(items, total, page, pageSize));
+    }
+
     /// <summary>Obtiene productos de SGPV paginados</summary>
     [HttpGet("productos/paginated")]
     public async Task<IActionResult> GetProductosPaginated(
@@ -65,6 +142,27 @@ public class SgpvController : ControllerBase
 
         return Ok(new PagedResult<SgpvProductoDto>(items, total, page, pageSize));
     }
+}
+
+/// <summary>DTO for SGPV Visita Dashboard</summary>
+public class SgpvVisitaDashboardDto
+{
+    public string VisitaIdExterno { get; set; } = null!;
+    public string ResourceNif { get; set; } = "";
+    public string CentroId { get; set; } = null!;
+    public string? CentroNombre { get; set; }
+    public string? ServiceName { get; set; }
+    public DateOnly Fecha { get; set; }
+    public decimal? HorasDuracion { get; set; }
+}
+
+/// <summary>DTO for SGPV Centro Dashboard</summary>
+public class SgpvCentroDashboardDto
+{
+    public string CentroId { get; set; } = null!;
+    public string? CentroNombre { get; set; }
+    public string? Provincia { get; set; }
+    public string? Ciudad { get; set; }
 }
 
 /// <summary>DTO for SGPV Producto</summary>

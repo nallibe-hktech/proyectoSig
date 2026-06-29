@@ -651,6 +651,8 @@ public class StagingRepository<TStaging> : IStagingRepository<TStaging> where TS
         var list = hashes.ToList();
         return await _db.Set<TStaging>().AsNoTracking().Where(s => list.Contains(s.Hash)).CountAsync(ct);
     }
+    public async Task<IReadOnlyList<string>> GetAllHashesAsync(CancellationToken ct) =>
+        await _db.Set<TStaging>().AsNoTracking().Select(s => s.Hash).ToListAsync(ct);
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
