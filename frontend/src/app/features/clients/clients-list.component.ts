@@ -144,6 +144,10 @@ import { exportCSV } from '../../core/api/api.helpers';
     .sig-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
     .sig-badge--green  { color: #22c55e; background: rgba(34,197,94,.12); }
     .sig-badge--red    { color: #ef4444; background: rgba(239,68,68,.12); }
+    .sig-table-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; white-space: nowrap; }
+    .sig-table-actions a[mat-icon-button], .sig-table-actions button[mat-icon-button] { width: 32px; height: 32px; line-height: 32px; }
+    td[mat-cell]:last-child { padding-right: 8px; }
+    .mono-num { font-family: 'Roboto Mono', monospace; font-size: 12px; }
   `],
 })
 export class ClientsListComponent implements OnInit {

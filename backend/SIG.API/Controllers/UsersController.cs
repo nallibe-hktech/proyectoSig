@@ -8,12 +8,13 @@ namespace SIG.API.Controllers;
 
 [ApiController]
 [Route("api/users")]
-[Authorize(Roles = "Administrator,Auditor")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _svc;
     public UsersController(IUserService svc) { _svc = svc; }
 
+    // Lectura accesible a cualquier usuario autenticado (dropdowns, asignaciones, etc.)
     [HttpGet]
     public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] string? search = null, CancellationToken ct = default) =>
         Ok(await _svc.ListAsync(page, pageSize, search, ct));

@@ -5,6 +5,12 @@ namespace SIG.Application.Interfaces.Integrations;
 public interface ICeleroClient
 {
     Task<IReadOnlyList<CeleroVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
+    /// <summary>Lee la tabla <c>client</c> de Celero y devuelve todos los clientes activos.</summary>
+    Task<IReadOnlyList<CeleroClienteDto>> GetClientesAsync(CancellationToken ct);
+    /// <summary>Lee la tabla <c>service</c> de Celero y devuelve todos los servicios activos con FK al cliente.</summary>
+    Task<IReadOnlyList<CeleroServicioDto>> GetServiciosAsync(CancellationToken ct);
+    /// <summary>Lee la tabla <c>department</c> de Celero y devuelve todos los departamentos activos.</summary>
+    Task<IReadOnlyList<CeleroDepartmentDto>> GetDepartmentsAsync(CancellationToken ct);
 }
 
 public interface IBizneoClient

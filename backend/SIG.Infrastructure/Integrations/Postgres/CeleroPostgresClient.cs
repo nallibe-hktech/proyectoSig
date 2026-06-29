@@ -97,7 +97,8 @@ public class CeleroPostgresClient : ICeleroClient
     /// <summary>Columnas de enriquecimiento (origen Celero/Inpost) que pueden no existir en el esquema real.</summary>
     public static readonly IReadOnlyList<string> ColumnasOpcionalesVisit = new[]
     {
-        "realDuration", "cancellationReason", "addressState", "addressCity"
+        "realDuration", "cancellationReason", "addressState", "addressCity",
+        "realTimeTo"    // fecha real de finalización de visita (confirma cliente 2026-06-29); fallback a planDate si no existe
         // Nota: furniture data (Muebles/TipoMueble/CantidadMuebles) se extrae via JOIN a feedback→article,
         // no como columnas opcionales en visit. Ver BuildVisitasSql.
     };
@@ -120,13 +121,16 @@ public class CeleroPostgresClient : ICeleroClient
         var cancellation = columnasVisit.Contains("cancellationReason") ? "v.\"cancellationReason\"" : "NULL::text";
         var provincia    = columnasVisit.Contains("addressState")       ? "v.\"addressState\""       : "NULL::text";
         var ciudad       = columnasVisit.Contains("addressCity")        ? "v.\"addressCity\""        : "NULL::text";
+        // Cliente confirmó 2026-06-29: la fecha de realización es "realTimeTo", no "planDate".
+        // Si la columna no existe en el esquema (entorno sin datos históricos) se cae a planDate.
+        var fechaCol     = columnasVisit.Contains("realTimeTo")         ? "v.\"realTimeTo\""         : "v.\"planDate\"";
 
         return $"""
             SELECT v.id::text                          AS visita_id,
                    COALESCE(r."resourceExternalId",'') AS resource_nif,
                    COALESCE(m."serviceName",'')        AS service_name,
                    COALESCE(m."missionType",'')        AS mission_name,
-                   v."planDate"                        AS fecha,
+                   {fechaCol}                          AS fecha,
                    {duracion}                          AS duracion,
                    COALESCE(v.status,'')               AS estado,
                    {cancellation}                      AS cancellation_reason,
@@ -140,36 +144,178 @@ public class CeleroPostgresClient : ICeleroClient
             LEFT JOIN public.article a ON a.id = f."articleId"
             JOIN public.analytics_mission_list_view m ON m."missionId" = v."missionId"
             JOIN public.resource_list_view r          ON r."resourceId" = v."resourceId"
-            WHERE v."planDate" BETWEEN @desde AND @hasta
+            WHERE {fechaCol} BETWEEN @desde AND @hasta
               {statusFilter}
-            GROUP BY v.id, v."planDate", v.status, r."resourceExternalId", m."serviceName", m."missionType",
+            GROUP BY v.id, {fechaCol}, v.status, r."resourceExternalId", m."serviceName", m."missionType",
                      {duracion}, {cancellation}, {provincia}, {ciudad}
             ORDER BY v.id
             """;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Importación de clientes y servicios desde las tablas maestras de Celero
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Lee todos los clientes activos de <c>public.client</c> de Celero.
+    /// Columnas reales confirmadas (2026-06-29): id, name, "vatNr", "deletedAt".
+    /// Direcciones y contactos están en client_address / client_contact (no se leen aquí).
+    /// Si un cliente no tiene vatNr se le asigna un NIF sintético estable: 'CELERO-{id}'.
+    /// Esto garantiza que todos los clientes activos de Celero se importen, no solo los que tienen CIF real.
+    /// </summary>
+    public async Task<IReadOnlyList<CeleroClienteDto>> GetClientesAsync(CancellationToken ct)
+    {
+        var result = new List<CeleroClienteDto>();
+        try
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            await conn.OpenAsync(ct);
+            using var lockCmd = new NpgsqlCommand("SET default_transaction_read_only = on;", conn);
+            await lockCmd.ExecuteNonQueryAsync(ct);
+
+            const string sql = """
+                SELECT c.id::text                                              AS id_externo,
+                       c.name                                                  AS nombre,
+                       COALESCE(c."vatNr", 'CELERO-' || c.id::text)           AS nif
+                FROM public.client c
+                WHERE c."deletedAt" IS NULL
+                  AND c.name IS NOT NULL
+                ORDER BY c.name
+                """;
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                result.Add(new CeleroClienteDto(
+                    IdExterno: reader.GetString(0),
+                    Nombre:    reader.GetString(1),
+                    Nif:       reader.GetString(2),
+                    Direccion: null, Ciudad: null, Provincia: null,
+                    CodigoPostal: null, ContactoEmail: null, ContactoTelefono: null
+                ));
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new IntegrationException("Celero", $"Error al leer clientes de Celero: {ex.Message}");
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Lee todos los servicios activos de la tabla <c>public.service</c> de Celero con su FK al cliente.
+    /// </summary>
+    public async Task<IReadOnlyList<CeleroServicioDto>> GetServiciosAsync(CancellationToken ct)
+    {
+        var result = new List<CeleroServicioDto>();
+        try
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            await conn.OpenAsync(ct);
+            using var lockCmd = new NpgsqlCommand("SET default_transaction_read_only = on;", conn);
+            await lockCmd.ExecuteNonQueryAsync(ct);
+
+            const string sql = """
+                SELECT s.id::text          AS id_externo,
+                       s.name              AS nombre,
+                       s."clientId"::text  AS cliente_id_externo
+                FROM public.service s
+                WHERE s."deletedAt" IS NULL
+                  AND s."isActive"  = true
+                ORDER BY s.name
+                """;
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                result.Add(new CeleroServicioDto(
+                    IdExterno:       reader.GetString(0),
+                    Nombre:          reader.GetString(1),
+                    ClienteIdExterno: reader.GetString(2)
+                ));
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new IntegrationException("Celero", $"Error al leer servicios de Celero: {ex.Message}");
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Lee todos los departamentos activos de la tabla <c>public.department</c> de Celero.
+    /// Columnas reales: id, name, notes, deletedAt.
+    /// Los departamentos soft-deleted (deletedAt IS NOT NULL) se excluyen.
+    /// </summary>
+    public async Task<IReadOnlyList<CeleroDepartmentDto>> GetDepartmentsAsync(CancellationToken ct)
+    {
+        var result = new List<CeleroDepartmentDto>();
+        try
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            await conn.OpenAsync(ct);
+            using var lockCmd = new NpgsqlCommand("SET default_transaction_read_only = on;", conn);
+            await lockCmd.ExecuteNonQueryAsync(ct);
+
+            const string sql = """
+                SELECT d.id::text   AS id_externo,
+                       d.name       AS nombre,
+                       d.notes      AS notas
+                FROM public.department d
+                WHERE d."deletedAt" IS NULL
+                  AND d.name IS NOT NULL
+                ORDER BY d.name
+                """;
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                result.Add(new CeleroDepartmentDto(
+                    IdExterno: reader.GetString(0),
+                    Nombre:    reader.GetString(1),
+                    Notas:     reader.IsDBNull(2) ? null : reader.GetString(2)
+                ));
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new IntegrationException("Celero", $"Error al leer departamentos de Celero: {ex.Message}");
+        }
+        return result;
     }
 
     /// <summary>
     /// Consulta a information_schema (solo lectura) qué columnas opcionales existen realmente en
     /// public.visit. Evita el 42703 cuando los nombres trazados desde el Excel no coinciden con la BBDD.
     /// </summary>
-    private static async Task<ISet<string>> GetColumnasVisitDisponiblesAsync(NpgsqlConnection conn, CancellationToken ct)
+    private static Task<ISet<string>> GetColumnasVisitDisponiblesAsync(NpgsqlConnection conn, CancellationToken ct)
+        => GetColumnasTablaAsync(conn, "visit", ColumnasOpcionalesVisit, ct);
+
+    /// <summary>
+    /// Versión genérica: detecta qué columnas de <paramref name="columnasOpcionales"/> existen
+    /// en la tabla indicada (schema <c>public</c>). Usada por visit, client y service.
+    /// </summary>
+    private static async Task<ISet<string>> GetColumnasTablaAsync(
+        NpgsqlConnection conn, string tabla, IReadOnlyList<string> columnasOpcionales, CancellationToken ct)
     {
         var disponibles = new HashSet<string>(StringComparer.Ordinal);
         const string sql = """
             SELECT column_name
             FROM information_schema.columns
             WHERE table_schema = 'public'
-              AND table_name = 'visit'
-              AND column_name = ANY(@cols)
+              AND table_name   = @tabla
+              AND column_name  = ANY(@cols)
             """;
         using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@cols", ColumnasOpcionalesVisit.ToArray());
+        cmd.Parameters.AddWithValue("@tabla", tabla);
+        cmd.Parameters.AddWithValue("@cols", columnasOpcionales.ToArray());
 
         using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
-        {
             disponibles.Add(reader.GetString(0));
-        }
         return disponibles;
     }
 }

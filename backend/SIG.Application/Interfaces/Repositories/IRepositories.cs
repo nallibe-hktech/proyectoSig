@@ -34,6 +34,7 @@ public interface IClientRepository
 {
     Task<Client?> GetByIdAndUsuarioIdAsync(int id, int usuarioId, CancellationToken ct);
     Task<Client?> GetByIdAsync(int id, CancellationToken ct);
+    Task<Client?> GetByNifAsync(string nif, CancellationToken ct);
     Task<PagedResult<Client>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, string? search, CancellationToken ct);
     Task AddAsync(Client client, CancellationToken ct);
     Task<bool> HasServicesAsync(int clientId, CancellationToken ct);
@@ -48,6 +49,7 @@ public interface IServiceRepository
     Task<IReadOnlyList<Service>> ListAsync(CancellationToken ct);
     Task<PagedResult<Service>> ListPaginatedForUserAsync(int usuarioId, int page, int pageSize, int? clientId, string? search, CancellationToken ct);
     Task AddAsync(Service service, CancellationToken ct);
+    Task<Service?> GetByNombreAndClienteAsync(string nombre, int clientId, CancellationToken ct);
     Task<bool> IsUserAssignedAsync(int serviceId, int usuarioId, CancellationToken ct);
     Task<bool> HasCierresAsync(int serviceId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
@@ -166,6 +168,7 @@ public interface IDepartmentRepository
 {
     Task<IReadOnlyList<Department>> ListAsync(CancellationToken ct);
     Task<Department?> GetByIdAsync(int id, CancellationToken ct);
+    Task<Department?> GetByNombreAsync(string nombre, CancellationToken ct);
     Task<bool> HasUsersOrServicesAsync(int id, CancellationToken ct);
     Task AddAsync(Department dep, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);

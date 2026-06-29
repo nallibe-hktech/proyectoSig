@@ -446,7 +446,7 @@ public class CeleroMapeosPendientesDto
 // Datos de integraciones externas (Bizneo, Intratime, PayHawk)
 [ApiController]
 [Route("api/bizneo")]
-[Authorize(Roles = "Administrator")]
+[Authorize]
 public class BizneoController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -473,7 +473,7 @@ public class BizneoController : ControllerBase
 
 [ApiController]
 [Route("api/intratime")]
-[Authorize(Roles = "Administrator")]
+[Authorize]
 public class IntratimeController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -499,7 +499,7 @@ public class IntratimeController : ControllerBase
 
 [ApiController]
 [Route("api/payhawk")]
-[Authorize(Roles = "Administrator,Fico")]
+[Authorize]
 public class PayHawkController : ControllerBase
 {
     private readonly AppDbContext _db;

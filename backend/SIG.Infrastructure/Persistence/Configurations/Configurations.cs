@@ -47,6 +47,8 @@ public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
     public void Configure(EntityTypeBuilder<Department> b)
     {
         b.Property(d => d.Nombre).HasMaxLength(100).IsRequired();
+        b.Property(d => d.CeleroDepartmentId).HasMaxLength(50);
+        b.HasIndex(d => d.CeleroDepartmentId).IsUnique().HasFilter("\"CeleroDepartmentId\" IS NOT NULL");
         b.HasQueryFilter(d => !d.IsDeleted);
     }
 }

@@ -141,6 +141,8 @@ public class ClientRepository : IClientRepository
     public Task<bool> HasServicesAsync(int clientId, CancellationToken ct) => _db.Services.AsNoTracking().AnyAsync(s => s.ClientId == clientId, ct);
     public Task<bool> ExistsByNifAsync(string nif, int? excludeId, CancellationToken ct) =>
         _db.Clients.AsNoTracking().AnyAsync(c => c.NIF == nif && (excludeId == null || c.Id != excludeId), ct);
+    public Task<Client?> GetByNifAsync(string nif, CancellationToken ct) =>
+        _db.Clients.FirstOrDefaultAsync(c => c.NIF == nif, ct);
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }
 
@@ -200,6 +202,8 @@ public class ServiceRepository : IServiceRepository
     }
 
     public Task AddAsync(Service service, CancellationToken ct) { _db.Services.Add(service); return Task.CompletedTask; }
+    public Task<Service?> GetByNombreAndClienteAsync(string nombre, int clientId, CancellationToken ct) =>
+        _db.Services.FirstOrDefaultAsync(s => s.Nombre == nombre && s.ClientId == clientId, ct);
     public Task<bool> IsUserAssignedAsync(int serviceId, int usuarioId, CancellationToken ct) =>
         _db.ServiceUsers.AsNoTracking().AnyAsync(su => su.ServiceId == serviceId && su.UserId == usuarioId, ct);
     public async Task<bool> HasCierresAsync(int serviceId, CancellationToken ct) =>
@@ -599,6 +603,8 @@ public class DepartmentRepository : IDepartmentRepository
         await _db.Departments.AsNoTracking().OrderBy(d => d.Id).ToListAsync(ct);
     public Task<Department?> GetByIdAsync(int id, CancellationToken ct) =>
         _db.Departments.FirstOrDefaultAsync(d => d.Id == id, ct);
+    public Task<Department?> GetByNombreAsync(string nombre, CancellationToken ct) =>
+        _db.Departments.FirstOrDefaultAsync(d => d.Nombre == nombre && !d.IsDeleted, ct);
     public async Task<bool> HasUsersOrServicesAsync(int id, CancellationToken ct) =>
         await _db.Users.AsNoTracking().AnyAsync(u => u.DepartmentId == id, ct) ||
         await _db.Services.AsNoTracking().AnyAsync(a => a.DepartmentId == id, ct);

@@ -1,5 +1,30 @@
 namespace SIG.Application.DTOs;
 
+// DTOs para importación de clientes y servicios desde la BD de Celero
+public record CeleroClienteDto(
+    string IdExterno,        // Celero client.id (UUID o int como string)
+    string Nombre,
+    string Nif,
+    string? Direccion,
+    string? Ciudad,
+    string? Provincia,
+    string? CodigoPostal,
+    string? ContactoEmail,
+    string? ContactoTelefono
+);
+
+public record CeleroServicioDto(
+    string IdExterno,          // Celero service.id
+    string Nombre,
+    string ClienteIdExterno    // Celero client.id (FK → CeleroClienteDto.IdExterno)
+);
+
+public record CeleroDepartmentDto(
+    string IdExterno,          // Celero department.id
+    string Nombre,
+    string? Notas
+);
+
 // DTO para listar visitas
 public record CeleroVisitaListDto(
     int Id,

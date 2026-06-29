@@ -15,7 +15,7 @@ namespace SIG.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/a3-innuva-nominas")]
-[Authorize(Roles = "Administrator")]
+[Authorize]
 public class A3InnuvaNominasController : ControllerBase
 {
     private readonly IA3InnuvaNominasService _service;

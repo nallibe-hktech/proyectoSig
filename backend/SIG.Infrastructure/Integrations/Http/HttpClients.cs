@@ -8,10 +8,18 @@ using SIG.Application.Interfaces.Integrations;
 
 namespace SIG.Infrastructure.Integrations.Http;
 
+// Stub HTTP: Celero se lee via PostgreSQL directo (CeleroPostgresClient).
+// Esta clase existe solo como implementación alternativa no-configurada.
 public class CeleroClient : ICeleroClient
 {
     public Task<IReadOnlyList<CeleroVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<CeleroVisitaDto>>(Array.Empty<CeleroVisitaDto>());
+    public Task<IReadOnlyList<CeleroClienteDto>> GetClientesAsync(CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<CeleroClienteDto>>(Array.Empty<CeleroClienteDto>());
+    public Task<IReadOnlyList<CeleroServicioDto>> GetServiciosAsync(CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<CeleroServicioDto>>(Array.Empty<CeleroServicioDto>());
+    public Task<IReadOnlyList<CeleroDepartmentDto>> GetDepartmentsAsync(CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<CeleroDepartmentDto>>(Array.Empty<CeleroDepartmentDto>());
 }
 
 public class BizneoClient : IBizneoClient

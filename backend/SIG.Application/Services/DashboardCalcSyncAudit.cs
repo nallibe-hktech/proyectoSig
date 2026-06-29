@@ -250,11 +250,13 @@ public class SyncService : ISyncService
     private readonly IStagingRepository<StagingMediapostPedido> _mediapostPedidoRepo;
     private readonly IStagingRepository<StagingMediapostRecepcion> _mediapostRecepcionRepo;
     private readonly IUserRepository _userRepo;
+    private readonly IClientRepository _clientRepo;
     private readonly IServiceRepository _serviceRepo;
     private readonly ICeleroMappingRepository _mappingRepo;
     private readonly ITravelPerkExcelClient _travelPerkExcel;
     private readonly IStagingRepository<StagingTravelPerkLinea> _travelPerkLineaRepo;
     private readonly ICostCenterRepository _costCenterRepo;
+    private readonly IDepartmentRepository _deptRepo;
 
     public SyncService(
         ICeleroClient celero, IBizneoClient bizneo, IIntratimeClient intratime, IPayHawkClient payhawk, ISgpvClient sgpv,
@@ -262,6 +264,7 @@ public class SyncService : ISyncService
         ITravelPerkExcelClient travelPerkExcel,
         IStagingRepository<StagingTravelPerkLinea> travelPerkLineaRepo,
         ICostCenterRepository costCenterRepo,
+        IDepartmentRepository deptRepo,
         IStagingRepository<StagingCeleroVisita> celeroRepo,
         IStagingRepository<StagingBizneoEmpleado> empRepo,
         IStagingRepository<StagingBizneoAbsence> absenceRepo,
@@ -278,6 +281,7 @@ public class SyncService : ISyncService
         IStagingRepository<StagingMediapostPedido> mediapostPedidoRepo,
         IStagingRepository<StagingMediapostRecepcion> mediapostRecepcionRepo,
         IUserRepository userRepo,
+        IClientRepository clientRepo,
         IServiceRepository serviceRepo,
         ICeleroMappingRepository mappingRepo)
     {
@@ -290,6 +294,7 @@ public class SyncService : ISyncService
         _mediapost = mediapost;
         _celeroRepo = celeroRepo;
         _userRepo = userRepo;
+        _clientRepo = clientRepo;
         _serviceRepo = serviceRepo;
         _empRepo = empRepo;
         _absenceRepo = absenceRepo;
@@ -309,6 +314,7 @@ public class SyncService : ISyncService
         _travelPerkExcel = travelPerkExcel;
         _travelPerkLineaRepo = travelPerkLineaRepo;
         _costCenterRepo = costCenterRepo;
+        _deptRepo = deptRepo;
     }
 
     public async Task<SyncResultDto> SyncAsync(string sistema, CancellationToken ct)
@@ -321,6 +327,91 @@ public class SyncService : ISyncService
         {
             case "celero":
             {
+                // ── Fase 0: importar departamentos, clientes y servicios maestros desde Celero ──
+                // Celero es la fuente de verdad para departamentos/clientes/servicios.
+                // Se hace upsert por Nombre (departamentos), NIF (clientes) o Nombre+ClientId (servicios).
+
+                // Departamentos: upsert por Nombre
+                var celeroDepartments = await _celero.GetDepartmentsAsync(ct);
+                foreach (var cd in celeroDepartments)
+                {
+                    var existing = await _deptRepo.GetByNombreAsync(cd.Nombre, ct);
+                    if (existing is null)
+                    {
+                        var nuevo = new Department
+                        {
+                            Nombre = cd.Nombre,
+                            CeleroDepartmentId = cd.IdExterno,
+                            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                        };
+                        await _deptRepo.AddAsync(nuevo, ct);
+                        await _deptRepo.SaveChangesAsync(ct);
+                    }
+                    else
+                    {
+                        // Actualizar CeleroDepartmentId si estaba vacío
+                        if (existing.CeleroDepartmentId is null)
+                        {
+                            existing.CeleroDepartmentId = cd.IdExterno;
+                            existing.UpdatedAt = DateTime.UtcNow;
+                            await _deptRepo.SaveChangesAsync(ct);
+                        }
+                    }
+                }
+
+                // Clientes: upsert por NIF
+                var celeroClientes = await _celero.GetClientesAsync(ct);
+                var celeroIdToSigClientId = new Dictionary<string, int>(celeroClientes.Count);
+                foreach (var cc in celeroClientes)
+                {
+                    var existing = await _clientRepo.GetByNifAsync(cc.Nif, ct);
+                    if (existing is null)
+                    {
+                        var nuevo = new Client
+                        {
+                            Nombre = cc.Nombre, NIF = cc.Nif,
+                            Estado = EstadoCliente.Activo,
+                            Direccion = cc.Direccion, Ciudad = cc.Ciudad, Provincia = cc.Provincia,
+                            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                        };
+                        await _clientRepo.AddAsync(nuevo, ct);
+                        await _clientRepo.SaveChangesAsync(ct);
+                        celeroIdToSigClientId[cc.IdExterno] = nuevo.Id;
+                    }
+                    else
+                    {
+                        // Actualizar nombre y dirección si cambiaron en Celero
+                        existing.Nombre = cc.Nombre;
+                        if (cc.Direccion is not null) existing.Direccion = cc.Direccion;
+                        if (cc.Ciudad is not null)    existing.Ciudad    = cc.Ciudad;
+                        if (cc.Provincia is not null) existing.Provincia = cc.Provincia;
+                        existing.UpdatedAt = DateTime.UtcNow;
+                        await _clientRepo.SaveChangesAsync(ct);
+                        celeroIdToSigClientId[cc.IdExterno] = existing.Id;
+                    }
+                }
+
+                var celeroServicios = await _celero.GetServiciosAsync(ct);
+                foreach (var cs in celeroServicios)
+                {
+                    if (!celeroIdToSigClientId.TryGetValue(cs.ClienteIdExterno, out var sigClientId)) continue;
+                    var existing = await _serviceRepo.GetByNombreAndClienteAsync(cs.Nombre, sigClientId, ct);
+                    if (existing is null)
+                    {
+                        var nuevo = new Service
+                        {
+                            Nombre = cs.Nombre, ClientId = sigClientId,
+                            Estado = EstadoServicio.Activo,
+                            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                        };
+                        await _serviceRepo.AddAsync(nuevo, ct);
+                        await _serviceRepo.SaveChangesAsync(ct);
+                    }
+                    // Si ya existe no se modifica: los datos del servicio (CECO, usuarios, etc.)
+                    // son propiedad de SIG, no de Celero.
+                }
+                // ────────────────────────────────────────────────────────────────────────
+
                 var data = await _celero.GetVisitasAsync(desde, hasta, ct);
                 var nuevas = new List<StagingCeleroVisita>();
 

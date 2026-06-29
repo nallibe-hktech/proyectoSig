@@ -48,7 +48,7 @@ import { ServiceListItemDto } from '../../models/dtos';
                 <th>CLIENTE</th>
                 <th>ESTADO</th>
                 <th>DEPARTAMENTO</th>
-                <th style="text-align:right">ACCIONES</th>
+                <th class="th-arrow"></th>
               </tr>
             </thead>
             <tbody>
@@ -64,12 +64,8 @@ import { ServiceListItemDto } from '../../models/dtos';
                   <td>{{ a.clientNombre }}</td>
                   <td><span class="sig-badge" [class]="estadoBadge(a.estado)">{{ a.estado }}</span></td>
                   <td style="font-size:11px;color:var(--sig-text-muted)">{{ a.departmentId ?? '—' }}</td>
-                  <td>
-                    <div class="sig-row-actions">
-                      <button class="sig-icon-btn" title="Ver" (click)="$event.stopPropagation(); selectRow(a)" [attr.data-testid]="'service-view-' + a.id"><mat-icon>visibility</mat-icon></button>
-                      <button class="sig-icon-btn" title="Editar" (click)="$event.stopPropagation(); openEdit(a)" [attr.data-testid]="'service-edit-' + a.id"><mat-icon>edit</mat-icon></button>
-                      <button class="sig-icon-btn danger" title="Eliminar" (click)="$event.stopPropagation(); deleteRow(a)" [attr.data-testid]="'service-delete-' + a.id"><mat-icon>delete</mat-icon></button>
-                    </div>
+                  <td class="td-arrow">
+                    <mat-icon class="row-chevron">chevron_right</mat-icon>
                   </td>
                 </tr>
               } @empty {
@@ -117,6 +113,7 @@ import { ServiceListItemDto } from '../../models/dtos';
               </div>
             </div>
             <div class="sig-detail-footer">
+              <button class="sig-btn-secondary" (click)="openDetail(selected()!)" title="Ver detalle completo"><mat-icon>visibility</mat-icon></button>
               <button class="sig-btn-edit" (click)="openEdit(selected()!)"><mat-icon>edit</mat-icon> Editar</button>
               <button class="sig-btn-del" (click)="deleteRow(selected()!)"><mat-icon>delete</mat-icon></button>
             </div>
@@ -155,8 +152,10 @@ import { ServiceListItemDto } from '../../models/dtos';
     .sig-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
     .sig-badge--green  { color: #22c55e; background: rgba(34,197,94,.12); }
     .sig-badge--red    { color: #ef4444; background: rgba(239,68,68,.12); }
-    .sig-row-actions { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
-    .sig-icon-btn { width: 30px; height: 30px; border-radius: 6px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--sig-text-muted); transition: background 120ms, color 120ms; mat-icon { font-size: 16px !important; width: 16px !important; height: 16px !important; } &:hover { background: var(--sig-bg-hover); color: var(--sig-text-primary); } &.danger:hover { background: rgba(239,68,68,.1); color: #ef4444; } }
+    .th-arrow { width: 32px; padding: 11px 8px 11px 0; }
+    .td-arrow { width: 32px; padding: 0 8px 0 0; text-align: right; }
+    .row-chevron { font-size: 18px !important; width: 18px !important; height: 18px !important; color: var(--sig-text-muted); opacity: 0.4; transition: opacity 120ms; }
+    tbody tr:hover .row-chevron { opacity: 1; color: var(--sig-blue); }
     .sig-detail-panel { width: 340px; flex-shrink: 0; background: var(--sig-bg-card); border: 1px solid var(--sig-border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
     .sig-detail-hdr { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--sig-blue); color: #fff; gap: 8px; }
     .sig-detail-hdr-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; mat-icon { font-size: 15px !important; width: 15px !important; height: 15px !important; } }
@@ -165,7 +164,8 @@ import { ServiceListItemDto } from '../../models/dtos';
     .sig-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .sig-detail-field label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sig-text-muted); display: block; margin-bottom: 3px; }
     .sig-detail-field span  { font-size: 13px; color: var(--sig-text-primary); }
-    .sig-detail-footer { padding: 12px 16px; border-top: 1px solid var(--sig-border); display: flex; gap: 8px; }
+    .sig-detail-footer { padding: 12px 16px; border-top: 1px solid var(--sig-border); display: flex; gap: 8px; align-items: center; }
+    .sig-btn-secondary { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--sig-border); background: transparent; color: var(--sig-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 120ms, color 120ms; mat-icon { font-size: 16px !important; width: 16px !important; height: 16px !important; } &:hover { background: var(--sig-bg-hover); color: var(--sig-text-primary); } }
     .sig-btn-edit { flex: 1; height: 34px; border-radius: 8px; border: none; background: var(--sig-blue); color: #fff; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; mat-icon { font-size: 15px !important; width: 15px !important; height: 15px !important; } }
     .sig-btn-del { width: 34px; height: 34px; border-radius: 8px; border: none; background: rgba(239,68,68,.1); color: #ef4444; cursor: pointer; display: flex; align-items: center; justify-content: center; mat-icon { font-size: 16px !important; width: 16px !important; height: 16px !important; } }
     .sig-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 60px 24px; color: var(--sig-text-muted); }
@@ -203,9 +203,7 @@ export class ServicesListComponent implements OnInit {
         next: (res) => {
           this.items.set(res?.items ?? []);
           this.total.set(res?.total ?? 0);
-          if (!this.selected() && res?.items?.length) {
-            this.selected.set(res.items[0]);
-          }
+          // Panel cerrado por defecto — se abre al hacer clic en una fila
           this.loading.set(false);
         },
         error: (err) => {
@@ -226,9 +224,7 @@ export class ServicesListComponent implements OnInit {
         next: (res) => {
           this.items.set(res?.items ?? []);
           this.total.set(res?.total ?? 0);
-          if (!this.selected() && res?.items?.length) {
-            this.selected.set(res.items[0]);
-          }
+          // Panel cerrado por defecto — se abre al hacer clic en una fila
           this.loading.set(false);
         },
         error: (err) => {
@@ -274,6 +270,10 @@ export class ServicesListComponent implements OnInit {
 
   protected openNew(): void {
     this.router.navigate(['/services/nuevo']);
+  }
+
+  protected openDetail(a: ServiceListItemDto): void {
+    this.router.navigate([`/services/${a.id}`]);
   }
 
   protected openEdit(a: ServiceListItemDto): void {

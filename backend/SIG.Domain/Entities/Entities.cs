@@ -47,6 +47,8 @@ public class Department : ISoftDeletable, IAuditable
 {
     public int Id { get; set; }
     public string Nombre { get; set; } = null!;
+    /// <summary>ID externo de Celero (public.department.id) para tracking de sincronización.</summary>
+    public string? CeleroDepartmentId { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }

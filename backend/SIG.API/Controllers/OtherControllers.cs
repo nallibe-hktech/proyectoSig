@@ -93,30 +93,25 @@ public class SyncController : ControllerBase
     }
 
     /// <summary>
-    /// Sincronizar datos de sistemas externos.
-    /// Nota: 'galan' y 'mediapost' no requieren autenticación (archivos locales).
-    /// Otros sistemas requieren rol Administrator.
+    /// Sincronizar galan/mediapost (archivos locales — no requieren autenticación).
+    /// </summary>
+    [HttpPost("galan")]
+    [AllowAnonymous]
+    public Task<IActionResult> SyncGalan(CancellationToken ct) => SyncInternal("galan", ct);
+
+    [HttpPost("mediapost")]
+    [AllowAnonymous]
+    public Task<IActionResult> SyncMediapost(CancellationToken ct) => SyncInternal("mediapost", ct);
+
+    /// <summary>
+    /// Sincronizar sistemas externos (celero, bizneo, intratime, payhawk, sgpv, travelperk).
     /// </summary>
     [HttpPost("{system}")]
-    public async Task<IActionResult> Sync(string system, CancellationToken ct)
-    {
-        // Permitir galan y mediapost sin autenticación (archivos locales)
-        if (!system.Equals("galan", StringComparison.OrdinalIgnoreCase) &&
-            !system.Equals("mediapost", StringComparison.OrdinalIgnoreCase))
-        {
-            // Sin token → 401; autenticado pero sin rol Administrator → 403 (semántica HTTP correcta)
-            if (User.Identity?.IsAuthenticated != true)
-            {
-                return Unauthorized("Solo administradores pueden sincronizar sistemas externos");
-            }
-            if (!User.IsInRole("Administrator"))
-            {
-                return Forbid();
-            }
-        }
+    [Authorize]
+    public Task<IActionResult> Sync(string system, CancellationToken ct) => SyncInternal(system, ct);
 
-        return Ok(await _svc.SyncAsync(system, ct));
-    }
+    private async Task<IActionResult> SyncInternal(string system, CancellationToken ct) =>
+        Ok(await _svc.SyncAsync(system, ct));
 
     [HttpPost("process")]
     [Authorize(Roles = "Administrator")]

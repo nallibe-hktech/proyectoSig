@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SIG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SIG.Infrastructure.Persistence;
 namespace SIG.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260629100000_RemoveDemoClientsAndServices")]
+    partial class RemoveDemoClientsAndServices
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1042,11 +1045,6 @@ namespace SIG.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("CeleroDepartmentId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("celero_department_id");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -1071,11 +1069,6 @@ namespace SIG.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_departments");
-
-                    b.HasIndex("CeleroDepartmentId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_departments_celero_department_id")
-                        .HasFilter("\"CeleroDepartmentId\" IS NOT NULL");
 
                     b.ToTable("departments", (string)null);
                 });
@@ -1244,71 +1237,6 @@ namespace SIG.Infrastructure.Migrations
                         .HasDatabaseName("ix_incidencia_historiales_incidencia_id");
 
                     b.ToTable("incidencia_historiales", (string)null);
-                });
-
-            modelBuilder.Entity("SIG.Domain.Entities.Notification", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CierreId")
-                        .HasColumnType("integer")
-                        .HasColumnName("cierre_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<bool>("Leida")
-                        .HasColumnType("boolean")
-                        .HasColumnName("leida");
-
-                    b.Property<DateTime?>("LeidaAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("leida_at");
-
-                    b.Property<string>("Mensaje")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("mensaje");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("tipo");
-
-                    b.Property<string>("TipoCierre")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("tipo_cierre");
-
-                    b.Property<string>("Titulo")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("titulo");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("integer")
-                        .HasColumnName("usuario_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_notifications");
-
-                    b.HasIndex("UsuarioId", "Leida")
-                        .HasDatabaseName("ix_notifications_usuario_id_leida");
-
-                    b.ToTable("notifications", (string)null);
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.PartidaPresupuesto", b =>
@@ -5317,18 +5245,6 @@ namespace SIG.Infrastructure.Migrations
                         .HasConstraintName("fk_incidencia_historiales_cliente_incidencias_incidencia_id");
 
                     b.Navigation("Incidencia");
-                });
-
-            modelBuilder.Entity("SIG.Domain.Entities.Notification", b =>
-                {
-                    b.HasOne("SIG.Domain.Entities.User", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_notifications_users_usuario_id");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("SIG.Domain.Entities.PartidaPresupuesto", b =>

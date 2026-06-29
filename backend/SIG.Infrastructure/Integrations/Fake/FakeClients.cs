@@ -73,6 +73,45 @@ public class CeleroFakeClient : ICeleroClient
         var list = faker.UseSeed(FakeSeed.Seed).Generate(50);
         return Task.FromResult<IReadOnlyList<CeleroVisitaDto>>(list);
     }
+
+    public Task<IReadOnlyList<CeleroClienteDto>> GetClientesAsync(CancellationToken ct)
+    {
+        // Clientes fake deterministas — mismos nombres que usa GetVisitasAsync para que
+        // el fallback por nombre en SyncService resuelva correctamente en tests.
+        IReadOnlyList<CeleroClienteDto> clientes = new[]
+        {
+            new CeleroClienteDto("FAKE-CLI-001", "Alpha Foods S.L.",    "A12345678", null, "Madrid",    "Madrid",    null, null, null),
+            new CeleroClienteDto("FAKE-CLI-002", "Beta Cosmetics S.A.", "B23456789", null, "Barcelona", "Cataluña",  null, null, null),
+            new CeleroClienteDto("FAKE-CLI-003", "Gamma Retail S.L.",   "C34567890", null, "Valencia",  "Valenciana", null, null, null),
+        };
+        return Task.FromResult(clientes);
+    }
+
+    public Task<IReadOnlyList<CeleroServicioDto>> GetServiciosAsync(CancellationToken ct)
+    {
+        IReadOnlyList<CeleroServicioDto> servicios = new[]
+        {
+            new CeleroServicioDto("FAKE-SVC-001", "Implantación Madrid",    "FAKE-CLI-001"),
+            new CeleroServicioDto("FAKE-SVC-002", "Visitas GPV España",     "FAKE-CLI-001"),
+            new CeleroServicioDto("FAKE-SVC-003", "Formación Equipos",      "FAKE-CLI-002"),
+            new CeleroServicioDto("FAKE-SVC-004", "Implantación Barcelona", "FAKE-CLI-002"),
+            new CeleroServicioDto("FAKE-SVC-005", "Visitas Premium",        "FAKE-CLI-003"),
+            new CeleroServicioDto("FAKE-SVC-006", "Mensualidad",            "FAKE-CLI-003"),
+        };
+        return Task.FromResult(servicios);
+    }
+
+    public Task<IReadOnlyList<CeleroDepartmentDto>> GetDepartmentsAsync(CancellationToken ct)
+    {
+        IReadOnlyList<CeleroDepartmentDto> departments = new[]
+        {
+            new CeleroDepartmentDto("FAKE-DEPT-001", "Operaciones",    null),
+            new CeleroDepartmentDto("FAKE-DEPT-002", "Backoffice",     null),
+            new CeleroDepartmentDto("FAKE-DEPT-003", "Finanzas",       null),
+            new CeleroDepartmentDto("FAKE-DEPT-004", "Dirección",      null),
+        };
+        return Task.FromResult(departments);
+    }
 }
 
 public class BizneoFakeClient : IBizneoClient
