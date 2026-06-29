@@ -44,6 +44,46 @@ import {
       @if (loading()) {
         <mat-card><mat-card-content><sig-skeleton [count]="6" /></mat-card-content></mat-card>
       } @else {
+        <!-- Modo guiado: plantillas de "tipo de concepto" (catálogo doc SIG). Arman la fórmula por debajo. -->
+        <mat-card style="margin-bottom: 16px;" data-testid="formula-recetas">
+          <mat-card-content>
+            <h3 class="sig-section-label">Modo guiado — elige un tipo de cálculo</h3>
+            <p class="sig-receta-intro">Elige una plantilla y rellena los datos: la fórmula se arma sola. Después puedes afinarla abajo en el modo avanzado.</p>
+            <div class="sig-receta-row">
+              <mat-form-field appearance="outline" class="sig-receta-tipo">
+                <mat-label>Tipo de cálculo</mat-label>
+                <mat-select [(ngModel)]="recetaSel" data-testid="receta-tipo">
+                  @for (r of recetas; track r.id) { <mat-option [value]="r.id">{{ r.label }}</mat-option> }
+                </mat-select>
+              </mat-form-field>
+              @if (recetaActual(); as r) {
+                @if (r.valorLabel) {
+                  <mat-form-field appearance="outline" class="sig-receta-valor">
+                    <mat-label>{{ r.valorLabel }}</mat-label>
+                    <input matInput type="number" [(ngModel)]="recetaValor" data-testid="receta-valor" />
+                  </mat-form-field>
+                }
+                @if (r.filtro) {
+                  <mat-form-field appearance="outline" class="sig-receta-filtro">
+                    <mat-label>Filtrar por (opcional): campo</mat-label>
+                    <input matInput [(ngModel)]="recetaFiltroCampo" placeholder="p.ej. TipoVisita" data-testid="receta-filtro-campo" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="sig-receta-filtro">
+                    <mat-label>= valor</mat-label>
+                    <input matInput [(ngModel)]="recetaFiltroValor" placeholder="p.ej. Premium" data-testid="receta-filtro-valor" />
+                  </mat-form-field>
+                }
+              }
+              <button mat-flat-button color="primary" (click)="generarReceta()" [disabled]="!recetaSel" data-testid="btn-generar-receta">
+                <mat-icon>auto_fix_high</mat-icon> Generar fórmula
+              </button>
+            </div>
+            @if (recetaActual(); as r) {
+              <p class="sig-receta-hint"><mat-icon aria-hidden="true">info</mat-icon> {{ r.hint }}</p>
+            }
+          </mat-card-content>
+        </mat-card>
+
         <mat-card style="margin-bottom: 16px;">
           <mat-card-content>
             <h3 class="sig-section-label">Expresión actual</h3>
@@ -387,6 +427,12 @@ import {
     .sig-prim-btn { justify-content: flex-start; }
     .sig-canvas mat-card-content { min-height: 200px; }
     .sig-section-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mat-sys-on-surface-variant); margin: 0 0 8px; }
+    .sig-receta-intro { color: var(--mat-sys-on-surface-variant); font-size: 13px; margin: 0 0 12px; }
+    .sig-receta-row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .sig-receta-tipo { min-width: 280px; } .sig-receta-valor { width: 180px; } .sig-receta-filtro { width: 200px; }
+    .sig-receta-row button { margin-top: 6px; }
+    .sig-receta-hint { display: flex; align-items: center; gap: 6px; color: var(--mat-sys-on-surface-variant); font-size: 13px; margin: 4px 0 0; }
+    .sig-receta-hint mat-icon { font-size: 18px; width: 18px; height: 18px; }
     .sig-expression { font-family: 'Roboto Mono', monospace; font-size: 15px; padding: 12px; background: var(--mat-sys-surface-variant); color: var(--mat-sys-on-surface); border-radius: 8px; }
     .sig-valid { color: var(--sig-success); display: flex; align-items: center; gap: 6px; font-size: 14px; }
     .sig-invalid { color: var(--sig-warning); display: flex; align-items: center; gap: 6px; font-size: 14px; }
@@ -485,6 +531,64 @@ export class FormulaEditorComponent implements OnInit {
   protected createTramos(): FormulaNode { return { type: 'Tramos', cantidad: this.createAggregate(), tramos: [{ hasta: 1, precio: 0 }, { hasta: null, precio: 0 }] }; }
   protected createConceptRef(): FormulaNode { return { type: 'ConceptRef', conceptIds: [] }; }
   protected createTarifaRef(): FormulaNode { return { type: 'TarifaRef', nivel: 'Global' }; }
+
+  // ---------- Modo guiado (plantillas / "tipos de concepto" del catálogo SIG) ----------
+  protected recetaSel: string | null = null;
+  protected recetaValor: number | null = null;
+  protected recetaFiltroCampo = '';
+  protected recetaFiltroValor = '';
+
+  protected readonly recetas: { id: string; label: string; valorLabel: string | null; filtro: boolean; hint: string }[] = [
+    { id: 'cuota_fija',    label: 'Cuota fija mensual',                    valorLabel: 'Importe (€/mes)',         filtro: false, hint: 'Un importe fijo cada mes.' },
+    { id: 'por_visita',    label: 'Pago por visita (nº visitas × tarifa)', valorLabel: 'Tarifa por visita (€)',   filtro: true,  hint: 'Cuenta las visitas (con filtro opcional) y las multiplica por la tarifa.' },
+    { id: 'por_dia',       label: 'Pago por día trabajado',                valorLabel: 'Importe por día (€)',     filtro: false, hint: 'Cuenta los días con actividad (fechas únicas) y los multiplica por el importe.' },
+    { id: 'kilometraje',   label: 'Kilometraje (km × coste)',              valorLabel: 'Coste por km (€)',        filtro: false, hint: 'Suma los km y los multiplica por el coste por km.' },
+    { id: 'gastos',        label: 'Gastos (suma de importes)',             valorLabel: null,                      filtro: true,  hint: 'Suma los importes de gastos (con filtro opcional).' },
+    { id: 'por_horas',     label: 'Pago por horas (horas × tarifa)',       valorLabel: 'Tarifa por hora (€)',     filtro: false, hint: 'Suma las horas trabajadas y las multiplica por la tarifa por hora.' },
+    { id: 'fee_conceptos', label: 'Fee % sobre otros conceptos',           valorLabel: 'Porcentaje (%)',          filtro: false, hint: 'Aplica un porcentaje sobre la suma de los demás conceptos del cierre.' },
+  ];
+
+  protected recetaActual(): { id: string; label: string; valorLabel: string | null; filtro: boolean; hint: string } | null {
+    return this.recetas.find((r) => r.id === this.recetaSel) ?? null;
+  }
+
+  protected generarReceta(): void {
+    if (!this.recetaSel) return;
+    const v = Number(this.recetaValor) || 0;
+    const filtros: FormulaFilter[] = (this.recetaFiltroCampo.trim() && String(this.recetaFiltroValor ?? '').trim())
+      ? [{ field: this.recetaFiltroCampo.trim(), op: 'Eq', value: String(this.recetaFiltroValor).trim() }]
+      : [];
+    const visitas = (f: FormulaFilter[]): FormulaNode => ({ type: 'Source', entity: 'VisitasCelero', field: null, filters: f });
+    let node: FormulaNode;
+    switch (this.recetaSel) {
+      case 'cuota_fija':
+        node = { type: 'Number', value: v }; break;
+      case 'por_visita':
+        node = { type: 'BinaryOp', op: 'Mul',
+          left: { type: 'Aggregate', op: 'Count', source: visitas(filtros), field: null, distinct: null },
+          right: { type: 'Number', value: v } }; break;
+      case 'por_dia':
+        node = { type: 'BinaryOp', op: 'Mul',
+          left: { type: 'Aggregate', op: 'Count', source: visitas([]), field: null, distinct: 'Fecha' },
+          right: { type: 'Number', value: v } }; break;
+      case 'kilometraje':
+        node = { type: 'BinaryOp', op: 'Mul',
+          left: { type: 'Aggregate', op: 'Sum', source: { type: 'Source', entity: 'GastosPayHawk', field: null, filters: [] }, field: 'Km', distinct: null },
+          right: { type: 'Number', value: v } }; break;
+      case 'gastos':
+        node = { type: 'Aggregate', op: 'Sum', source: { type: 'Source', entity: 'GastosPayHawk', field: null, filters: filtros }, field: 'Importe', distinct: null }; break;
+      case 'por_horas':
+        node = { type: 'BinaryOp', op: 'Mul',
+          left: { type: 'Aggregate', op: 'Sum', source: { type: 'Source', entity: 'HorasBizneo', field: null, filters: [] }, field: 'Horas', distinct: null },
+          right: { type: 'Number', value: v } }; break;
+      case 'fee_conceptos':
+        node = { type: 'BinaryOp', op: 'Pct', left: { type: 'Number', value: v }, right: { type: 'ConceptRef', conceptIds: [] } }; break;
+      default:
+        return;
+    }
+    this.setRoot(node);
+    this.notify.success('Fórmula generada. Puedes ajustarla abajo en el modo avanzado.');
+  }
 
   // ---------- Mutations ----------
   protected setRoot(node: FormulaNode): void { this.root.set(node); this.bump(); }
