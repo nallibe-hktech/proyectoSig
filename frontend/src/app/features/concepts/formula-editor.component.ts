@@ -73,6 +73,35 @@ import {
                     <input matInput [(ngModel)]="recetaFiltroValor" placeholder="p.ej. Premium" data-testid="receta-filtro-valor" />
                   </mat-form-field>
                 }
+                @if (r.nivel) {
+                  <mat-form-field appearance="outline" class="sig-receta-valor">
+                    <mat-label>Nivel de tarifa</mat-label>
+                    <mat-select [(ngModel)]="recetaNivel" data-testid="receta-nivel">
+                      <mat-option value="Global">Global</mat-option>
+                      <mat-option value="Cliente">Por cliente</mat-option>
+                      <mat-option value="Servicio">Por servicio</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                }
+                @if (r.variable) {
+                  <mat-form-field appearance="outline" class="sig-receta-valor">
+                    <mat-label>Variable</mat-label>
+                    <mat-select [(ngModel)]="recetaVariableId" data-testid="receta-variable">
+                      @for (vv of variables(); track vv.id) { <mat-option [value]="vv.id">{{ vv.nombre }}</mat-option> }
+                    </mat-select>
+                  </mat-form-field>
+                }
+                @if (r.base) {
+                  <mat-form-field appearance="outline" class="sig-receta-valor">
+                    <mat-label>Sobre</mat-label>
+                    <mat-select [(ngModel)]="recetaBase" data-testid="receta-base">
+                      <mat-option value="gastos">Gastos (PayHawk)</mat-option>
+                      <mat-option value="horas">Horas (Bizneo)</mat-option>
+                      <mat-option value="km">Km (PayHawk)</mat-option>
+                      <mat-option value="visitas">Nº de visitas (Celero)</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                }
               }
               <button mat-flat-button color="primary" (click)="generarReceta()" [disabled]="!recetaSel" data-testid="btn-generar-receta">
                 <mat-icon>auto_fix_high</mat-icon> Generar fórmula
@@ -537,19 +566,35 @@ export class FormulaEditorComponent implements OnInit {
   protected recetaValor: number | null = null;
   protected recetaFiltroCampo = '';
   protected recetaFiltroValor = '';
+  protected recetaNivel: 'Global' | 'Cliente' | 'Servicio' = 'Servicio';
+  protected recetaVariableId: number | null = null;
+  protected recetaBase: 'gastos' | 'horas' | 'km' | 'visitas' = 'gastos';
 
-  protected readonly recetas: { id: string; label: string; valorLabel: string | null; filtro: boolean; hint: string }[] = [
-    { id: 'cuota_fija',    label: 'Cuota fija mensual',                    valorLabel: 'Importe (€/mes)',         filtro: false, hint: 'Un importe fijo cada mes.' },
-    { id: 'por_visita',    label: 'Pago por visita (nº visitas × tarifa)', valorLabel: 'Tarifa por visita (€)',   filtro: true,  hint: 'Cuenta las visitas (con filtro opcional) y las multiplica por la tarifa.' },
-    { id: 'por_dia',       label: 'Pago por día trabajado',                valorLabel: 'Importe por día (€)',     filtro: false, hint: 'Cuenta los días con actividad (fechas únicas) y los multiplica por el importe.' },
-    { id: 'kilometraje',   label: 'Kilometraje (km × coste)',              valorLabel: 'Coste por km (€)',        filtro: false, hint: 'Suma los km y los multiplica por el coste por km.' },
-    { id: 'gastos',        label: 'Gastos (suma de importes)',             valorLabel: null,                      filtro: true,  hint: 'Suma los importes de gastos (con filtro opcional).' },
-    { id: 'por_horas',     label: 'Pago por horas (horas × tarifa)',       valorLabel: 'Tarifa por hora (€)',     filtro: false, hint: 'Suma las horas trabajadas y las multiplica por la tarifa por hora.' },
-    { id: 'fee_conceptos', label: 'Fee % sobre otros conceptos',           valorLabel: 'Porcentaje (%)',          filtro: false, hint: 'Aplica un porcentaje sobre la suma de los demás conceptos del cierre.' },
+  protected readonly recetas: { id: string; label: string; valorLabel?: string | null; filtro?: boolean; nivel?: boolean; variable?: boolean; base?: boolean; hint: string }[] = [
+    { id: 'cuota_fija',     label: 'Cuota fija mensual',                    valorLabel: 'Importe (€/mes)',         filtro: false, hint: 'Un importe fijo cada mes.' },
+    { id: 'por_visita',     label: 'Pago por visita (nº visitas × tarifa)', valorLabel: 'Tarifa por visita (€)',   filtro: true,  hint: 'Cuenta las visitas (con filtro opcional) y las multiplica por la tarifa.' },
+    { id: 'por_dia',        label: 'Pago por día trabajado',                valorLabel: 'Importe por día (€)',     filtro: false, hint: 'Cuenta los días con actividad (fechas únicas) y los multiplica por el importe.' },
+    { id: 'kilometraje',    label: 'Kilometraje (km × coste)',              valorLabel: 'Coste por km (€)',        filtro: false, hint: 'Suma los km y los multiplica por el coste por km.' },
+    { id: 'gastos',         label: 'Gastos (suma de importes)',             valorLabel: null,                      filtro: true,  hint: 'Suma los importes de gastos (con filtro opcional).' },
+    { id: 'por_horas',      label: 'Pago por horas (horas × tarifa)',       valorLabel: 'Tarifa por hora (€)',     filtro: false, hint: 'Suma las horas trabajadas y las multiplica por la tarifa por hora.' },
+    { id: 'fee_conceptos',  label: 'Fee % sobre otros conceptos',           valorLabel: 'Porcentaje (%)',          filtro: false, hint: 'Aplica un porcentaje sobre la suma de los demás conceptos del cierre.' },
+    { id: 'tarifa_config',  label: 'Tarifa configurada',                    nivel: true,                           hint: 'Usa la tarifa ya configurada (global, por cliente o por servicio) en vez de teclear el importe.' },
+    { id: 'valor_variable', label: 'Valor de una variable',                 variable: true,                        hint: 'Usa el valor de una variable (p. ej. una pregunta de Celero).' },
+    { id: 'pct_cantidad',   label: '% de una cantidad',                     valorLabel: 'Porcentaje (%)', base: true, hint: 'Un porcentaje sobre una cantidad (gastos, horas, km o nº de visitas).' },
   ];
 
-  protected recetaActual(): { id: string; label: string; valorLabel: string | null; filtro: boolean; hint: string } | null {
+  protected recetaActual(): { id: string; label: string; valorLabel?: string | null; filtro?: boolean; nivel?: boolean; variable?: boolean; base?: boolean; hint: string } | null {
     return this.recetas.find((r) => r.id === this.recetaSel) ?? null;
+  }
+
+  // Cantidad base para "% de una cantidad" (clave amigable → nodo Aggregate).
+  private baseCantidad(key: 'gastos' | 'horas' | 'km' | 'visitas'): FormulaNode {
+    switch (key) {
+      case 'horas':   return { type: 'Aggregate', op: 'Sum',   source: { type: 'Source', entity: 'HorasBizneo',   field: null, filters: [] }, field: 'Horas',   distinct: null };
+      case 'km':      return { type: 'Aggregate', op: 'Sum',   source: { type: 'Source', entity: 'GastosPayHawk', field: null, filters: [] }, field: 'Km',      distinct: null };
+      case 'visitas': return { type: 'Aggregate', op: 'Count', source: { type: 'Source', entity: 'VisitasCelero', field: null, filters: [] }, field: null,      distinct: null };
+      default:        return { type: 'Aggregate', op: 'Sum',   source: { type: 'Source', entity: 'GastosPayHawk', field: null, filters: [] }, field: 'Importe', distinct: null };
+    }
   }
 
   protected generarReceta(): void {
@@ -583,6 +628,12 @@ export class FormulaEditorComponent implements OnInit {
           right: { type: 'Number', value: v } }; break;
       case 'fee_conceptos':
         node = { type: 'BinaryOp', op: 'Pct', left: { type: 'Number', value: v }, right: { type: 'ConceptRef', conceptIds: [] } }; break;
+      case 'tarifa_config':
+        node = { type: 'TarifaRef', nivel: this.recetaNivel }; break;
+      case 'valor_variable':
+        node = { type: 'Variable', variableId: this.recetaVariableId ?? (this.variables()[0]?.id ?? 0) }; break;
+      case 'pct_cantidad':
+        node = { type: 'BinaryOp', op: 'Pct', left: { type: 'Number', value: v }, right: this.baseCantidad(this.recetaBase) }; break;
       default:
         return;
     }
