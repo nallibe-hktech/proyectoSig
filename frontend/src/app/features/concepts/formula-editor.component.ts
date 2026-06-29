@@ -102,6 +102,45 @@ import {
                     </mat-select>
                   </mat-form-field>
                 }
+                @if (r.ab) {
+                  <mat-form-field appearance="outline" class="sig-receta-valor">
+                    <mat-label>Cantidad A</mat-label>
+                    <mat-select [(ngModel)]="recetaBaseA" data-testid="receta-base-a">
+                      <mat-option value="gastos">Gastos (PayHawk)</mat-option>
+                      <mat-option value="horas">Horas (Bizneo)</mat-option>
+                      <mat-option value="km">Km (PayHawk)</mat-option>
+                      <mat-option value="visitas">Nº de visitas (Celero)</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="sig-receta-valor">
+                    <mat-label>Cantidad B</mat-label>
+                    <mat-select [(ngModel)]="recetaBaseB" data-testid="receta-base-b">
+                      <mat-option value="gastos">Gastos (PayHawk)</mat-option>
+                      <mat-option value="horas">Horas (Bizneo)</mat-option>
+                      <mat-option value="km">Km (PayHawk)</mat-option>
+                      <mat-option value="visitas">Nº de visitas (Celero)</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                }
+                @if (r.tramos) {
+                  <div class="sig-receta-tramos">
+                    <div class="sig-receta-tramos-title">Tramos — deja "Hasta" vacío en el último (= "el resto")</div>
+                    @for (t of recetaTramos; track $index) {
+                      <div class="sig-receta-tramo-row">
+                        <mat-form-field appearance="outline" class="sig-receta-tramo-campo">
+                          <mat-label>Hasta (uds)</mat-label>
+                          <input matInput type="number" [(ngModel)]="t.hasta" placeholder="resto" [attr.data-testid]="'receta-tramo-hasta-' + $index" />
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="sig-receta-tramo-campo">
+                          <mat-label>Precio (€/ud)</mat-label>
+                          <input matInput type="number" [(ngModel)]="t.precio" [attr.data-testid]="'receta-tramo-precio-' + $index" />
+                        </mat-form-field>
+                        <button mat-icon-button type="button" (click)="quitarTramoReceta($index)" matTooltip="Quitar tramo" [disabled]="recetaTramos.length <= 1"><mat-icon>delete_outline</mat-icon></button>
+                      </div>
+                    }
+                    <button mat-stroked-button type="button" (click)="addTramoReceta()" data-testid="btn-add-tramo-receta"><mat-icon>add</mat-icon> Añadir tramo</button>
+                  </div>
+                }
               }
               <button mat-flat-button color="primary" (click)="generarReceta()" [disabled]="!recetaSel" data-testid="btn-generar-receta">
                 <mat-icon>auto_fix_high</mat-icon> Generar fórmula
@@ -462,6 +501,10 @@ import {
     .sig-receta-row button { margin-top: 6px; }
     .sig-receta-hint { display: flex; align-items: center; gap: 6px; color: var(--mat-sys-on-surface-variant); font-size: 13px; margin: 4px 0 0; }
     .sig-receta-hint mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    .sig-receta-tramos { flex-basis: 100%; border: 1px dashed var(--mat-sys-outline-variant); border-radius: 8px; padding: 10px 12px; }
+    .sig-receta-tramos-title { font-size: 12px; color: var(--mat-sys-on-surface-variant); margin-bottom: 8px; }
+    .sig-receta-tramo-row { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+    .sig-receta-tramo-campo { width: 160px; }
     .sig-expression { font-family: 'Roboto Mono', monospace; font-size: 15px; padding: 12px; background: var(--mat-sys-surface-variant); color: var(--mat-sys-on-surface); border-radius: 8px; }
     .sig-valid { color: var(--sig-success); display: flex; align-items: center; gap: 6px; font-size: 14px; }
     .sig-invalid { color: var(--sig-warning); display: flex; align-items: center; gap: 6px; font-size: 14px; }
@@ -569,8 +612,12 @@ export class FormulaEditorComponent implements OnInit {
   protected recetaNivel: 'Global' | 'Cliente' | 'Servicio' = 'Servicio';
   protected recetaVariableId: number | null = null;
   protected recetaBase: 'gastos' | 'horas' | 'km' | 'visitas' = 'gastos';
+  // Grupo 2: tramos (lista) y producto A×B (dos cantidades)
+  protected recetaTramos: { hasta: number | null; precio: number }[] = [{ hasta: 1, precio: 0 }, { hasta: null, precio: 0 }];
+  protected recetaBaseA: 'gastos' | 'horas' | 'km' | 'visitas' = 'horas';
+  protected recetaBaseB: 'gastos' | 'horas' | 'km' | 'visitas' = 'visitas';
 
-  protected readonly recetas: { id: string; label: string; valorLabel?: string | null; filtro?: boolean; nivel?: boolean; variable?: boolean; base?: boolean; hint: string }[] = [
+  protected readonly recetas: { id: string; label: string; valorLabel?: string | null; filtro?: boolean; nivel?: boolean; variable?: boolean; base?: boolean; tramos?: boolean; ab?: boolean; hint: string }[] = [
     { id: 'cuota_fija',     label: 'Cuota fija mensual',                    valorLabel: 'Importe (€/mes)',         filtro: false, hint: 'Un importe fijo cada mes.' },
     { id: 'por_visita',     label: 'Pago por visita (nº visitas × tarifa)', valorLabel: 'Tarifa por visita (€)',   filtro: true,  hint: 'Cuenta las visitas (con filtro opcional) y las multiplica por la tarifa.' },
     { id: 'por_dia',        label: 'Pago por día trabajado',                valorLabel: 'Importe por día (€)',     filtro: false, hint: 'Cuenta los días con actividad (fechas únicas) y los multiplica por el importe.' },
@@ -581,9 +628,11 @@ export class FormulaEditorComponent implements OnInit {
     { id: 'tarifa_config',  label: 'Tarifa configurada',                    nivel: true,                           hint: 'Usa la tarifa ya configurada (global, por cliente o por servicio) en vez de teclear el importe.' },
     { id: 'valor_variable', label: 'Valor de una variable',                 variable: true,                        hint: 'Usa el valor de una variable (p. ej. una pregunta de Celero).' },
     { id: 'pct_cantidad',   label: '% de una cantidad',                     valorLabel: 'Porcentaje (%)', base: true, hint: 'Un porcentaje sobre una cantidad (gastos, horas, km o nº de visitas).' },
+    { id: 'por_tramos',     label: 'Por tramos (precio escalonado)',        base: true, tramos: true,      hint: 'Precio por tramos sobre una cantidad: hasta N unidades a un precio, el resto a otro.' },
+    { id: 'producto_ab',    label: 'Producto de dos cantidades (A × B)',    ab: true,                      hint: 'Multiplica dos cantidades (p. ej. horas × nº de visitas).' },
   ];
 
-  protected recetaActual(): { id: string; label: string; valorLabel?: string | null; filtro?: boolean; nivel?: boolean; variable?: boolean; base?: boolean; hint: string } | null {
+  protected recetaActual(): { id: string; label: string; valorLabel?: string | null; filtro?: boolean; nivel?: boolean; variable?: boolean; base?: boolean; tramos?: boolean; ab?: boolean; hint: string } | null {
     return this.recetas.find((r) => r.id === this.recetaSel) ?? null;
   }
 
@@ -596,6 +645,10 @@ export class FormulaEditorComponent implements OnInit {
       default:        return { type: 'Aggregate', op: 'Sum',   source: { type: 'Source', entity: 'GastosPayHawk', field: null, filters: [] }, field: 'Importe', distinct: null };
     }
   }
+
+  // Edición de la lista de tramos del modo guiado.
+  protected addTramoReceta(): void { this.recetaTramos.push({ hasta: null, precio: 0 }); }
+  protected quitarTramoReceta(i: number): void { if (this.recetaTramos.length > 1) this.recetaTramos.splice(i, 1); }
 
   protected generarReceta(): void {
     if (!this.recetaSel) return;
@@ -634,6 +687,11 @@ export class FormulaEditorComponent implements OnInit {
         node = { type: 'Variable', variableId: this.recetaVariableId ?? (this.variables()[0]?.id ?? 0) }; break;
       case 'pct_cantidad':
         node = { type: 'BinaryOp', op: 'Pct', left: { type: 'Number', value: v }, right: this.baseCantidad(this.recetaBase) }; break;
+      case 'por_tramos':
+        node = { type: 'Tramos', cantidad: this.baseCantidad(this.recetaBase),
+          tramos: this.recetaTramos.map((t) => ({ hasta: t.hasta === null || t.hasta === undefined ? null : Number(t.hasta), precio: Number(t.precio) || 0 })) }; break;
+      case 'producto_ab':
+        node = { type: 'BinaryOp', op: 'Mul', left: this.baseCantidad(this.recetaBaseA), right: this.baseCantidad(this.recetaBaseB) }; break;
       default:
         return;
     }
