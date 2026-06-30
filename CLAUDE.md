@@ -1,5 +1,5 @@
 # SIG-es — Project Status & Guidelines
-**Last Updated:** 2026-06-28 | **Status:** ✅ PRODUCTION READY + OLA 2 + CALCULATION ENGINE (FASE 5 COMPLETE)
+**Last Updated:** 2026-06-30 | **Status:** ✅ PRODUCTION READY + OLA 2 + CALCULATION ENGINE (FASE 5 COMPLETE) + SGPV VISITAS REFACTOR
 
 ---
 
@@ -24,7 +24,7 @@
 | **Bizneo** | HTTP API | ✅ | Manual/scheduled | Real API (b12004a) |
 | **Intratime** | HTTP API + DateOnly | ✅ | Manual/scheduled | DateTime conversion (19c3a69) |
 | **Celero** | PostgreSQL (muebles vía feedback→article) | ✅ | On-demand | Muebles extraction (e4f7ad2) |
-| **SGPV** | HTTP API | ✅ | Manual | Staging ready (18f29c3) |
+| **SGPV** | HTTP API | ✅ | Manual | Visitas con HorasDuracion + GPV nombre (5859363) |
 
 ### ✅ Frontend Features
 - **Paginación**: 16+ dashboards (Galán, Mediapost, Bizneo, Intratime, PayHawk, Celero, Users, Clients, Concepts, Roles, Services, Periods, Cost Centers, Departments, Variables, Audit)
@@ -126,7 +126,18 @@
 
 ---
 
-## 🔄 Recent Work (2026-06-28)
+## 🔄 Recent Work (2026-06-28 → 2026-06-30)
+
+### Accomplished This Session (2026-06-30) — SGPV Visitas Fix
+1. **SGPV HorasDuracion + GPV Nombre** ✅
+   - Problema: Columna HorasDuracion desapareció del dashboard de SGPV tras refactor anterior
+   - Root cause: Campo `HorasDuracion = d.HorasDuracion` fue removido del insert en DashboardCalcSyncAudit.cs
+   - Solución: Restaurado el campo + agregado nombre de empleado (GPV) a tabla de visitas
+   - Nueva tabla: `staging_sgpv_gpv` con 72 empleados sincronizados desde ET_GPV del API
+   - Frontend: Agregada columna "Empleado (GPV)" entre NIF y Centro en tabla de Visitas
+   - Resultado: 3.114 visitas, 3.055 con horas (98,1%), 100% con nombre GPV
+   - Commit: 5859363 — `feat(sgpv): Restaurar HorasDuracion y añadir nombre GPV a Visitas`
+   - Migraciones: 2 nuevas (ClearInvalidSgpvVisitasData + AddStagingSgpvGpv)
 
 ### Accomplished This Session (2026-06-28) — FASE 5 Complete!
 1. **FASE 5: UI Amigable para Cliente (Sin JSON)** ✅
@@ -235,8 +246,15 @@
    - SUPOSICIONES_CRITICAS.md (76 líneas)
    - COMPARATIVA_PPT_PANTALLAS.md (305 líneas)
 
-### Commits Recent (2026-06-28 — Muebles Celero + Motor Cálculo)
+### Commits Recent (2026-06-30 — SGPV Visitas + 2026-06-28 Muebles Celero)
 ```
+5859363 — feat(sgpv): Restaurar HorasDuracion y añadir nombre GPV a Visitas
+         Backend: Restaurado HorasDuracion en DashboardCalcSyncAudit (línea 719)
+         Backend: Nueva tabla staging_sgpv_gpv (72 empleados), nuevo endpoint /gpv/paginated
+         Frontend: Columna "Empleado (GPV)" agregada a tabla Visitas (entre NIF y Centro)
+         Quality: 3.114 visitas sincronizadas, 100% con nombre GPV, 98.1% con horas
+         Migraciones: ClearInvalidSgpvVisitasData + AddStagingSgpvGpv
+
 e4f7ad2 — feat: Extracción de muebles en Celero + enhancements motor de cálculo y APIs
          Backend: Celero STRING_AGG muebles, CalculationEngine refactor, AlertaCodigos expansion
          Frontend: TravelPerk verified, Conceptos mejorados
