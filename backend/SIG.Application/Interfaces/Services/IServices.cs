@@ -238,6 +238,9 @@ public interface IApprovalService
 {
     Task<PagedResult<CierrePanelItemDto>> ListAsync(ApprovalFilterRequest filter, int usuarioId, CancellationToken ct);
     Task<PagedResult<CierrePanelItemDto>> ListPendingForUserAsync(int usuarioId, int page, int pageSize, CancellationToken ct);
+    Task<IReadOnlyList<ApprovalHistoryDto>> GetHistoryAsync(int closureId, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<CierreDetailDto>> BatchApproveAsync(BatchApproveRequest req, int usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<CierreDetailDto>> BatchRejectAsync(BatchRejectRequest req, int usuarioId, CancellationToken ct);
 }
 
 // Notificaciones in-app (circuito de devolución de cierre): campana en la barra superior.

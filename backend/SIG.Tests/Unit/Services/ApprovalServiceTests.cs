@@ -1,6 +1,7 @@
 using SIG.Application.Common;
 using SIG.Application.DTOs;
 using SIG.Application.Interfaces.Repositories;
+using SIG.Application.Interfaces.Services;
 using SIG.Application.Services;
 using SIG.Domain.Entities;
 using SIG.Domain.Enums;
@@ -12,11 +13,14 @@ public class ApprovalServiceTests
 {
     private readonly ICierreCostesRepository _costesRepo = Substitute.For<ICierreCostesRepository>();
     private readonly ICierreFacturacionRepository _factRepo = Substitute.For<ICierreFacturacionRepository>();
+    private readonly ICierreCostesService _costesService = Substitute.For<ICierreCostesService>();
+    private readonly ICierreFacturacionService _factService = Substitute.For<ICierreFacturacionService>();
+    private readonly IApprovalRepository _approvalRepo = Substitute.For<IApprovalRepository>();
     private readonly ApprovalService _sut;
 
     public ApprovalServiceTests()
     {
-        _sut = new ApprovalService(_costesRepo, _factRepo);
+        _sut = new ApprovalService(_costesRepo, _factRepo, _costesService, _factService, _approvalRepo);
     }
 
     private static Service MakeService()

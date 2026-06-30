@@ -25,4 +25,16 @@ public class ApprovalsController : ControllerBase
     [HttpGet("pendientes")]
     public async Task<IActionResult> Pendientes([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default) =>
         Ok(await _svc.ListPendingForUserAsync(UserId, page, pageSize, ct));
+
+    [HttpGet("historial/{closureId:int}")]
+    public async Task<IActionResult> Historial(int closureId, CancellationToken ct) =>
+        Ok(await _svc.GetHistoryAsync(closureId, UserId, ct));
+
+    [HttpPost("batch/aprobar")]
+    public async Task<IActionResult> BatchApprove([FromBody] BatchApproveRequest req, CancellationToken ct) =>
+        Ok(await _svc.BatchApproveAsync(req, UserId, ct));
+
+    [HttpPost("batch/rechazar")]
+    public async Task<IActionResult> BatchReject([FromBody] BatchRejectRequest req, CancellationToken ct) =>
+        Ok(await _svc.BatchRejectAsync(req, UserId, ct));
 }
