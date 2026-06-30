@@ -1,11 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { ApprovalFilterRequest, CierrePanelItemDto, PagedResult } from '../../models/dtos';
+import { ApprovalFilterRequest, ApprovalHistoryDto, CierreDetailDto, CierrePanelItemDto, PagedResult } from '../../models/dtos';
 import { toHttpParams } from './api.helpers';
 
-// Ola 3b (#10): el panel de aprobaciones agrega AMBOS tipos de cierre (CierreCostes + CierreFacturacion).
-// Cada item indica su TipoCierre. Las acciones por cierre (aprobar/rechazar) viven en CierresService.
 @Injectable({ providedIn: 'root' })
 export class ApprovalService {
   private readonly http = inject(HttpClient);
@@ -21,5 +19,17 @@ export class ApprovalService {
     return this.http.get<PagedResult<CierrePanelItemDto>>(`${this.base}/pendientes`, {
       params: toHttpParams({ page, pageSize }),
     });
+  }
+
+  historial(closureId: number) {
+    return this.http.get<ApprovalHistoryDto[]>(`${this.base}/historial/${closureId}`);
+  }
+
+  batchAprobar(ids: number[]) {
+    return this.http.post<CierreDetailDto[]>(`${this.base}/batch/aprobar`, { ids });
+  }
+
+  batchRechazar(ids: number[]) {
+    return this.http.post<CierreDetailDto[]>(`${this.base}/batch/rechazar`, { ids });
   }
 }

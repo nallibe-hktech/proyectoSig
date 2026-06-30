@@ -280,6 +280,17 @@ interface BorradorVersionDemo {
             {{ onlyPendientes() ? 'Pendientes asignados a mí' : 'Cierres en el flujo de aprobación' }}
             <span class="sig-flow-hint">Flujo: Grupo &rarr; FICO &rarr; Exportado</span>
           </span>
+          @if (seleccionados().size > 0) {
+            <div class="sig-panel-actions">
+              <span class="sig-sel-count">{{ seleccionados().size }} seleccionado(s)</span>
+              <button class="sig-btn-approve" (click)="aprobarSeleccionados()" [disabled]="procesando()" data-testid="approvals-batch-aprobar">
+                <mat-icon>check</mat-icon> Aprobar
+              </button>
+              <button class="sig-btn-reject" (click)="rechazarSeleccionados()" [disabled]="procesando()" data-testid="approvals-batch-rechazar">
+                <mat-icon>close</mat-icon> Rechazar
+              </button>
+            </div>
+          }
         </div>
         <div class="sig-table-wrap">
           @if (cargando()) {
@@ -290,6 +301,7 @@ interface BorradorVersionDemo {
             <table data-testid="approvals-tabla">
               <thead>
                 <tr>
+                  <th style="width:36px"><input type="checkbox" class="sig-chk" (change)="toggleTodos($event)" [checked]="todosSeleccionados()" /></th>
                   <th>PERIODO</th>
                   <th>CLIENTE</th>
                   <th>SERVICIO</th>
@@ -303,7 +315,8 @@ interface BorradorVersionDemo {
               </thead>
               <tbody>
                 @for (item of filtrados(); track item.cierreId + '-' + item.tipoCierre) {
-                  <tr data-testid="approvals-item">
+                  <tr data-testid="approvals-item" [class.selected]="estaSeleccionado(item)">
+                    <td><input type="checkbox" class="sig-chk" [checked]="estaSeleccionado(item)" (change)="toggleSeleccion(item)" /></td>
                     <td style="font-size:12px">{{ item.periodNombre }}</td>
                     <td>{{ item.clientNombre }}</td>
                     <td><a class="sig-link">{{ item.serviceNombre }}</a></td>
@@ -316,13 +329,15 @@ interface BorradorVersionDemo {
                     <td>{{ item.pasoActualRol }}</td>
                     <td class="sig-mono">&euro; {{ item.total | number:'1.0-0' }}</td>
                     <td style="font-size:12px;color:var(--sig-text-muted)">{{ item.updatedAt | date:'dd/MM/yyyy HH:mm' }}</td>
-                    <td>
+                    <td class="sig-actions-cell">
                       <button class="sig-action-ghost" (click)="ver(item)" data-testid="approvals-ver">Ver</button>
+                      <button class="sig-action-approve" (click)="aprobarUno(item)" [disabled]="procesando()" data-testid="approvals-aprobar">Aprobar</button>
+                      <button class="sig-action-reject" (click)="rechazarUno(item)" [disabled]="procesando()" data-testid="approvals-rechazar">Rechazar</button>
                     </td>
                   </tr>
                 }
                 <tr class="sig-total-row">
-                  <td colspan="6" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sig-text-muted)">Total</td>
+                  <td colspan="7" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sig-text-muted)">Total</td>
                   <td class="sig-mono">&euro; {{ totalImporte() | number:'1.0-0' }}</td>
                   <td colspan="2"></td>
                 </tr>
@@ -358,7 +373,16 @@ interface BorradorVersionDemo {
     .sig-tipo-badge { padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; }
     .tipo--costes { background: rgba(245,158,11,.15); color: #f59e0b; }
     .tipo--fact { background: rgba(34,197,94,.15); color: #22c55e; }
+    .sig-chk { accent-color: var(--sig-blue); width: 14px; height: 14px; cursor: pointer; }
+    .selected { background: rgba(59,130,246,.06) !important; }
+    .sig-actions-cell { display: flex; gap: 6px; align-items: center; }
     .sig-action-ghost { padding: 3px 10px; border-radius: 5px; border: 1px solid var(--sig-border); background: transparent; color: var(--sig-text-secondary); font-size: 12px; font-family: inherit; cursor: pointer; }
+    .sig-action-approve { padding: 3px 10px; border-radius: 5px; border: 1px solid rgba(34,197,94,.35); background: rgba(34,197,94,.1); color: #22c55e; font-size: 12px; font-family: inherit; cursor: pointer; font-weight: 600; &:disabled { opacity: .45; cursor: default; } }
+    .sig-action-reject { padding: 3px 10px; border-radius: 5px; border: 1px solid rgba(239,68,68,.35); background: rgba(239,68,68,.1); color: #ef4444; font-size: 12px; font-family: inherit; cursor: pointer; font-weight: 600; &:disabled { opacity: .45; cursor: default; } }
+    .sig-panel-actions { display: flex; align-items: center; gap: 8px; }
+    .sig-sel-count { font-size: 12px; color: var(--sig-text-muted); font-weight: 600; }
+    .sig-btn-approve { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(34,197,94,.35); background: rgba(34,197,94,.1); color: #22c55e; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; &:disabled { opacity: .45; cursor: default; } mat-icon { font-size: 14px !important; width: 14px !important; height: 14px !important; } }
+    .sig-btn-reject { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(239,68,68,.35); background: rgba(239,68,68,.1); color: #ef4444; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; &:disabled { opacity: .45; cursor: default; } mat-icon { font-size: 14px !important; width: 14px !important; height: 14px !important; } }
     .sig-total-row td { background: var(--sig-bg-card-alt); font-size: 12px; font-weight: 700; border-top: 1px solid var(--sig-border); }
 
     /* ---- MAQUETA / DEMO ---- */
@@ -396,6 +420,8 @@ export class ApprovalsComponent implements OnInit {
   protected readonly onlyPendientes = signal<boolean>(this.route.snapshot.data['onlyPendientes'] === true);
   protected readonly items = signal<CierrePanelItemDto[]>([]);
   protected readonly cargando = signal(false);
+  protected readonly procesando = signal(false);
+  protected readonly seleccionados = signal<Set<number>>(new Set());
   protected texto = '';
   protected tipoFiltro: '' | TipoCierre = '';
 
@@ -411,6 +437,9 @@ export class ApprovalsComponent implements OnInit {
   });
 
   protected readonly totalImporte = computed(() => this.filtrados().reduce((s, c) => s + c.total, 0));
+  protected readonly todosSeleccionados = computed(() =>
+    this.filtrados().length > 0 && this.filtrados().every((i) => this.seleccionados().has(i.cierreId))
+  );
 
   // ===================== MAQUETA / DEMO (datos ilustrativos embebidos) =====================
   // Sección 1 — Vista dinamizada Pagos (Mayo 2026). Datos NO reales, pendientes de validar con SIG.
@@ -479,6 +508,7 @@ export class ApprovalsComponent implements OnInit {
 
   protected recargar(): void {
     this.cargando.set(true);
+    this.seleccionados.set(new Set());
     const obs = this.onlyPendientes()
       ? this.approvalSvc.pendientes(1, 200)
       : this.approvalSvc.list({ page: 1, pageSize: 200 });
@@ -491,5 +521,56 @@ export class ApprovalsComponent implements OnInit {
   protected ver(item: CierrePanelItemDto): void {
     const base = item.tipoCierre === 'Costes' ? '/cierres-costes' : '/cierres-facturacion';
     void this.router.navigate([base, item.cierreId]);
+  }
+
+  protected estaSeleccionado(item: CierrePanelItemDto): boolean {
+    return this.seleccionados().has(item.cierreId);
+  }
+
+  protected toggleSeleccion(item: CierrePanelItemDto): void {
+    const s = new Set(this.seleccionados());
+    s.has(item.cierreId) ? s.delete(item.cierreId) : s.add(item.cierreId);
+    this.seleccionados.set(s);
+  }
+
+  protected toggleTodos(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.seleccionados.set(checked ? new Set(this.filtrados().map((i) => i.cierreId)) : new Set());
+  }
+
+  protected aprobarUno(item: CierrePanelItemDto): void {
+    this.procesando.set(true);
+    this.approvalSvc.batchAprobar([item.cierreId]).subscribe({
+      next: () => { this.procesando.set(false); this.recargar(); },
+      error: () => this.procesando.set(false),
+    });
+  }
+
+  protected rechazarUno(item: CierrePanelItemDto): void {
+    this.procesando.set(true);
+    this.approvalSvc.batchRechazar([item.cierreId]).subscribe({
+      next: () => { this.procesando.set(false); this.recargar(); },
+      error: () => this.procesando.set(false),
+    });
+  }
+
+  protected aprobarSeleccionados(): void {
+    const ids = [...this.seleccionados()];
+    if (!ids.length) return;
+    this.procesando.set(true);
+    this.approvalSvc.batchAprobar(ids).subscribe({
+      next: () => { this.procesando.set(false); this.recargar(); },
+      error: () => this.procesando.set(false),
+    });
+  }
+
+  protected rechazarSeleccionados(): void {
+    const ids = [...this.seleccionados()];
+    if (!ids.length) return;
+    this.procesando.set(true);
+    this.approvalSvc.batchRechazar(ids).subscribe({
+      next: () => { this.procesando.set(false); this.recargar(); },
+      error: () => this.procesando.set(false),
+    });
   }
 }
