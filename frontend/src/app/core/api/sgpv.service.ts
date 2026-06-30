@@ -28,6 +28,7 @@ export interface SgpvVisitaDashboardDto {
   serviceName?: string;
   fecha: string; // DateOnly serialized as string
   horasDuracion?: number;
+  gpvNombre?: string;
 }
 
 export interface SgpvCentroDashboardDto {

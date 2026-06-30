@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SIG.Application.Common;
 using SIG.Application.DTOs;
+using SIG.Domain.Entities.Staging;
 using SIG.Infrastructure.Persistence;
 
 namespace SIG.API.Controllers;
@@ -27,32 +28,39 @@ public class SgpvController : ControllerBase
         [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
-        var query = _db.StagingSgpvVisitas.AsNoTracking();
+        var joinQuery =
+            from v in _db.StagingSgpvVisitas.AsNoTracking()
+            join c in _db.StagingSgpvCentros.AsNoTracking()
+                on v.IdCentro equals c.CentroId into centros
+            from centro in centros.DefaultIfEmpty()
+            select new { v, CentroNombreResuelto = centro != null ? centro.CentroNombre : v.IdCentro };
 
         if (!string.IsNullOrEmpty(search))
         {
             var searchLower = search.ToLower();
-            query = query.Where(v =>
-                EF.Functions.ILike(v.VisitaIdExterno, $"%{searchLower}%") ||
-                EF.Functions.ILike(v.ResourceNif, $"%{searchLower}%") ||
-                EF.Functions.ILike(v.CentroNombre, $"%{searchLower}%") ||
-                EF.Functions.ILike(v.ServiceName, $"%{searchLower}%"));
+            joinQuery = joinQuery.Where(x =>
+                EF.Functions.ILike(x.v.VisitaIdExterno, $"%{searchLower}%") ||
+                EF.Functions.ILike(x.v.IdCentro, $"%{searchLower}%") ||
+                EF.Functions.ILike(x.CentroNombreResuelto, $"%{searchLower}%") ||
+                EF.Functions.ILike(x.v.TipoVisita, $"%{searchLower}%") ||
+                EF.Functions.ILike(x.v.ResourceNif, $"%{searchLower}%"));
         }
 
-        var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderByDescending(v => v.Fecha)
+        var total = await joinQuery.CountAsync(ct);
+        var items = await joinQuery
+            .OrderByDescending(x => x.v.Fecha)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(v => new SgpvVisitaDashboardDto
+            .Select(x => new SgpvVisitaDashboardDto
             {
-                VisitaIdExterno = v.VisitaIdExterno,
-                ResourceNif = v.ResourceNif ?? "",
-                CentroId = v.IdCentro, // Use new field name
-                CentroNombre = v.Cliente, // Use new field name (Cliente instead of CentroNombre)
-                ServiceName = v.TipoVisita, // Use new field name (TipoVisita instead of ServiceName)
-                Fecha = v.Fecha,
-                HorasDuracion = v.HorasDuracion
+                VisitaIdExterno = x.v.VisitaIdExterno,
+                ResourceNif = x.v.ResourceNif ?? "",
+                CentroId = x.v.IdCentro,
+                CentroNombre = x.CentroNombreResuelto,
+                ServiceName = x.v.TipoVisita,
+                Fecha = x.v.Fecha,
+                HorasDuracion = x.v.HorasDuracion,
+                GpvNombre = x.v.GPV
             })
             .ToListAsync(ct);
 
@@ -142,6 +150,42 @@ public class SgpvController : ControllerBase
 
         return Ok(new PagedResult<SgpvProductoDto>(items, total, page, pageSize));
     }
+
+    /// <summary>Obtiene GPVs (empleados SGPV) paginados</summary>
+    [HttpGet("gpv/paginated")]
+    public async Task<IActionResult> GetGpvPaginated(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var query = _db.StagingSgpvGpvs.AsNoTracking();
+        if (!string.IsNullOrEmpty(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(g =>
+                EF.Functions.ILike(g.Nombre, $"%{s}%") ||
+                (g.Nif != null && EF.Functions.ILike(g.Nif, $"%{s}%")) ||
+                (g.Email != null && EF.Functions.ILike(g.Email, $"%{s}%")) ||
+                (g.Equipo != null && EF.Functions.ILike(g.Equipo, $"%{s}%")));
+        }
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(g => g.Nombre)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(g => new SgpvGpvDashboardDto
+            {
+                IdGpv = g.IdGpv,
+                Nombre = g.Nombre,
+                Nif = g.Nif,
+                Email = g.Email,
+                Equipo = g.Equipo,
+                Activo = g.Activo
+            })
+            .ToListAsync(ct);
+        return Ok(new PagedResult<SgpvGpvDashboardDto>(items, total, page, pageSize));
+    }
 }
 
 /// <summary>DTO for SGPV Visita Dashboard</summary>
@@ -154,6 +198,18 @@ public class SgpvVisitaDashboardDto
     public string? ServiceName { get; set; }
     public DateOnly Fecha { get; set; }
     public decimal? HorasDuracion { get; set; }
+    public string? GpvNombre { get; set; }
+}
+
+/// <summary>DTO for SGPV GPV Dashboard</summary>
+public class SgpvGpvDashboardDto
+{
+    public string IdGpv { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public string? Nif { get; set; }
+    public string? Email { get; set; }
+    public string? Equipo { get; set; }
+    public bool Activo { get; set; }
 }
 
 /// <summary>DTO for SGPV Centro Dashboard</summary>

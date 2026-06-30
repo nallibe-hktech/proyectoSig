@@ -155,6 +155,7 @@ public interface IStagingRepository<TStaging> where TStaging : class, IStagingRo
     Task AddRangeAsync(IEnumerable<TStaging> rows, CancellationToken ct);
     Task<int> CountByHashesAsync(IEnumerable<string> hashes, CancellationToken ct);
     Task<IReadOnlyList<string>> GetAllHashesAsync(CancellationToken ct);
+    Task DeleteAllAsync(CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 

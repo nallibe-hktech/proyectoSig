@@ -263,6 +263,23 @@ public class StagingSgpvCentro : IStagingRow
     public string? ErrorProcesamiento { get; set; }
 }
 
+public class StagingSgpvGpv : IStagingRow
+{
+    public int Id { get; set; }
+    public string IdGpv { get; set; } = null!;       // idGPV
+    public string Nombre { get; set; } = null!;       // nombre + apellido1
+    public string? Nif { get; set; }                  // apellido2 = NIF
+    public string? Email { get; set; }
+    public string? Equipo { get; set; }
+    public string? Usuario { get; set; }
+    public bool Activo { get; set; }
+    public string PayloadJson { get; set; } = null!;
+    public string Hash { get; set; } = null!;
+    public DateTime FechaUltimaSincronizacion { get; set; }
+    public bool FlagProcesado { get; set; }
+    public string? ErrorProcesamiento { get; set; }
+}
+
 public class StagingIntratimeEmpleado : IStagingRow
 {
     public int Id { get; set; }

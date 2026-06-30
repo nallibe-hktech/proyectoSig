@@ -609,6 +609,26 @@ public class StagingSgpvVisitaConfiguration : IEntityTypeConfiguration<StagingSg
     }
 }
 
+public class StagingSgpvGpvConfiguration : IEntityTypeConfiguration<StagingSgpvGpv>
+{
+    public void Configure(EntityTypeBuilder<StagingSgpvGpv> b)
+    {
+        b.ToTable("staging_sgpv_gpv");
+        b.HasKey(s => s.Id);
+        b.HasIndex(s => s.Hash).IsUnique();
+        b.HasIndex(s => s.IdGpv).IsUnique();
+        b.Property(s => s.IdGpv).HasMaxLength(50).IsRequired();
+        b.Property(s => s.Nombre).HasMaxLength(200).IsRequired();
+        b.Property(s => s.Nif).HasMaxLength(20);
+        b.Property(s => s.Email).HasMaxLength(200);
+        b.Property(s => s.Equipo).HasMaxLength(200);
+        b.Property(s => s.Usuario).HasMaxLength(100);
+        b.Property(s => s.Hash).HasMaxLength(100).IsRequired();
+        b.Property(s => s.PayloadJson).HasColumnType("jsonb").IsRequired();
+        b.Property(s => s.ErrorProcesamiento).HasMaxLength(2000);
+    }
+}
+
 public class ClosureAlertaConfiguration : IEntityTypeConfiguration<ClosureAlerta>
 {
     public void Configure(EntityTypeBuilder<ClosureAlerta> b)

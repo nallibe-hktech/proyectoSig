@@ -48,7 +48,18 @@ public record SgpvVisitaDto(
     string? CentroNombre,
     string? ServiceName,
     DateOnly Fecha,
-    decimal? HorasDuracion);
+    decimal? HorasDuracion,
+    string? IdGpv = null,
+    string? GpvNombre = null);
+public record SgpvGpvEmpleadoDto(
+    string IdGpv,
+    string Nombre,
+    string Apellido1,
+    string? Nif,         // apellido2 = NIF
+    string? Email,
+    string? Equipo,
+    string? Usuario,
+    bool Activo);
 public record SgpvCentroDto(
     string CentroId,
     string? CentroNombre,

@@ -392,6 +392,35 @@ public class SgpvFakeClient : ISgpvClient
         var list = faker.Generate(25);
         return Task.FromResult<IReadOnlyList<SgpvProductoDto>>(list);
     }
+
+    public Task<IReadOnlyList<(string IdGpv, string? Nif)>> GetGpvsAsync(CancellationToken ct)
+    {
+        // Fake data: lista de GPVs con NIFs simulados
+        var gpvs = new List<(string, string?)>
+        {
+            ("GPV001", "12345678A"),
+            ("GPV002", "23456789B"),
+            ("GPV003", "34567890C"),
+            ("GPV004", "45678901D"),
+            ("GPV005", "56789012E"),
+            ("GPV006", "67890123F"),
+            ("GPV007", "78901234G"),
+            ("GPV008", "89012345H")
+        };
+        return Task.FromResult<IReadOnlyList<(string, string?)>>(gpvs);
+    }
+
+    public Task<IReadOnlyList<SgpvGpvEmpleadoDto>> GetGpvEmpleadosAsync(CancellationToken ct)
+    {
+        var gpvs = new List<SgpvGpvEmpleadoDto>
+        {
+            new("GPV001", "Antonio", "Benito", "12345678A", "antonio@test.com", "Equipo A", "abenito", true),
+            new("GPV002", "Maria", "Garcia", "23456789B", "maria@test.com", "Equipo B", "mgarcia", true),
+            new("GPV003", "Carlos", "Lopez", "34567890C", "carlos@test.com", "Equipo A", "clopez", true),
+            new("GPV004", "Ana", "Martinez", "45678901D", "ana@test.com", "Equipo C", "amartinez", true),
+        };
+        return Task.FromResult<IReadOnlyList<SgpvGpvEmpleadoDto>>(gpvs);
+    }
 }
 
 public class A3InnuvaFakeClient : IA3InnuvaClient

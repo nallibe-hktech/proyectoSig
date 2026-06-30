@@ -784,6 +784,23 @@ public class SgpvClient : ISgpvClient
         _logger = logger;
     }
 
+    private static decimal? ConvertDuracionToHours(string? duracion)
+    {
+        if (string.IsNullOrWhiteSpace(duracion)) return null;
+
+        try
+        {
+            // Format: "HH:mm:ss" (e.g., "00:46:16")
+            if (TimeSpan.TryParse(duracion, out var ts))
+            {
+                return (decimal)ts.TotalHours;
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
     public async Task<IReadOnlyList<SgpvVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)
     {
         try
@@ -855,10 +872,12 @@ public class SgpvClient : ISgpvClient
                             v.IdVisita ?? "",
                             "", // ResourceNif not in API
                             v.IdCentro ?? "",
-                            v.Cliente, // Use Cliente as CentroNombre equivalent
-                            v.TipoVisita, // Use TipoVisita as ServiceName equivalent
+                            null, // CentroNombre resolved via centros lookup in DashboardCalcSyncAudit
+                            v.TipoVisita,
                             DateOnly.Parse(v.Fecha),
-                            null // HorasDuracion not in API
+                            ConvertDuracionToHours(v.Duracion),
+                            v.IdGPV, // IdGpv para resolver NIF desde ET_GPV
+                            v.GPV    // Nombre del GPV
                         )).ToList();
                     }
                 }
@@ -880,10 +899,12 @@ public class SgpvClient : ISgpvClient
                                 v.IdVisita ?? "",
                                 "", // ResourceNif not in API
                                 v.IdCentro ?? "",
-                                v.Cliente, // Use Cliente as CentroNombre equivalent
-                                v.TipoVisita, // Use TipoVisita as ServiceName equivalent
+                                null, // CentroNombre resolved via centros lookup in DashboardCalcSyncAudit
+                                v.TipoVisita,
                                 DateOnly.Parse(v.Fecha),
-                                null // HorasDuracion not in API
+                                ConvertDuracionToHours(v.Duracion),
+                                v.IdGPV, // IdGpv para resolver NIF desde ET_GPV
+                                v.GPV    // Nombre del GPV
                             )).ToList();
                         }
                     }
@@ -910,10 +931,12 @@ public class SgpvClient : ISgpvClient
                     v.IdVisita ?? "",
                     "", // ResourceNif not in API
                     v.IdCentro ?? "",
-                    v.Cliente, // Use Cliente as CentroNombre equivalent
+                    null, // CentroNombre will be resolved in DashboardCalcSyncAudit using centros lookup
                     v.TipoVisita, // Use TipoVisita as ServiceName equivalent
                     DateOnly.Parse(v.Fecha),
-                    null // HorasDuracion not in API
+                    ConvertDuracionToHours(v.Duracion),
+                    v.IdGPV, // IdGpv para resolver NIF desde ET_GPV
+                    v.GPV    // Nombre del GPV
                 )).ToList();
             }
 
@@ -1036,6 +1059,80 @@ public class SgpvClient : ISgpvClient
         }
     }
 
+    public async Task<IReadOnlyList<(string IdGpv, string? Nif)>> GetGpvsAsync(CancellationToken ct)
+    {
+        try
+        {
+            _logger?.LogInformation("[SGPV] GET GPVs (sales reps)");
+            var auth = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{_username}:{_password}"));
+            var request = new HttpRequestMessage(HttpMethod.Get, "ExportData.php");
+            request.Headers.Add("Authorization", $"Basic {auth}");
+
+            var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode) return Array.Empty<(string, string?)>();
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            if (string.IsNullOrWhiteSpace(json)) return Array.Empty<(string, string?)>();
+
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("export", out var export) &&
+                export.TryGetProperty("ET_GPV", out var gpvArray))
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var gpvs = System.Text.Json.JsonSerializer.Deserialize<List<SgpvGpvResponse>>(gpvArray.GetRawText(), options);
+
+                if (gpvs != null && gpvs.Count > 0)
+                {
+                    _logger?.LogInformation($"[SGPV] {gpvs.Count} GPVs received");
+                    return gpvs
+                        .Select(g => (g.IdGpv ?? "", g.Nif ?? ""))  // apellido2 is the NIF
+                        .ToList();
+                }
+            }
+
+            return Array.Empty<(string, string?)>();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[SGPV] Exception in GetGpvsAsync: {ex.Message}");
+            return Array.Empty<(string, string?)>();
+        }
+    }
+
+    public async Task<IReadOnlyList<SgpvGpvEmpleadoDto>> GetGpvEmpleadosAsync(CancellationToken ct)
+    {
+        try
+        {
+            var auth = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{_username}:{_password}"));
+            var request = new HttpRequestMessage(HttpMethod.Get, "ExportData.php");
+            request.Headers.Add("Authorization", $"Basic {auth}");
+            var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode) return Array.Empty<SgpvGpvEmpleadoDto>();
+            var json = await response.Content.ReadAsStringAsync(ct);
+            if (string.IsNullOrWhiteSpace(json)) return Array.Empty<SgpvGpvEmpleadoDto>();
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("export", out var export) &&
+                export.TryGetProperty("ET_GPV", out var gpvArray))
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var gpvs = System.Text.Json.JsonSerializer.Deserialize<List<SgpvGpvResponse>>(gpvArray.GetRawText(), options);
+                if (gpvs != null)
+                    return gpvs.Select(g => new SgpvGpvEmpleadoDto(
+                        g.IdGpv ?? "",
+                        g.Nombre ?? "",
+                        g.Apellido1 ?? "",
+                        g.Nif,
+                        g.Email,
+                        g.Equipo,
+                        g.Usuario,
+                        g.Activo == "1"
+                    )).ToList();
+            }
+            return Array.Empty<SgpvGpvEmpleadoDto>();
+        }
+        catch { return Array.Empty<SgpvGpvEmpleadoDto>(); }
+    }
+
     private class SgpvCentroResponse
     {
         [JsonPropertyName("idCentro")]
@@ -1046,6 +1143,26 @@ public class SgpvClient : ISgpvClient
         public string? Provincia { get; set; }
         [JsonPropertyName("Poblacion")]
         public string? Ciudad { get; set; }
+    }
+
+    private class SgpvGpvResponse
+    {
+        [JsonPropertyName("idGPV")]
+        public string? IdGpv { get; set; }
+        [JsonPropertyName("nombre")]
+        public string? Nombre { get; set; }
+        [JsonPropertyName("apellido1")]
+        public string? Apellido1 { get; set; }
+        [JsonPropertyName("apellido2")]  // NIF is stored here
+        public string? Nif { get; set; }
+        [JsonPropertyName("email")]
+        public string? Email { get; set; }
+        [JsonPropertyName("equipo")]
+        public string? Equipo { get; set; }
+        [JsonPropertyName("usuario")]
+        public string? Usuario { get; set; }
+        [JsonPropertyName("activo")]
+        public string? Activo { get; set; }
     }
 
     private class SgpvVisitasResponse
@@ -1066,7 +1183,7 @@ public class SgpvClient : ISgpvClient
         [JsonPropertyName("codigoCentro")]
         public string? CodigoCentro { get; set; }
 
-        [JsonPropertyName("idGPV")]
+        [JsonPropertyName("idGpv")]
         public string? IdGPV { get; set; }
 
         [JsonPropertyName("GPV")]
@@ -1075,7 +1192,7 @@ public class SgpvClient : ISgpvClient
         [JsonPropertyName("idCliente")]
         public string? IdCliente { get; set; }
 
-        [JsonPropertyName("Tipo Visita")]
+        [JsonPropertyName("TipoVisita")]
         public string? TipoVisita { get; set; }
 
         [JsonPropertyName("Cliente")]
@@ -1083,6 +1200,18 @@ public class SgpvClient : ISgpvClient
 
         [JsonPropertyName("Fecha")]
         public string Fecha { get; set; } = "";
+
+        [JsonPropertyName("FechaFin")]
+        public string? FechaFin { get; set; }
+
+        [JsonPropertyName("Duracion")]
+        public string? Duracion { get; set; }  // Format: "HH:mm:ss" (e.g., "00:46:16")
+
+        [JsonPropertyName("InicioCaptura")]
+        public string? InicioCaptura { get; set; }
+
+        [JsonPropertyName("FinCaptura")]
+        public string? FinCaptura { get; set; }
     }
 
     public async Task<IReadOnlyList<SgpvProductoDto>> GetProductosAsync(CancellationToken ct)

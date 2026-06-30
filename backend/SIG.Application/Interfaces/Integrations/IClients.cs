@@ -38,6 +38,8 @@ public interface ISgpvClient
     Task<IReadOnlyList<SgpvVisitaDto>> GetVisitasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct);
     Task<IReadOnlyList<SgpvCentroDto>> GetCentrosAsync(CancellationToken ct);
     Task<IReadOnlyList<SgpvProductoDto>> GetProductosAsync(CancellationToken ct);
+    Task<IReadOnlyList<(string IdGpv, string? Nif)>> GetGpvsAsync(CancellationToken ct);
+    Task<IReadOnlyList<SgpvGpvEmpleadoDto>> GetGpvEmpleadosAsync(CancellationToken ct);
 }
 
 public interface IA3InnuvaClient

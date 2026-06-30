@@ -177,6 +177,12 @@ import { BreadcrumbsComponent } from '../../../shared/breadcrumbs.component';
                   <td mat-cell *matCellDef="let element" class="monospace">{{ element.resourceNif }}</td>
                 </ng-container>
 
+                <!-- GPV Empleado Column -->
+                <ng-container matColumnDef="gpv">
+                  <th mat-header-cell *matHeaderCellDef>Empleado (GPV)</th>
+                  <td mat-cell *matCellDef="let element">{{ element.gpvNombre || '—' }}</td>
+                </ng-container>
+
                 <!-- Centro Column -->
                 <ng-container matColumnDef="centro">
                   <th mat-header-cell *matHeaderCellDef>Centro</th>
@@ -432,7 +438,7 @@ export class SgpvDashboardComponent implements OnInit {
   visitasLoading = signal(false);
   visitasSearch = '';
   private visitasSearchSubject = new Subject<string>();
-  visitasColumns = ['nif', 'centro', 'servicio', 'fecha', 'horas'];
+  visitasColumns = ['nif', 'gpv', 'centro', 'servicio', 'fecha', 'horas'];
 
   // Computed KPIs for Visitas
   visitasEmpleados = computed(() => {

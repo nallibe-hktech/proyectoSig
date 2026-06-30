@@ -245,6 +245,7 @@ public class SyncService : ISyncService
     private readonly IStagingRepository<StagingSgpvVisita> _sgpvRepo;
     private readonly IStagingRepository<StagingSgpvProducto> _sgpvProductoRepo;
     private readonly IStagingRepository<StagingSgpvCentro> _sgpvCentroRepo;
+    private readonly IStagingRepository<StagingSgpvGpv> _sgpvGpvRepo;
     private readonly IStagingRepository<StagingGalanEntrada> _galanEntradaRepo;
     private readonly IStagingRepository<StagingGalanSalida> _galanSalidaRepo;
     private readonly IStagingRepository<StagingGalanStock> _galanStockRepo;
@@ -277,6 +278,7 @@ public class SyncService : ISyncService
         IStagingRepository<StagingSgpvVisita> sgpvRepo,
         IStagingRepository<StagingSgpvProducto> sgpvProductoRepo,
         IStagingRepository<StagingSgpvCentro> sgpvCentroRepo,
+        IStagingRepository<StagingSgpvGpv> sgpvGpvRepo,
         IStagingRepository<StagingGalanEntrada> galanEntradaRepo,
         IStagingRepository<StagingGalanSalida> galanSalidaRepo,
         IStagingRepository<StagingGalanStock> galanStockRepo,
@@ -308,6 +310,7 @@ public class SyncService : ISyncService
         _sgpvRepo = sgpvRepo;
         _sgpvProductoRepo = sgpvProductoRepo;
         _sgpvCentroRepo = sgpvCentroRepo;
+        _sgpvGpvRepo = sgpvGpvRepo;
         _galanEntradaRepo = galanEntradaRepo;
         _galanSalidaRepo = galanSalidaRepo;
         _galanStockRepo = galanStockRepo;
@@ -625,8 +628,18 @@ public class SyncService : ISyncService
             }
             case "sgpv":
             {
-                // Sincronizar visitas (generalmente vacío, pero necesario para compatibilidad)
+                // SGPV exporta siempre el conjunto completo: truncar y reinsertar para evitar datos obsoletos
+                await _sgpvRepo.DeleteAllAsync(ct);
+
+                // Sincronizar visitas: cargar datos relacionados para resolver NIF y Centro
                 var visitas = await _sgpv.GetVisitasAsync(desde, hasta, ct);
+                var gpvs = await _sgpv.GetGpvsAsync(ct);  // Cargar GPVs para resolver NIF
+                var centrosParaVisitas = await _sgpv.GetCentrosAsync(ct);  // Cargar centros para resolver nombre
+
+                // Crear diccionarios para JOIN en memoria
+                var gpvNifDict = gpvs.ToDictionary(g => g.IdGpv, g => g.Nif ?? "");
+                var centroNombreDict = centrosParaVisitas.ToDictionary(c => c.CentroId, c => c.CentroNombre ?? c.CentroId);
+
                 var nuevasVisitas = new List<StagingSgpvVisita>();
 
                 // Cargar mapeos explícitos (alta prioridad)
@@ -643,8 +656,7 @@ public class SyncService : ISyncService
                 var nifToUserId = users.Where(u => !u.IsDeleted).ToDictionary(u => u.NIF, u => u.Id);
                 var serviceNameToServiceId = services.Where(a => !a.IsDeleted).ToDictionary(a => a.Nombre, a => a.Id);
 
-                // Deduplicar visitas: contra BD + dentro de la lista (puede haber duplicados en el API)
-                var visitasHashesBD = new HashSet<string>(await _sgpvRepo.GetAllHashesAsync(ct));
+                // Deduplicar solo dentro del lote (puede haber duplicados en el API)
                 var visitasHashesLocales = new HashSet<string>();
 
                 foreach (var d in visitas)
@@ -652,15 +664,41 @@ public class SyncService : ISyncService
                     var json = JsonSerializer.Serialize(d);
                     var hash = Sha256(json);
 
-                    // Deduplicar: si el hash ya existe en BD o en nuestra lista local, saltar
-                    if (visitasHashesBD.Contains(hash) || !visitasHashesLocales.Add(hash)) { dup++; continue; }
+                    // Deduplicar solo contra el lote actual (no contra BD porque ya la vaciamos)
+                    if (!visitasHashesLocales.Add(hash)) { dup++; continue; }
+
+                    // RESOLVE NIF: usar diccionario de GPV (ET_GPV.apellido2 es el NIF)
+                    string? nif = null;
+                    if (!string.IsNullOrEmpty(d.IdGpv) && gpvNifDict.TryGetValue(d.IdGpv, out var resolvedNif))
+                    {
+                        // Resolver desde ET_GPV usando IdGpv
+                        nif = resolvedNif;
+                    }
+                    else if (!string.IsNullOrEmpty(d.ResourceNif))
+                    {
+                        // Fallback: si viene ResourceNif en el DTO, usarlo
+                        nif = d.ResourceNif;
+                    }
+
+                    // RESOLVE CENTRO: Usar diccionario para obtener nombre del centro
+                    // IdCentro numérico (ej: "10414") se mapea a CentroId en el diccionario
+                    string? centroNombre = null;
+                    if (!string.IsNullOrEmpty(d.CentroId) && centroNombreDict.TryGetValue(d.CentroId, out var resolvedCentroNombre))
+                    {
+                        centroNombre = resolvedCentroNombre;
+                    }
+                    else
+                    {
+                        // Fallback: usar el ID del centro como nombre
+                        centroNombre = d.CentroId;
+                    }
 
                     // Resolver IDs: primero mapeos explícitos, luego fallback a nombre/NIF
                     int? userId = null;
-                    if (!string.IsNullOrEmpty(d.ResourceNif))
+                    if (!string.IsNullOrEmpty(nif))
                     {
-                        if (nifToUserIdMapping.TryGetValue(d.ResourceNif, out var uid)) userId = uid;
-                        else if (nifToUserId.TryGetValue(d.ResourceNif, out uid)) userId = uid;
+                        if (nifToUserIdMapping.TryGetValue(nif, out var uid)) userId = uid;
+                        else if (nifToUserId.TryGetValue(nif, out uid)) userId = uid;
                     }
 
                     int? serviceId = null;
@@ -673,15 +711,14 @@ public class SyncService : ISyncService
                     nuevasVisitas.Add(new StagingSgpvVisita
                     {
                         VisitaIdExterno = d.VisitaIdExterno,
-                        IdCentro = d.CentroId, // Mapear CentroId (del DTO que contiene IdCentro del API)
-                        Cliente = d.CentroNombre, // Mapear Cliente (del DTO que contiene Cliente del API)
-                        TipoVisita = d.ServiceName, // Mapear TipoVisita (del DTO que contiene TipoVisita del API)
+                        IdCentro = d.CentroId,         // ID numérico del centro (ej: "10414")
+                        TipoVisita = d.ServiceName,    // Tipo visita del API (ej: "normal")
+                        IdGPV = d.IdGpv,               // ID del GPV del API (para trazabilidad)
+                        GPV = d.GpvNombre,             // Nombre del GPV del API
                         Fecha = d.Fecha,
-                        // Deprecated fields - leave empty/null
-                        ResourceNif = d.ResourceNif,
-                        CentroNombre = d.CentroNombre,
-                        ServiceName = d.ServiceName,
-                        HorasDuracion = d.HorasDuracion,
+                        HorasDuracion = d.HorasDuracion, // Duración calculada desde campo Duracion del API
+                        // Campos resueltos via JOINs en memoria
+                        ResourceNif = nif,             // NIF resuelto desde ET_GPV.apellido2
                         UserId = userId,
                         ServiceId = serviceId,
                         PayloadJson = json,
@@ -762,6 +799,35 @@ public class SyncService : ISyncService
 
                 await _sgpvCentroRepo.AddRangeAsync(nuevosCentros, ct);
                 await _sgpvCentroRepo.SaveChangesAsync(ct);
+
+                // Sincronizar GPVs (empleados SGPV)
+                var gpvEmpleados = await _sgpv.GetGpvEmpleadosAsync(ct);
+                var gpvExistentes = await _sgpvGpvRepo.ListAsync(ct);
+                var gpvIdsExistentes = new HashSet<string>(gpvExistentes.Select(g => g.IdGpv));
+                var nuevosGpvs = new List<StagingSgpvGpv>();
+                foreach (var g in gpvEmpleados)
+                {
+                    if (gpvIdsExistentes.Contains(g.IdGpv)) { dup++; continue; }
+                    var gJson = JsonSerializer.Serialize(g);
+                    var gHash = Sha256(gJson);
+                    nuevosGpvs.Add(new StagingSgpvGpv
+                    {
+                        IdGpv = g.IdGpv,
+                        Nombre = $"{g.Nombre} {g.Apellido1}".Trim(),
+                        Nif = g.Nif,
+                        Email = g.Email,
+                        Equipo = g.Equipo,
+                        Usuario = g.Usuario,
+                        Activo = g.Activo,
+                        PayloadJson = gJson,
+                        Hash = gHash,
+                        FechaUltimaSincronizacion = DateTime.UtcNow,
+                        FlagProcesado = false
+                    });
+                    ins++;
+                }
+                await _sgpvGpvRepo.AddRangeAsync(nuevosGpvs, ct);
+                await _sgpvGpvRepo.SaveChangesAsync(ct);
                 break;
             }
             case "sgpv-productos":
